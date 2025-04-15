@@ -8,10 +8,10 @@
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { Issuer } from '../../../domains/issuer/issuer.entity';
-import { IssuerRepository } from '../../../domains/issuer/issuer.repository';
+import { Issuer } from '@domains/issuer/issuer.entity';
+import type { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { issuers } from '../schema';
-import { PostgresIssuerMapper } from './mappers/postgres-issuer.mapper';
+import { PostgresIssuerMapper } from '../mappers/postgres-issuer.mapper';
 
 export class PostgresIssuerRepository implements IssuerRepository {
   private db: ReturnType<typeof drizzle>;

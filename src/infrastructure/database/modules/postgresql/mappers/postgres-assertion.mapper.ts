@@ -1,11 +1,11 @@
 /**
  * PostgreSQL mapper for the Assertion domain entity
- * 
+ *
  * This class implements the Data Mapper pattern for the Assertion entity,
  * handling the conversion between domain entities and database records.
  */
 
-import { Assertion } from '../../../domains/assertion/assertion.entity';
+import { Assertion } from '@domains/assertion/assertion.entity';
 
 export class PostgresAssertionMapper {
   /**
@@ -15,7 +15,7 @@ export class PostgresAssertionMapper {
    */
   toDomain(record: any): Assertion {
     if (!record) return null as any;
-    
+
     // Extract the standard fields from the record
     const {
       id,
@@ -27,10 +27,9 @@ export class PostgresAssertionMapper {
       verification,
       revoked,
       revocation_reason: revocationReason,
-      additional_fields: additionalFields = {},
-      ...rest
+      additional_fields: additionalFields = {}
     } = record;
-    
+
     // Create and return the domain entity
     return Assertion.create({
       id: id.toString(),
@@ -45,7 +44,7 @@ export class PostgresAssertionMapper {
       ...additionalFields
     });
   }
-  
+
   /**
    * Converts a domain entity to a database record
    * @param entity The Assertion domain entity
@@ -53,10 +52,10 @@ export class PostgresAssertionMapper {
    */
   toPersistence(entity: Assertion): any {
     if (!entity) return null;
-    
+
     // Convert the entity to a plain object
     const obj = entity.toObject();
-    
+
     // Extract the standard fields
     const {
       id,
@@ -70,7 +69,7 @@ export class PostgresAssertionMapper {
       revocationReason,
       ...additionalFields
     } = obj;
-    
+
     // Create and return the database record
     return {
       id,

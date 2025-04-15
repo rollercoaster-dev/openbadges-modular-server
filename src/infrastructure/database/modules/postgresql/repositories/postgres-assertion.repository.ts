@@ -5,13 +5,13 @@
  * and the Data Mapper pattern.
  */
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { Assertion } from '../../../domains/assertion/assertion.entity';
-import { AssertionRepository } from '../../../domains/assertion/assertion.repository';
+import { Assertion } from '@domains/assertion/assertion.entity';
+import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
-import { PostgresAssertionMapper } from './mappers/postgres-assertion.mapper';
+import { PostgresAssertionMapper } from '../mappers/postgres-assertion.mapper';
 
 export class PostgresAssertionRepository implements AssertionRepository {
   private db: ReturnType<typeof drizzle>;
@@ -60,10 +60,9 @@ export class PostgresAssertionRepository implements AssertionRepository {
   }
 
   async findByRecipient(recipientId: string): Promise<Assertion[]> {
-    // This is a simplified implementation that assumes recipient.id exists
     // A more robust implementation would need to handle different recipient identity formats
     const result = await this.db.select().from(assertions)
-      .where(eq(assertions.recipient.id, recipientId));
+      .where(eq(sql`${assertions.recipient}->>'id'`, recipientId));
     
     // Convert database records to domain entities
     return result.map(record => this.mapper.toDomain(record));

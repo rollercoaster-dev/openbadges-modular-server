@@ -1,11 +1,11 @@
 /**
  * JSON-LD context provider for Open Badges API
- * 
+ *
  * This file provides utilities for working with JSON-LD contexts
  * according to the Open Badges 3.0 specification.
  */
 
-import { config } from '../../config/config';
+
 import { OB3 } from 'openbadges-types';
 
 /**

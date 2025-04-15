@@ -1,12 +1,11 @@
 /**
  * Service for managing key pairs and signatures
- * 
+ *
  * This service handles the generation, storage, and retrieval of key pairs
  * for digital signatures in the Open Badges API.
  */
 
 import { generateKeyPair, signData, verifySignature } from '../utils/crypto/signature';
-import { config } from '../config/config';
 
 // In a production environment, these would be stored in a secure database
 // For this implementation, we'll use in-memory storage
@@ -23,7 +22,7 @@ export class KeyService {
       console.log('Generated default key pair');
     }
   }
-  
+
   /**
    * Gets the default public key
    * @returns The default public key
@@ -35,7 +34,7 @@ export class KeyService {
     }
     return keyPair.publicKey;
   }
-  
+
   /**
    * Gets the default private key
    * @returns The default private key
@@ -47,7 +46,7 @@ export class KeyService {
     }
     return keyPair.privateKey;
   }
-  
+
   /**
    * Signs data using the default private key
    * @param data The data to sign
@@ -57,7 +56,7 @@ export class KeyService {
     const privateKey = this.getDefaultPrivateKey();
     return signData(data, privateKey);
   }
-  
+
   /**
    * Verifies a signature using the default public key
    * @param data The data that was signed
@@ -68,7 +67,7 @@ export class KeyService {
     const publicKey = this.getDefaultPublicKey();
     return verifySignature(data, signature, publicKey);
   }
-  
+
   /**
    * Generates a new key pair with the given ID
    * @param id The ID for the new key pair
@@ -79,7 +78,7 @@ export class KeyService {
     keyPairs.set(id, keyPair);
     return keyPair;
   }
-  
+
   /**
    * Gets a public key by ID
    * @param id The ID of the key pair
@@ -92,7 +91,7 @@ export class KeyService {
     }
     return keyPair.publicKey;
   }
-  
+
   /**
    * Gets a private key by ID
    * @param id The ID of the key pair

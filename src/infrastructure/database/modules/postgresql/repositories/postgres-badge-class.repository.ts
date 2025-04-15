@@ -8,10 +8,10 @@
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { BadgeClass } from '../../../domains/badgeClass/badgeClass.entity';
-import { BadgeClassRepository } from '../../../domains/badgeClass/badgeClass.repository';
+import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
+import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { badgeClasses } from '../schema';
-import { PostgresBadgeClassMapper } from './mappers/postgres-badge-class.mapper';
+import { PostgresBadgeClassMapper } from '../mappers/postgres-badge-class.mapper';
 
 export class PostgresBadgeClassRepository implements BadgeClassRepository {
   private db: ReturnType<typeof drizzle>;

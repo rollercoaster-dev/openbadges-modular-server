@@ -1,6 +1,6 @@
 /**
  * PostgreSQL mapper for the BadgeClass domain entity
- * 
+ *
  * This class implements the Data Mapper pattern for the BadgeClass entity,
  * handling the conversion between domain entities and database records.
  */
@@ -15,7 +15,7 @@ export class PostgresBadgeClassMapper {
    */
   toDomain(record: any): BadgeClass {
     if (!record) return null as any;
-    
+
     // Extract the standard fields from the record
     const {
       id,
@@ -26,10 +26,9 @@ export class PostgresBadgeClassMapper {
       criteria,
       alignment,
       tags,
-      additional_fields: additionalFields = {},
-      ...rest
+      additional_fields: additionalFields = {}
     } = record;
-    
+
     // Create and return the domain entity
     return BadgeClass.create({
       id: id.toString(),
@@ -43,7 +42,7 @@ export class PostgresBadgeClassMapper {
       ...additionalFields
     });
   }
-  
+
   /**
    * Converts a domain entity to a database record
    * @param entity The BadgeClass domain entity
@@ -51,10 +50,10 @@ export class PostgresBadgeClassMapper {
    */
   toPersistence(entity: BadgeClass): any {
     if (!entity) return null;
-    
+
     // Convert the entity to a plain object
     const obj = entity.toObject();
-    
+
     // Extract the standard fields
     const {
       id,
@@ -67,7 +66,7 @@ export class PostgresBadgeClassMapper {
       tags,
       ...additionalFields
     } = obj;
-    
+
     // Create and return the database record
     return {
       id,

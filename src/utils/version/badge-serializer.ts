@@ -1,10 +1,10 @@
 /**
  * Version-specific serializers for Open Badges API
- * 
+ *
  * This file provides serializers for converting between different Open Badges versions.
  */
 
-import { OB2, OB3 } from 'openbadges-types';
+
 import { BadgeVersion, BADGE_VERSION_CONTEXTS } from './badge-version';
 
 /**
@@ -17,14 +17,14 @@ export interface BadgeSerializer {
    * @returns A serialized issuer in the appropriate format
    */
   serializeIssuer(issuer: Record<string, any>): Record<string, any>;
-  
+
   /**
    * Serializes a badge class to the appropriate format
    * @param badgeClass The badge class object
    * @returns A serialized badge class in the appropriate format
    */
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any>;
-  
+
   /**
    * Serializes an assertion to the appropriate format
    * @param assertion The assertion object
@@ -37,7 +37,7 @@ export interface BadgeSerializer {
     badgeClass?: Record<string, any>,
     issuer?: Record<string, any>
   ): Record<string, any>;
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version
@@ -67,7 +67,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
       ...(issuer.publicKey && { publicKey: issuer.publicKey })
     };
   }
-  
+
   /**
    * Serializes a badge class to Open Badges 2.0 format
    * @param badgeClass The badge class object
@@ -87,7 +87,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
       ...(badgeClass.tags && { tags: badgeClass.tags })
     };
   }
-  
+
   /**
    * Serializes an assertion to Open Badges 2.0 format
    * @param assertion The assertion object
@@ -97,15 +97,14 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    */
   serializeAssertion(
     assertion: Record<string, any>,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
+    badgeClass?: Record<string, any>
   ): Record<string, any> {
     // Create verification object if not present
     const verification = assertion.verification || {
       type: 'hosted',
       ...(assertion.id && { verificationProperty: assertion.id })
     };
-    
+
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
       id: assertion.id,
@@ -120,7 +119,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
       ...(assertion.revocationReason && { revocationReason: assertion.revocationReason })
     };
   }
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version (2.0)
@@ -152,7 +151,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(issuer.publicKey && { publicKey: issuer.publicKey })
     };
   }
-  
+
   /**
    * Serializes a badge class to Open Badges 3.0 format
    * @param badgeClass The badge class object
@@ -172,7 +171,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(badgeClass.tags && { tags: badgeClass.tags })
     };
   }
-  
+
   /**
    * Serializes an assertion to Open Badges 3.0 format
    * @param assertion The assertion object
@@ -189,7 +188,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     if (badgeClass && issuer) {
       return this.createVerifiableCredential(assertion, badgeClass, issuer);
     }
-    
+
     // Otherwise, create a basic Assertion
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
@@ -205,7 +204,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(assertion.revocationReason && { revocationReason: assertion.revocationReason })
     };
   }
-  
+
   /**
    * Creates a Verifiable Credential representation of an assertion
    * @param assertion The assertion object
@@ -217,7 +216,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     assertion: Record<string, any>,
     badgeClass: Record<string, any>,
     issuer: Record<string, any>
-  ): Partial<OB3.VerifiableCredential> {
+  ): Record<string, any> {
     return {
       '@context': [
         'https://www.w3.org/2018/credentials/v1',
@@ -271,7 +270,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       })
     };
   }
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version (3.0)

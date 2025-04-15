@@ -12,6 +12,7 @@ import { AssertionController } from './controllers/assertion.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { validationMiddleware } from '../utils/validation/validation-middleware';
 import { swagger } from './openapi';
+import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
 
 /**
  * Creates the API router
@@ -27,6 +28,10 @@ export function createApiRouter(
 ): Elysia {
   // Create the router
   const router = new Elysia();
+
+  // Add security middleware
+  router.use(securityHeadersMiddleware);
+  router.use(rateLimitMiddleware);
 
   // Add OpenAPI documentation
   router.use(swagger);
