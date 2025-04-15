@@ -2,7 +2,7 @@
 
 A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3.0 specifications.
 
-[![Build and Publish Docker Image](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/docker-publish.yml)
+[![CI/CD Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml)
 
 ## Features
 
@@ -152,7 +152,9 @@ If you want to integrate the Open Badges API with your own data structures, you 
 
 See the [Database Module Guide](./docs/database-module-guide.md) for detailed instructions on how to integrate with your own data structures.
 
-## Testing
+## Development
+
+### Testing
 
 Run the test suite:
 
@@ -160,11 +162,61 @@ Run the test suite:
 bun test
 ```
 
+Run tests with coverage:
+
+```bash
+bun test:coverage
+```
+
 The test suite includes:
 
 - Unit tests for domain entities
 - Integration tests for repositories
 - Validation tests for Open Badges compliance
+
+### Linting and Type Checking
+
+Lint the codebase:
+
+```bash
+bun run lint
+```
+
+Fix linting issues automatically:
+
+```bash
+bun run lint:fix
+```
+
+Run TypeScript type checking:
+
+```bash
+bun run typecheck
+```
+
+### Building
+
+Build the project:
+
+```bash
+bun run build
+```
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+1. **Lint and Type Check**: Ensures code quality and type safety
+2. **Tests**: Runs the test suite with coverage reporting
+3. **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
+4. **Deploy**: Deploys to Kubernetes when a new version is tagged
+
+To create a new release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## Docker Support
 
