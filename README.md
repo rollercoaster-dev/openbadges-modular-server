@@ -2,6 +2,8 @@
 
 A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3.0 specifications.
 
+[![Build and Publish Docker Image](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/docker-publish.yml)
+
 ## Features
 
 - **Dual-Version Support**: Full support for both Open Badges 2.0 and 3.0 specifications
@@ -30,8 +32,8 @@ A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/badgeforge.git
-cd badgeforge
+git clone https://github.com/rollercoaster-dev/openbadges-modular-server.git
+cd openbadges-modular-server
 ```
 
 2. Install dependencies:
@@ -163,6 +165,38 @@ The test suite includes:
 - Unit tests for domain entities
 - Integration tests for repositories
 - Validation tests for Open Badges compliance
+
+## Docker Support
+
+### Using Docker Compose
+
+The easiest way to run the application is using Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+This will start both the API and a PostgreSQL database.
+
+### Using Pre-built Docker Image
+
+You can also use the pre-built Docker image from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/rollercoaster-dev/openbadges-modular-server:main
+
+docker run -p 3000:3000 \
+  -e DATABASE_URL=postgres://postgres:postgres@your-db-host:5432/openbadges \
+  ghcr.io/rollercoaster-dev/openbadges-modular-server:main
+```
+
+### Building the Docker Image Locally
+
+To build the Docker image locally:
+
+```bash
+docker build -t openbadges-modular-server .
+```
 
 ## License
 
