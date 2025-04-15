@@ -1,0 +1,21 @@
+{
+  "name": "open-badges-api",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.13",
+    "drizzle-kit": "^0.30.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "drizzle-orm": "^0.41.0",
+    "elysia": "^1.2.25",
+    "openbadges-types": "^1.0.1",
+    "postgres": "^3.4.5"
+  }
+}
