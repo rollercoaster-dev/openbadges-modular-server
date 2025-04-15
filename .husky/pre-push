@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-push checks..."
+
+# Get all changed files
+CHANGED_FILES=$(git diff --name-only --cached --diff-filter=ACMR | grep "\.ts$" || true)
+
+if [ -n "$CHANGED_FILES" ]; then
+  echo "Linting changed files..."
+  echo "$CHANGED_FILES" | xargs bun eslint --fix
+
+  echo "Type checking changed files..."
+  echo "$CHANGED_FILES" | xargs bun tsc-files --noEmit
+else
+  echo "No TypeScript files changed, skipping checks."
+fi
