@@ -23,12 +23,14 @@
     "eslint": "^9.24.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
     "drizzle-orm": "^0.41.0",
     "elysia": "^1.2.25",
+    "elysia-helmet": "^2.0.0",
+    "elysia-rate-limit": "^4.3.0",
     "openbadges-types": "^1.0.1",
     "postgres": "^3.4.5"
   }
