@@ -3,10 +3,24 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "db:migrate": "drizzle-kit migrate",
+    "build": "bun build src/index.ts --target bun --outdir dist"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/pg": "^8.11.13",
-    "drizzle-kit": "^0.30.6"
+    "@typescript-eslint/eslint-plugin": "^8.30.1",
+    "@typescript-eslint/parser": "^8.30.1",
+    "drizzle-kit": "^0.30.6",
+    "eslint": "^9.24.0"
   },
   "peerDependencies": {
     "typescript": "^5"
