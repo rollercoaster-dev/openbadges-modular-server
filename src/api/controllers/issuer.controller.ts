@@ -1,6 +1,6 @@
 /**
  * Issuer controller for Open Badges API
- * 
+ *
  * This file defines the controller for issuer-related operations.
  * It supports both Open Badges 2.0 and 3.0 specifications.
  */
@@ -8,6 +8,8 @@
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
+import { toIRI } from '../../utils/types/iri-utils';
+import { Shared } from 'openbadges-types';
 
 /**
  * Controller for issuer-related operations
@@ -48,7 +50,7 @@ export class IssuerController {
    * @returns The issuer with the specified ID
    */
   async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const issuer = await this.issuerRepository.findById(id);
+    const issuer = await this.issuerRepository.findById(toIRI(id) as Shared.IRI);
     if (!issuer) {
       return null;
     }
@@ -63,7 +65,7 @@ export class IssuerController {
    * @returns The updated issuer
    */
   async updateIssuer(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedIssuer = await this.issuerRepository.update(id, data);
+    const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data);
     if (!updatedIssuer) {
       return null;
     }
@@ -76,6 +78,6 @@ export class IssuerController {
    * @returns True if the issuer was deleted, false otherwise
    */
   async deleteIssuer(id: string): Promise<boolean> {
-    return await this.issuerRepository.delete(id);
+    return await this.issuerRepository.delete(toIRI(id) as Shared.IRI);
   }
 }

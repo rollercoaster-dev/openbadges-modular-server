@@ -27,8 +27,10 @@ For example, if adding MongoDB support:
 ```typescript
 // src/infrastructure/database/modules/mongodb/schema.ts
 
+import { Shared } from 'openbadges-types';
+
 export interface IssuerDocument {
-  _id: string;
+  _id: Shared.IRI;
   name: string;
   url: string;
   email?: string;
@@ -41,8 +43,8 @@ export interface IssuerDocument {
 }
 
 export interface BadgeClassDocument {
-  _id: string;
-  issuerId: string;
+  _id: Shared.IRI;
+  issuerId: Shared.IRI;
   name: string;
   description: string;
   image: string;
@@ -55,8 +57,8 @@ export interface BadgeClassDocument {
 }
 
 export interface AssertionDocument {
-  _id: string;
-  badgeClassId: string;
+  _id: Shared.IRI;
+  badgeClassId: Shared.IRI;
   recipient: any;
   issuedOn: Date;
   expires?: Date;

@@ -85,6 +85,24 @@ For convenience, the API also provides default endpoints without version prefixe
 
 ## Data Models
 
+### Type System
+
+The API uses the `openbadges-types` package as the single source of truth for types. This package provides TypeScript types for the Open Badges 2.0 and 3.0 specifications, as well as shared types that are used across both specifications.
+
+One of the key shared types is `Shared.IRI` (Internationalized Resource Identifier), which is used for all identifiers and URLs in the API. This type is a branded string type that ensures type safety when working with IRIs.
+
+```typescript
+import { Shared } from 'openbadges-types';
+
+// Creating an IRI from a string
+const id: Shared.IRI = '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI;
+const url: Shared.IRI = 'https://example.org/badges/1' as Shared.IRI;
+
+// Using IRIs in API calls
+const issuer = await issuerRepository.findById(id);
+const badgeClass = await badgeClassRepository.findByIssuer(issuer.id);
+```
+
 ### Issuer
 
 An organization or individual that issues badges.
@@ -116,6 +134,25 @@ An organization or individual that issues badges.
   "email": "badges@example.org",
   "description": "An example organization that issues badges",
   "image": "https://example.org/logo.png"
+}
+```
+
+> Note: Fields like `id`, `url`, and `image` are IRIs (`Shared.IRI`).
+
+##### OB3ImageObject Example
+
+```json
+{
+  "@context": "https://w3id.org/openbadges/v3",
+  "id": "https://example.org/issuers/1",
+  "type": "Profile",
+  "name": "Example Organization",
+  "image": {
+    "id": "https://example.org/images/logo.png",
+    "type": "Image",
+    "caption": { "en": "Organization Logo" },
+    "author": "https://example.org"
+  }
 }
 ```
 
@@ -175,7 +212,7 @@ A badge awarded to a recipient.
     "identity": "recipient@example.org",
     "hashed": false
   },
-  "badge": "https://example.org/badges/1",
+  "badgeClass": "https://example.org/badges/1",
   "verification": {
     "type": "hosted"
   },
@@ -187,6 +224,8 @@ A badge awarded to a recipient.
   }
 }
 ```
+
+> Note: The `badgeClass` field is an IRI (`Shared.IRI`).
 
 #### Open Badges 3.0 Format (Verifiable Credential)
 
@@ -225,6 +264,54 @@ A badge awarded to a recipient.
     "narrative": "The recipient completed all required tasks."
   }
 }
+```
+
+## Working with IRI Types
+
+The API provides utility functions for working with `Shared.IRI` types. These functions are available in the `src/utils/types/iri-utils.ts` file.
+
+### Converting Between String and IRI
+
+```typescript
+import { toIRI, toString } from '../utils/types/iri-utils';
+
+// Convert a string to an IRI
+const id = toIRI('123e4567-e89b-12d3-a456-426614174000');
+
+// Convert an IRI to a string
+const idString = toString(id);
+```
+
+### Validating IRIs
+
+```typescript
+import { isValidIRI, ensureValidIRI } from '../utils/types/iri-utils';
+
+// Check if a value is a valid IRI
+if (isValidIRI('https://example.org/badges/1')) {
+  // Do something with the IRI
+}
+
+// Ensure a value is a valid IRI, or return null
+const validIRI = ensureValidIRI(possibleIRI);
+```
+
+### Working with Arrays and Objects
+
+```typescript
+import { toIRIArray, toStringArray, objectWithIRIToString, objectWithStringToIRI } from '../utils/types/iri-utils';
+
+// Convert an array of strings to an array of IRIs
+const iriArray = toIRIArray(['https://example.org/badges/1', 'https://example.org/badges/2']);
+
+// Convert an array of IRIs to an array of strings
+const stringArray = toStringArray(iriArray);
+
+// Convert IRI properties in an object to string properties
+const stringObject = objectWithIRIToString(iriObject, ['id', 'url']);
+
+// Convert string properties in an object to IRI properties
+const iriObject = objectWithStringToIRI(stringObject, ['id', 'url']);
 ```
 
 ## Version Conversion

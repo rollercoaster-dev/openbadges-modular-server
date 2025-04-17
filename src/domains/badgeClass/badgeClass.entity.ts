@@ -1,11 +1,11 @@
 /**
  * Version-agnostic BadgeClass entity for Open Badges API
- * 
+ *
  * This file defines the BadgeClass domain entity that can represent both
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { OB2, OB3 } from 'openbadges-types';
+import { OB2, OB3, Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
@@ -14,13 +14,13 @@ import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
  * BadgeClass entity representing a type of badge that can be issued
  * Compatible with both Open Badges 2.0 and 3.0
  */
-export class BadgeClass implements Partial<OB2.BadgeClass>, Partial<OB3.Achievement> {
-  id: string;
+export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<Partial<OB3.Achievement>, 'image'> {
+  id: Shared.IRI;
   type: string = 'BadgeClass';
-  issuer: string;
+  issuer: Shared.IRI;
   name: string;
   description?: string;
-  image?: string;
+  image?: Shared.IRI | Shared.OB3ImageObject;
   criteria?: OB2.Criteria | OB3.Criteria;
   alignment?: OB2.AlignmentObject[] | OB3.Alignment[];
   tags?: string[];
@@ -41,7 +41,7 @@ export class BadgeClass implements Partial<OB2.BadgeClass>, Partial<OB3.Achievem
   static create(data: Partial<BadgeClass>): BadgeClass {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4();
+      data.id = uuidv4() as Shared.IRI;
     }
 
     // Set default type if not provided

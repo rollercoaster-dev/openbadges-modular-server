@@ -1,11 +1,12 @@
 /**
  * Version-specific serializers for Open Badges API
- * 
+ *
  * This file provides serializers for converting between different Open Badges versions.
  */
 
-import { OB2, OB3 } from 'openbadges-types';
+
 import { BadgeVersion, BADGE_VERSION_CONTEXTS } from './badge-version';
+import { Shared } from 'openbadges-types';
 
 /**
  * Base serializer interface for Open Badges
@@ -17,14 +18,14 @@ export interface BadgeSerializer {
    * @returns A serialized issuer in the appropriate format
    */
   serializeIssuer(issuer: Record<string, any>): Record<string, any>;
-  
+
   /**
    * Serializes a badge class to the appropriate format
    * @param badgeClass The badge class object
    * @returns A serialized badge class in the appropriate format
    */
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any>;
-  
+
   /**
    * Serializes an assertion to the appropriate format
    * @param assertion The assertion object
@@ -37,7 +38,7 @@ export interface BadgeSerializer {
     badgeClass?: Record<string, any>,
     issuer?: Record<string, any>
   ): Record<string, any>;
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version
@@ -57,17 +58,17 @@ export class OpenBadges2Serializer implements BadgeSerializer {
   serializeIssuer(issuer: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: issuer.id,
+      id: issuer.id as Shared.IRI,
       type: 'Issuer',
       name: issuer.name,
-      url: issuer.url,
+      url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
       ...(issuer.image && { image: issuer.image }),
       ...(issuer.publicKey && { publicKey: issuer.publicKey })
     };
   }
-  
+
   /**
    * Serializes a badge class to Open Badges 2.0 format
    * @param badgeClass The badge class object
@@ -76,18 +77,18 @@ export class OpenBadges2Serializer implements BadgeSerializer {
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: badgeClass.id,
+      id: badgeClass.id as Shared.IRI,
       type: 'BadgeClass',
       name: badgeClass.name,
       description: badgeClass.description,
-      image: badgeClass.image,
+      image: badgeClass.image as Shared.IRI,
       criteria: badgeClass.criteria,
-      issuer: badgeClass.issuer,
+      issuer: badgeClass.issuer as Shared.IRI,
       ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
       ...(badgeClass.tags && { tags: badgeClass.tags })
     };
   }
-  
+
   /**
    * Serializes an assertion to Open Badges 2.0 format
    * @param assertion The assertion object
@@ -97,21 +98,20 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    */
   serializeAssertion(
     assertion: Record<string, any>,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
+    badgeClass?: Record<string, any>
   ): Record<string, any> {
     // Create verification object if not present
     const verification = assertion.verification || {
       type: 'hosted',
       ...(assertion.id && { verificationProperty: assertion.id })
     };
-    
+
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: 'Assertion',
       recipient: assertion.recipient,
-      badge: assertion.badgeClass || badgeClass?.id,
+      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       verification: verification,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -120,7 +120,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
       ...(assertion.revocationReason && { revocationReason: assertion.revocationReason })
     };
   }
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version (2.0)
@@ -142,17 +142,17 @@ export class OpenBadges3Serializer implements BadgeSerializer {
   serializeIssuer(issuer: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: issuer.id,
+      id: issuer.id as Shared.IRI,
       type: 'Profile',
       name: issuer.name,
-      url: issuer.url,
+      url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
       ...(issuer.image && { image: issuer.image }),
       ...(issuer.publicKey && { publicKey: issuer.publicKey })
     };
   }
-  
+
   /**
    * Serializes a badge class to Open Badges 3.0 format
    * @param badgeClass The badge class object
@@ -161,18 +161,18 @@ export class OpenBadges3Serializer implements BadgeSerializer {
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: badgeClass.id,
+      id: badgeClass.id as Shared.IRI,
       type: 'BadgeClass',
-      issuer: badgeClass.issuer,
+      issuer: badgeClass.issuer as Shared.IRI,
       name: badgeClass.name,
       description: badgeClass.description,
-      image: badgeClass.image,
+      image: badgeClass.image as Shared.IRI,
       criteria: badgeClass.criteria,
       ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
       ...(badgeClass.tags && { tags: badgeClass.tags })
     };
   }
-  
+
   /**
    * Serializes an assertion to Open Badges 3.0 format
    * @param assertion The assertion object
@@ -189,13 +189,13 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     if (badgeClass && issuer) {
       return this.createVerifiableCredential(assertion, badgeClass, issuer);
     }
-    
+
     // Otherwise, create a basic Assertion
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: 'Assertion',
-      badge: assertion.badgeClass || badgeClass?.id,
+      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       recipient: assertion.recipient,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -205,7 +205,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(assertion.revocationReason && { revocationReason: assertion.revocationReason })
     };
   }
-  
+
   /**
    * Creates a Verifiable Credential representation of an assertion
    * @param assertion The assertion object
@@ -217,19 +217,19 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     assertion: Record<string, any>,
     badgeClass: Record<string, any>,
     issuer: Record<string, any>
-  ): Partial<OB3.VerifiableCredential> {
+  ): Record<string, any> {
     return {
       '@context': [
         'https://www.w3.org/2018/credentials/v1',
         BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       ],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
       issuer: {
-        id: issuer.id,
+        id: issuer.id as Shared.IRI,
         type: issuer.type || 'Profile',
         name: issuer.name,
-        url: issuer.url,
+        url: issuer.url as Shared.IRI,
         ...(issuer.email && { email: issuer.email }),
         ...(issuer.description && { description: issuer.description }),
         ...(issuer.image && { image: issuer.image })
@@ -240,11 +240,11 @@ export class OpenBadges3Serializer implements BadgeSerializer {
         id: assertion.recipient.identity,
         type: 'AchievementSubject',
         achievement: {
-          id: badgeClass.id,
+          id: badgeClass.id as Shared.IRI,
           type: 'Achievement',
           name: badgeClass.name,
           description: badgeClass.description,
-          image: badgeClass.image,
+          image: badgeClass.image as Shared.IRI,
           criteria: badgeClass.criteria,
           ...(badgeClass.alignment && { alignments: badgeClass.alignment }),
           ...(badgeClass.tags && { tags: badgeClass.tags })
@@ -271,7 +271,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       })
     };
   }
-  
+
   /**
    * Gets the badge version supported by this serializer
    * @returns The badge version (3.0)

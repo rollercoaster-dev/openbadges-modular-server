@@ -1,11 +1,11 @@
 /**
  * Middleware for validating Open Badges entities
- * 
+ *
  * This file contains middleware functions for validating entities
  * before they are processed by the controllers.
  */
 
-import { Elysia } from 'elysia';
+
 import { validateIssuer, validateBadgeClass, validateAssertion } from './entity-validator';
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
@@ -20,7 +20,7 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
 export function validateIssuerMiddleware({ body, set }: { body: any, set: any }) {
   const issuerData = Issuer.create(body);
   const { isValid, errors } = validateIssuer(issuerData);
-  
+
   if (!isValid) {
     set.status = 400;
     return {
@@ -29,7 +29,7 @@ export function validateIssuerMiddleware({ body, set }: { body: any, set: any })
       details: errors
     };
   }
-  
+
   return { success: true };
 }
 
@@ -42,7 +42,7 @@ export function validateIssuerMiddleware({ body, set }: { body: any, set: any })
 export function validateBadgeClassMiddleware({ body, set }: { body: any, set: any }) {
   const badgeClassData = BadgeClass.create(body);
   const { isValid, errors } = validateBadgeClass(badgeClassData);
-  
+
   if (!isValid) {
     set.status = 400;
     return {
@@ -51,7 +51,7 @@ export function validateBadgeClassMiddleware({ body, set }: { body: any, set: an
       details: errors
     };
   }
-  
+
   return { success: true };
 }
 
@@ -64,7 +64,7 @@ export function validateBadgeClassMiddleware({ body, set }: { body: any, set: an
 export function validateAssertionMiddleware({ body, set }: { body: any, set: any }) {
   const assertionData = Assertion.create(body);
   const { isValid, errors } = validateAssertion(assertionData);
-  
+
   if (!isValid) {
     set.status = 400;
     return {
@@ -73,6 +73,6 @@ export function validateAssertionMiddleware({ body, set }: { body: any, set: any
       details: errors
     };
   }
-  
+
   return { success: true };
 }

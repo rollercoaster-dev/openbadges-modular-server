@@ -1,12 +1,12 @@
 /**
  * JSON-LD context provider for Open Badges API
- * 
+ *
  * This file provides utilities for working with JSON-LD contexts
  * according to the Open Badges 3.0 specification.
  */
 
-import { config } from '../../config/config';
-import { OB3 } from 'openbadges-types';
+
+import { OB3, Shared } from 'openbadges-types';
 
 /**
  * The Open Badges 3.0 JSON-LD context
@@ -138,11 +138,11 @@ export function createVerifiableCredential(
     }),
     ...(assertion.revoked !== undefined && {
       credentialStatus: {
-        id: `${assertion.id}#status`,
+        id: `${assertion.id}#status` as Shared.IRI,
         type: 'StatusList2021Entry',
         statusPurpose: 'revocation',
         statusListIndex: '0',
-        statusListCredential: `${assertion.id}#list`
+        statusListCredential: `${assertion.id}#list` as Shared.IRI
       }
     })
   };

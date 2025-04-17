@@ -4,7 +4,7 @@
  * This file contains the OpenAPI/Swagger documentation for the API endpoints.
  */
 
-import { OpenAPIObject } from 'openapi3-ts';
+import { OpenAPIObject } from 'openapi3-ts/oas30';
 import { config } from '../config/config';
 
 export const openApiConfig: OpenAPIObject = {
@@ -103,7 +103,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the issuer to retrieve'
           }
@@ -151,7 +152,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the issuer to update'
           }
@@ -219,7 +221,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the issuer to delete'
           }
@@ -311,7 +314,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the badge class to retrieve'
           }
@@ -359,7 +363,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the badge class to update'
           }
@@ -427,7 +432,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the badge class to delete'
           }
@@ -470,7 +476,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the issuer to retrieve badge classes for'
           }
@@ -571,7 +578,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the assertion to retrieve'
           }
@@ -619,7 +627,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the assertion to update'
           }
@@ -687,7 +696,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the assertion to delete'
           }
@@ -730,7 +740,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the assertion to revoke'
           }
@@ -798,7 +809,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the assertion to verify'
           }
@@ -879,7 +891,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the badge class to retrieve assertions for'
           }
@@ -931,7 +944,8 @@ export const openApiConfig: OpenAPIObject = {
             in: 'path',
             required: true,
             schema: {
-              type: 'string'
+              type: 'string',
+              format: 'uri'
             },
             description: 'ID of the recipient to retrieve assertions for'
           }
@@ -990,6 +1004,7 @@ export const openApiConfig: OpenAPIObject = {
           },
           id: {
             type: 'string',
+            format: 'uri',
             description: 'Unique identifier for the issuer',
             example: '123e4567-e89b-12d3-a456-426614174000'
           },
@@ -1000,6 +1015,7 @@ export const openApiConfig: OpenAPIObject = {
           },
           url: {
             type: 'string',
+            format: 'uri',
             description: 'URL of the issuer',
             example: 'https://example.edu'
           },
@@ -1014,7 +1030,10 @@ export const openApiConfig: OpenAPIObject = {
             example: 'A leading institution in online education'
           },
           image: {
-            type: 'string',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
             description: 'URL to the issuer\'s image',
             example: 'https://example.edu/logo.png'
           },
@@ -1024,10 +1043,12 @@ export const openApiConfig: OpenAPIObject = {
             properties: {
               id: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu/keys/1'
               },
               owner: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu'
               },
               publicKeyPem: {
@@ -1049,6 +1070,7 @@ export const openApiConfig: OpenAPIObject = {
           },
           url: {
             type: 'string',
+            format: 'uri',
             description: 'URL of the issuer',
             example: 'https://example.edu'
           },
@@ -1063,7 +1085,10 @@ export const openApiConfig: OpenAPIObject = {
             example: 'A leading institution in online education'
           },
           image: {
-            type: 'string',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
             description: 'URL to the issuer\'s image',
             example: 'https://example.edu/logo.png'
           },
@@ -1073,10 +1098,12 @@ export const openApiConfig: OpenAPIObject = {
             properties: {
               id: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu/keys/1'
               },
               owner: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu'
               },
               publicKeyPem: {
@@ -1098,6 +1125,7 @@ export const openApiConfig: OpenAPIObject = {
           },
           url: {
             type: 'string',
+            format: 'uri',
             description: 'URL of the issuer',
             example: 'https://example.edu'
           },
@@ -1112,7 +1140,10 @@ export const openApiConfig: OpenAPIObject = {
             example: 'A leading institution in online education'
           },
           image: {
-            type: 'string',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
             description: 'URL to the issuer\'s image',
             example: 'https://example.edu/logo.png'
           },
@@ -1122,10 +1153,12 @@ export const openApiConfig: OpenAPIObject = {
             properties: {
               id: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu/keys/1'
               },
               owner: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu'
               },
               publicKeyPem: {
@@ -1163,11 +1196,13 @@ export const openApiConfig: OpenAPIObject = {
           },
           id: {
             type: 'string',
+            format: 'uri',
             description: 'Unique identifier for the badge class',
             example: '123e4567-e89b-12d3-a456-426614174001'
           },
           issuer: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the issuer',
             example: '123e4567-e89b-12d3-a456-426614174000'
           },
@@ -1182,8 +1217,11 @@ export const openApiConfig: OpenAPIObject = {
             example: 'This badge is awarded to students who complete the Introduction to Programming course'
           },
           image: {
-            type: 'string',
-            description: 'URL to the badge image',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
+            description: 'URL or object for the badge image',
             example: 'https://example.edu/badges/intro-to-programming.png'
           },
           criteria: {
@@ -1233,6 +1271,7 @@ export const openApiConfig: OpenAPIObject = {
         properties: {
           issuer: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the issuer',
             example: '123e4567-e89b-12d3-a456-426614174000'
           },
@@ -1247,8 +1286,11 @@ export const openApiConfig: OpenAPIObject = {
             example: 'This badge is awarded to students who complete the Introduction to Programming course'
           },
           image: {
-            type: 'string',
-            description: 'URL to the badge image',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
+            description: 'URL or object for the badge image',
             example: 'https://example.edu/badges/intro-to-programming.png'
           },
           criteria: {
@@ -1298,6 +1340,7 @@ export const openApiConfig: OpenAPIObject = {
         properties: {
           issuer: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the issuer',
             example: '123e4567-e89b-12d3-a456-426614174000'
           },
@@ -1312,8 +1355,11 @@ export const openApiConfig: OpenAPIObject = {
             example: 'This badge is awarded to students who complete the Introduction to Programming course'
           },
           image: {
-            type: 'string',
-            description: 'URL to the badge image',
+            oneOf: [
+              { type: 'string', format: 'uri' },
+              { $ref: '#/components/schemas/OB3ImageObject' }
+            ],
+            description: 'URL or object for the badge image',
             example: 'https://example.edu/badges/intro-to-programming.png'
           },
           criteria: {
@@ -1384,11 +1430,13 @@ export const openApiConfig: OpenAPIObject = {
           },
           id: {
             type: 'string',
+            format: 'uri',
             description: 'Unique identifier for the assertion',
             example: '123e4567-e89b-12d3-a456-426614174002'
           },
-          badge: {
+          badgeClass: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the badge class',
             example: '123e4567-e89b-12d3-a456-426614174001'
           },
@@ -1432,6 +1480,7 @@ export const openApiConfig: OpenAPIObject = {
                 },
                 id: {
                   type: 'string',
+                  format: 'uri',
                   example: 'https://example.edu/evidence/123'
                 },
                 name: {
@@ -1463,6 +1512,7 @@ export const openApiConfig: OpenAPIObject = {
               },
               creator: {
                 type: 'string',
+                format: 'uri',
                 example: 'https://example.edu/keys/1'
               },
               created: {
@@ -1486,13 +1536,14 @@ export const openApiConfig: OpenAPIObject = {
             example: 'Badge awarded in error'
           }
         },
-        required: ['@context', 'type', 'id', 'badge', 'recipient', 'issuedOn']
+        required: ['@context', 'type', 'id', 'badgeClass', 'recipient', 'issuedOn']
       },
       AssertionInput: {
         type: 'object',
         properties: {
           badgeClass: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the badge class',
             example: '123e4567-e89b-12d3-a456-426614174001'
           },
@@ -1536,6 +1587,7 @@ export const openApiConfig: OpenAPIObject = {
                 },
                 id: {
                   type: 'string',
+                  format: 'uri',
                   example: 'https://example.edu/evidence/123'
                 },
                 name: {
@@ -1565,6 +1617,7 @@ export const openApiConfig: OpenAPIObject = {
         properties: {
           badgeClass: {
             type: 'string',
+            format: 'uri',
             description: 'ID of the badge class',
             example: '123e4567-e89b-12d3-a456-426614174001'
           },
@@ -1608,6 +1661,7 @@ export const openApiConfig: OpenAPIObject = {
                 },
                 id: {
                   type: 'string',
+                  format: 'uri',
                   example: 'https://example.edu/evidence/123'
                 },
                 name: {
@@ -1642,6 +1696,37 @@ export const openApiConfig: OpenAPIObject = {
             $ref: '#/components/schemas/Assertion'
           }
         }
+      },
+      OB3ImageObject: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            format: 'uri',
+            description: 'Unique identifier for the image object',
+            example: 'https://example.edu/images/1'
+          },
+          type: {
+            type: 'string',
+            enum: ['Image'],
+            example: 'Image'
+          },
+          caption: {
+            oneOf: [
+              { type: 'string' },
+              { type: 'object' }
+            ],
+            description: 'Caption or multilingual captions for the image',
+            example: 'A badge image'
+          },
+          author: {
+            type: 'string',
+            format: 'uri',
+            description: 'URI of the image author',
+            example: 'https://example.edu'
+          }
+        },
+        required: ['id', 'type']
       },
       ErrorResponse: {
         type: 'object',

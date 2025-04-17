@@ -2,6 +2,12 @@ FROM oven/bun:1 as builder
 
 WORKDIR /app
 
+# Install system dependencies for better-sqlite3
+RUN apt-get update && \
+    apt-get install -y libsqlite3-dev python3 make g++ && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy package.json and bun.lock
 COPY package.json bun.lock ./
 

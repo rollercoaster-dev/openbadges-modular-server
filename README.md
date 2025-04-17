@@ -206,10 +206,15 @@ bun run build
 
 The project uses GitHub Actions for continuous integration and deployment:
 
-1. **Lint and Type Check**: Ensures code quality and type safety
-2. **Tests**: Runs the test suite with coverage reporting
-3. **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
-4. **Deploy**: Deploys to Kubernetes when a new version is tagged
+1. **CI Pipeline**: Runs on all branches and pull requests
+   - **Lint and Type Check**: Ensures code quality and type safety
+   - **Tests**: Runs the test suite with coverage reporting
+
+2. **CI/CD Pipeline**: Runs only on release tags (v*)
+   - **Lint and Type Check**: Ensures code quality and type safety
+   - **Tests**: Runs the test suite with coverage reporting
+   - **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
+   - **Deploy**: Deploys to Kubernetes when a new version is tagged
 
 To create a new release:
 

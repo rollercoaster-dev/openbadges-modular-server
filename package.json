@@ -37,11 +37,15 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
+    "@types/uuid": "^10.0.0",
+    "better-sqlite3": "^11.9.1",
     "drizzle-orm": "^0.41.0",
     "elysia": "^1.2.25",
     "elysia-helmet": "^2.0.0",
     "elysia-rate-limit": "^4.3.0",
-    "openbadges-types": "^1.0.1",
-    "postgres": "^3.4.5"
+    "openapi3-ts": "^4.4.0",
+    "openbadges-types": "^3.0.2",
+    "postgres": "^3.4.5",
+    "uuid": "^11.1.0"
   }
 }

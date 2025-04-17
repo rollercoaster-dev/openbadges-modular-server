@@ -1,11 +1,12 @@
 /**
  * PostgreSQL mapper for the Issuer domain entity
- * 
+ *
  * This class implements the Data Mapper pattern for the Issuer entity,
  * handling the conversion between domain entities and database records.
  */
 
-import { Issuer } from '../../../domains/issuer/issuer.entity';
+import { Issuer } from '../../../../../domains/issuer/issuer.entity';
+import { Shared } from 'openbadges-types';
 
 export class PostgresIssuerMapper {
   /**
@@ -15,7 +16,7 @@ export class PostgresIssuerMapper {
    */
   toDomain(record: any): Issuer {
     if (!record) return null as any;
-    
+
     // Extract the standard fields from the record
     const {
       id,
@@ -24,24 +25,23 @@ export class PostgresIssuerMapper {
       email,
       description,
       image,
-      public_key: publicKey,
-      additional_fields: additionalFields = {},
-      ...rest
+      publicKey,
+      additionalFields = {}
     } = record;
-    
+
     // Create and return the domain entity
     return Issuer.create({
-      id: id.toString(),
+      id: id.toString() as Shared.IRI,
       name,
-      url,
+      url: url as Shared.IRI,
       email,
       description,
-      image,
+      image: typeof image === 'string' ? image as Shared.IRI : image,
       publicKey,
       ...additionalFields
     });
   }
-  
+
   /**
    * Converts a domain entity to a database record
    * @param entity The Issuer domain entity
@@ -49,10 +49,10 @@ export class PostgresIssuerMapper {
    */
   toPersistence(entity: Issuer): any {
     if (!entity) return null;
-    
+
     // Convert the entity to a plain object
     const obj = entity.toObject();
-    
+
     // Extract the standard fields
     const {
       id,
@@ -64,7 +64,7 @@ export class PostgresIssuerMapper {
       publicKey,
       ...additionalFields
     } = obj;
-    
+
     // Create and return the database record
     return {
       id,
@@ -73,9 +73,9 @@ export class PostgresIssuerMapper {
       email,
       description,
       image,
-      public_key: publicKey,
-      additional_fields: additionalFields,
-      updated_at: new Date()
+      publicKey,
+      additionalFields,
+      updatedAt: new Date()
     };
   }
 }
