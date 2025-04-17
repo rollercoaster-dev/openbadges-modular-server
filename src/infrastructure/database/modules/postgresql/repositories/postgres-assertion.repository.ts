@@ -125,16 +125,33 @@ export class PostgresAssertionRepository implements AssertionRepository {
     } as Partial<Assertion>);
   }
 
-  async verify(id: Shared.IRI): Promise<boolean> {
+  async verify(id: Shared.IRI): Promise<{ isValid: boolean; reason?: string }> {
     // Get the assertion
     const assertion = await this.findById(id);
 
-    // If not found, return false
+    // If not found, return false with reason
     if (!assertion) {
-      return false;
+      return { isValid: false, reason: 'Assertion not found' };
     }
 
-    // Use the domain entity's isValid method to check validity
-    return assertion.isValid();
+    // Check if revoked
+    if (assertion.revoked) {
+      return {
+        isValid: false,
+        reason: assertion.revocationReason || 'Assertion has been revoked'
+      };
+    }
+
+    // Check if expired
+    if (assertion.expires) {
+      const expiryDate = new Date(assertion.expires);
+      const now = new Date();
+      if (expiryDate < now) {
+        return { isValid: false, reason: 'Assertion has expired' };
+      }
+    }
+
+    // All checks passed
+    return { isValid: true };
   }
 }

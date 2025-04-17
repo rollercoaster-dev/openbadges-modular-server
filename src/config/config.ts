@@ -15,11 +15,17 @@ export const config = {
   // Database configuration
   database: {
     // Supported types: 'sqlite', 'postgresql', 'mongodb', etc.
-    type: process.env.DB_TYPE || 'postgresql',
+    type: process.env.DB_TYPE || 'sqlite',
     // For Postgres or Mongo, use a generic connection string
     connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges',
-    // SQLite file path or ':memory:' for in-memory databases
-    sqliteFile: process.env.SQLITE_FILE || ':memory:'
+    // SQLite configuration
+    sqliteFile: process.env.SQLITE_FILE || ':memory:',
+    sqliteBusyTimeout: parseInt(process.env.SQLITE_BUSY_TIMEOUT || '5000', 10),
+    sqliteSyncMode: process.env.SQLITE_SYNC_MODE || 'NORMAL',
+    sqliteCacheSize: parseInt(process.env.SQLITE_CACHE_SIZE || '10000', 10),
+    // Connection retry configuration
+    maxConnectionAttempts: parseInt(process.env.DB_MAX_CONNECTION_ATTEMPTS || '5', 10),
+    connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY_MS || '1000', 10)
   },
 
   // API configuration
