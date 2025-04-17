@@ -53,6 +53,12 @@ We've made significant progress in aligning the domain entities with the openbad
    - ✅ Removed `as any` casts where possible
    - ✅ Used domain entity factory methods to create entities
 
+4. **SQLite Module & Tests**:
+   - ✅ Refactored SQLite module to use `bun:sqlite` and `drizzle-orm/bun-sqlite`
+   - ✅ Updated `SqliteDatabase` implementation for Bun compatibility
+   - ✅ Added/updated integration tests for SQLite with conditional skipping if `bun:sqlite` is unavailable
+   - ✅ All SQLite tests pass in Bun
+
 ### Remaining Issues
 
 We've made significant progress, but there are still a few issues that need to be addressed:
@@ -285,12 +291,13 @@ async getIssuerById(id: Shared.IRI): Promise<Issuer | null> {
 - 🔄 Serialization utilities handle the new types
 - 🔄 OpenAPI schema matches the new types
 - ✅ All tests pass with the updated types (except PostgreSQL repository tests that require a database)
+- ✅ All SQLite integration tests pass in Bun (with conditional skipping if unavailable)
 - ⏳ No TypeScript errors or warnings related to types
 - ✅ No runtime type errors when using the API
 
 ## Current Focus
 
-The current focus is on updating the OpenAPI schema to match the new types and running the integration tests to ensure everything works correctly.
+The current focus is on updating the OpenAPI schema to match the new types, running the integration tests to ensure everything works correctly, and maintaining full test coverage for both SQLite (in Bun) and PostgreSQL (when available).
 
 ## Task Splitting
 
