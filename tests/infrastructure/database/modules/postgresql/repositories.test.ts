@@ -80,39 +80,39 @@ describePg('PostgreSQL Repositories', () => {
           email TEXT,
           description TEXT,
           image TEXT,
-          public_key JSONB,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          additional_fields JSONB
+          "publicKey" JSONB,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "additionalFields" JSONB
         );
 
         CREATE TABLE IF NOT EXISTS badge_classes (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          issuer_id UUID NOT NULL REFERENCES issuers(id) ON DELETE CASCADE,
+          "issuerId" UUID NOT NULL REFERENCES issuers(id) ON DELETE CASCADE,
           name TEXT NOT NULL,
           description TEXT NOT NULL,
           image TEXT NOT NULL,
           criteria JSONB NOT NULL,
           alignment JSONB,
           tags JSONB,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          additional_fields JSONB
+          "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "additionalFields" JSONB
         );
 
         CREATE TABLE IF NOT EXISTS assertions (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          badge_class_id UUID NOT NULL REFERENCES badge_classes(id) ON DELETE CASCADE,
+          "badgeClassId" UUID NOT NULL REFERENCES badge_classes(id) ON DELETE CASCADE,
           recipient JSONB NOT NULL,
-          issued_on TIMESTAMP NOT NULL DEFAULT NOW(),
+          "issuedOn" TIMESTAMP NOT NULL DEFAULT NOW(),
           expires TIMESTAMP,
           evidence JSONB,
           verification JSONB,
-          revoked BOOLEAN,
-          revocation_reason TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          additional_fields JSONB
+          revoked JSONB,
+          "revocationReason" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "additionalFields" JSONB
         );
       `);
     } catch (error) {

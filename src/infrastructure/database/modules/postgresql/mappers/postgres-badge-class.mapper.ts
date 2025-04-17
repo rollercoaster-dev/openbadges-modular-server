@@ -20,14 +20,14 @@ export class PostgresBadgeClassMapper {
     // Extract the standard fields from the record
     const {
       id,
-      issuer_id: issuerId,
+      issuerId,
       name,
       description,
       image,
       criteria,
       alignment,
       tags,
-      additional_fields: additionalFields = {}
+      additionalFields = {}
     } = record;
 
     // Create and return the domain entity
@@ -71,15 +71,15 @@ export class PostgresBadgeClassMapper {
     // Create and return the database record
     return {
       id,
-      issuer_id: issuer,
+      issuerId: issuer,
       name,
       description,
       image,
       criteria,
       alignment,
       tags,
-      additional_fields: additionalFields,
-      updated_at: new Date()
+      additionalFields,
+      updatedAt: new Date()
     };
   }
 }

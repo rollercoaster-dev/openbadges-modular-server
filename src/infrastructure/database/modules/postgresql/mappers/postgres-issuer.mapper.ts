@@ -25,8 +25,8 @@ export class PostgresIssuerMapper {
       email,
       description,
       image,
-      public_key: publicKey,
-      additional_fields: additionalFields = {}
+      publicKey,
+      additionalFields = {}
     } = record;
 
     // Create and return the domain entity
@@ -73,9 +73,9 @@ export class PostgresIssuerMapper {
       email,
       description,
       image,
-      public_key: publicKey,
-      additional_fields: additionalFields,
-      updated_at: new Date()
+      publicKey,
+      additionalFields,
+      updatedAt: new Date()
     };
   }
 }

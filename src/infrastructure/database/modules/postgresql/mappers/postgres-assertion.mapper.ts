@@ -20,15 +20,15 @@ export class PostgresAssertionMapper {
     // Extract the standard fields from the record
     const {
       id,
-      badge_class_id: badgeClassId,
+      badgeClassId,
       recipient,
-      issued_on: issuedOn,
+      issuedOn,
       expires,
       evidence,
       verification,
       revoked,
-      revocation_reason: revocationReason,
-      additional_fields: additionalFields = {}
+      revocationReason,
+      additionalFields = {}
     } = record;
 
     // Create and return the domain entity
@@ -40,7 +40,7 @@ export class PostgresAssertionMapper {
       expires: expires ? expires.toISOString() : undefined,
       evidence,
       verification,
-      revoked,
+      revoked: revoked === true || (typeof revoked === 'object' && revoked !== null),
       revocationReason,
       ...additionalFields
     });
@@ -74,16 +74,16 @@ export class PostgresAssertionMapper {
     // Create and return the database record
     return {
       id,
-      badge_class_id: badgeClass,
+      badgeClassId: badgeClass,
       recipient,
-      issued_on: new Date(issuedOn),
+      issuedOn: new Date(issuedOn),
       expires: expires ? new Date(expires) : null,
       evidence,
       verification,
-      revoked,
-      revocation_reason: revocationReason,
-      additional_fields: additionalFields,
-      updated_at: new Date()
+      revoked: revoked ? { status: true } : null, // Store as JSONB object
+      revocationReason,
+      additionalFields,
+      updatedAt: new Date()
     };
   }
 }
