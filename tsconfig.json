@@ -20,7 +20,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@domains/*": ["src/domains/*"]
+      "@domains/*": ["src/domains/*"],
+      "@infrastructure/*": ["src/infrastructure/*"],
+      "@utils/*": ["src/utils/*"],
+      "@tests/*": ["tests/*"]
     },
 
     // Best practices
