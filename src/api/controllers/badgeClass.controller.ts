@@ -1,6 +1,6 @@
 /**
  * BadgeClass controller for Open Badges API
- * 
+ *
  * This file defines the controller for badge class-related operations.
  * It supports both Open Badges 2.0 and 3.0 specifications.
  */
@@ -8,6 +8,8 @@
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
+import { toIRI } from '../../utils/types/iri-utils';
+import { Shared } from 'openbadges-types';
 
 /**
  * Controller for badge class-related operations
@@ -48,7 +50,7 @@ export class BadgeClassController {
    * @returns The badge class with the specified ID
    */
   async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const badgeClass = await this.badgeClassRepository.findById(id);
+    const badgeClass = await this.badgeClassRepository.findById(toIRI(id) as Shared.IRI);
     if (!badgeClass) {
       return null;
     }
@@ -62,7 +64,7 @@ export class BadgeClassController {
    * @returns The badge classes for the specified issuer
    */
   async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
-    const badgeClasses = await this.badgeClassRepository.findByIssuer(issuerId);
+    const badgeClasses = await this.badgeClassRepository.findByIssuer(toIRI(issuerId) as Shared.IRI);
     return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version));
   }
 
@@ -74,7 +76,7 @@ export class BadgeClassController {
    * @returns The updated badge class
    */
   async updateBadgeClass(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedBadgeClass = await this.badgeClassRepository.update(id, data);
+    const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data);
     if (!updatedBadgeClass) {
       return null;
     }
@@ -87,6 +89,6 @@ export class BadgeClassController {
    * @returns True if the badge class was deleted, false otherwise
    */
   async deleteBadgeClass(id: string): Promise<boolean> {
-    return await this.badgeClassRepository.delete(id);
+    return await this.badgeClassRepository.delete(toIRI(id) as Shared.IRI);
   }
 }

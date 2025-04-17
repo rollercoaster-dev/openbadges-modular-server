@@ -6,6 +6,7 @@
 
 
 import { BadgeVersion, BADGE_VERSION_CONTEXTS } from './badge-version';
+import { Shared } from 'openbadges-types';
 
 /**
  * Base serializer interface for Open Badges
@@ -57,10 +58,10 @@ export class OpenBadges2Serializer implements BadgeSerializer {
   serializeIssuer(issuer: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: issuer.id,
+      id: issuer.id as Shared.IRI,
       type: 'Issuer',
       name: issuer.name,
-      url: issuer.url,
+      url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
       ...(issuer.image && { image: issuer.image }),
@@ -76,13 +77,13 @@ export class OpenBadges2Serializer implements BadgeSerializer {
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: badgeClass.id,
+      id: badgeClass.id as Shared.IRI,
       type: 'BadgeClass',
       name: badgeClass.name,
       description: badgeClass.description,
-      image: badgeClass.image,
+      image: badgeClass.image as Shared.IRI,
       criteria: badgeClass.criteria,
-      issuer: badgeClass.issuer,
+      issuer: badgeClass.issuer as Shared.IRI,
       ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
       ...(badgeClass.tags && { tags: badgeClass.tags })
     };
@@ -107,10 +108,10 @@ export class OpenBadges2Serializer implements BadgeSerializer {
 
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: 'Assertion',
       recipient: assertion.recipient,
-      badge: assertion.badgeClass || badgeClass?.id,
+      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       verification: verification,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -141,10 +142,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
   serializeIssuer(issuer: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: issuer.id,
+      id: issuer.id as Shared.IRI,
       type: 'Profile',
       name: issuer.name,
-      url: issuer.url,
+      url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
       ...(issuer.image && { image: issuer.image }),
@@ -160,12 +161,12 @@ export class OpenBadges3Serializer implements BadgeSerializer {
   serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: badgeClass.id,
+      id: badgeClass.id as Shared.IRI,
       type: 'BadgeClass',
-      issuer: badgeClass.issuer,
+      issuer: badgeClass.issuer as Shared.IRI,
       name: badgeClass.name,
       description: badgeClass.description,
-      image: badgeClass.image,
+      image: badgeClass.image as Shared.IRI,
       criteria: badgeClass.criteria,
       ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
       ...(badgeClass.tags && { tags: badgeClass.tags })
@@ -192,9 +193,9 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     // Otherwise, create a basic Assertion
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: 'Assertion',
-      badge: assertion.badgeClass || badgeClass?.id,
+      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       recipient: assertion.recipient,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -222,13 +223,13 @@ export class OpenBadges3Serializer implements BadgeSerializer {
         'https://www.w3.org/2018/credentials/v1',
         BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       ],
-      id: assertion.id,
+      id: assertion.id as Shared.IRI,
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
       issuer: {
-        id: issuer.id,
+        id: issuer.id as Shared.IRI,
         type: issuer.type || 'Profile',
         name: issuer.name,
-        url: issuer.url,
+        url: issuer.url as Shared.IRI,
         ...(issuer.email && { email: issuer.email }),
         ...(issuer.description && { description: issuer.description }),
         ...(issuer.image && { image: issuer.image })
@@ -239,11 +240,11 @@ export class OpenBadges3Serializer implements BadgeSerializer {
         id: assertion.recipient.identity,
         type: 'AchievementSubject',
         achievement: {
-          id: badgeClass.id,
+          id: badgeClass.id as Shared.IRI,
           type: 'Achievement',
           name: badgeClass.name,
           description: badgeClass.description,
-          image: badgeClass.image,
+          image: badgeClass.image as Shared.IRI,
           criteria: badgeClass.criteria,
           ...(badgeClass.alignment && { alignments: badgeClass.alignment }),
           ...(badgeClass.tags && { tags: badgeClass.tags })

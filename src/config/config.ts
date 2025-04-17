@@ -14,8 +14,12 @@ export const config = {
   
   // Database configuration
   database: {
-    type: process.env.DB_TYPE || 'postgresql',
+    // Supported types: 'sqlite', 'postgresql', 'mongodb', etc.
+    type: process.env.DB_TYPE || 'sqlite',
+    // For Postgres or Mongo, use a generic connection string
     connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges',
+    // SQLite file path or ':memory:' for in-memory databases
+    sqliteFile: process.env.SQLITE_FILE || ':memory:'
   },
   
   // API configuration

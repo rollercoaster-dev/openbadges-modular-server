@@ -30,7 +30,7 @@ export const securityMiddleware = new Elysia()
         const forwardedFor = req.headers.get('x-forwarded-for');
         if (forwardedFor && !isDevelopment) {
           // In production, trust the X-Forwarded-For header
-          return forwardedFor.split(',')[0].trim();
+          return forwardedFor.split(',')[0]?.trim() || 'unknown-ip';
         }
         
         // Fall back to direct IP or use placeholder

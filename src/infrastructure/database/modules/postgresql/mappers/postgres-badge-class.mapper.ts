@@ -5,7 +5,8 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { BadgeClass } from '../../../domains/badgeClass/badgeClass.entity';
+import { BadgeClass } from '../../../../../domains/badgeClass/badgeClass.entity';
+import { Shared } from 'openbadges-types';
 
 export class PostgresBadgeClassMapper {
   /**
@@ -31,11 +32,11 @@ export class PostgresBadgeClassMapper {
 
     // Create and return the domain entity
     return BadgeClass.create({
-      id: id.toString(),
-      issuer: issuerId.toString(),
+      id: id.toString() as Shared.IRI,
+      issuer: issuerId.toString() as Shared.IRI,
       name,
       description,
-      image,
+      image: typeof image === 'string' ? image as Shared.IRI : image,
       criteria,
       alignment,
       tags,

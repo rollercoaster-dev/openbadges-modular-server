@@ -5,7 +5,8 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { Issuer } from '@domains/issuer/issuer.entity';
+import { Issuer } from '../../../../../domains/issuer/issuer.entity';
+import { Shared } from 'openbadges-types';
 
 export class PostgresIssuerMapper {
   /**
@@ -30,12 +31,12 @@ export class PostgresIssuerMapper {
 
     // Create and return the domain entity
     return Issuer.create({
-      id: id.toString(),
+      id: id.toString() as Shared.IRI,
       name,
-      url,
+      url: url as Shared.IRI,
       email,
       description,
-      image,
+      image: typeof image === 'string' ? image as Shared.IRI : image,
       publicKey,
       ...additionalFields
     });

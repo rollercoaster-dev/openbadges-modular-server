@@ -6,7 +6,7 @@
  */
 
 
-import { OB3 } from 'openbadges-types';
+import { OB3, Shared } from 'openbadges-types';
 
 /**
  * The Open Badges 3.0 JSON-LD context
@@ -138,11 +138,11 @@ export function createVerifiableCredential(
     }),
     ...(assertion.revoked !== undefined && {
       credentialStatus: {
-        id: `${assertion.id}#status`,
+        id: `${assertion.id}#status` as Shared.IRI,
         type: 'StatusList2021Entry',
         statusPurpose: 'revocation',
         statusListIndex: '0',
-        statusListCredential: `${assertion.id}#list`
+        statusListCredential: `${assertion.id}#list` as Shared.IRI
       }
     })
   };

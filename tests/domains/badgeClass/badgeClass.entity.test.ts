@@ -1,28 +1,29 @@
 /**
  * Unit tests for the BadgeClass entity
- * 
+ *
  * This file contains tests for the BadgeClass domain entity to ensure
  * it behaves correctly according to the Open Badges 3.0 specification.
  */
 
 import { describe, expect, it } from 'bun:test';
 import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
+import { Shared } from 'openbadges-types';
 
 describe('BadgeClass Entity', () => {
   // Test data
   const validBadgeClassData = {
-    id: '123e4567-e89b-12d3-a456-426614174001',
-    issuer: '123e4567-e89b-12d3-a456-426614174000',
+    id: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+    issuer: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
     name: 'Introduction to Programming',
     description: 'This badge is awarded to students who complete the Introduction to Programming course',
-    image: 'https://example.edu/badges/intro-to-programming.png',
+    image: 'https://example.edu/badges/intro-to-programming.png' as Shared.IRI,
     criteria: {
       narrative: 'The recipient must complete all course modules with a score of at least 70%'
     },
     alignment: [
       {
         targetName: 'ISTE Standard 1',
-        targetUrl: 'https://www.iste.org/standards/iste-standards/standards-for-students',
+        targetUrl: 'https://www.iste.org/standards/iste-standards/standards-for-students' as Shared.IRI,
         targetDescription: 'Empowered Learner'
       }
     ],
@@ -31,7 +32,7 @@ describe('BadgeClass Entity', () => {
 
   it('should create a valid badge class', () => {
     const badgeClass = BadgeClass.create(validBadgeClassData);
-    
+
     expect(badgeClass).toBeDefined();
     expect(badgeClass.id).toBe(validBadgeClassData.id);
     expect(badgeClass.issuer).toBe(validBadgeClassData.issuer);
@@ -45,17 +46,17 @@ describe('BadgeClass Entity', () => {
 
   it('should create a badge class with only required fields', () => {
     const minimalBadgeClassData = {
-      issuer: '123e4567-e89b-12d3-a456-426614174000',
+      issuer: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
       name: 'Minimal Badge',
       description: 'A minimal badge class',
-      image: 'https://example.edu/badges/minimal.png',
+      image: 'https://example.edu/badges/minimal.png' as Shared.IRI,
       criteria: {
         narrative: 'Complete the requirements'
       }
     };
-    
+
     const badgeClass = BadgeClass.create(minimalBadgeClassData);
-    
+
     expect(badgeClass).toBeDefined();
     expect(badgeClass.issuer).toBe(minimalBadgeClassData.issuer);
     expect(badgeClass.name).toBe(minimalBadgeClassData.name);
@@ -72,9 +73,9 @@ describe('BadgeClass Entity', () => {
       customField1: 'Custom Value 1',
       customField2: 'Custom Value 2'
     };
-    
+
     const badgeClass = BadgeClass.create(badgeClassWithAdditionalProps);
-    
+
     expect(badgeClass).toBeDefined();
     expect(badgeClass.getProperty('customField1')).toBe('Custom Value 1');
     expect(badgeClass.getProperty('customField2')).toBe('Custom Value 2');
@@ -83,7 +84,7 @@ describe('BadgeClass Entity', () => {
   it('should convert to a plain object', () => {
     const badgeClass = BadgeClass.create(validBadgeClassData);
     const obj = badgeClass.toObject();
-    
+
     expect(obj).toBeDefined();
     expect(obj.id).toBe(validBadgeClassData.id);
     expect(obj.issuer).toBe(validBadgeClassData.issuer);
@@ -98,7 +99,7 @@ describe('BadgeClass Entity', () => {
   it('should convert to JSON-LD format', () => {
     const badgeClass = BadgeClass.create(validBadgeClassData);
     const jsonLd = badgeClass.toJsonLd();
-    
+
     expect(jsonLd).toBeDefined();
     expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
     expect(jsonLd.type).toBe('BadgeClass');
@@ -114,7 +115,7 @@ describe('BadgeClass Entity', () => {
 
   it('should get property values', () => {
     const badgeClass = BadgeClass.create(validBadgeClassData);
-    
+
     expect(badgeClass.getProperty('id')).toBe(validBadgeClassData.id);
     expect(badgeClass.getProperty('issuer')).toBe(validBadgeClassData.issuer);
     expect(badgeClass.getProperty('name')).toBe(validBadgeClassData.name);

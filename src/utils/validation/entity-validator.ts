@@ -8,6 +8,7 @@
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
+import { Shared } from 'openbadges-types';
 
 /**
  * Validates an issuer entity
@@ -78,7 +79,7 @@ export function validateBadgeClass(badgeClass: BadgeClass): { isValid: boolean; 
 
   if (!badgeClass.image) {
     errors.push('Badge class image is required');
-  } else if (!isValidUrl(badgeClass.image)) {
+  } else if (typeof badgeClass.image === 'string' && !isValidUrl(badgeClass.image)) {
     errors.push('Badge class image must be a valid URL');
   }
 
@@ -168,20 +169,23 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
       errors.push('Verification type is required');
     }
 
-    if (!assertion.verification.creator) {
-      errors.push('Verification creator is required');
-    } else if (!isValidUrl(assertion.verification.creator)) {
-      errors.push('Verification creator must be a valid URL');
-    }
+    // Only check these fields if verification type is not 'hosted'
+    if (assertion.verification.type !== 'hosted') {
+      if (!assertion.verification.creator) {
+        errors.push('Verification creator is required');
+      } else if (typeof assertion.verification.creator === 'string' && !isValidUrl(assertion.verification.creator)) {
+        errors.push('Verification creator must be a valid URL');
+      }
 
-    if (!assertion.verification.created) {
-      errors.push('Verification created is required');
-    } else if (!isValidDate(assertion.verification.created)) {
-      errors.push('Verification created must be a valid ISO date string');
-    }
+      if (!assertion.verification.created) {
+        errors.push('Verification created is required');
+      } else if (!isValidDate(assertion.verification.created)) {
+        errors.push('Verification created must be a valid ISO date string');
+      }
 
-    if (!assertion.verification.signatureValue) {
-      errors.push('Verification signatureValue is required');
+      if (!assertion.verification.signatureValue) {
+        errors.push('Verification signatureValue is required');
+      }
     }
   }
 
@@ -196,9 +200,9 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
  * @param url The URL to validate
  * @returns True if the URL is valid, false otherwise
  */
-function isValidUrl(url: string): boolean {
+function isValidUrl(url: string | Shared.IRI | any): boolean {
   try {
-    new URL(url);
+    new URL(url.toString());
     return true;
   } catch {
     return false;

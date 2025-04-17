@@ -12,19 +12,32 @@ import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'bun:test'
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 
-import { PostgresIssuerRepository } from '../../../src/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository';
-import { PostgresBadgeClassRepository } from '../../../src/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository';
-import { PostgresAssertionRepository } from '../../../src/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository';
-import { Issuer } from '../../../src/domains/issuer/issuer.entity';
-import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
-import { Assertion } from '../../../src/domains/assertion/assertion.entity';
-import * as schema from '../../../src/infrastructure/database/modules/postgresql/schema';
+import { PostgresIssuerRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository';
+import { PostgresBadgeClassRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository';
+import { PostgresAssertionRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository';
+import { Issuer } from '../../../../../src/domains/issuer/issuer.entity';
+import { BadgeClass } from '../../../../../src/domains/badgeClass/badgeClass.entity';
+import { Assertion } from '../../../../../src/domains/assertion/assertion.entity';
+import * as schema from '../../../../../src/infrastructure/database/modules/postgresql/schema';
+import { Shared } from 'openbadges-types';
+
+let canConnect = false;
+try {
+  const sql = postgres(process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test');
+  await sql`SELECT 1`;
+  await sql.end();
+  canConnect = true;
+} catch {
+  // No connection
+}
+
+const describePg = canConnect ? describe : describe.skip;
 
 // Mock database connection for testing
 // In a real implementation, use a test database
 const TEST_DB_URL = process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test';
 
-describe('PostgreSQL Repositories', () => {
+describePg('PostgreSQL Repositories', () => {
   let client: postgres.Sql;
   let db: ReturnType<typeof drizzle>;
   let issuerRepository: PostgresIssuerRepository;
@@ -34,10 +47,10 @@ describe('PostgreSQL Repositories', () => {
   // Test data
   const testIssuerData = {
     name: 'Test University',
-    url: 'https://test.edu',
+    url: 'https://test.edu' as Shared.IRI,
     email: 'badges@test.edu',
     description: 'A test university for testing',
-    image: 'https://test.edu/logo.png'
+    image: 'https://test.edu/logo.png' as Shared.IRI
   };
 
   // Setup database connection
@@ -218,10 +231,10 @@ describe('PostgreSQL Repositories', () => {
     it('should create a badge class', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test.png',
+        image: 'https://test.edu/badges/test.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
@@ -236,7 +249,7 @@ describe('PostgreSQL Repositories', () => {
       expect(createdBadgeClass.issuer).toBe(testIssuer.id);
       expect(createdBadgeClass.name).toBe('Test Badge');
       expect(createdBadgeClass.description).toBe('A test badge for testing');
-      expect(createdBadgeClass.image).toBe('https://test.edu/badges/test.png');
+      expect(createdBadgeClass.image).toBe('https://test.edu/badges/test.png' as Shared.IRI);
       expect(createdBadgeClass.criteria).toEqual({
         narrative: 'Complete the test'
       });
@@ -245,10 +258,10 @@ describe('PostgreSQL Repositories', () => {
     it('should find a badge class by ID', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test.png',
+        image: 'https://test.edu/badges/test.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
@@ -270,20 +283,20 @@ describe('PostgreSQL Repositories', () => {
     it('should find badge classes by issuer', async () => {
       // Create multiple badge classes
       const badgeClass1 = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge 1',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test1.png',
+        image: 'https://test.edu/badges/test1.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
       });
 
       const badgeClass2 = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge 2',
         description: 'Another test badge for testing',
-        image: 'https://test.edu/badges/test2.png',
+        image: 'https://test.edu/badges/test2.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test again'
         }
@@ -306,10 +319,10 @@ describe('PostgreSQL Repositories', () => {
     it('should update a badge class', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test.png',
+        image: 'https://test.edu/badges/test.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
@@ -335,10 +348,10 @@ describe('PostgreSQL Repositories', () => {
     it('should delete a badge class', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test.png',
+        image: 'https://test.edu/badges/test.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
@@ -372,10 +385,10 @@ describe('PostgreSQL Repositories', () => {
 
       // Create a test badge class
       const badgeClass = BadgeClass.create({
-        issuer: testIssuer.id,
+        issuer: testIssuer.id as Shared.IRI,
         name: 'Test Badge',
         description: 'A test badge for testing',
-        image: 'https://test.edu/badges/test.png',
+        image: 'https://test.edu/badges/test.png' as Shared.IRI,
         criteria: {
           narrative: 'Complete the test'
         }
@@ -386,7 +399,7 @@ describe('PostgreSQL Repositories', () => {
     it('should create an assertion', async () => {
       // Create assertion entity
       const assertion = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',
@@ -413,7 +426,7 @@ describe('PostgreSQL Repositories', () => {
     it('should find an assertion by ID', async () => {
       // Create assertion entity
       const assertion = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',
@@ -442,7 +455,7 @@ describe('PostgreSQL Repositories', () => {
     it('should find assertions by badge class', async () => {
       // Create multiple assertions
       const assertion1 = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient1@test.edu',
@@ -452,7 +465,7 @@ describe('PostgreSQL Repositories', () => {
       });
 
       const assertion2 = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient2@test.edu',
@@ -478,7 +491,7 @@ describe('PostgreSQL Repositories', () => {
     it('should revoke an assertion', async () => {
       // Create assertion entity
       const assertion = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',
@@ -503,7 +516,7 @@ describe('PostgreSQL Repositories', () => {
     it('should verify an assertion', async () => {
       // Create assertion entity
       const assertion = Assertion.create({
-        badgeClass: testBadgeClass.id,
+        badgeClass: testBadgeClass.id as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',

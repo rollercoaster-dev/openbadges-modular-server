@@ -1,6 +1,6 @@
 /**
  * API router for Open Badges API
- * 
+ *
  * This file defines the API routes for the Open Badges API.
  * It supports both Open Badges 2.0 and 3.0 specifications.
  */
@@ -10,8 +10,12 @@ import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
-import { validationMiddleware } from '../utils/validation/validation-middleware';
-import { swagger } from './openapi';
+import { 
+  validateIssuerMiddleware, 
+  validateBadgeClassMiddleware, 
+  validateAssertionMiddleware 
+} from '../utils/validation/validation-middleware';
+import { openApiConfig } from './openapi';
 import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
 
 /**
@@ -34,10 +38,9 @@ export function createApiRouter(
   router.use(rateLimitMiddleware);
 
   // Add OpenAPI documentation
-  router.use(swagger);
+  router.get('/swagger', () => openApiConfig);
 
-  // Add validation middleware
-  router.use(validationMiddleware);
+  // Validation middleware is applied per route
 
   // Version-specific routes
   const v2Router = createVersionedRouter(BadgeVersion.V2, issuerController, badgeClassController, assertionController);
@@ -70,27 +73,48 @@ function createVersionedRouter(
   const router = new Elysia();
 
   // Issuer routes
-  router.post('/issuers', ({ body }) => issuerController.createIssuer(body, version));
+  router.post('/issuers', 
+    ({ body }) => issuerController.createIssuer(body as Record<string, any>, version),
+    { beforeHandle: [validateIssuerMiddleware] }
+  );
   router.get('/issuers', () => issuerController.getAllIssuers(version));
   router.get('/issuers/:id', ({ params }) => issuerController.getIssuerById(params.id, version));
-  router.put('/issuers/:id', ({ params, body }) => issuerController.updateIssuer(params.id, body, version));
+  router.put('/issuers/:id', 
+    ({ params, body }) => issuerController.updateIssuer(params.id, body as Record<string, any>, version),
+    { beforeHandle: [validateIssuerMiddleware] }
+  );
   router.delete('/issuers/:id', ({ params }) => issuerController.deleteIssuer(params.id));
 
   // Badge class routes
-  router.post('/badge-classes', ({ body }) => badgeClassController.createBadgeClass(body, version));
-  router.get('/badge-classes', () => badgeClassController.getAllBadgeClasses(version));
-  router.get('/badge-classes/:id', ({ params }) => badgeClassController.getBadgeClassById(params.id, version));
-  router.get('/issuers/:id/badge-classes', ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version));
-  router.put('/badge-classes/:id', ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body, version));
-  router.delete('/badge-classes/:id', ({ params }) => badgeClassController.deleteBadgeClass(params.id));
+  router.post('/badgeclasses', 
+    ({ body }) => badgeClassController.createBadgeClass(body as Record<string, any>, version),
+    { beforeHandle: [validateBadgeClassMiddleware] }
+  );
+  router.get('/badgeclasses', () => badgeClassController.getAllBadgeClasses(version));
+  router.get('/badgeclasses/:id', ({ params }) => badgeClassController.getBadgeClassById(params.id, version));
+  router.get('/issuers/:id/badgeclasses', ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version));
+  router.put('/badgeclasses/:id', 
+    ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as Record<string, any>, version),
+    { beforeHandle: [validateBadgeClassMiddleware] }
+  );
+  router.delete('/badgeclasses/:id', ({ params }) => badgeClassController.deleteBadgeClass(params.id));
 
   // Assertion routes
-  router.post('/assertions', ({ body }) => assertionController.createAssertion(body, version));
+  router.post('/assertions', 
+    ({ body }) => assertionController.createAssertion(body as Record<string, any>, version),
+    { beforeHandle: [validateAssertionMiddleware] }
+  );
   router.get('/assertions', () => assertionController.getAllAssertions(version));
   router.get('/assertions/:id', ({ params }) => assertionController.getAssertionById(params.id, version));
-  router.get('/badge-classes/:id/assertions', ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version));
-  router.put('/assertions/:id', ({ params, body }) => assertionController.updateAssertion(params.id, body, version));
-  router.post('/assertions/:id/revoke', ({ params, body }) => assertionController.revokeAssertion(params.id, body.reason));
+  router.get('/badgeclasses/:id/assertions', ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version));
+  router.put('/assertions/:id', 
+    ({ params, body }) => assertionController.updateAssertion(params.id, body as Record<string, any>, version),
+    { beforeHandle: [validateAssertionMiddleware] }
+  );
+  router.post('/assertions/:id/revoke', ({ params, body }) => {
+    const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
+    return assertionController.revokeAssertion(params.id, reason);
+  });
   router.get('/assertions/:id/verify', ({ params }) => assertionController.verifyAssertion(params.id));
 
   return router;

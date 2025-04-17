@@ -1,11 +1,11 @@
 /**
  * Version-agnostic Assertion entity for Open Badges API
- * 
+ *
  * This file defines the Assertion domain entity that can represent both
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { OB2, OB3 } from 'openbadges-types';
+import { OB2, OB3, Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
@@ -14,23 +14,19 @@ import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
  * Assertion entity representing a badge awarded to a recipient
  * Compatible with both Open Badges 2.0 and 3.0
  */
-export class Assertion implements Partial<OB2.Assertion>, Partial<OB3.VerifiableCredential> {
-  id: string;
+export class Assertion {
+  // Note: We're not implementing the interfaces directly due to type conflicts
+  // between OB2 and OB3 specifications
+  id: Shared.IRI;
   type: string = 'Assertion';
-  badgeClass: string;
-  recipient: {
-    type: string;
-    identity: string;
-    hashed: boolean;
-    salt?: string;
-    [key: string]: any;
-  };
+  badgeClass: Shared.IRI;
+  recipient: any; // OB2.Recipient | OB3.CredentialSubject
   issuedOn: string;
   expires?: string;
-  evidence?: OB2.Evidence[] | OB3.Evidence[];
-  verification?: {
+  evidence?: any[]; // OB2.Evidence[] | OB3.Evidence[]
+  verification?: any | {
     type: string;
-    creator?: string;
+    creator?: Shared.IRI;
     created?: string;
     signatureValue?: string;
     verificationProperty?: string;
@@ -57,7 +53,7 @@ export class Assertion implements Partial<OB2.Assertion>, Partial<OB3.Verifiable
   static create(data: Partial<Assertion>): Assertion {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4();
+      data.id = uuidv4() as Shared.IRI;
     }
 
     // Set default type if not provided

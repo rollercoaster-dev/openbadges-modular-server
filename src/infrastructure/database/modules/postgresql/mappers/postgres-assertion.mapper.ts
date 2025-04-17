@@ -5,7 +5,8 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { Assertion } from '@domains/assertion/assertion.entity';
+import { Assertion } from '../../../../../domains/assertion/assertion.entity';
+import { Shared } from 'openbadges-types';
 
 export class PostgresAssertionMapper {
   /**
@@ -32,8 +33,8 @@ export class PostgresAssertionMapper {
 
     // Create and return the domain entity
     return Assertion.create({
-      id: id.toString(),
-      badgeClass: badgeClassId.toString(),
+      id: id.toString() as Shared.IRI,
+      badgeClass: badgeClassId.toString() as Shared.IRI,
       recipient,
       issuedOn: issuedOn.toISOString(),
       expires: expires ? expires.toISOString() : undefined,

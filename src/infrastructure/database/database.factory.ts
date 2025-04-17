@@ -8,6 +8,8 @@
 
 import { DatabaseInterface } from './interfaces/database.interface';
 import { DatabaseModuleInterface } from './interfaces/database-module.interface';
+import { SqliteModule } from './modules/sqlite/sqlite.module';
+import { PostgresqlModule } from './modules/postgresql/postgresql.module';
 
 export class DatabaseFactory {
   private static modules: Map<string, DatabaseModuleInterface> = new Map();
@@ -64,3 +66,7 @@ export class DatabaseFactory {
     return this.defaultModule;
   }
 }
+
+// Register supported modules
+DatabaseFactory.registerModule(new SqliteModule(), true);
+DatabaseFactory.registerModule(new PostgresqlModule());

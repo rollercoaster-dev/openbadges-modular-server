@@ -5,7 +5,7 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { OB2, OB3 } from 'openbadges-types';
+import { OB2, OB3, Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
@@ -14,16 +14,16 @@ import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
  * Issuer entity representing an organization or individual that issues badges
  * Compatible with both Open Badges 2.0 and 3.0
  */
-export class Issuer implements Partial<OB2.Profile>, Partial<OB3.Issuer> {
-  id: string;
+export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial<OB3.Issuer>, 'image'> {
+  id: Shared.IRI;
   type: string = 'Profile';
   name: string;
-  url: string;
+  url: Shared.IRI;
   email?: string;
   description?: string;
-  image?: string;
-  publicKey?: any;
-  [key: string]: any;
+  image?: Shared.IRI | OB2.Image | Shared.OB3ImageObject;
+  publicKey?: Record<string, unknown>;
+  [key: string]: unknown;
 
   /**
    * Private constructor to enforce creation through factory method
@@ -40,7 +40,7 @@ export class Issuer implements Partial<OB2.Profile>, Partial<OB3.Issuer> {
   static create(data: Partial<Issuer>): Issuer {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4();
+      data.id = uuidv4() as Shared.IRI;
     }
 
     // Set default type if not provided
@@ -74,7 +74,7 @@ export class Issuer implements Partial<OB2.Profile>, Partial<OB3.Issuer> {
    * @param property The property name
    * @returns The property value or undefined if not found
    */
-  getProperty(property: string): any {
+  getProperty(property: string): unknown {
     return this[property];
   }
 }

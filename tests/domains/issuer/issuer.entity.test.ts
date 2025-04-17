@@ -1,27 +1,28 @@
 /**
  * Unit tests for the Issuer entity
- * 
+ *
  * This file contains tests for the Issuer domain entity to ensure
  * it behaves correctly according to the Open Badges 3.0 specification.
  */
 
 import { describe, expect, it } from 'bun:test';
 import { Issuer } from '../../../src/domains/issuer/issuer.entity';
+import { Shared } from 'openbadges-types';
 
 describe('Issuer Entity', () => {
   // Test data
   const validIssuerData = {
-    id: '123e4567-e89b-12d3-a456-426614174000',
+    id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
     name: 'Example University',
-    url: 'https://example.edu',
+    url: 'https://example.edu' as Shared.IRI,
     email: 'badges@example.edu',
     description: 'A leading institution in online education',
-    image: 'https://example.edu/logo.png'
+    image: 'https://example.edu/logo.png' as Shared.IRI
   };
 
   it('should create a valid issuer', () => {
     const issuer = Issuer.create(validIssuerData);
-    
+
     expect(issuer).toBeDefined();
     expect(issuer.id).toBe(validIssuerData.id);
     expect(issuer.name).toBe(validIssuerData.name);
@@ -34,11 +35,11 @@ describe('Issuer Entity', () => {
   it('should create an issuer with only required fields', () => {
     const minimalIssuerData = {
       name: 'Minimal Issuer',
-      url: 'https://minimal.org'
+      url: 'https://minimal.org' as Shared.IRI
     };
-    
+
     const issuer = Issuer.create(minimalIssuerData);
-    
+
     expect(issuer).toBeDefined();
     expect(issuer.name).toBe(minimalIssuerData.name);
     expect(issuer.url).toBe(minimalIssuerData.url);
@@ -53,9 +54,9 @@ describe('Issuer Entity', () => {
       customField1: 'Custom Value 1',
       customField2: 'Custom Value 2'
     };
-    
+
     const issuer = Issuer.create(issuerWithAdditionalProps);
-    
+
     expect(issuer).toBeDefined();
     expect(issuer.getProperty('customField1')).toBe('Custom Value 1');
     expect(issuer.getProperty('customField2')).toBe('Custom Value 2');
@@ -64,7 +65,7 @@ describe('Issuer Entity', () => {
   it('should convert to a plain object', () => {
     const issuer = Issuer.create(validIssuerData);
     const obj = issuer.toObject();
-    
+
     expect(obj).toBeDefined();
     expect(obj.id).toBe(validIssuerData.id);
     expect(obj.name).toBe(validIssuerData.name);
@@ -77,7 +78,7 @@ describe('Issuer Entity', () => {
   it('should convert to JSON-LD format', () => {
     const issuer = Issuer.create(validIssuerData);
     const jsonLd = issuer.toJsonLd();
-    
+
     expect(jsonLd).toBeDefined();
     expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
     expect(jsonLd.type).toBe('Profile');
@@ -91,7 +92,7 @@ describe('Issuer Entity', () => {
 
   it('should get property values', () => {
     const issuer = Issuer.create(validIssuerData);
-    
+
     expect(issuer.getProperty('id')).toBe(validIssuerData.id);
     expect(issuer.getProperty('name')).toBe(validIssuerData.name);
     expect(issuer.getProperty('url')).toBe(validIssuerData.url);
