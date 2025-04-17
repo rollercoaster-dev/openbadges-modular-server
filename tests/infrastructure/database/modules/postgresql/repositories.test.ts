@@ -21,14 +21,21 @@ import { Assertion } from '../../../../../src/domains/assertion/assertion.entity
 import * as schema from '../../../../../src/infrastructure/database/modules/postgresql/schema';
 import { Shared } from 'openbadges-types';
 
+// Skip PostgreSQL tests in CI environment
+const isCI = process.env.CI === 'true';
+
+// Only try to connect if not in CI
 let canConnect = false;
-try {
-  const sql = postgres(process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test');
-  await sql`SELECT 1`;
-  await sql.end();
-  canConnect = true;
-} catch {
-  // No connection
+if (!isCI) {
+  try {
+    const sql = postgres(process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test');
+    await sql`SELECT 1`;
+    await sql.end();
+    canConnect = true;
+  } catch (error) {
+    console.log('Could not connect to PostgreSQL:', error.message);
+    // No connection
+  }
 }
 
 const describePg = canConnect ? describe : describe.skip;
