@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
-    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run src/infrastructure/database/migrations/run.ts",
+    "db:studio": "drizzle-kit studio",
     "build": "bun build src/index.ts --target bun --outdir dist",
     "prepare": "husky"
   },

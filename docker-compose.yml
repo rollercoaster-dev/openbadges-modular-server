@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # API service
   api:
     build:
       context: .
@@ -10,9 +11,21 @@ services:
     environment:
       - PORT=3000
       - HOST=0.0.0.0
-      - DB_TYPE=postgresql
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/openbadges
+      - NODE_ENV=production
+      # Database configuration
+      # Uncomment one of the following database configurations:
+
+      # SQLite configuration (default)
+      - DB_TYPE=sqlite
+      - SQLITE_FILE=/data/sqlite.db
+
+      # PostgreSQL configuration
+      # - DB_TYPE=postgresql
+      # - DATABASE_URL=postgres://postgres:postgres@db:5432/openbadges
+
       - BASE_URL=http://localhost:3000
+    volumes:
+      - sqlite_data:/data
     depends_on:
       - db
     restart: unless-stopped
@@ -29,5 +42,30 @@ services:
       - "5432:5432"
     restart: unless-stopped
 
+  # Database migrations service
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["bun", "run", "db:migrate"]
+    environment:
+      - NODE_ENV=production
+      # Database configuration
+      # Uncomment one of the following database configurations:
+
+      # SQLite configuration (default)
+      - DB_TYPE=sqlite
+      - SQLITE_FILE=/data/sqlite.db
+
+      # PostgreSQL configuration
+      # - DB_TYPE=postgresql
+      # - DATABASE_URL=postgres://postgres:postgres@db:5432/openbadges
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      - db
+    restart: "no"
+
 volumes:
   postgres_data:
+  sqlite_data:
