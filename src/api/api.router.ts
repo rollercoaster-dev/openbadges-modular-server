@@ -17,8 +17,7 @@ import {
 } from '../utils/validation/validation-middleware';
 import { openApiConfig } from './openapi';
 import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
-import { DatabaseFactory } from '../infrastructure/database/database.factory';
-import { config } from '../config/config';
+import { HealthCheckService } from '../utils/monitoring/health-check.service';
 
 /**
  * Creates the API router
@@ -42,52 +41,14 @@ export function createApiRouter(
   // Add OpenAPI documentation
   router.get('/swagger', () => openApiConfig);
 
-  // Add health check endpoint
+  // Add health check endpoints
   router.get('/health', async () => {
-    const startTime = Date.now();
-    const dbType = config.database.type;
+    return await HealthCheckService.check();
+  });
 
-    try {
-      // Check database connection
-      const db = await DatabaseFactory.createDatabase(dbType);
-      const isConnected = db.isConnected();
-
-      if (!isConnected) {
-        await db.connect();
-      }
-
-      // Run a simple query to verify database is working
-      const dbResponseTime = Date.now() - startTime;
-
-      return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        database: {
-          type: dbType,
-          connected: db.isConnected(),
-          responseTime: `${dbResponseTime}ms`
-        },
-        memory: {
-          rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
-          heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
-          heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`
-        },
-        environment: process.env.NODE_ENV || 'development'
-      };
-    } catch (error) {
-      return {
-        status: 'error',
-        timestamp: new Date().toISOString(),
-        database: {
-          type: dbType,
-          connected: false,
-          error: error.message
-        },
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development'
-      };
-    }
+  // Add deep health check endpoint (more comprehensive)
+  router.get('/health/deep', async () => {
+    return await HealthCheckService.deepCheck();
   });
 
   // Validation middleware is applied per route

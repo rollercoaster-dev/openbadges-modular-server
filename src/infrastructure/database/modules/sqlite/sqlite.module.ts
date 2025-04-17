@@ -86,33 +86,42 @@ export class SqliteModule implements DatabaseModuleInterface {
    */
   private createCustomIndexes(client: Database): void {
     try {
-      // Create index for recipient email in assertions table
-      // This allows for efficient lookups by recipient email
-      client.exec(`
-        CREATE INDEX IF NOT EXISTS assertion_recipient_email_idx
-        ON assertions (json_extract(recipient, '$.email'));
-      `);
+      // Check if tables exist before creating indexes
+      const tables = client.query("SELECT name FROM sqlite_master WHERE type='table'").all();
+      const tableNames = tables.map((t: any) => t.name);
 
-      // Create index for recipient identity in assertions table
-      // This allows for efficient lookups by recipient identity
-      client.exec(`
-        CREATE INDEX IF NOT EXISTS assertion_recipient_identity_idx
-        ON assertions (json_extract(recipient, '$.identity'));
-      `);
+      // Only create indexes if tables exist
+      if (tableNames.includes('assertions')) {
+        // Create index for recipient email in assertions table
+        // This allows for efficient lookups by recipient email
+        client.exec(`
+          CREATE INDEX IF NOT EXISTS assertion_recipient_email_idx
+          ON assertions (json_extract(recipient, '$.email'));
+        `);
 
-      // Create index for recipient type in assertions table
-      // This allows for efficient lookups by recipient type
-      client.exec(`
-        CREATE INDEX IF NOT EXISTS assertion_recipient_type_idx
-        ON assertions (json_extract(recipient, '$.type'));
-      `);
+        // Create index for recipient identity in assertions table
+        // This allows for efficient lookups by recipient identity
+        client.exec(`
+          CREATE INDEX IF NOT EXISTS assertion_recipient_identity_idx
+          ON assertions (json_extract(recipient, '$.identity'));
+        `);
 
-      // Create index for badge class tags
-      // This allows for efficient lookups by tags
-      client.exec(`
-        CREATE INDEX IF NOT EXISTS badge_class_tags_idx
-        ON badge_classes (tags);
-      `);
+        // Create index for recipient type in assertions table
+        // This allows for efficient lookups by recipient type
+        client.exec(`
+          CREATE INDEX IF NOT EXISTS assertion_recipient_type_idx
+          ON assertions (json_extract(recipient, '$.type'));
+        `);
+      }
+
+      if (tableNames.includes('badge_classes')) {
+        // Create index for badge class tags
+        // This allows for efficient lookups by tags
+        client.exec(`
+          CREATE INDEX IF NOT EXISTS badge_class_tags_idx
+          ON badge_classes (tags);
+        `);
+      }
     } catch (error) {
       // Log error but don't fail initialization
       console.warn('Error creating custom indexes:', error);
