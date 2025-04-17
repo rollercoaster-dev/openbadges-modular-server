@@ -63,6 +63,9 @@ export class SqliteModule implements DatabaseModuleInterface {
     // Set temp store to memory for better performance
     client.exec('PRAGMA temp_store = MEMORY;');
 
+    // Create custom indexes for JSON fields (if not exists)
+    this.createCustomIndexes(client);
+
     // Log optimizations in development mode
     if (process.env.NODE_ENV !== 'production') {
       console.log('SQLite optimizations applied:', {
@@ -71,8 +74,48 @@ export class SqliteModule implements DatabaseModuleInterface {
         syncMode,
         cacheSize,
         foreignKeys: 'ON',
-        tempStore: 'MEMORY'
+        tempStore: 'MEMORY',
+        customIndexes: true
       });
+    }
+  }
+
+  /**
+   * Creates custom indexes for JSON fields and other complex queries
+   * @param client The SQLite database client
+   */
+  private createCustomIndexes(client: Database): void {
+    try {
+      // Create index for recipient email in assertions table
+      // This allows for efficient lookups by recipient email
+      client.exec(`
+        CREATE INDEX IF NOT EXISTS assertion_recipient_email_idx
+        ON assertions (json_extract(recipient, '$.email'));
+      `);
+
+      // Create index for recipient identity in assertions table
+      // This allows for efficient lookups by recipient identity
+      client.exec(`
+        CREATE INDEX IF NOT EXISTS assertion_recipient_identity_idx
+        ON assertions (json_extract(recipient, '$.identity'));
+      `);
+
+      // Create index for recipient type in assertions table
+      // This allows for efficient lookups by recipient type
+      client.exec(`
+        CREATE INDEX IF NOT EXISTS assertion_recipient_type_idx
+        ON assertions (json_extract(recipient, '$.type'));
+      `);
+
+      // Create index for badge class tags
+      // This allows for efficient lookups by tags
+      client.exec(`
+        CREATE INDEX IF NOT EXISTS badge_class_tags_idx
+        ON badge_classes (tags);
+      `);
+    } catch (error) {
+      // Log error but don't fail initialization
+      console.warn('Error creating custom indexes:', error);
     }
   }
 }
