@@ -1,11 +1,9 @@
-name: CI/CD Pipeline
+name: Main Branch & Release Pipeline
 
 on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   lint-and-typecheck:
