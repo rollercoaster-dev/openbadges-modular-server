@@ -57,12 +57,18 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          # Install system dependencies for better-sqlite3
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+          bun install
 
       - name: Run tests
         run: bun run test:coverage
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          DB_TYPE: sqlite
+          SQLITE_FILE: ':memory:'
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
