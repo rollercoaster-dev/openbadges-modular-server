@@ -61,8 +61,10 @@ export class AssertionController {
   async getAllAssertions(version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
     const assertions = await this.assertionRepository.findAll();
 
-    if (version === BadgeVersion.V3) {
-      return Promise.all(assertions.map(async (assertion) => {
+    // Use Promise.all for all versions to maintain consistency
+    return Promise.all(assertions.map(async (assertion) => {
+      // For V3, fetch related entities
+      if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
@@ -70,11 +72,11 @@ export class AssertionController {
             return assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
           }
         }
-        return assertion.toJsonLd(version);
-      }));
-    }
+      }
 
-    return assertions.map(assertion => assertion.toJsonLd(version));
+      // For other versions or if related entities not found
+      return assertion.toJsonLd(version);
+    }));
   }
 
   /**
