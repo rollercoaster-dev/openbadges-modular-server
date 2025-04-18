@@ -17,6 +17,7 @@ import {
 } from '../utils/validation/validation-middleware';
 import { openApiConfig } from './openapi';
 import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
+import { HealthCheckService } from '../utils/monitoring/health-check.service';
 
 /**
  * Creates the API router
@@ -39,6 +40,16 @@ export function createApiRouter(
 
   // Add OpenAPI documentation
   router.get('/swagger', () => openApiConfig);
+
+  // Add health check endpoints
+  router.get('/health', async () => {
+    return await HealthCheckService.check();
+  });
+
+  // Add deep health check endpoint (more comprehensive)
+  router.get('/health/deep', async () => {
+    return await HealthCheckService.deepCheck();
+  });
 
   // Validation middleware is applied per route
 

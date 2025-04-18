@@ -7,26 +7,89 @@ import { BadgeClass } from '../../../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../../../domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { issuers, badgeClasses, assertions } from './schema';
+import { config } from '../../../../config/config';
 
 export class SqliteDatabase implements DatabaseInterface {
   private db: ReturnType<typeof drizzle>;
   private connected = false;
+  private connectionAttempts = 0;
+  private maxConnectionAttempts = config.database.maxConnectionAttempts || 5;
+  private retryDelayMs = config.database.connectionRetryDelayMs || 1000; // Start with 1 second delay
 
   constructor(db: ReturnType<typeof drizzle>) {
     this.db = db;
   }
 
   async connect(): Promise<void> {
-    // SQLite client opens on instantiation
-    this.connected = true;
+    if (this.connected) return;
+
+    try {
+      // For SQLite, the connection is already established when the Database object is created
+      // We just need to check if the database is accessible by getting the underlying client
+      const client = (this.db as any).session?.client;
+
+      if (!client) {
+        throw new Error('SQLite client not available');
+      }
+
+      // Try a simple query to verify the connection
+      try {
+        client.prepare('SELECT 1').get();
+      } catch (queryError) {
+        throw new Error(`SQLite query failed: ${queryError.message}`);
+      }
+
+      this.connected = true;
+      this.connectionAttempts = 0; // Reset attempts counter on success
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('SQLite database connected successfully');
+      }
+    } catch (error) {
+      this.connectionAttempts++;
+
+      if (this.connectionAttempts >= this.maxConnectionAttempts) {
+        console.error(`Failed to connect to SQLite database after ${this.maxConnectionAttempts} attempts:`, error);
+        throw new Error(`Maximum connection attempts (${this.maxConnectionAttempts}) exceeded: ${error.message}`);
+      }
+
+      // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
+      const delay = this.retryDelayMs * Math.pow(2, this.connectionAttempts - 1);
+      console.warn(`SQLite connection attempt ${this.connectionAttempts} failed. Retrying in ${delay}ms...`);
+
+      // Wait and retry
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.connect(); // Recursive retry
+    }
   }
 
   async disconnect(): Promise<void> {
     if (!this.connected) return;
+
     try {
-      // Drizzle stores the underlying bun:sqlite client in session.client
-      (this.db as any).session.client.close();
+      // Get the underlying SQLite client
+      const client = (this.db as any).session?.client;
+
+      if (client) {
+        // Flush any pending writes
+        try {
+          client.prepare('PRAGMA wal_checkpoint(FULL)').run();
+        } catch (checkpointError) {
+          console.warn('Error during WAL checkpoint:', checkpointError.message);
+        }
+
+        // Close the database connection
+        if (typeof client.close === 'function') {
+          client.close();
+        }
+      }
+
       this.connected = false;
+      this.connectionAttempts = 0;
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('SQLite database disconnected successfully');
+      }
     } catch (error) {
       console.error('Failed to disconnect SQLite database:', error);
       throw error;
@@ -410,4 +473,4 @@ export class SqliteDatabase implements DatabaseInterface {
     const result = await this.db.delete(assertions).where(eq(assertions.id, id as string)).returning();
     return result.length > 0;
   }
-} 
+}

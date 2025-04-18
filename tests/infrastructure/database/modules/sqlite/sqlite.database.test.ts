@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from '../../../../../src/infrastructure/database/modules/sqlite/sqlite.database';
@@ -18,12 +19,24 @@ try {
 const describeSqlite = canRunSqlite ? describe : describe.skip;
 
 describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
-  let client: any;
+  // Create a new database for each test to avoid connection issues
+  let client: Database;
   let dbRaw: ReturnType<typeof drizzle>;
   let db: SqliteDatabase;
 
-  beforeAll(async () => {
+  // Helper function to create a fresh database for each test
+  const setupDatabase = () => {
+    // Create a new in-memory database
     client = new Database(':memory:');
+
+    // Apply SQLite optimizations
+    client.exec('PRAGMA journal_mode = WAL;');
+    client.exec('PRAGMA busy_timeout = 5000;');
+    client.exec('PRAGMA synchronous = NORMAL;');
+    client.exec('PRAGMA cache_size = 10000;');
+    client.exec('PRAGMA foreign_keys = ON;');
+    client.exec('PRAGMA temp_store = MEMORY;');
+
     // Create tables
     client.exec(`
       DROP TABLE IF EXISTS assertions;
@@ -70,21 +83,70 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
         additional_fields TEXT
       );
     `);
+
+    // Initialize Drizzle and our database wrapper
     dbRaw = drizzle(client);
     db = new SqliteDatabase(dbRaw);
-    await db.connect();
-  });
-
-  afterAll(async () => {
-    await db.disconnect();
-  });
+    return db.connect();
+  };
 
   beforeEach(async () => {
-    client.exec(`
-      DELETE FROM assertions;
-      DELETE FROM badge_classes;
-      DELETE FROM issuers;
-    `);
+    // Setup a fresh database for each test
+    await setupDatabase();
+  });
+
+  afterEach(async () => {
+    // Clean up after each test
+    if (db && db.isConnected()) {
+      await db.disconnect();
+    }
+    if (client) {
+      try {
+        client.close();
+      } catch {
+        // Ignore errors on close
+      }
+    }
+  });
+
+  it('should check connection status', async () => {
+    expect(db.isConnected()).toBe(true);
+  });
+
+  it('should handle connection retry logic', async () => {
+    // Create a new database with a mock drizzle instance that fails on first connect
+    let connectAttempts = 0;
+    const mockClient = {
+      prepare: () => ({
+        get: () => {
+          connectAttempts++;
+          if (connectAttempts === 1) {
+            throw new Error('Simulated connection failure');
+          }
+          return { result: 1 };
+        },
+        run: () => {}
+      })
+    };
+
+    const mockDb = {
+      session: {
+        client: mockClient
+      }
+    };
+
+    // Create a separate test database instance that won't interfere with other tests
+    const testDb = new SqliteDatabase(mockDb as any);
+
+    // Set a shorter retry delay for faster testing
+    (testDb as any).retryDelayMs = 10;
+    (testDb as any).maxConnectionAttempts = 3;
+
+    await testDb.connect();
+
+    // Should have connected on the second attempt
+    expect(connectAttempts).toBe(2);
+    expect(testDb.isConnected()).toBe(true);
   });
 
   it('should CRUD Issuer correctly', async () => {
@@ -208,4 +270,4 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
     const after = await db.getAssertionById(created.id);
     expect(after).toBeNull();
   });
-}); 
+});

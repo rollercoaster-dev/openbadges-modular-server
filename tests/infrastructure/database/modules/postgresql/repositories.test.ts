@@ -536,19 +536,19 @@ describePg('PostgreSQL Repositories', () => {
       const createdAssertion = await assertionRepository.create(assertion);
 
       // Verify assertion
-      const isValid = await assertionRepository.verify(createdAssertion.id);
+      const verificationResult = await assertionRepository.verify(createdAssertion.id);
 
       // Verify
-      expect(isValid).toBe(true);
+      expect(verificationResult.isValid).toBe(true);
 
       // Revoke assertion
       await assertionRepository.revoke(createdAssertion.id, 'Test revocation reason');
 
       // Verify revoked assertion
-      const isValidAfterRevoke = await assertionRepository.verify(createdAssertion.id);
+      const verificationResultAfterRevoke = await assertionRepository.verify(createdAssertion.id);
 
       // Verify
-      expect(isValidAfterRevoke).toBe(false);
+      expect(verificationResultAfterRevoke.isValid).toBe(false);
     });
   });
 });

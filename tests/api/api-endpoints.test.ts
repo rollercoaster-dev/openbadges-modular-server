@@ -5,13 +5,13 @@
  * with the new Shared.IRI types.
  */
 
-import { describe, expect, it, beforeAll, afterAll, mock } from 'bun:test';
-import { Elysia } from 'elysia';
-import { createApiRouter } from '../../src/api/api.router';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+import { describe, expect, it, mock } from 'bun:test';
+import { Shared } from 'openbadges-types';
 import { IssuerController } from '../../src/api/controllers/issuer.controller';
 import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
 import { AssertionController } from '../../src/api/controllers/assertion.controller';
-import { Shared } from 'openbadges-types';
 
 // Mock controllers
 const mockIssuerController = {

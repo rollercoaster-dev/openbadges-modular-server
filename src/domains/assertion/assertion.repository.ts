@@ -70,7 +70,7 @@ export interface AssertionRepository {
   /**
    * Verifies an assertion's validity
    * @param id The ID of the assertion to verify
-   * @returns True if the assertion is valid, false otherwise
+   * @returns An object with isValid flag and optional reason for invalidity
    */
-  verify(id: Shared.IRI): Promise<boolean>;
+  verify(id: Shared.IRI): Promise<{ isValid: boolean; reason?: string }>;
 }
