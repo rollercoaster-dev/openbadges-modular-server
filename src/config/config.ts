@@ -72,6 +72,89 @@ export const config = {
     version: 'v1',
   },
 
+  // Authentication configuration
+  auth: {
+    // Whether authentication is enabled
+    enabled: process.env.AUTH_ENABLED !== 'false',
+    // JWT configuration
+    jwtSecret: process.env.JWT_SECRET || 'temp_secret_replace_in_production',
+    tokenExpirySeconds: parseInt(process.env.JWT_TOKEN_EXPIRY_SECONDS || '3600', 10), // 1 hour default
+    issuer: process.env.JWT_ISSUER || process.env.BASE_URL || 'http://localhost:3000',
+    // Public paths (no authentication required)
+    publicPaths: (process.env.AUTH_PUBLIC_PATHS || '/docs,/swagger,/health,/public').split(','),
+    // Authentication adapters configuration
+    adapters: {
+      apiKey: {
+        enabled: process.env.AUTH_API_KEY_ENABLED !== 'false',
+        // API keys are loaded from environment variables in the format:
+        // AUTH_API_KEY_<KEY_NAME>=<API_KEY>:<USER_ID>:<DESCRIPTION>
+        // Example: AUTH_API_KEY_SYSTEM=abc123:system-user:System integration
+        keys: (() => {
+          const apiKeyConfig: Record<string, { userId: string; description?: string; claims?: Record<string, any> }> = {};
+          
+          // Parse environment variables for API keys
+          Object.keys(process.env).forEach(key => {
+            if (key.startsWith('AUTH_API_KEY_')) {
+              const value = process.env[key];
+              if (value) {
+                const [apiKey, userId, description] = value.split(':');
+                if (apiKey && userId) {
+                  const keyName = key.replace('AUTH_API_KEY_', '').toLowerCase();
+                  apiKeyConfig[apiKey] = {
+                    userId,
+                    description: description || `API key for ${keyName}`,
+                    claims: { role: keyName }
+                  };
+                }
+              }
+            }
+          });
+          
+          return apiKeyConfig;
+        })()
+      },
+      basicAuth: {
+        enabled: process.env.AUTH_BASIC_AUTH_ENABLED !== 'false',
+        // Basic auth credentials are loaded from environment variables in the format:
+        // AUTH_BASIC_AUTH_<USERNAME>=<PASSWORD>:<USER_ID>:<ROLE>
+        // Example: AUTH_BASIC_AUTH_ADMIN=securepass:admin-user:admin
+        credentials: (() => {
+          const basicAuthConfig: Record<string, { password: string; userId: string; claims?: Record<string, any> }> = {};
+          
+          // Parse environment variables for basic auth credentials
+          Object.keys(process.env).forEach(key => {
+            if (key.startsWith('AUTH_BASIC_AUTH_')) {
+              const value = process.env[key];
+              if (value) {
+                const [password, userId, role] = value.split(':');
+                if (password && userId) {
+                  const username = key.replace('AUTH_BASIC_AUTH_', '').toLowerCase();
+                  basicAuthConfig[username] = {
+                    password,
+                    userId,
+                    claims: { role: role || 'user' }
+                  };
+                }
+              }
+            }
+          });
+          
+          return basicAuthConfig;
+        })()
+      },
+      oauth2: {
+        enabled: process.env.AUTH_OAUTH2_ENABLED === 'true',
+        jwksUri: process.env.AUTH_OAUTH2_JWKS_URI,
+        introspectionEndpoint: process.env.AUTH_OAUTH2_INTROSPECTION_ENDPOINT,
+        clientId: process.env.AUTH_OAUTH2_CLIENT_ID,
+        clientSecret: process.env.AUTH_OAUTH2_CLIENT_SECRET,
+        userIdClaim: process.env.AUTH_OAUTH2_USER_ID_CLAIM || 'sub',
+        audience: process.env.AUTH_OAUTH2_AUDIENCE,
+        issuer: process.env.AUTH_OAUTH2_ISSUER
+      }
+    }
+  },
+
   // Open Badges configuration
   openBadges: {
     version: '3.0',

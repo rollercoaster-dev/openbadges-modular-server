@@ -18,6 +18,8 @@ import {
 import { openApiConfig } from './openapi';
 import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
+import { AssetsController } from './controllers/assets.controller';
+import { staticAssetsMiddleware } from './static-assets.middleware';
 
 /**
  * Creates the API router
@@ -37,6 +39,13 @@ export function createApiRouter(
   // Add security middleware
   router.use(securityHeadersMiddleware);
   router.use(rateLimitMiddleware);
+
+  // Add static file middleware for uploads
+  staticAssetsMiddleware(router);
+
+  // Register assets upload endpoint
+  const assetsController = new AssetsController();
+  router.use(assetsController.router);
 
   // Add OpenAPI documentation
   router.get('/swagger', () => openApiConfig);

@@ -192,7 +192,6 @@ export async function batchUpdate<T>(
         }
 
         // Create a copy of the record without the ID field
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [idField]: _, ...updateData } = record;
 
         // Update the record

@@ -27,7 +27,11 @@ export default [
       // TypeScript rules
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Temporarily disabled
       '@typescript-eslint/no-explicit-any': 'off', // Temporarily disabled
-      '@typescript-eslint/no-unused-vars': 'error'
+      '@typescript-eslint/no-unused-vars': ['error', {
+  argsIgnorePattern: '^_',
+  varsIgnorePattern: '^_',
+  caughtErrorsIgnorePattern: '^_'
+}]
     }
   }
 ];

@@ -18,6 +18,8 @@ import { ShutdownService } from './utils/shutdown/shutdown.service';
 import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
 import { requestContextMiddleware } from './utils/logging/request-context.middleware';
+import { initializeAuthentication } from './auth/auth.initializer';
+import { authMiddleware } from './auth/middleware/auth.middleware';
 
 // Create the main application
 const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
@@ -25,6 +27,8 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
   .use(requestContextMiddleware)
   // Add security middleware (rate limiting & security headers)
   .use(securityMiddleware)
+  // Add authentication middleware
+  .use(authMiddleware)
   .get('/', () => ({
     name: 'Open Badges API',
     version: '1.0.0',
@@ -66,6 +70,9 @@ async function bootstrap() {
 
     logger.info(`Connected to ${config.database.type} database`);
 
+    // Initialize authentication system
+    await initializeAuthentication();
+
     // Initialize repositories
     const issuerRepository = RepositoryFactory.createIssuerRepository();
     const badgeClassRepository = RepositoryFactory.createBadgeClassRepository();
@@ -102,6 +109,12 @@ async function bootstrap() {
       logger.info(`API documentation available at:`);
       logger.info(`  - Swagger UI: http://${config.server.host}:${config.server.port}/docs`);
       logger.info(`  - OpenAPI JSON: http://${config.server.host}:${config.server.port}/swagger`);
+      
+      if (config.auth?.enabled) {
+        logger.info('Authentication is enabled');
+      } else {
+        logger.warn('Authentication is disabled - all endpoints are publicly accessible');
+      }
     });
 
     // Setup graceful shutdown
