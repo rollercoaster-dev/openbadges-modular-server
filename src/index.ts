@@ -14,6 +14,7 @@ import { IssuerController } from './api/controllers/issuer.controller';
 import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
+import { ShutdownService } from './utils/shutdown/shutdown.service';
 
 // Create the main application
 const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
@@ -103,37 +104,19 @@ async function bootstrap() {
  * @param server The HTTP server instance
  */
 function setupGracefulShutdown(server: any) {
-  // Handle process termination signals
-  const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
+  // Initialize the shutdown service
+  ShutdownService.init(server);
 
-  for (const signal of signals) {
-    process.on(signal, async () => {
-      console.log(`\nReceived ${signal}, gracefully shutting down...`);
+  // Register custom shutdown hooks if needed
+  ShutdownService.registerHook(async () => {
+    // Custom shutdown logic can be added here
+    console.log('Executing custom shutdown hook...');
 
-      // First close the server to stop accepting new connections
-      if (server) {
-        console.log('Closing HTTP server...');
-        server.close(() => {
-          console.log('HTTP server closed.');
-        });
-      }
+    // For example, you might want to save application state
+    // or perform other cleanup operations
 
-      // Then close the database connection
-      if (database && database.isConnected()) {
-        console.log('Closing database connection...');
-        try {
-          await database.disconnect();
-          console.log('Database connection closed.');
-        } catch (err) {
-          console.error('Error closing database connection:', err);
-        }
-      }
-
-      // Exit with success code
-      console.log('Shutdown complete.');
-      process.exit(0);
-    });
-  }
+    return Promise.resolve();
+  });
 }
 
 // Start the application

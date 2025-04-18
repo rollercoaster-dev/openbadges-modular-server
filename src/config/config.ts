@@ -34,7 +34,9 @@ export const config = {
     usePreparedStatements: process.env.DB_USE_PREPARED_STATEMENTS !== 'false',
     // Pagination defaults
     defaultPageSize: parseInt(process.env.DB_DEFAULT_PAGE_SIZE || '20', 10),
-    maxPageSize: parseInt(process.env.DB_MAX_PAGE_SIZE || '100', 10)
+    maxPageSize: parseInt(process.env.DB_MAX_PAGE_SIZE || '100', 10),
+    // Shutdown configuration
+    saveQueryLogsOnShutdown: process.env.DB_SAVE_QUERY_LOGS_ON_SHUTDOWN === 'true'
   },
 
   // Cache configuration
