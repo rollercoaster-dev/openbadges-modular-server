@@ -6,6 +6,7 @@
  */
 
 import { generateKeyPair, signData, verifySignature } from '../utils/crypto/signature';
+import { logger } from '../utils/logging/logger.service';
 
 // In a production environment, these would be stored in a secure database
 // For this implementation, we'll use in-memory storage
@@ -19,7 +20,7 @@ export class KeyService {
     if (keyPairs.size === 0) {
       const defaultKeyPair = generateKeyPair();
       keyPairs.set('default', defaultKeyPair);
-      console.log('Generated default key pair');
+      logger.info('Generated default key pair');
     }
   }
 

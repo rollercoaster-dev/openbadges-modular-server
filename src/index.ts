@@ -15,9 +15,14 @@ import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
+import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
+import { logger } from './utils/logging/logger.service';
+import { requestContextMiddleware } from './utils/logging/request-context.middleware';
 
 // Create the main application
 const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
+  // Add request context middleware for logging and request tracking
+  .use(requestContextMiddleware)
   // Add security middleware (rate limiting & security headers)
   .use(securityMiddleware)
   .get('/', () => ({
@@ -59,7 +64,7 @@ async function bootstrap() {
       }
     );
 
-    console.log(`Connected to ${config.database.type} database`);
+    logger.info(`Connected to ${config.database.type} database`);
 
     // Initialize repositories
     const issuerRepository = RepositoryFactory.createIssuerRepository();
@@ -84,23 +89,30 @@ async function bootstrap() {
 
     // Add API routes
     app.use(apiRouter);
+    // Add 404 and error handling middleware
+    app.use(notFoundHandlerMiddleware);
+    app.use(errorHandlerMiddleware);
 
     // Start the server
     const server = app.listen({
       port: config.server.port,
       hostname: config.server.host
     }, () => {
-      console.log(`Server running at http://${config.server.host}:${config.server.port}`);
-      console.log(`API documentation available at:`);
-      console.log(`  - Swagger UI: http://${config.server.host}:${config.server.port}/docs`);
-      console.log(`  - OpenAPI JSON: http://${config.server.host}:${config.server.port}/swagger`);
+      logger.info(`Server running at http://${config.server.host}:${config.server.port}`);
+      logger.info(`API documentation available at:`);
+      logger.info(`  - Swagger UI: http://${config.server.host}:${config.server.port}/docs`);
+      logger.info(`  - OpenAPI JSON: http://${config.server.host}:${config.server.port}/swagger`);
     });
 
     // Setup graceful shutdown
     setupGracefulShutdown(server);
 
   } catch (error) {
-    console.error('Failed to start server:', error);
+    if (error instanceof Error) {
+      logger.logError('Failed to start server', error);
+    } else {
+      logger.error('Failed to start server', { message: String(error) });
+    }
     process.exit(1);
   }
 }
@@ -116,7 +128,7 @@ function setupGracefulShutdown(server: any) {
   // Register custom shutdown hooks if needed
   ShutdownService.registerHook(async () => {
     // Custom shutdown logic can be added here
-    console.log('Executing custom shutdown hook...');
+    logger.info('Executing custom shutdown hook...');
 
     // For example, you might want to save application state
     // or perform other cleanup operations

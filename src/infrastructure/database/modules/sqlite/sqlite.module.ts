@@ -3,6 +3,7 @@ import { DatabaseInterface } from '../../interfaces/database.interface';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from './sqlite.database';
+import { logger } from '../../../../utils/logging/logger.service';
 // import { sql } from 'drizzle-orm';
 
 export class SqliteModule implements DatabaseModuleInterface {
@@ -68,7 +69,7 @@ export class SqliteModule implements DatabaseModuleInterface {
 
     // Log optimizations in development mode
     if (process.env.NODE_ENV !== 'production') {
-      console.log('SQLite optimizations applied:', {
+      logger.info('SQLite optimizations applied:', {
         journalMode: 'WAL',
         busyTimeout,
         syncMode,
@@ -124,7 +125,9 @@ export class SqliteModule implements DatabaseModuleInterface {
       }
     } catch (error) {
       // Log error but don't fail initialization
-      console.warn('Error creating custom indexes:', error);
+      logger.warn('Error creating custom indexes', {
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 }

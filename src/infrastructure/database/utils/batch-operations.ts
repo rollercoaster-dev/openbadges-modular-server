@@ -5,6 +5,7 @@
  */
 
 import { QueryLoggerService } from './query-logger.service';
+import { logger } from '../../../utils/logging/logger.service';
 
 /**
  * Executes a batch of operations in a transaction
@@ -67,7 +68,10 @@ export async function executeBatch<T>(
         transaction.exec('ROLLBACK');
       }
     } catch (rollbackError) {
-      console.error('Error rolling back transaction:', rollbackError);
+      logger.logError('Error rolling back transaction', rollbackError, {
+        dbType,
+        operationsCount: operations.length
+      });
     }
 
     const duration = Date.now() - startTime;

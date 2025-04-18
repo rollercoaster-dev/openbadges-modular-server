@@ -77,5 +77,29 @@ export const config = {
     version: '3.0',
     context: 'https://w3id.org/openbadges/v3',
     baseUrl: process.env.BASE_URL || 'http://localhost:3000',
+  },
+
+  // Logging configuration
+  logging: {
+    // Log level: 'debug', 'info', 'warn', 'error', 'fatal'
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+    // Whether to include timestamps in logs
+    includeTimestamp: process.env.LOG_INCLUDE_TIMESTAMP !== 'false',
+    // Whether to colorize logs
+    colorize: process.env.LOG_COLORIZE !== 'false',
+    // Whether to include request IDs in logs
+    includeRequestId: process.env.LOG_INCLUDE_REQUEST_ID !== 'false',
+    // Whether to include stack traces in error logs
+    includeStackTrace: process.env.LOG_INCLUDE_STACK_TRACE !== 'false',
+    // Whether to log to a file
+    logToFile: process.env.LOG_TO_FILE === 'true',
+    // Log file path
+    logFilePath: process.env.LOG_FILE_PATH || './logs/app.log',
+    // Whether to pretty-print logs
+    prettyPrint: process.env.NODE_ENV !== 'production',
+    // Whether to use 24-hour time format (vs 12-hour with AM/PM)
+    use24HourFormat: process.env.LOG_USE_24_HOUR_FORMAT !== 'false',
+    // Whether to use relative time for recent events (e.g., "just now", "2 minutes ago")
+    useRelativeTime: process.env.LOG_USE_RELATIVE_TIME !== 'false'
   }
 };

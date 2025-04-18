@@ -1,11 +1,12 @@
 /**
  * Query Logger Service
- * 
+ *
  * This service provides logging for database queries, with a focus on identifying
  * slow queries for performance optimization.
  */
 
 import { config } from '../../../config/config';
+import { logger } from '../../../utils/logging/logger.service';
 
 export interface QueryLogEntry {
   query: string;
@@ -45,14 +46,24 @@ export class QueryLoggerService {
       this.logs.shift(); // Remove oldest entry
     }
 
-    // Log slow queries to console
+    // Log slow queries using structured logger
     if (duration >= this.slowQueryThreshold) {
-      console.warn(`[SLOW QUERY] ${duration}ms - ${database} - ${query}`, params ? `\nParams: ${JSON.stringify(params)}` : '');
+      logger.warn(`Slow query detected`, {
+        duration: `${duration}ms`,
+        database,
+        query,
+        params: params ? JSON.stringify(params) : undefined
+      });
     }
 
     // Log all queries in development mode
     if (process.env.NODE_ENV === 'development' && process.env.DEBUG_QUERIES === 'true') {
-      console.log(`[QUERY] ${duration}ms - ${database} - ${query}`, params ? `\nParams: ${JSON.stringify(params)}` : '');
+      logger.debug(`Database query executed`, {
+        duration: `${duration}ms`,
+        database,
+        query,
+        params: params ? JSON.stringify(params) : undefined
+      });
     }
   }
 
