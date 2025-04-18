@@ -7,6 +7,8 @@
 
 import { DatabaseFactory } from '../../infrastructure/database/database.factory';
 import { CacheFactory } from '../../infrastructure/cache/cache.factory';
+import { QueryLoggerService } from '../../infrastructure/database/utils/query-logger.service';
+import { PreparedStatementManager } from '../../infrastructure/database/utils/prepared-statements';
 import { config } from '../../config/config';
 
 export interface HealthCheckResult {
@@ -23,6 +25,16 @@ export interface HealthCheckResult {
   cache?: {
     enabled: boolean;
     stats?: Record<string, any>;
+  };
+  queries?: {
+    enabled: boolean;
+    stats?: Record<string, any>;
+    slowQueries?: Array<{
+      query: string;
+      duration: number;
+      timestamp: string;
+    }>;
+    preparedStatements?: Record<string, any>;
   };
   memory: {
     rss: string;
@@ -61,6 +73,16 @@ export class HealthCheckService {
       const cacheEnabled = config.cache?.enabled !== false;
       const cacheStats = cacheEnabled ? CacheFactory.getAllCacheStats() : {};
 
+      // Get query metrics
+      const queryLoggingEnabled = config.database.queryLogging !== false;
+      const queryStats = queryLoggingEnabled ? QueryLoggerService.getStats() : {};
+      const slowQueries = queryLoggingEnabled ? QueryLoggerService.getSlowQueries().slice(0, 10).map(q => ({
+        query: q.query,
+        duration: q.duration,
+        timestamp: q.timestamp
+      })) : [];
+      const preparedStatementStats = queryLoggingEnabled ? PreparedStatementManager.getStats() : {};
+
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -75,6 +97,12 @@ export class HealthCheckService {
           enabled: cacheEnabled,
           stats: cacheStats
         },
+        queries: {
+          enabled: queryLoggingEnabled,
+          stats: queryStats,
+          slowQueries,
+          preparedStatements: preparedStatementStats
+        },
         memory: this.getMemoryMetrics(),
         environment: process.env.NODE_ENV || 'development',
         version: process.env.npm_package_version || '0.0.0'
@@ -83,6 +111,16 @@ export class HealthCheckService {
       // Get cache metrics even if database connection fails
       const cacheEnabled = config.cache?.enabled !== false;
       const cacheStats = cacheEnabled ? CacheFactory.getAllCacheStats() : {};
+
+      // Get query metrics even if database connection fails
+      const queryLoggingEnabled = config.database.queryLogging !== false;
+      const queryStats = queryLoggingEnabled ? QueryLoggerService.getStats() : {};
+      const slowQueries = queryLoggingEnabled ? QueryLoggerService.getSlowQueries().slice(0, 10).map(q => ({
+        query: q.query,
+        duration: q.duration,
+        timestamp: q.timestamp
+      })) : [];
+      const preparedStatementStats = queryLoggingEnabled ? PreparedStatementManager.getStats() : {};
 
       return {
         status: 'error',
@@ -95,6 +133,12 @@ export class HealthCheckService {
         cache: {
           enabled: cacheEnabled,
           stats: cacheStats
+        },
+        queries: {
+          enabled: queryLoggingEnabled,
+          stats: queryStats,
+          slowQueries,
+          preparedStatements: preparedStatementStats
         },
         memory: this.getMemoryMetrics(),
         uptime: process.uptime(),

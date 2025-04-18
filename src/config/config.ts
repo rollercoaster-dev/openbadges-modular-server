@@ -25,7 +25,16 @@ export const config = {
     sqliteCacheSize: parseInt(process.env.SQLITE_CACHE_SIZE || '10000', 10),
     // Connection retry configuration
     maxConnectionAttempts: parseInt(process.env.DB_MAX_CONNECTION_ATTEMPTS || '5', 10),
-    connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY_MS || '1000', 10)
+    connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY_MS || '1000', 10),
+    // Query logging configuration
+    queryLogging: process.env.DB_QUERY_LOGGING !== 'false',
+    slowQueryThreshold: parseInt(process.env.DB_SLOW_QUERY_THRESHOLD || '100', 10), // ms
+    maxQueryLogs: parseInt(process.env.DB_MAX_QUERY_LOGS || '1000', 10),
+    // Prepared statements configuration
+    usePreparedStatements: process.env.DB_USE_PREPARED_STATEMENTS !== 'false',
+    // Pagination defaults
+    defaultPageSize: parseInt(process.env.DB_DEFAULT_PAGE_SIZE || '20', 10),
+    maxPageSize: parseInt(process.env.DB_MAX_PAGE_SIZE || '100', 10)
   },
 
   // Cache configuration
