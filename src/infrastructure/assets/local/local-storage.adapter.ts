@@ -8,13 +8,23 @@ import { v4 as uuidv4 } from 'uuid';
 const UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
 
 export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetResolver {
+  /**
+   * Creates a new LocalAssetStorageAdapter
+   * Initializes the uploads directory synchronously to ensure it exists
+   */
   constructor() {
+    // Use synchronous mkdir to ensure directory exists immediately
     if (!existsSync(UPLOADS_DIR)) {
-      fs.mkdir(UPLOADS_DIR, { recursive: true });
+      try {
+        // Use Node.js built-in fs module for synchronous operation
+        require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
+      } catch (error) {
+        console.error('Failed to create uploads directory:', error);
+      }
     }
   }
 
-  async store(fileBuffer: Buffer, filename: string, mimetype: string): Promise<string> {
+  async store(fileBuffer: Buffer, filename: string, _mimetype: string): Promise<string> {
     const ext = path.extname(filename) || '';
     const safeName = `${uuidv4()}${ext}`;
     const filePath = path.join(UPLOADS_DIR, safeName);
@@ -24,10 +34,18 @@ export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetRes
 
   async delete(keyOrUrl: string): Promise<boolean> {
     const filePath = path.join(UPLOADS_DIR, keyOrUrl);
+
+    // Check if file exists before attempting to delete
+    if (!existsSync(filePath)) {
+      return false;
+    }
+
     try {
+      // Use fs.promises.unlink to delete the file
       await fs.unlink(filePath);
       return true;
-    } catch (e) {
+    } catch (error) {
+      console.error(`Error deleting file ${filePath}:`, error);
       return false;
     }
   }
