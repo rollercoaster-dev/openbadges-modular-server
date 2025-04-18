@@ -24,7 +24,7 @@ describe('LocalAssetStorageAdapter', () => {
     const filename = 'test.png';
     const mimetype = 'image/png';
     const assetPath = await adapter.store(buffer, filename, mimetype);
-    storedFilePath = path.join(UPLOADS_DIR, assetPath.split('/').pop()!);
+    storedFilePath = path.join(UPLOADS_DIR, path.basename(assetPath));
     createdFiles.push(storedFilePath);
     // File should exist
     const stat = await fs.stat(storedFilePath);
