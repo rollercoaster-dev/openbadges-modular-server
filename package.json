@@ -46,6 +46,7 @@
     "elysia": "^1.2.25",
     "elysia-helmet": "^2.0.0",
     "elysia-rate-limit": "^4.3.0",
+    "jose": "^6.0.10",
     "lru.min": "^1.1.2",
     "openapi3-ts": "^4.4.0",
     "openbadges-types": "^3.2.0",
