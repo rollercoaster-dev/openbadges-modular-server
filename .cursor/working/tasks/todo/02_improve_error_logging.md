@@ -23,8 +23,21 @@ The code review highlighted opportunities to improve error logging (structured l
 
 ## 3. Planning & Steps
 ### Quick Wins
-- [ ] Research and select a suitable structured logging library (30 min)
-- [ ] Add basic structured logging to one API endpoint handler (30 min)
+- [ ] Research Pino + pino-pretty vs Chalk for neuro-friendly formatting (30 min)
+- [ ] Prototype simple Chalk-based logger output (30 min)
+
+### Detailed Steps
+1. [ ] Install Pino and pino-pretty (`npm install pino pino-pretty`) (15 min)
+2. [ ] Create `src/utils/logging/logger.service.ts` with a Chalk-based custom formatter (1h)
+3. [ ] Implement `neuroLog` wrapper adding spacing, icons, and colors (1h)
+4. [ ] Integrate `logger.service` into `error-handler.middleware.ts` (30 min)
+5. [ ] Replace critical `console.log` calls across modules with `logger.info|warn|error` (2h)
+6. [ ] Validate and refine logging output in dev (30 min)
+7. [ ] Document usage and examples in README (30 min)
+
+### Branch Setup
+- New Branch: `feature/neuro-friendly-logging`
+- Next Action: `git checkout main && git checkout -b feature/neuro-friendly-logging`
 
 ### Major Steps
 1. [Integrate Chosen Logging Library] (1-2 hours) 🎯

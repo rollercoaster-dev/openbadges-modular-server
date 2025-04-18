@@ -15,6 +15,7 @@ import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
+import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
 
 // Create the main application
 const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
@@ -84,6 +85,9 @@ async function bootstrap() {
 
     // Add API routes
     app.use(apiRouter);
+    // Add 404 and error handling middleware
+    app.use(notFoundHandlerMiddleware);
+    app.use(errorHandlerMiddleware);
 
     // Start the server
     const server = app.listen({
