@@ -6,6 +6,7 @@
 
 import { config } from '../../../config/config';
 import { QueryLoggerService } from './query-logger.service';
+import { logger } from '../../../utils/logging/logger.service';
 
 // Type for prepared statement functions
 export type PreparedStatementFn<T = any> = (...args: any[]) => Promise<T>;
@@ -96,7 +97,7 @@ export class PreparedStatementManager {
 
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
-      console.error(`Failed to prepare statement ${name}:`, error);
+      logger.logError(`Failed to prepare statement`, error, { name, query });
 
       // Fallback to direct query execution
       return async (...params: any[]) => {
@@ -196,7 +197,7 @@ export class PreparedStatementManager {
 
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
-      console.error(`Failed to prepare statement ${name}:`, error);
+      logger.logError(`Failed to prepare statement`, error, { name, query });
 
       // Fallback to direct query execution
       return async (...params: any[]) => {

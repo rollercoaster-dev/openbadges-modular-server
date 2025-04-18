@@ -1,12 +1,13 @@
 /**
  * Type utilities for working with openbadges-types
- * 
+ *
  * This file provides utility functions for working with the branded types
  * from the openbadges-types package, ensuring proper validation and conversion.
  */
 
 import { Shared, createIRI, isIRI } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../logging/logger.service';
 
 /**
  * Safely creates a Shared.IRI from a string or generates a new UUID as IRI
@@ -37,7 +38,10 @@ export function parseJSON<T>(value: string | null | undefined, defaultValue?: T)
   try {
     return JSON.parse(value) as T;
   } catch (error) {
-    console.error('Error parsing JSON:', error);
+    logger.error('Error parsing JSON', {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      value: typeof value === 'string' ? value.substring(0, 100) : null
+    });
     return defaultValue;
   }
 }
@@ -52,7 +56,10 @@ export function stringifyJSON(value: unknown): string | null {
   try {
     return JSON.stringify(value);
   } catch (error) {
-    console.error('Error stringifying JSON:', error);
+    logger.error('Error stringifying JSON', {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      valueType: typeof value
+    });
     return null;
   }
 }
@@ -64,7 +71,7 @@ export function stringifyJSON(value: unknown): string | null {
  */
 export function toDateTime(value: string | Date | null | undefined): Shared.DateTime | undefined {
   if (!value) return undefined;
-  
+
   try {
     const dateString = value instanceof Date ? value.toISOString() : value;
     // Validate that it's a proper ISO 8601 date
@@ -73,7 +80,10 @@ export function toDateTime(value: string | Date | null | undefined): Shared.Date
     }
     return dateString as Shared.DateTime;
   } catch (error) {
-    console.error('Error converting to DateTime:', error);
+    logger.error('Error converting to DateTime', {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      value: String(value)
+    });
     return undefined;
   }
 }
@@ -94,7 +104,7 @@ export function isNonEmptyString(value: unknown): value is string {
  */
 export function isValidUrl(value: unknown): boolean {
   if (!isNonEmptyString(value)) return false;
-  
+
   try {
     new URL(value);
     return true;
@@ -110,10 +120,10 @@ export function isValidUrl(value: unknown): boolean {
  */
 export function toUrlIRI(value: string | null | undefined): Shared.IRI | undefined {
   if (!value) return undefined;
-  
+
   if (isValidUrl(value)) {
     return createIRI(value);
   }
-  
+
   return undefined;
 }

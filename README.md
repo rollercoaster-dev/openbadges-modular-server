@@ -124,6 +124,7 @@ The API provides interactive documentation through Swagger UI:
 
 - [API Documentation](./docs/api-documentation.md) - Detailed documentation of all API endpoints
 - [Database Module Guide](./docs/database-module-guide.md) - Guide for adding support for additional database systems
+- [Logging System](./docs/logging.md) - Documentation for the neuro-friendly structured logging system
 
 ## Architecture
 

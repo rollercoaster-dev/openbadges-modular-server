@@ -13,13 +13,14 @@ import { Database } from 'bun:sqlite';
 import postgres from 'postgres';
 import { config } from '../../../config/config';
 import { join } from 'path';
+import { logger } from '../../../utils/logging/logger.service';
 
 /**
  * Runs database migrations
  */
 async function runMigrations() {
-  console.log('Running database migrations...');
-  console.log(`Database type: ${config.database.type}`);
+  logger.info('Running database migrations...');
+  logger.info(`Database type: ${config.database.type}`);
 
   try {
     if (config.database.type === 'sqlite') {
@@ -30,9 +31,9 @@ async function runMigrations() {
       throw new Error(`Unsupported database type: ${config.database.type}`);
     }
 
-    console.log('Migrations completed successfully.');
+    logger.info('Migrations completed successfully.');
   } catch (error) {
-    console.error('Error running migrations:', error);
+    logger.error('Error running migrations:', error);
     process.exit(1);
   }
 }
@@ -41,11 +42,11 @@ async function runMigrations() {
  * Runs SQLite migrations
  */
 async function runSqliteMigrations() {
-  console.log('Running SQLite migrations...');
+  logger.info('Running SQLite migrations...');
 
   // Get SQLite file path
   const sqliteFile = config.database.sqliteFile || 'sqlite.db';
-  console.log(`SQLite file: ${sqliteFile}`);
+  logger.info(`SQLite file: ${sqliteFile}`);
 
   // Create SQLite database connection
   const sqlite = new Database(sqliteFile);
@@ -58,27 +59,27 @@ async function runSqliteMigrations() {
 
   // Get migrations directory
   const migrationsFolder = join(process.cwd(), 'drizzle', 'migrations');
-  console.log(`Migrations folder: ${migrationsFolder}`);
+  logger.info(`Migrations folder: ${migrationsFolder}`);
 
   // Run migrations
-  console.log('Applying migrations...');
+  logger.info('Applying migrations...');
   await migrate(db, { migrationsFolder });
 
   // Close database connection
   sqlite.close();
 
-  console.log('SQLite migrations completed.');
+  logger.info('SQLite migrations completed.');
 }
 
 /**
  * Runs PostgreSQL migrations
  */
 async function runPostgresMigrations() {
-  console.log('Running PostgreSQL migrations...');
+  logger.info('Running PostgreSQL migrations...');
 
   // Get PostgreSQL connection string
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
-  console.log(`PostgreSQL connection: ${connectionString.replace(/:[^:]*@/, ':***@')}`); // Hide password
+  logger.info(`PostgreSQL connection: ${connectionString.replace(/:[^:]*@/, ':***@')}`); // Hide password
 
   // Create PostgreSQL connection
   const client = postgres(connectionString, { max: 1 });
@@ -88,16 +89,16 @@ async function runPostgresMigrations() {
 
   // Get migrations directory
   const migrationsFolder = join(process.cwd(), 'drizzle', 'pg-migrations');
-  console.log(`Migrations folder: ${migrationsFolder}`);
+  logger.info(`Migrations folder: ${migrationsFolder}`);
 
   // Run migrations
-  console.log('Applying migrations...');
+  logger.info('Applying migrations...');
   await pgMigrate(db, { migrationsFolder });
 
   // Close database connection
   await client.end();
 
-  console.log('PostgreSQL migrations completed.');
+  logger.info('PostgreSQL migrations completed.');
 }
 
 // Run migrations

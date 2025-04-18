@@ -1,6 +1,6 @@
 /**
  * Security middleware for Open Badges API
- * 
+ *
  * This file centralizes all security-related middleware for the API.
  */
 
@@ -8,6 +8,7 @@ import { Elysia } from 'elysia';
 import { rateLimit } from 'elysia-rate-limit';
 import { helmet } from 'elysia-helmet';
 import { config } from '../../config/config';
+import { logger } from '../logging/logger.service';
 
 // Get environment-specific configurations
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -32,7 +33,7 @@ export const securityMiddleware = new Elysia()
           // In production, trust the X-Forwarded-For header
           return forwardedFor.split(',')[0]?.trim() || 'unknown-ip';
         }
-        
+
         // Fall back to direct IP or use placeholder
         if (server && typeof server.requestIP === 'function') {
           try {
@@ -41,10 +42,10 @@ export const securityMiddleware = new Elysia()
               return String(ipInfo.address);
             }
           } catch (error) {
-            console.error('Error getting IP address:', error);
+            logger.logError('Error getting IP address', error);
           }
         }
-        
+
         return 'unknown-ip';
       },
       errorResponse: isDevelopment
@@ -104,4 +105,4 @@ export const securityMiddleware = new Elysia()
       // Disable X-Powered-By header
       hidePoweredBy: true,
     })
-  ); 
+  );

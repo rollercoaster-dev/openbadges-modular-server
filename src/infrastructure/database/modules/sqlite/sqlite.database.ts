@@ -8,6 +8,7 @@ import { Assertion } from '../../../../domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { issuers, badgeClasses, assertions } from './schema';
 import { config } from '../../../../config/config';
+import { logger } from '../../../../utils/logging/logger.service';
 
 export class SqliteDatabase implements DatabaseInterface {
   private db: ReturnType<typeof drizzle>;
@@ -43,19 +44,25 @@ export class SqliteDatabase implements DatabaseInterface {
       this.connectionAttempts = 0; // Reset attempts counter on success
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('SQLite database connected successfully');
+        logger.info('SQLite database connected successfully');
       }
     } catch (error) {
       this.connectionAttempts++;
 
       if (this.connectionAttempts >= this.maxConnectionAttempts) {
-        console.error(`Failed to connect to SQLite database after ${this.maxConnectionAttempts} attempts:`, error);
+        logger.logError(`Failed to connect to SQLite database`, error, {
+          attempts: this.maxConnectionAttempts
+        });
         throw new Error(`Maximum connection attempts (${this.maxConnectionAttempts}) exceeded: ${error.message}`);
       }
 
       // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
       const delay = this.retryDelayMs * Math.pow(2, this.connectionAttempts - 1);
-      console.warn(`SQLite connection attempt ${this.connectionAttempts} failed. Retrying in ${delay}ms...`);
+      logger.warn(`SQLite connection attempt failed`, {
+        attempt: this.connectionAttempts,
+        retryDelay: `${delay}ms`,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
 
       // Wait and retry
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -75,7 +82,9 @@ export class SqliteDatabase implements DatabaseInterface {
         try {
           client.prepare('PRAGMA wal_checkpoint(FULL)').run();
         } catch (checkpointError) {
-          console.warn('Error during WAL checkpoint:', checkpointError.message);
+          logger.warn('Error during WAL checkpoint', {
+            errorMessage: checkpointError.message
+          });
         }
 
         // Close the database connection
@@ -88,10 +97,10 @@ export class SqliteDatabase implements DatabaseInterface {
       this.connectionAttempts = 0;
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('SQLite database disconnected successfully');
+        logger.info('SQLite database disconnected successfully');
       }
     } catch (error) {
-      console.error('Failed to disconnect SQLite database:', error);
+      logger.logError('Failed to disconnect SQLite database', error);
       throw error;
     }
   }

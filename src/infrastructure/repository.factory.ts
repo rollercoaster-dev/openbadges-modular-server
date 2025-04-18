@@ -17,6 +17,7 @@ import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repos
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
 import { config } from '../config/config';
+import { logger } from '../utils/logging/logger.service';
 
 export class RepositoryFactory {
   private static client: postgres.Sql | null = null;
@@ -274,7 +275,9 @@ export class RepositoryFactory {
           .then(m => m.DatabaseFactory.createDatabase('sqlite'));
         await db.disconnect();
       } catch (error) {
-        console.warn('Error closing SQLite connection:', error);
+        logger.warn('Error closing SQLite connection', {
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }

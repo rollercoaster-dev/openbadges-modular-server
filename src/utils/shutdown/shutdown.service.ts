@@ -11,6 +11,7 @@ import { CacheFactory } from '../../infrastructure/cache/cache.factory';
 import { PreparedStatementManager } from '../../infrastructure/database/utils/prepared-statements';
 import { QueryLoggerService } from '../../infrastructure/database/utils/query-logger.service';
 import { config } from '../../config/config';
+import { logger } from '../logging/logger.service';
 
 export interface ShutdownOptions {
   /**
@@ -85,7 +86,11 @@ export class ShutdownService {
 
     // Handle uncaught exceptions
     process.on('uncaughtException', async (error) => {
-      console.error('Uncaught exception:', error);
+      // Use logger directly here since this is a critical error
+      logger.fatal('Uncaught exception', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       await this.shutdown({
         logging: true,
         exit: true,
@@ -96,7 +101,11 @@ export class ShutdownService {
 
     // Handle unhandled promise rejections
     process.on('unhandledRejection', async (reason) => {
-      console.error('Unhandled promise rejection:', reason);
+      // Use logger directly here since this is a critical error
+      logger.fatal('Unhandled promise rejection', {
+        reason: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : undefined
+      });
       await this.shutdown({
         logging: true,
         exit: true,
@@ -116,7 +125,7 @@ export class ShutdownService {
     // Prevent multiple shutdown attempts
     if (this.isShuttingDown) {
       if (opts.logging) {
-        console.log('Shutdown already in progress...');
+        logger.info('Shutdown already in progress...');
       }
       return;
     }
@@ -124,12 +133,12 @@ export class ShutdownService {
     this.isShuttingDown = true;
 
     if (opts.logging) {
-      console.log('\nGraceful shutdown initiated...');
+      logger.info('Graceful shutdown initiated...');
     }
 
     // Set a timeout to force exit if shutdown takes too long
     const forceExitTimeout = setTimeout(() => {
-      console.error(`Shutdown timed out after ${opts.timeout}ms, forcing exit...`);
+      logger.error(`Shutdown timed out after ${opts.timeout}ms, forcing exit...`);
       process.exit(opts.exitCode);
     }, opts.timeout);
 
@@ -137,12 +146,12 @@ export class ShutdownService {
       // Close the HTTP server first to stop accepting new connections
       if (this.server) {
         if (opts.logging) {
-          console.log('Closing HTTP server...');
+          logger.info('Closing HTTP server...');
         }
         await new Promise<void>((resolve) => {
           this.server.close(() => {
             if (opts.logging) {
-              console.log('HTTP server closed.');
+              logger.info('HTTP server closed.');
             }
             resolve();
           });
@@ -151,73 +160,73 @@ export class ShutdownService {
 
       // Execute all registered shutdown hooks
       if (opts.logging) {
-        console.log(`Executing ${this.shutdownHooks.length} shutdown hooks...`);
+        logger.info(`Executing ${this.shutdownHooks.length} shutdown hooks...`);
       }
 
       for (const hook of this.shutdownHooks) {
         try {
           await hook();
         } catch (error) {
-          console.error('Error executing shutdown hook:', error);
+          logger.error('Error executing shutdown hook:', error);
         }
       }
 
       // Close database connections
       if (opts.logging) {
-        console.log('Closing database connections...');
+        logger.info('Closing database connections...');
       }
 
       try {
         await RepositoryFactory.close();
         if (opts.logging) {
-          console.log('Repository factory closed.');
+          logger.info('Repository factory closed.');
         }
       } catch (error) {
-        console.error('Error closing repository factory:', error);
+        logger.error('Error closing repository factory:', error);
       }
 
       // Clear caches
       if (opts.logging) {
-        console.log('Clearing caches...');
+        logger.info('Clearing caches...');
       }
 
       try {
         CacheFactory.clearAllCaches();
         if (opts.logging) {
-          console.log('Caches cleared.');
+          logger.info('Caches cleared.');
         }
       } catch (error) {
-        console.error('Error clearing caches:', error);
+        logger.error('Error clearing caches:', error);
       }
 
       // Clear prepared statement cache
       if (opts.logging) {
-        console.log('Clearing prepared statement cache...');
+        logger.info('Clearing prepared statement cache...');
       }
 
       try {
         PreparedStatementManager.clearCache();
         if (opts.logging) {
-          console.log('Prepared statement cache cleared.');
+          logger.info('Prepared statement cache cleared.');
         }
       } catch (error) {
-        console.error('Error clearing prepared statement cache:', error);
+        logger.error('Error clearing prepared statement cache:', error);
       }
 
       // Save query logs if needed
       if (config.database.saveQueryLogsOnShutdown) {
         if (opts.logging) {
-          console.log('Saving query logs...');
+          logger.info('Saving query logs...');
         }
 
         try {
           const logs = QueryLoggerService.getLogs();
           // In a real application, you would save the logs to a file or database
           if (opts.logging) {
-            console.log(`${logs.length} query logs saved.`);
+            logger.info(`${logs.length} query logs saved.`);
           }
         } catch (error) {
-          console.error('Error saving query logs:', error);
+          logger.error('Error saving query logs:', error);
         }
       }
 
@@ -225,7 +234,7 @@ export class ShutdownService {
       clearTimeout(forceExitTimeout);
 
       if (opts.logging) {
-        console.log('Shutdown complete.');
+        logger.info('Shutdown complete.');
       }
 
       // Exit the process if requested
@@ -233,7 +242,7 @@ export class ShutdownService {
         process.exit(opts.exitCode);
       }
     } catch (error) {
-      console.error('Error during shutdown:', error);
+      logger.error('Error during shutdown:', error);
 
       // Clear the force exit timeout
       clearTimeout(forceExitTimeout);
