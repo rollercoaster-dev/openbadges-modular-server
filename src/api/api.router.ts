@@ -41,6 +41,50 @@ export function createApiRouter(
   // Add OpenAPI documentation
   router.get('/swagger', () => openApiConfig);
 
+  // Add Swagger UI documentation
+  router.get('/docs', ({ set }) => {
+    // Set custom headers for Swagger UI to work properly
+    set.headers['Content-Type'] = 'text/html';
+    set.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; connect-src 'self'";
+
+    // Return the Swagger UI HTML
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Open Badges API Documentation" />
+  <title>Open Badges API - Swagger UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js" crossorigin></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/swagger',
+        dom_id: '#swagger-ui',
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout",
+        deepLinking: true,
+        showExtensions: true,
+        showCommonExtensions: true
+      });
+    };
+  </script>
+</body>
+</html>
+`;
+  });
+
+
+
   // Add health check endpoints
   router.get('/health', async () => {
     return await HealthCheckService.check();

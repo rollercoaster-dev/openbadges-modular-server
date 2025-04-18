@@ -24,7 +24,10 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
     name: 'Open Badges API',
     version: '1.0.0',
     specification: 'Open Badges 3.0',
-    documentation: '/swagger'
+    documentation: {
+      swagger: '/swagger',
+      swaggerUI: '/docs'
+    }
   }));
 
 // Database instance for graceful shutdown
@@ -88,7 +91,9 @@ async function bootstrap() {
       hostname: config.server.host
     }, () => {
       console.log(`Server running at http://${config.server.host}:${config.server.port}`);
-      console.log(`API documentation available at http://${config.server.host}:${config.server.port}/swagger`);
+      console.log(`API documentation available at:`);
+      console.log(`  - Swagger UI: http://${config.server.host}:${config.server.port}/docs`);
+      console.log(`  - OpenAPI JSON: http://${config.server.host}:${config.server.port}/swagger`);
     });
 
     // Setup graceful shutdown
