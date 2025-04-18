@@ -22,8 +22,12 @@ export function staticAssetsMiddleware(router: Elysia) {
   router.get('/uploads/:filename', async ({ params, set }) => {
     try {
       // Validate filename to prevent directory traversal attacks
-      const filename = params.filename.replace(/\.\.\/|\.\./g, '');
-      const filePath = path.join(UPLOADS_DIR, filename);
+      const normalizedPath = path.normalize(path.join(UPLOADS_DIR, params.filename));
+      if (!normalizedPath.startsWith(UPLOADS_DIR)) {
+        set.status = 400;
+        return { error: 'Invalid file path' };
+      }
+      const filePath = normalizedPath;
 
       if (!existsSync(filePath)) {
         set.status = 404;
@@ -33,14 +37,14 @@ export function staticAssetsMiddleware(router: Elysia) {
       const fileBuffer = await readFile(filePath);
 
       // Determine content type based on file extension
-      const ext = path.extname(filename).toLowerCase();
+      const ext = path.extname(params.filename).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
       // Set response headers
       const headers = {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
-        'ETag': Buffer.from(filename).toString('base64').substring(0, 16) // Simple ETag
+        'ETag': Buffer.from(params.filename).toString('base64').substring(0, 16) // Simple ETag
       };
 
       return new Response(fileBuffer, { headers });
