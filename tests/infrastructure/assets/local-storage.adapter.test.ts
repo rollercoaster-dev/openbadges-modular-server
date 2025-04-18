@@ -8,8 +8,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
 
-// Test directory for uploads
-const TEST_UPLOADS_DIR = path.resolve(process.cwd(), 'test-uploads');
+// Create a unique test directory for this test run to avoid conflicts
+const testRunId = Date.now().toString();
+const TEST_UPLOADS_DIR = path.resolve(process.cwd(), `test-uploads-${testRunId}`);
 
 // Set environment variable for test
 process.env.ASSETS_LOCAL_DIR = TEST_UPLOADS_DIR;
