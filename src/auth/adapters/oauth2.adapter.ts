@@ -8,6 +8,7 @@
 
 import { AuthAdapter, AuthAdapterOptions, AuthenticationResult } from './auth-adapter.interface';
 import { logger } from '../../utils/logging/logger.service';
+import { createRemoteJWKSet, jwtVerify, errors as joseErrors, JWTPayload } from 'jose';
 
 interface OAuth2Config {
   /**
@@ -49,6 +50,7 @@ interface OAuth2Config {
 export class OAuth2Adapter implements AuthAdapter {
   private readonly providerName: string = 'oauth2';
   private readonly config: OAuth2Config;
+  private jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
   
   constructor(options: AuthAdapterOptions) {
     if (options.providerName) {
@@ -60,6 +62,19 @@ export class OAuth2Adapter implements AuthAdapter {
     // Validate required configuration
     if (!this.config.jwksUri && !this.config.introspectionEndpoint) {
       logger.warn(`OAuth2 adapter ${this.providerName} requires either jwksUri or introspectionEndpoint`);
+    }
+
+    // Initialize JWKS client if URI is provided
+    if (this.config.jwksUri) {
+      try {
+        this.jwks = createRemoteJWKSet(new URL(this.config.jwksUri));
+        logger.info(`JWKS client initialized for ${this.providerName}`);
+      } catch (error) {
+        logger.error(`Failed to initialize JWKS client for ${this.providerName}`, { 
+          error: (error as Error).message,
+          jwksUri: this.config.jwksUri
+        });
+      }
     }
   }
 
@@ -86,13 +101,6 @@ export class OAuth2Adapter implements AuthAdapter {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
     try {
-      // For demonstration purposes, we'll implement a simple check
-      // In a real implementation, you would:
-      // 1. Verify the JWT signature using the JWKS endpoint
-      // 2. OR use the introspection endpoint to validate the token
-      // 3. Extract user information from the validated token
-      
-      // For now, this is a placeholder for the actual implementation
       const tokenPayload = await this.verifyToken(token);
       
       if (!tokenPayload) {
@@ -105,9 +113,10 @@ export class OAuth2Adapter implements AuthAdapter {
       
       // Extract the user ID using the configured claim
       const userIdClaim = this.config.userIdClaim || 'sub';
-      const userId = tokenPayload[userIdClaim];
+      // Safely access the claim using type assertion to Record<string, any>
+      const userIdValue = (tokenPayload as Record<string, any>)[userIdClaim];
       
-      if (!userId) {
+      if (!userIdValue) {
         return {
           isAuthenticated: false,
           error: `Token missing required claim: ${userIdClaim}`,
@@ -115,8 +124,13 @@ export class OAuth2Adapter implements AuthAdapter {
         };
       }
       
-      // Extract other relevant claims
-      const {_iat, _exp, _aud, _iss, ...otherClaims} = tokenPayload;
+      // Ensure userId is a string as required by AuthenticationResult interface
+      const userId = String(userIdValue);
+      
+      // Extract relevant claims for authentication result
+      // Excluding standard JWT claims to focus on application-specific claims
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { iat, exp, aud, iss, sub, ...otherClaims } = tokenPayload;
       
       return {
         isAuthenticated: true,
@@ -135,57 +149,82 @@ export class OAuth2Adapter implements AuthAdapter {
   }
   
   /**
-   * Verify the OAuth2 token
-   * This is a placeholder for actual JWT verification logic
-   * In production, use jose or jsonwebtoken libraries to properly validate
+   * Verify the OAuth2 token using secure verification methods
    * @param token The Bearer token to verify
+   * @returns The validated token payload or null if invalid
    */
-  private async verifyToken(token: string): Promise<Record<string, any> | null> {
+  private async verifyToken(token: string): Promise<JWTPayload | null> {
     try {
-      // In a real implementation:
-      // 1. Fetch the JWKS from the jwksUri if provided
-      // 2. Extract the key ID from the token header
-      // 3. Find the matching public key from the JWKS
-      // 4. Verify the token signature
-      // 5. Check token claims (exp, aud, iss)
-      
-      // For now, return a simple decoded payload (this is NOT secure and for demo only)
-      // In production, use proper JWT verification with signature validation
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return null;
+      // Primary verification method: JWKS-based signature validation
+      if (this.jwks) {
+        try {
+          const { payload } = await jwtVerify(token, this.jwks, {
+            audience: this.config.audience,
+            issuer: this.config.issuer,
+          });
+          logger.debug('Token verified successfully using JWKS');
+          return payload;
+        } catch (error) {
+          if (error instanceof joseErrors.JWTExpired) {
+            logger.debug('Token expired');
+            return null;
+          } else if (error instanceof joseErrors.JWTClaimValidationFailed) {
+            logger.debug('JWT claim validation failed', { error: (error as Error).message });
+            return null;
+          } else {
+            logger.warn('JWKS token validation failed, trying fallback methods', { 
+              error: (error as Error).message
+            });
+            // Continue to try other methods
+          }
+        }
       }
       
-      const payload = JSON.parse(
-        Buffer.from(parts[1], 'base64').toString('utf-8')
-      );
-      
-      // Perform basic validation
-      const now = Math.floor(Date.now() / 1000);
-      
-      // Check expiration
-      if (payload.exp && payload.exp < now) {
-        logger.debug('Token expired');
-        return null;
+      // Fallback verification: Token introspection
+      if (this.config.introspectionEndpoint && this.config.clientId && this.config.clientSecret) {
+        try {
+          const response = await fetch(this.config.introspectionEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': `Basic ${Buffer.from(
+                `${this.config.clientId}:${this.config.clientSecret}`
+              ).toString('base64')}`
+            },
+            body: new URLSearchParams({
+              token,
+              token_type_hint: 'access_token'
+            })
+          });
+          
+          if (!response.ok) {
+            logger.warn('Introspection endpoint returned error', {
+              status: response.status,
+              statusText: response.statusText
+            });
+            return null;
+          }
+          
+          const introspectionResult = await response.json() as { active?: boolean };
+          if (!introspectionResult.active) {
+            logger.debug('Token is not active according to introspection');
+            return null;
+          }
+          
+          logger.debug('Token verified successfully using introspection endpoint');
+          return introspectionResult as JWTPayload;
+        } catch (error) {
+          logger.error('Token introspection failed', { error: (error as Error).message });
+          return null;
+        }
       }
       
-      // Check audience if configured
-      if (this.config.audience && 
-          payload.aud && 
-          payload.aud !== this.config.audience) {
-        logger.debug('Token audience mismatch');
-        return null;
-      }
-      
-      // Check issuer if configured
-      if (this.config.issuer && 
-          payload.iss && 
-          payload.iss !== this.config.issuer) {
-        logger.debug('Token issuer mismatch');
-        return null;
-      }
-      
-      return payload;
+      // If we reach here, we don't have any valid verification method
+      logger.error('No valid token verification method available', { 
+        hasJwks: !!this.jwks,
+        hasIntrospection: !!(this.config.introspectionEndpoint && this.config.clientId && this.config.clientSecret)
+      });
+      return null;
     } catch (error) {
       logger.error('Token verification failed', { error: (error as Error).message });
       return null;

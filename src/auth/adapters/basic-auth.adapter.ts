@@ -61,7 +61,10 @@ export class BasicAuthAdapter implements AuthAdapter {
     try {
       const base64Credentials = authHeader.substring(6); // Remove 'Basic ' prefix
       const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-      const [username, password] = credentials.split(':');
+      
+      // Use split with regex to handle passwords that may contain colons
+      // This splits on the first colon only, preserving any colons in the password
+      const [username, password] = credentials.split(/:(.+)/).filter(Boolean);
       
       if (!username || !password) {
         return {

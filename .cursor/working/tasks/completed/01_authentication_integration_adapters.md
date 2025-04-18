@@ -1,3 +1,4 @@
+
 # Authentication Integration Adapters
 
 > _Intended for: [x] Internal Task  [ ] GitHub Issue  [ ] Pull Request_
