@@ -28,6 +28,33 @@ export const config = {
     connectionRetryDelayMs: parseInt(process.env.DB_CONNECTION_RETRY_DELAY_MS || '1000', 10)
   },
 
+  // Cache configuration
+  cache: {
+    // Default cache settings
+    default: {
+      max: parseInt(process.env.CACHE_MAX_ITEMS || '1000', 10),
+      ttl: parseInt(process.env.CACHE_TTL || '3600', 10), // 1 hour in seconds
+      updateAgeOnGet: true
+    },
+    // Entity-specific cache settings
+    entities: {
+      issuer: {
+        max: parseInt(process.env.CACHE_ISSUER_MAX_ITEMS || '500', 10),
+        ttl: parseInt(process.env.CACHE_ISSUER_TTL || '7200', 10) // 2 hours in seconds
+      },
+      badgeClass: {
+        max: parseInt(process.env.CACHE_BADGE_CLASS_MAX_ITEMS || '1000', 10),
+        ttl: parseInt(process.env.CACHE_BADGE_CLASS_TTL || '3600', 10) // 1 hour in seconds
+      },
+      assertion: {
+        max: parseInt(process.env.CACHE_ASSERTION_MAX_ITEMS || '2000', 10),
+        ttl: parseInt(process.env.CACHE_ASSERTION_TTL || '1800', 10) // 30 minutes in seconds
+      }
+    },
+    // Whether to enable caching
+    enabled: process.env.CACHE_ENABLED !== 'false'
+  },
+
   // API configuration
   api: {
     basePath: '/api',

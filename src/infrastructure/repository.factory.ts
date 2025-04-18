@@ -13,6 +13,10 @@ import { AssertionRepository } from '../domains/assertion/assertion.repository';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
+import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
+import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
+import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
+import { config } from '../config/config';
 
 export class RepositoryFactory {
   private static client: postgres.Sql | null = null;
@@ -53,11 +57,19 @@ export class RepositoryFactory {
    * @returns An implementation of IssuerRepository
    */
   static createIssuerRepository(): IssuerRepository {
+    // Check if caching is enabled
+    const enableCaching = config.cache?.enabled !== false;
+
     if (this.dbType === 'postgresql') {
       if (!this.client) {
         throw new Error('PostgreSQL client not initialized');
       }
-      return new PostgresIssuerRepository(this.client);
+
+      // Create the base repository
+      const baseRepository = new PostgresIssuerRepository(this.client);
+
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
       // This is a temporary solution until we implement proper SQLite repositories
@@ -97,11 +109,19 @@ export class RepositoryFactory {
    * @returns An implementation of BadgeClassRepository
    */
   static createBadgeClassRepository(): BadgeClassRepository {
+    // Check if caching is enabled
+    const enableCaching = config.cache?.enabled !== false;
+
     if (this.dbType === 'postgresql') {
       if (!this.client) {
         throw new Error('PostgreSQL client not initialized');
       }
-      return new PostgresBadgeClassRepository(this.client);
+
+      // Create the base repository
+      const baseRepository = new PostgresBadgeClassRepository(this.client);
+
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
       return {
@@ -145,11 +165,19 @@ export class RepositoryFactory {
    * @returns An implementation of AssertionRepository
    */
   static createAssertionRepository(): AssertionRepository {
+    // Check if caching is enabled
+    const enableCaching = config.cache?.enabled !== false;
+
     if (this.dbType === 'postgresql') {
       if (!this.client) {
         throw new Error('PostgreSQL client not initialized');
       }
-      return new PostgresAssertionRepository(this.client);
+
+      // Create the base repository
+      const baseRepository = new PostgresAssertionRepository(this.client);
+
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
       return {

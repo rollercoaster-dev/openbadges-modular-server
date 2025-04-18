@@ -1,11 +1,12 @@
 /**
  * Health Check Service
- * 
+ *
  * This service provides health check functionality for the application,
  * including database connection status and performance metrics.
  */
 
 import { DatabaseFactory } from '../../infrastructure/database/database.factory';
+import { CacheFactory } from '../../infrastructure/cache/cache.factory';
 import { config } from '../../config/config';
 
 export interface HealthCheckResult {
@@ -18,6 +19,10 @@ export interface HealthCheckResult {
     responseTime?: string;
     error?: string;
     metrics?: Record<string, any>;
+  };
+  cache?: {
+    enabled: boolean;
+    stats?: Record<string, any>;
   };
   memory: {
     rss: string;
@@ -38,20 +43,24 @@ export class HealthCheckService {
   static async check(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     const dbType = config.database.type;
-    
+
     try {
       // Check database connection
       const db = await DatabaseFactory.createDatabase(dbType);
       const isConnected = db.isConnected();
-      
+
       if (!isConnected) {
         await db.connect();
       }
-      
+
       // Get database metrics
       const dbMetrics = await this.getDatabaseMetrics(db, dbType);
       const dbResponseTime = Date.now() - startTime;
-      
+
+      // Get cache metrics
+      const cacheEnabled = config.cache?.enabled !== false;
+      const cacheStats = cacheEnabled ? CacheFactory.getAllCacheStats() : {};
+
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -62,11 +71,19 @@ export class HealthCheckService {
           responseTime: `${dbResponseTime}ms`,
           metrics: dbMetrics
         },
+        cache: {
+          enabled: cacheEnabled,
+          stats: cacheStats
+        },
         memory: this.getMemoryMetrics(),
         environment: process.env.NODE_ENV || 'development',
         version: process.env.npm_package_version || '0.0.0'
       };
     } catch (error) {
+      // Get cache metrics even if database connection fails
+      const cacheEnabled = config.cache?.enabled !== false;
+      const cacheStats = cacheEnabled ? CacheFactory.getAllCacheStats() : {};
+
       return {
         status: 'error',
         timestamp: new Date().toISOString(),
@@ -75,6 +92,10 @@ export class HealthCheckService {
           connected: false,
           error: error.message
         },
+        cache: {
+          enabled: cacheEnabled,
+          stats: cacheStats
+        },
         memory: this.getMemoryMetrics(),
         uptime: process.uptime(),
         environment: process.env.NODE_ENV || 'development',
@@ -82,7 +103,7 @@ export class HealthCheckService {
       };
     }
   }
-  
+
   /**
    * Gets memory metrics for the application
    * @returns Memory metrics
@@ -97,7 +118,7 @@ export class HealthCheckService {
       arrayBuffers: `${Math.round(memoryUsage.arrayBuffers / 1024 / 1024)}MB`
     };
   }
-  
+
   /**
    * Gets database metrics
    * @param db Database instance
@@ -106,7 +127,7 @@ export class HealthCheckService {
    */
   private static async getDatabaseMetrics(db: any, dbType: string): Promise<Record<string, any>> {
     const metrics: Record<string, any> = {};
-    
+
     try {
       if (dbType === 'sqlite') {
         // Get SQLite metrics
@@ -123,7 +144,7 @@ export class HealthCheckService {
             'foreign_keys',
             'temp_store'
           ];
-          
+
           for (const pragma of pragmas) {
             try {
               const result = client.prepare(`PRAGMA ${pragma}`).get();
@@ -132,12 +153,12 @@ export class HealthCheckService {
               metrics[pragma] = 'error';
             }
           }
-          
+
           // Get table counts
           try {
             const tables = client.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
             const tableCounts: Record<string, number> = {};
-            
+
             for (const table of tables) {
               const name = table.name;
               if (!name.startsWith('sqlite_')) {
@@ -145,7 +166,7 @@ export class HealthCheckService {
                 tableCounts[name] = count.count;
               }
             }
-            
+
             metrics.tableCounts = tableCounts;
           } catch (err) {
             metrics.tableCounts = 'error';
@@ -155,13 +176,13 @@ export class HealthCheckService {
         // For PostgreSQL, we would add specific metrics here
         metrics.connectionPool = 'Not implemented';
       }
-      
+
       return metrics;
     } catch (error) {
       return { error: error.message };
     }
   }
-  
+
   /**
    * Performs a deep health check of the application
    * This is a more comprehensive check that includes database queries
@@ -170,10 +191,10 @@ export class HealthCheckService {
   static async deepCheck(): Promise<HealthCheckResult & { checks: Record<string, any> }> {
     const basicCheck = await this.check();
     const checks: Record<string, any> = {};
-    
+
     try {
       const db = await DatabaseFactory.createDatabase(config.database.type);
-      
+
       // Check if we can read from each table
       const tables = ['issuers', 'badge_classes', 'assertions'];
       for (const table of tables) {
@@ -199,7 +220,7 @@ export class HealthCheckService {
           };
         }
       }
-      
+
       return {
         ...basicCheck,
         checks
