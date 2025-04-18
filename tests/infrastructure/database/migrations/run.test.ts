@@ -1,10 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+ 
+import { describe, it, expect } from 'bun:test';
 import { join } from 'path';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { config } from '../../../../src/config/config';
 import { existsSync } from 'fs';
 
 describe('Database Migrations', () => {
