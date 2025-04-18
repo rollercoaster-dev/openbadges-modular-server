@@ -1,11 +1,11 @@
 /**
  * Shutdown Service
- * 
+ *
  * This service provides graceful shutdown functionality for the application,
  * ensuring that all resources are properly released before the process exits.
  */
 
-import { DatabaseFactory } from '../../infrastructure/database/database.factory';
+// import { DatabaseFactory } from '../../infrastructure/database/database.factory';
 import { RepositoryFactory } from '../../infrastructure/repository.factory';
 import { CacheFactory } from '../../infrastructure/cache/cache.factory';
 import { PreparedStatementManager } from '../../infrastructure/database/utils/prepared-statements';
@@ -95,7 +95,7 @@ export class ShutdownService {
     });
 
     // Handle unhandled promise rejections
-    process.on('unhandledRejection', async (reason, promise) => {
+    process.on('unhandledRejection', async (reason) => {
       console.error('Unhandled promise rejection:', reason);
       await this.shutdown({
         logging: true,
@@ -153,7 +153,7 @@ export class ShutdownService {
       if (opts.logging) {
         console.log(`Executing ${this.shutdownHooks.length} shutdown hooks...`);
       }
-      
+
       for (const hook of this.shutdownHooks) {
         try {
           await hook();
@@ -166,7 +166,7 @@ export class ShutdownService {
       if (opts.logging) {
         console.log('Closing database connections...');
       }
-      
+
       try {
         await RepositoryFactory.close();
         if (opts.logging) {
@@ -180,7 +180,7 @@ export class ShutdownService {
       if (opts.logging) {
         console.log('Clearing caches...');
       }
-      
+
       try {
         CacheFactory.clearAllCaches();
         if (opts.logging) {
@@ -194,7 +194,7 @@ export class ShutdownService {
       if (opts.logging) {
         console.log('Clearing prepared statement cache...');
       }
-      
+
       try {
         PreparedStatementManager.clearCache();
         if (opts.logging) {
@@ -209,7 +209,7 @@ export class ShutdownService {
         if (opts.logging) {
           console.log('Saving query logs...');
         }
-        
+
         try {
           const logs = QueryLoggerService.getLogs();
           // In a real application, you would save the logs to a file or database
@@ -234,10 +234,10 @@ export class ShutdownService {
       }
     } catch (error) {
       console.error('Error during shutdown:', error);
-      
+
       // Clear the force exit timeout
       clearTimeout(forceExitTimeout);
-      
+
       // Exit with error code
       if (opts.exit) {
         process.exit(1);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { join } from 'path';
 import { Database } from 'bun:sqlite';

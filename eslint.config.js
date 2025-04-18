@@ -20,14 +20,14 @@ export default [
     rules: {
       // ESLint core rules
       'no-console': 'off', // Temporarily disabled
-      'no-unused-vars': 'off', // Handled by TypeScript
+      'no-unused-vars': 'off',
       'no-undef': 'off', // Handled by TypeScript
       'no-constant-condition': 'warn',
 
       // TypeScript rules
       '@typescript-eslint/explicit-module-boundary-types': 'off', // Temporarily disabled
       '@typescript-eslint/no-explicit-any': 'off', // Temporarily disabled
-      '@typescript-eslint/no-unused-vars': 'warn' // Downgraded to warning
+      '@typescript-eslint/no-unused-vars': 'error'
     }
   }
 ];

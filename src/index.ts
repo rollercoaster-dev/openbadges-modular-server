@@ -28,6 +28,7 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
   }));
 
 // Database instance for graceful shutdown
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let database: any = null;
 
 // Initialize the database and start the server

@@ -193,7 +193,7 @@ export class HealthCheckService {
             try {
               const result = client.prepare(`PRAGMA ${pragma}`).get();
               metrics[pragma] = result[pragma] || result[Object.keys(result)[0]];
-            } catch (err) {
+            } catch {
               metrics[pragma] = 'error';
             }
           }
@@ -212,7 +212,7 @@ export class HealthCheckService {
             }
 
             metrics.tableCounts = tableCounts;
-          } catch (err) {
+          } catch {
             metrics.tableCounts = 'error';
           }
         }

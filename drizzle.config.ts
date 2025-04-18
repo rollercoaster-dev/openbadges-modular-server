@@ -17,7 +17,13 @@ let drizzleConfig: Config;
 if (dbType === 'postgresql') {
   // Parse connection string to extract credentials
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
-  const url = new URL(connectionString);
+  let url;
+  try {
+    url = new URL(connectionString);
+  } catch (error) {
+    console.error('Invalid connection string:', connectionString, error);
+    throw new Error('Failed to parse the database connection string. Please check your configuration.');
+  }
 
   drizzleConfig = {
     dialect: 'postgresql',

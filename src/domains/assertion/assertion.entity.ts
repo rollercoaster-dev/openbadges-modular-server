@@ -5,7 +5,7 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { OB2, OB3, Shared } from 'openbadges-types';
+import { Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';

@@ -3,7 +3,7 @@ import { DatabaseInterface } from '../../interfaces/database.interface';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from './sqlite.database';
-import { sql } from 'drizzle-orm';
+// import { sql } from 'drizzle-orm';
 
 export class SqliteModule implements DatabaseModuleInterface {
   /**

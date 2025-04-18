@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
@@ -102,7 +103,7 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
     if (client) {
       try {
         client.close();
-      } catch (e) {
+      } catch {
         // Ignore errors on close
       }
     }

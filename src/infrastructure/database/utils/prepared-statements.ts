@@ -1,6 +1,6 @@
 /**
  * Prepared Statement Manager
- * 
+ *
  * This utility manages prepared statements for database queries to improve performance.
  */
 
@@ -35,6 +35,7 @@ export class PreparedStatementManager {
     client: any,
     name: string,
     query: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     types?: any[]
   ): PreparedStatementFn<T> {
     if (!this.enabled) {
@@ -71,13 +72,13 @@ export class PreparedStatementManager {
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`PREPARED ${name}: ${query}`, params, duration, 'postgresql');
-          
+
           // Update usage statistics
           if (this.cache[name]) {
             this.cache[name].usageCount++;
             this.cache[name].lastUsed = Date.now();
           }
-          
+
           return result;
         } catch (error) {
           const duration = Date.now() - startTime;
@@ -96,7 +97,7 @@ export class PreparedStatementManager {
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
       console.error(`Failed to prepare statement ${name}:`, error);
-      
+
       // Fallback to direct query execution
       return async (...params: any[]) => {
         const startTime = Date.now();
@@ -158,7 +159,7 @@ export class PreparedStatementManager {
     try {
       // For SQLite, we can actually prepare the statement
       const stmt = client.prepare(query);
-      
+
       const preparedFn = async (...params: any[]) => {
         const startTime = Date.now();
         try {
@@ -171,13 +172,13 @@ export class PreparedStatementManager {
           }
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`PREPARED ${name}: ${query}`, params, duration, 'sqlite');
-          
+
           // Update usage statistics
           if (this.cache[name]) {
             this.cache[name].usageCount++;
             this.cache[name].lastUsed = Date.now();
           }
-          
+
           return result;
         } catch (error) {
           const duration = Date.now() - startTime;
@@ -196,7 +197,7 @@ export class PreparedStatementManager {
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
       console.error(`Failed to prepare statement ${name}:`, error);
-      
+
       // Fallback to direct query execution
       return async (...params: any[]) => {
         const startTime = Date.now();

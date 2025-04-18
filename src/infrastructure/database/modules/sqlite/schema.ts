@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, blob, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 // Issuers table (SQLite schema stub)
 export const issuers = sqliteTable(
