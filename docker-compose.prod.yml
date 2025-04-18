@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Server configuration
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      
+      # Database configuration
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - SQLITE_FILE=/data/sqlite.db
+      - SQLITE_BUSY_TIMEOUT=10000
+      - SQLITE_SYNC_MODE=NORMAL
+      - SQLITE_CACHE_SIZE=20000
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/openbadges}
+      
+      # Connection retry configuration
+      - DB_MAX_CONNECTION_ATTEMPTS=10
+      - DB_CONNECTION_RETRY_DELAY_MS=2000
+      
+      # Query optimization
+      - DB_QUERY_LOGGING=true
+      - DB_SLOW_QUERY_THRESHOLD=200
+      - DB_MAX_QUERY_LOGS=2000
+      - DB_USE_PREPARED_STATEMENTS=true
+      - DB_DEFAULT_PAGE_SIZE=20
+      - DB_MAX_PAGE_SIZE=100
+      - DB_SAVE_QUERY_LOGS_ON_SHUTDOWN=true
+      
+      # Cache configuration
+      - CACHE_ENABLED=true
+      - CACHE_MAX_ITEMS=5000
+      - CACHE_TTL=3600
+      - CACHE_ISSUER_MAX_ITEMS=1000
+      - CACHE_ISSUER_TTL=7200
+      - CACHE_BADGE_CLASS_MAX_ITEMS=2000
+      - CACHE_BADGE_CLASS_TTL=3600
+      - CACHE_ASSERTION_MAX_ITEMS=5000
+      - CACHE_ASSERTION_TTL=1800
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/health-check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # PostgreSQL database service (only used if DB_TYPE=postgresql)
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-openbadges}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Add custom PostgreSQL configuration
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      # Add backup directory
+      - ./backups:/backups
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Database migrations service
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["bun", "run", "db:migrate"]
+    environment:
+      - NODE_ENV=production
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - SQLITE_FILE=/data/sqlite.db
+      - SQLITE_BUSY_TIMEOUT=10000
+      - SQLITE_SYNC_MODE=NORMAL
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/openbadges}
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # Backup service (runs on a schedule)
+  backup:
+    image: alpine:latest
+    volumes:
+      - sqlite_data:/data:ro
+      - postgres_data:/var/lib/postgresql/data:ro
+      - ./backups:/backups
+      - ./docker/scripts:/scripts
+    environment:
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-openbadges}
+      - BACKUP_RETENTION_DAYS=7
+    command: ["/scripts/backup.sh"]
+    depends_on:
+      - db
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  postgres_data:
+  sqlite_data:
