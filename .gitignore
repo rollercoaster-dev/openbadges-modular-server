@@ -37,7 +37,3 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.db
 *.db-shm
 *.db-wal
-
-# Asset uploads
-uploads/
-test-uploads/

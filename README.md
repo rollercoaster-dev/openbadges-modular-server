@@ -61,52 +61,6 @@ bun run db:migrate
 bun run start
 ```
 
-## Asset Storage & Image Uploads
-
-The API supports modular asset storage for badge images and issuer logos. By default, assets are stored locally in the `uploads/` directory and served at `/uploads/:filename`.
-
-### Uploading an Image
-
-You can upload an image using the `POST /v1/assets` endpoint. The response will include a public URL for the uploaded file.
-
-**Example (using curl):**
-
-```bash
-curl -F "file=@/path/to/image.png" http://localhost:3000/v1/assets
-```
-
-**Response:**
-```json
-{
-  "url": "/uploads/<generated-filename>.png"
-}
-```
-
-### Configuration
-
-Set these environment variables in your `.env` file:
-
-```ini
-# Asset storage provider (default: local)
-ASSETS_PROVIDER=local
-# Directory for local storage (default: uploads)
-ASSETS_LOCAL_DIR=uploads
-# Maximum file size in bytes (default: 5MB)
-ASSETS_MAX_FILE_SIZE=5242880
-```
-
-### Security Features
-
-- **File Type Validation**: Only allows specific image formats (JPEG, PNG, GIF, SVG, WebP) and PDF
-- **File Size Limits**: Configurable maximum file size (default: 5MB)
-- **MIME Type Detection**: Automatically detects and sets the correct Content-Type header
-- **Caching Headers**: Includes appropriate Cache-Control and ETag headers
-- **Path Traversal Protection**: Prevents directory traversal attacks
-
-Future adapters (S3, Cloudinary) will be supported by changing `ASSETS_PROVIDER` and providing the relevant config.
-
-```
-
 The API will be available at http://localhost:3000.
 
 ## API Endpoints
