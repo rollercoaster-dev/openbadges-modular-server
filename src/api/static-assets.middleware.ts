@@ -29,7 +29,7 @@ export function staticAssetsMiddleware(router: Elysia) {
     try {
       // Validate filename to prevent directory traversal attacks
       // First, sanitize the filename to remove any path traversal attempts
-      const sanitizedFilename = params.filename.replace(/\.\.\/|\.\./g, '');
+      const sanitizedFilename = params.filename.replace(/\.\.\/|\\\.\.\\|\.\.|\\\.\./g, '');
 
       // Normalize the path and ensure it's within the uploads directory
       const normalizedPath = path.normalize(path.join(UPLOADS_DIR, sanitizedFilename));
