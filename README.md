@@ -113,6 +113,15 @@ For convenience, the API also provides default endpoints without version prefixe
 
 ## Documentation
 
+### API Documentation
+
+The API provides interactive documentation through Swagger UI:
+
+- `/docs` - Swagger UI for interactive API exploration
+- `/swagger` - Raw OpenAPI specification in JSON format
+
+### Additional Documentation
+
 - [API Documentation](./docs/api-documentation.md) - Detailed documentation of all API endpoints
 - [Database Module Guide](./docs/database-module-guide.md) - Guide for adding support for additional database systems
 
