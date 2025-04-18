@@ -4,7 +4,13 @@ import { existsSync } from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logging/logger.service';
 
-const UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
+// Ensure UPLOADS_DIR has a trailing separator for secure path comparison
+let UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
+// Normalize and ensure trailing separator
+UPLOADS_DIR = path.normalize(UPLOADS_DIR);
+if (!UPLOADS_DIR.endsWith(path.sep)) {
+  UPLOADS_DIR = UPLOADS_DIR + path.sep;
+}
 
 // Map of common file extensions to MIME types
 const MIME_TYPES: Record<string, string> = {
@@ -22,7 +28,13 @@ export function staticAssetsMiddleware(router: Elysia) {
   router.get('/uploads/:filename', async ({ params, set }) => {
     try {
       // Validate filename to prevent directory traversal attacks
-      const normalizedPath = path.normalize(path.join(UPLOADS_DIR, params.filename));
+      // First, sanitize the filename to remove any path traversal attempts
+      const sanitizedFilename = params.filename.replace(/\.\.\/|\.\./g, '');
+
+      // Normalize the path and ensure it's within the uploads directory
+      const normalizedPath = path.normalize(path.join(UPLOADS_DIR, sanitizedFilename));
+
+      // Check if the normalized path is within the uploads directory
       if (!normalizedPath.startsWith(UPLOADS_DIR)) {
         set.status = 400;
         return { error: 'Invalid file path' };
