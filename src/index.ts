@@ -107,10 +107,8 @@ async function bootstrap() {
     }, () => {
       logger.info(`Server started successfully`, {
         server: `http://${config.server.host}:${config.server.port}`,
-        documentation: {
-          swagger: `http://${config.server.host}:${config.server.port}/swagger`,
-          swaggerUI: `http://${config.server.host}:${config.server.port}/docs`
-        }
+        'swagger docs': `http://${config.server.host}:${config.server.port}/docs`,
+        'openapi json': `http://${config.server.host}:${config.server.port}/swagger`
       });
       
       if (config.auth?.enabled) {
