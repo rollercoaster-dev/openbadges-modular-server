@@ -184,6 +184,15 @@ describePg('PostgreSQL Repositories', () => {
       expect(foundIssuer!.url).toBe(testIssuerData.url);
     });
 
+    it('should return null when finding a non-existent issuer by ID', async () => {
+      // Attempt to find an issuer with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const foundIssuer = await issuerRepository.findById(nonExistentId);
+
+      // Verify
+      expect(foundIssuer).toBeNull();
+    });
+
     it('should update an issuer', async () => {
       // Create issuer entity
       const issuer = Issuer.create(testIssuerData);
@@ -205,6 +214,18 @@ describePg('PostgreSQL Repositories', () => {
       expect(updatedIssuer!.url).toBe(testIssuerData.url); // Unchanged
     });
 
+    it('should return false when updating a non-existent issuer', async () => {
+      // Attempt to update an issuer with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const updatedIssuer = await issuerRepository.update(nonExistentId, {
+        name: 'Updated University',
+        description: 'An updated description'
+      });
+
+      // Verify
+      expect(updatedIssuer).toBeNull();
+    });
+
     it('should delete an issuer', async () => {
       // Create issuer entity
       const issuer = Issuer.create(testIssuerData);
@@ -223,6 +244,41 @@ describePg('PostgreSQL Repositories', () => {
 
       // Verify it's gone
       expect(foundIssuer).toBeNull();
+    });
+
+    it('should return false when deleting a non-existent issuer', async () => {
+      // Attempt to delete an issuer with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const deleted = await issuerRepository.delete(nonExistentId);
+
+      // Verify
+      expect(deleted).toBe(false);
+    });
+
+    it('should find all issuers', async () => {
+      // Create multiple issuers
+      const issuer1 = Issuer.create({ ...testIssuerData, name: 'Issuer 1', url: 'https://issuer1.test' as Shared.IRI });
+      const issuer2 = Issuer.create({ ...testIssuerData, name: 'Issuer 2', url: 'https://issuer2.test' as Shared.IRI });
+      await issuerRepository.create(issuer1);
+      await issuerRepository.create(issuer2);
+
+      // Find all issuers
+      const allIssuers = await issuerRepository.findAll();
+
+      // Verify
+      expect(allIssuers).toBeDefined();
+      expect(allIssuers.length).toBe(2);
+      expect(allIssuers.some(i => i.name === 'Issuer 1')).toBe(true);
+      expect(allIssuers.some(i => i.name === 'Issuer 2')).toBe(true);
+    });
+
+    it('should return an empty array when finding all issuers and none exist', async () => {
+      // Find all issuers when the table is empty
+      const allIssuers = await issuerRepository.findAll();
+
+      // Verify
+      expect(allIssuers).toBeDefined();
+      expect(allIssuers.length).toBe(0);
     });
   });
 
@@ -287,6 +343,15 @@ describePg('PostgreSQL Repositories', () => {
       expect(foundBadgeClass!.name).toBe('Test Badge');
     });
 
+    it('should return null when finding a non-existent badge class by ID', async () => {
+      // Attempt to find a badge class with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const foundBadgeClass = await badgeClassRepository.findById(nonExistentId);
+
+      // Verify
+      expect(foundBadgeClass).toBeNull();
+    });
+
     it('should find badge classes by issuer', async () => {
       // Create multiple badge classes
       const badgeClass1 = BadgeClass.create({
@@ -323,6 +388,53 @@ describePg('PostgreSQL Repositories', () => {
       expect(foundBadgeClasses[1].issuer).toBe(testIssuer.id);
     });
 
+    it('should return an empty array when finding badge classes by issuer and none exist', async () => {
+      // Find by issuer when the table is empty
+      const foundBadgeClasses = await badgeClassRepository.findByIssuer(testIssuer.id);
+
+      // Verify
+      expect(foundBadgeClasses).toBeDefined();
+      expect(foundBadgeClasses.length).toBe(0);
+    });
+
+    it('should find all badge classes', async () => {
+      // Create multiple badge classes for the same issuer
+      const badgeClass1 = BadgeClass.create({
+        issuer: testIssuer.id as Shared.IRI,
+        name: 'Badge 1',
+        description: 'Description 1',
+        image: 'https://test.edu/badge1.png' as Shared.IRI,
+        criteria: { narrative: 'Criteria 1' }
+      });
+      const badgeClass2 = BadgeClass.create({
+        issuer: testIssuer.id as Shared.IRI,
+        name: 'Badge 2',
+        description: 'Description 2',
+        image: 'https://test.edu/badge2.png' as Shared.IRI,
+        criteria: { narrative: 'Criteria 2' }
+      });
+      await badgeClassRepository.create(badgeClass1);
+      await badgeClassRepository.create(badgeClass2);
+
+      // Find all badge classes
+      const allBadgeClasses = await badgeClassRepository.findAll();
+
+      // Verify
+      expect(allBadgeClasses).toBeDefined();
+      expect(allBadgeClasses.length).toBe(2);
+      expect(allBadgeClasses.some(b => b.name === 'Badge 1')).toBe(true);
+      expect(allBadgeClasses.some(b => b.name === 'Badge 2')).toBe(true);
+    });
+
+    it('should return an empty array when finding all badge classes and none exist', async () => {
+      // Find all badge classes when the table is empty
+      const allBadgeClasses = await badgeClassRepository.findAll();
+
+      // Verify
+      expect(allBadgeClasses).toBeDefined();
+      expect(allBadgeClasses.length).toBe(0);
+    });
+
     it('should update a badge class', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
@@ -352,6 +464,18 @@ describePg('PostgreSQL Repositories', () => {
       expect(updatedBadgeClass!.issuer).toBe(testIssuer.id); // Unchanged
     });
 
+    it('should return null when updating a non-existent badge class', async () => {
+      // Attempt to update a badge class with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const updatedBadgeClass = await badgeClassRepository.update(nonExistentId, {
+        name: 'Updated Badge',
+        description: 'An updated description'
+      });
+
+      // Verify
+      expect(updatedBadgeClass).toBeNull();
+    });
+
     it('should delete a badge class', async () => {
       // Create badge class entity
       const badgeClass = BadgeClass.create({
@@ -378,6 +502,15 @@ describePg('PostgreSQL Repositories', () => {
 
       // Verify it's gone
       expect(foundBadgeClass).toBeNull();
+    });
+
+    it('should return false when deleting a non-existent badge class', async () => {
+      // Attempt to delete a badge class with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const deleted = await badgeClassRepository.delete(nonExistentId);
+
+      // Verify
+      expect(deleted).toBe(false);
     });
   });
 
@@ -459,6 +592,15 @@ describePg('PostgreSQL Repositories', () => {
       });
     });
 
+    it('should return null when finding a non-existent assertion by ID', async () => {
+      // Attempt to find an assertion with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const foundAssertion = await assertionRepository.findById(nonExistentId);
+
+      // Verify
+      expect(foundAssertion).toBeNull();
+    });
+
     it('should find assertions by badge class', async () => {
       // Create multiple assertions
       const assertion1 = Assertion.create({
@@ -495,6 +637,82 @@ describePg('PostgreSQL Repositories', () => {
       expect(foundAssertions[1].badgeClass).toBe(testBadgeClass.id);
     });
 
+    it('should return an empty array when finding assertions by badge class and none exist', async () => {
+      // Find by badge class when the table is empty
+      const foundAssertions = await assertionRepository.findByBadgeClass(testBadgeClass.id);
+
+      // Verify
+      expect(foundAssertions).toBeDefined();
+      expect(foundAssertions.length).toBe(0);
+    });
+
+    it('should find assertions by recipient', async () => {
+      // Create multiple assertions for the same recipient
+      const recipientId = 'test-recipient@example.com';
+      const assertion1 = Assertion.create({
+        badgeClass: testBadgeClass.id as Shared.IRI,
+        recipient: { type: 'email', identity: recipientId, hashed: false },
+        issuedOn: new Date().toISOString()
+      });
+      const assertion2 = Assertion.create({
+        badgeClass: testBadgeClass.id as Shared.IRI,
+        recipient: { type: 'email', identity: recipientId, hashed: false },
+        issuedOn: new Date().toISOString()
+      });
+      await assertionRepository.create(assertion1);
+      await assertionRepository.create(assertion2);
+
+      // Find by recipient
+      const foundAssertions = await assertionRepository.findByRecipient(recipientId);
+
+      // Verify
+      expect(foundAssertions).toBeDefined();
+      expect(foundAssertions.length).toBe(2);
+      expect(foundAssertions[0].recipient.identity).toBe(recipientId);
+      expect(foundAssertions[1].recipient.identity).toBe(recipientId);
+    });
+
+    it('should return an empty array when finding assertions by recipient and none exist', async () => {
+      // Find by recipient when the table is empty
+      const foundAssertions = await assertionRepository.findByRecipient('non-existent@example.com');
+
+      // Verify
+      expect(foundAssertions).toBeDefined();
+      expect(foundAssertions.length).toBe(0);
+    });
+
+    it('should find all assertions', async () => {
+      // Create multiple assertions
+      const assertion1 = Assertion.create({
+        badgeClass: testBadgeClass.id as Shared.IRI,
+        recipient: { type: 'email', identity: 'recipient1@example.com', hashed: false },
+        issuedOn: new Date().toISOString()
+      });
+      const assertion2 = Assertion.create({
+        badgeClass: testBadgeClass.id as Shared.IRI,
+        recipient: { type: 'email', identity: 'recipient2@example.com', hashed: false },
+        issuedOn: new Date().toISOString()
+      });
+      await assertionRepository.create(assertion1);
+      await assertionRepository.create(assertion2);
+
+      // Find all assertions
+      const allAssertions = await assertionRepository.findAll();
+
+      // Verify
+      expect(allAssertions).toBeDefined();
+      expect(allAssertions.length).toBe(2);
+    });
+
+    it('should return an empty array when finding all assertions and none exist', async () => {
+      // Find all assertions when the table is empty
+      const allAssertions = await assertionRepository.findAll();
+
+      // Verify
+      expect(allAssertions).toBeDefined();
+      expect(allAssertions.length).toBe(0);
+    });
+
     it('should revoke an assertion', async () => {
       // Create assertion entity
       const assertion = Assertion.create({
@@ -518,6 +736,15 @@ describePg('PostgreSQL Repositories', () => {
       expect(revokedAssertion!.id).toBe(createdAssertion.id);
       expect(revokedAssertion!.revoked).toBe(true);
       expect(revokedAssertion!.revocationReason).toBe('Test revocation reason');
+    });
+
+    it('should return null when revoking a non-existent assertion', async () => {
+      // Attempt to revoke an assertion with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const revokedAssertion = await assertionRepository.revoke(nonExistentId, 'Test revocation reason');
+
+      // Verify
+      expect(revokedAssertion).toBeNull();
     });
 
     it('should verify an assertion', async () => {
@@ -549,6 +776,16 @@ describePg('PostgreSQL Repositories', () => {
 
       // Verify
       expect(verificationResultAfterRevoke.isValid).toBe(false);
+    });
+
+    it('should return an invalid verification result when verifying a non-existent assertion', async () => {
+      // Attempt to verify an assertion with a non-existent ID
+      const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
+      const verificationResult = await assertionRepository.verify(nonExistentId);
+
+      // Verify
+      expect(verificationResult.isValid).toBe(false);
+      expect(verificationResult.reason).toBe('Assertion not found');
     });
   });
 });

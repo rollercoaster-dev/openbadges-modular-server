@@ -1,6 +1,15 @@
+/**
+ * SQLite schema definitions for Open Badges API
+ *
+ * This file defines the database schema for the SQLite module using Drizzle ORM.
+ * It includes tables for Issuers, BadgeClasses, and Assertions following the Open Badges 3.0 specification.
+ *
+ * Note: SQLite stores JSON as text and timestamps as integers (epoch milliseconds).
+ */
+
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
-// Issuers table (SQLite schema stub)
+// Issuers table
 export const issuers = sqliteTable(
   'issuers',
   {
@@ -29,7 +38,7 @@ export const issuers = sqliteTable(
   }
 );
 
-// BadgeClasses table (SQLite schema stub)
+// BadgeClasses table
 export const badgeClasses = sqliteTable(
   'badge_classes',
   {
@@ -58,7 +67,7 @@ export const badgeClasses = sqliteTable(
   }
 );
 
-// Assertions table (SQLite schema stub)
+// Assertions table
 export const assertions = sqliteTable(
   'assertions',
   {

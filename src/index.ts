@@ -43,8 +43,8 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let database: any = null;
 
-// Initialize the database and start the server
-async function bootstrap() {
+// Async function to setup repositories and controllers
+async function setupApp() {
   try {
     // Initialize the repository factory
     await RepositoryFactory.initialize({
@@ -74,9 +74,9 @@ async function bootstrap() {
     await initializeAuthentication();
 
     // Initialize repositories
-    const issuerRepository = RepositoryFactory.createIssuerRepository();
-    const badgeClassRepository = RepositoryFactory.createBadgeClassRepository();
-    const assertionRepository = RepositoryFactory.createAssertionRepository();
+    const issuerRepository = await RepositoryFactory.createIssuerRepository();
+    const badgeClassRepository = await RepositoryFactory.createBadgeClassRepository();
+    const assertionRepository = await RepositoryFactory.createAssertionRepository();
 
     // Initialize controllers with repositories
     const issuerController = new IssuerController(issuerRepository);
@@ -110,7 +110,7 @@ async function bootstrap() {
         'swagger docs': `http://${config.server.host}:${config.server.port}/docs`,
         'openapi json': `http://${config.server.host}:${config.server.port}/swagger`
       });
-      
+
       if (config.auth?.enabled) {
         logger.info('Authentication is enabled');
       } else {
@@ -121,6 +121,8 @@ async function bootstrap() {
     // Setup graceful shutdown
     setupGracefulShutdown(server);
 
+    return app; // Return the configured app instance
+
   } catch (error) {
     if (error instanceof Error) {
       logger.logError('Failed to start server', error);
@@ -130,6 +132,21 @@ async function bootstrap() {
     process.exit(1);
   }
 }
+
+// Keep track of setup promise to avoid multiple initializations
+let setupPromise: Promise<Elysia> | null = null;
+
+// Start the application
+async function bootstrap() {
+  // Initialize setup only once
+  if (!setupPromise) {
+    setupPromise = setupApp();
+  }
+  // Wait for setup to complete and get the app instance
+  await setupPromise;
+}
+
+bootstrap();
 
 /**
  * Sets up graceful shutdown handlers for the server
@@ -150,6 +167,3 @@ function setupGracefulShutdown(server: any) {
     return Promise.resolve();
   });
 }
-
-// Start the application
-bootstrap();

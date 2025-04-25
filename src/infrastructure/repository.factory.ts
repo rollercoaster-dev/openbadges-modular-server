@@ -13,6 +13,9 @@ import { AssertionRepository } from '../domains/assertion/assertion.repository';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
+import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
+import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
+import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
 import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
@@ -57,7 +60,7 @@ export class RepositoryFactory {
    * Creates an issuer repository
    * @returns An implementation of IssuerRepository
    */
-  static createIssuerRepository(): IssuerRepository {
+  static async createIssuerRepository(): Promise<IssuerRepository> {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
@@ -72,34 +75,16 @@ export class RepositoryFactory {
       // Wrap with cache if enabled
       return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
-      // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
-      // This is a temporary solution until we implement proper SQLite repositories
-      return {
-        create: async (issuer) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.createIssuer(issuer);
-        },
-        findById: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getIssuerById(id);
-        },
-        update: async (id, issuer) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.updateIssuer(id, issuer);
-        },
-        delete: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.deleteIssuer(id);
-        },
-        findAll: async () => {
-          // This is a placeholder - we need to implement this in the DatabaseInterface
-          return [];
-        }
-      };
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the base repository
+      const baseRepository = new SqliteIssuerRepository(client);
+
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -109,7 +94,7 @@ export class RepositoryFactory {
    * Creates a badge class repository
    * @returns An implementation of BadgeClassRepository
    */
-  static createBadgeClassRepository(): BadgeClassRepository {
+  static async createBadgeClassRepository(): Promise<BadgeClassRepository> {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
@@ -124,38 +109,16 @@ export class RepositoryFactory {
       // Wrap with cache if enabled
       return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
-      // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
-      return {
-        create: async (badgeClass) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.createBadgeClass(badgeClass);
-        },
-        findById: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getBadgeClassById(id);
-        },
-        findByIssuer: async (issuerId) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getBadgeClassesByIssuer(issuerId);
-        },
-        update: async (id, badgeClass) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.updateBadgeClass(id, badgeClass);
-        },
-        delete: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.deleteBadgeClass(id);
-        },
-        findAll: async () => {
-          // This is a placeholder - we need to implement this in the DatabaseInterface
-          return [];
-        }
-      };
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the base repository
+      const baseRepository = new SqliteBadgeClassRepository(client);
+
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -165,7 +128,7 @@ export class RepositoryFactory {
    * Creates an assertion repository
    * @returns An implementation of AssertionRepository
    */
-  static createAssertionRepository(): AssertionRepository {
+  static async createAssertionRepository(): Promise<AssertionRepository> {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
@@ -180,82 +143,16 @@ export class RepositoryFactory {
       // Wrap with cache if enabled
       return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
     } else if (this.dbType === 'sqlite') {
-      // For SQLite, we'll use a placeholder repository that delegates to the DatabaseInterface
-      return {
-        create: async (assertion) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.createAssertion(assertion);
-        },
-        findById: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getAssertionById(id);
-        },
-        findByBadgeClass: async (badgeClassId) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getAssertionsByBadgeClass(badgeClassId);
-        },
-        findByRecipient: async (recipientId) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.getAssertionsByRecipient(recipientId);
-        },
-        update: async (id, assertion) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.updateAssertion(id, assertion);
-        },
-        delete: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          return db.deleteAssertion(id);
-        },
-        findAll: async () => {
-          // This is a placeholder - we need to implement this in the DatabaseInterface
-          return [];
-        },
-        revoke: async (id, reason) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          const assertion = await db.getAssertionById(id);
-          if (!assertion) return null;
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
 
-          return db.updateAssertion(id, {
-            revoked: true,
-            revocationReason: reason
-          });
-        },
-        verify: async (id) => {
-          const db = await import('./database/database.factory')
-            .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-          const assertion = await db.getAssertionById(id);
+      // Create the base repository
+      const baseRepository = new SqliteAssertionRepository(client);
 
-          if (!assertion) {
-            return { isValid: false, reason: 'Assertion not found' };
-          }
-
-          // Check if revoked
-          if (assertion.revoked) {
-            return {
-              isValid: false,
-              reason: assertion.revocationReason || 'Assertion has been revoked'
-            };
-          }
-
-          // Check if expired
-          if (assertion.expires) {
-            const expiryDate = new Date(assertion.expires);
-            const now = new Date();
-            if (expiryDate < now) {
-              return { isValid: false, reason: 'Assertion has expired' };
-            }
-          }
-
-          return { isValid: true };
-        }
-      };
+      // Wrap with cache if enabled
+      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -269,13 +166,13 @@ export class RepositoryFactory {
       await this.client.end();
       this.client = null;
     } else if (this.dbType === 'sqlite') {
-      // Close SQLite connection via DatabaseFactory
+      // SQLite connections are closed automatically when the Database object is garbage collected
+      // But we can explicitly close any open connections if needed
       try {
-        const db = await import('./database/database.factory')
-          .then(m => m.DatabaseFactory.createDatabase('sqlite'));
-        await db.disconnect();
+        // No need to do anything here as SQLite connections are managed by the repositories
+        logger.info('SQLite connections will be closed automatically');
       } catch (error) {
-        logger.warn('Error closing SQLite connection', {
+        logger.warn('Error handling SQLite connections', {
           errorMessage: error instanceof Error ? error.message : String(error)
         });
       }
