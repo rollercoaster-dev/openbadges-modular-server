@@ -5,9 +5,9 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { BadgeClass } from '../../../../../domains/badgeClass/badgeClass.entity';
+import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import { Shared } from 'openbadges-types';
-import { convertJson, convertTimestamp, convertUuid } from '../../../utils/type-conversion';
+import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteBadgeClassMapper {
   /**

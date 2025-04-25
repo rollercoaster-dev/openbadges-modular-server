@@ -13,7 +13,7 @@ import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.reposi
 import { badgeClasses } from '../schema';
 import { SqliteBadgeClassMapper } from '../mappers/sqlite-badge-class.mapper';
 import { Shared } from 'openbadges-types';
-import { logger } from '../../../../../utils/logging/logger.service';
+import { logger } from '@utils/logging/logger.service';
 
 export class SqliteBadgeClassRepository implements BadgeClassRepository {
   private db: ReturnType<typeof drizzle>;

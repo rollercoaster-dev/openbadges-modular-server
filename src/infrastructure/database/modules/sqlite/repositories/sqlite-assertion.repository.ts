@@ -13,7 +13,7 @@ import type { AssertionRepository } from '@domains/assertion/assertion.repositor
 import { assertions } from '../schema';
 import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
 import { Shared } from 'openbadges-types';
-import { logger } from '../../../../../utils/logging/logger.service';
+import { logger } from '@utils/logging/logger.service';
 
 export class SqliteAssertionRepository implements AssertionRepository {
   private db: ReturnType<typeof drizzle>;

@@ -5,7 +5,7 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { Issuer } from '../../../../../domains/issuer/issuer.entity';
+import { Issuer } from '@domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
 
 export class PostgresIssuerMapper {

@@ -7,9 +7,9 @@
  */
 
 import postgres from 'postgres';
-import { IssuerRepository } from '../domains/issuer/issuer.repository';
-import { BadgeClassRepository } from '../domains/badgeClass/badgeClass.repository';
-import { AssertionRepository } from '../domains/assertion/assertion.repository';
+import { IssuerRepository } from '@domains/issuer/issuer.repository';
+import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
+import { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
@@ -19,8 +19,8 @@ import { SqliteAssertionRepository } from './database/modules/sqlite/repositorie
 import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
-import { config } from '../config/config';
-import { logger } from '../utils/logging/logger.service';
+import { config } from '@/config/config';
+import { logger } from '@utils/logging/logger.service';
 
 export class RepositoryFactory {
   private static client: postgres.Sql | null = null;

@@ -5,6 +5,8 @@
  * when working with both PostgreSQL and SQLite.
  */
 
+import { logger } from '@utils/logging/logger.service';
+
 /**
  * Converts a value to/from JSON for database storage
  *
@@ -45,7 +47,8 @@ export function convertJson<T>(
       try {
         return JSON.parse(value) as T;
       } catch (error) {
-        console.error('Error parsing JSON from database:', error);
+        // Use logger instead of console.error
+        logger.error('Error parsing JSON from database', { error });
         return null;
       }
     }
@@ -95,11 +98,13 @@ export function convertTimestamp(
         dateObj = new Date(value);
         // Check if the date is valid after parsing
         if (isNaN(dateObj.getTime())) {
-          console.warn(`Invalid date string provided to convertTimestamp: ${value}`);
+          // Use logger instead of console.warn
+          logger.warn(`Invalid date string provided to convertTimestamp`, { value });
           dateObj = null;
         }
       } catch (_e) {
-        console.warn(`Error parsing date string in convertTimestamp: ${value}`);
+        // Use logger instead of console.warn
+        logger.warn(`Error parsing date string in convertTimestamp`, { value });
         dateObj = null;
       }
     }
@@ -130,12 +135,14 @@ export function convertTimestamp(
         const dateObj = new Date(value as any);
         // Check if date is valid
         if (isNaN(dateObj.getTime())) {
-           console.warn(`Invalid date value received from PostgreSQL: ${value}`);
+           // Use logger instead of console.warn
+           logger.warn(`Invalid date value received from PostgreSQL`, { value });
            return null;
         }
         return dateObj;
       } catch (_e) {
-        console.warn(`Error parsing date value from PostgreSQL: ${value}`);
+        // Use logger instead of console.warn
+        logger.warn(`Error parsing date value from PostgreSQL`, { value });
         return null;
       }
     } else { // dbType === 'sqlite'
@@ -144,13 +151,15 @@ export function convertTimestamp(
         const dateObj = new Date(value);
         // Check if date is valid (e.g., handle potential huge numbers)
         if (isNaN(dateObj.getTime())) {
-            console.warn(`Invalid timestamp number received from SQLite: ${value}`);
+            // Use logger instead of console.warn
+            logger.warn(`Invalid timestamp number received from SQLite`, { value });
             return null;
         }
         return dateObj;
       }
       // If SQLite returns something else, it's unexpected
-      console.warn(`Unexpected timestamp type received from SQLite: ${typeof value}, value: ${value}`);
+      // Use logger instead of console.warn
+      logger.warn(`Unexpected timestamp type received from SQLite`, { type: typeof value, value });
       return null;
     }
   }

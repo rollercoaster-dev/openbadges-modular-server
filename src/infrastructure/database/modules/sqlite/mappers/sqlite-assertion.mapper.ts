@@ -5,9 +5,9 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { Assertion } from '../../../../../domains/assertion/assertion.entity';
+import { Assertion } from '@domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
-import { convertJson, convertTimestamp, convertUuid, convertBoolean } from '../../../utils/type-conversion';
+import { convertJson, convertTimestamp, convertUuid, convertBoolean } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteAssertionMapper {
   /**

@@ -5,7 +5,7 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { Assertion } from '../../../../../domains/assertion/assertion.entity';
+import { Assertion } from '@domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 
 export class PostgresAssertionMapper {

@@ -5,7 +5,7 @@
  * handling the conversion between domain entities and database records.
  */
 
-import { BadgeClass } from '../../../../../domains/badgeClass/badgeClass.entity';
+import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import { Shared } from 'openbadges-types';
 
 export class PostgresBadgeClassMapper {

@@ -10,8 +10,8 @@ import { DatabaseInterface } from './interfaces/database.interface';
 import { DatabaseModuleInterface } from './interfaces/database-module.interface';
 import { SqliteModule } from './modules/sqlite/sqlite.module';
 import { PostgresqlModule } from './modules/postgresql/postgresql.module';
-import { config } from '../../config/config';
-import { logger } from '../../utils/logging/logger.service';
+import { config } from '@/config/config';
+import { logger } from '@utils/logging/logger.service';
 
 export class DatabaseFactory {
   private static modules: Map<string, DatabaseModuleInterface> = new Map();

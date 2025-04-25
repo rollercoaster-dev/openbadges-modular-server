@@ -7,7 +7,7 @@
 
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
-import { convertJson, convertTimestamp, convertUuid } from '../../../utils/type-conversion';
+import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteIssuerMapper {
   /**
