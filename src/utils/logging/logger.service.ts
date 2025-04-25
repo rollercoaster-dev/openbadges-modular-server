@@ -25,6 +25,7 @@ export const logger = {
 
   // Log an error object directly
   logError(msg: string, error: Error, additionalContext: Record<string, any> = {}) {
-    rdLogger.error(msg, { ...additionalContext, error });
+    // Call the adapter's error method so spies work
+    logger.error(msg, { ...additionalContext, error });
   }
 };
