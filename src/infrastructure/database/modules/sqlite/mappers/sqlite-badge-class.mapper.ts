@@ -1,5 +1,5 @@
 /**
- * PostgreSQL mapper for the BadgeClass domain entity
+ * SQLite mapper for the BadgeClass domain entity
  *
  * This class implements the Data Mapper pattern for the BadgeClass entity,
  * handling the conversion between domain entities and database records.
@@ -7,8 +7,9 @@
 
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import { Shared } from 'openbadges-types';
+import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 
-export class PostgresBadgeClassMapper {
+export class SqliteBadgeClassMapper {
   /**
    * Converts a database record to a domain entity
    * @param record The database record
@@ -32,15 +33,15 @@ export class PostgresBadgeClassMapper {
 
     // Create and return the domain entity
     return BadgeClass.create({
-      id: id.toString() as Shared.IRI,
-      issuer: issuerId.toString() as Shared.IRI,
+      id: convertUuid(id, 'sqlite', 'from') as Shared.IRI,
+      issuer: convertUuid(issuerId, 'sqlite', 'from') as Shared.IRI,
       name,
       description,
       image: typeof image === 'string' ? image as Shared.IRI : image,
-      criteria,
-      alignment,
-      tags,
-      ...additionalFields
+      criteria: convertJson(criteria, 'sqlite', 'from'),
+      alignment: convertJson(alignment, 'sqlite', 'from'),
+      tags: convertJson(tags, 'sqlite', 'from'),
+      ...convertJson(additionalFields, 'sqlite', 'from')
     });
   }
 
@@ -70,16 +71,16 @@ export class PostgresBadgeClassMapper {
 
     // Create and return the database record
     return {
-      id,
-      issuerId: issuer,
+      id: convertUuid(id, 'sqlite', 'to'),
+      issuerId: convertUuid(issuer as string, 'sqlite', 'to'),
       name,
       description,
       image,
-      criteria,
-      alignment,
-      tags,
-      additionalFields,
-      updatedAt: new Date()
+      criteria: convertJson(criteria, 'sqlite', 'to'),
+      alignment: convertJson(alignment, 'sqlite', 'to'),
+      tags: convertJson(tags, 'sqlite', 'to'),
+      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
+      updatedAt: convertTimestamp(new Date(), 'sqlite', 'to')
     };
   }
 }

@@ -1,5 +1,5 @@
 /**
- * PostgreSQL mapper for the Issuer domain entity
+ * SQLite mapper for the Issuer domain entity
  *
  * This class implements the Data Mapper pattern for the Issuer entity,
  * handling the conversion between domain entities and database records.
@@ -7,8 +7,9 @@
 
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
+import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 
-export class PostgresIssuerMapper {
+export class SqliteIssuerMapper {
   /**
    * Converts a database record to a domain entity
    * @param record The database record
@@ -31,14 +32,14 @@ export class PostgresIssuerMapper {
 
     // Create and return the domain entity
     return Issuer.create({
-      id: id.toString() as Shared.IRI,
+      id: convertUuid(id, 'sqlite', 'from') as Shared.IRI,
       name,
       url: url as Shared.IRI,
       email,
       description,
       image: typeof image === 'string' ? image as Shared.IRI : image,
-      publicKey,
-      ...additionalFields
+      publicKey: convertJson(publicKey, 'sqlite', 'from'),
+      ...convertJson(additionalFields, 'sqlite', 'from')
     });
   }
 
@@ -67,15 +68,15 @@ export class PostgresIssuerMapper {
 
     // Create and return the database record
     return {
-      id,
+      id: convertUuid(id, 'sqlite', 'to'),
       name,
       url,
       email,
       description,
       image,
-      publicKey,
-      additionalFields,
-      updatedAt: new Date()
+      publicKey: convertJson(publicKey, 'sqlite', 'to'),
+      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
+      updatedAt: convertTimestamp(new Date(), 'sqlite', 'to')
     };
   }
 }

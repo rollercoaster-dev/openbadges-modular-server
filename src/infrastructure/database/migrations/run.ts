@@ -19,6 +19,8 @@ import { logger } from '../../../utils/logging/logger.service';
  * Runs database migrations
  */
 async function runMigrations() {
+  // DEBUG: Log the raw environment variable
+  // console.log('DEBUG process.env.DB_TYPE:', process.env.DB_TYPE); // Removed debug line
   logger.info('Running database migrations...');
   logger.info(`Database type: ${config.database.type}`);
 
@@ -48,27 +50,44 @@ async function runSqliteMigrations() {
   const sqliteFile = config.database.sqliteFile || 'sqlite.db';
   logger.info(`SQLite file: ${sqliteFile}`);
 
-  // Create SQLite database connection
-  const sqlite = new Database(sqliteFile);
+  try {
+    // Create SQLite database connection
+    const sqlite = new Database(sqliteFile);
 
-  // Apply WAL mode for better concurrency
-  sqlite.exec('PRAGMA journal_mode = WAL;');
+    // Verify database connection
+    try {
+      // Simple query to verify the database is accessible
+      sqlite.query('SELECT 1');
+      logger.info('SQLite database connection verified');
+    } catch (error) {
+      logger.error('Failed to verify SQLite database connection', error);
+      throw new Error('SQLite database verification failed');
+    }
 
-  // Initialize Drizzle ORM
-  const db = drizzle(sqlite);
+    // Apply WAL mode for better concurrency
+    sqlite.exec('PRAGMA journal_mode = WAL;');
 
-  // Get migrations directory
-  const migrationsFolder = join(process.cwd(), 'drizzle', 'migrations');
-  logger.info(`Migrations folder: ${migrationsFolder}`);
+    // Initialize Drizzle ORM
+    const db = drizzle(sqlite);
 
-  // Run migrations
-  logger.info('Applying migrations...');
-  await migrate(db, { migrationsFolder });
+    // Get migrations directory
+    const migrationsFolder = join(process.cwd(), 'drizzle', 'migrations');
+    logger.info(`Migrations folder: ${migrationsFolder}`);
 
-  // Close database connection
-  sqlite.close();
+    // Run migrations
+    logger.info('Applying migrations...');
+    // Note: migrate() for SQLite may not return a Promise in some versions of drizzle-orm
+    // We use Promise.resolve to ensure it's handled properly either way
+    await Promise.resolve(migrate(db, { migrationsFolder }));
 
-  logger.info('SQLite migrations completed.');
+    // Close database connection
+    sqlite.close();
+
+    logger.info('SQLite migrations completed.');
+  } catch (error) {
+    logger.error('SQLite migration error', error);
+    throw error;
+  }
 }
 
 /**
@@ -81,24 +100,40 @@ async function runPostgresMigrations() {
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
   logger.info(`PostgreSQL connection: ${connectionString.replace(/:[^:]*@/, ':***@')}`); // Hide password
 
-  // Create PostgreSQL connection
-  const client = postgres(connectionString, { max: 1 });
+  try {
+    // Create PostgreSQL connection
+    const client = postgres(connectionString, { max: 1 });
 
-  // Initialize Drizzle ORM
-  const db = pgDrizzle(client);
+    // Verify database connection
+    try {
+      // Simple query to verify the database is accessible
+      await client`SELECT 1`;
+      logger.info('PostgreSQL database connection verified');
+    } catch (error) {
+      logger.error('Failed to verify PostgreSQL database connection', error);
+      await client.end();
+      throw new Error('PostgreSQL database verification failed');
+    }
 
-  // Get migrations directory
-  const migrationsFolder = join(process.cwd(), 'drizzle', 'pg-migrations');
-  logger.info(`Migrations folder: ${migrationsFolder}`);
+    // Initialize Drizzle ORM
+    const db = pgDrizzle(client);
 
-  // Run migrations
-  logger.info('Applying migrations...');
-  await pgMigrate(db, { migrationsFolder });
+    // Get migrations directory
+    const migrationsFolder = join(process.cwd(), 'drizzle', 'pg-migrations');
+    logger.info(`Migrations folder: ${migrationsFolder}`);
 
-  // Close database connection
-  await client.end();
+    // Run migrations
+    logger.info('Applying migrations...');
+    await pgMigrate(db, { migrationsFolder });
 
-  logger.info('PostgreSQL migrations completed.');
+    // Close database connection
+    await client.end();
+
+    logger.info('PostgreSQL migrations completed.');
+  } catch (error) {
+    logger.error('PostgreSQL migration error', error);
+    throw error;
+  }
 }
 
 // Run migrations

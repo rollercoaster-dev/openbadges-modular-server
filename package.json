@@ -12,8 +12,14 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "db:generate": "drizzle-kit generate",
+    "db:generate:pg": "DB_TYPE=postgresql drizzle-kit generate",
+    "db:generate:sqlite": "DB_TYPE=sqlite drizzle-kit generate",
     "db:migrate": "bun run src/infrastructure/database/migrations/run.ts",
+    "db:migrate:pg": "DB_TYPE=postgresql bun run src/infrastructure/database/migrations/run.ts",
+    "db:migrate:sqlite": "DB_TYPE=sqlite bun run src/infrastructure/database/migrations/run.ts",
     "db:studio": "drizzle-kit studio",
+    "db:studio:pg": "DB_TYPE=postgresql drizzle-kit studio",
+    "db:studio:sqlite": "DB_TYPE=sqlite drizzle-kit studio",
     "build": "bun build src/index.ts --target bun --outdir dist",
     "prepare": "husky"
   },
@@ -39,6 +45,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
+    "@rollercoaster-dev/rd-logger": "^0.1.0",
     "@types/uuid": "^10.0.0",
     "better-sqlite3": "^11.9.1",
     "chalk": "^5.4.1",
