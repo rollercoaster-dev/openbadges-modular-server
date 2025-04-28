@@ -69,7 +69,7 @@ This document outlines the implementation plan for the MVP (Minimum Viable Produ
   - ⬜ Implement API key storage and retrieval
   - ⬜ Add middleware for API key validation
 
-- ⬜ Implement basic authorization (is this a good idea? Would JWT Be better?)
+- ⬜ Implement basic authorization (is this a good idea? Would JWT or OAuth Be better?)
   - ⬜ Define roles and permissions
   - ⬜ Implement role-based access control
   - ⬜ Add middleware for authorization
