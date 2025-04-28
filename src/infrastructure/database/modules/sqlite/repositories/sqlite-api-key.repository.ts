@@ -1,18 +1,25 @@
 /**
- * SQLite API Key Repository
- * 
- * This file implements the API Key repository interface for SQLite.
- * It provides methods for creating, retrieving, updating, and deleting API Keys.
+ * SQLite implementation of the API Key repository
+ *
+ * This class implements the ApiKeyRepository interface using SQLite
+ * and the Data Mapper pattern.
  */
 
-import { ApiKey } from '@domains/auth/apiKey.entity';
-import { ApiKeyRepository } from '@domains/auth/apiKey.repository';
-import { Shared } from 'openbadges-types';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
+import { ApiKey } from '@domains/auth/apiKey.entity';
+import type { ApiKeyRepository } from '@domains/auth/apiKey.repository';
+import { apiKeys } from '../schema';
+import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 
 export class SqliteApiKeyRepository implements ApiKeyRepository {
-  constructor(private readonly db: Database) {}
+  private db: ReturnType<typeof drizzle>;
+
+  constructor(client: Database) {
+    this.db = drizzle(client);
+  }
 
   async create(apiKey: ApiKey): Promise<ApiKey> {
     try {
@@ -24,7 +31,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async findById(id: Shared.IRI): Promise<ApiKey | null> {
+  async findById(_id: Shared.IRI): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
@@ -34,7 +41,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async findByKey(key: string): Promise<ApiKey | null> {
+  async findByKey(_key: string): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
@@ -44,7 +51,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async findByUserId(userId: string): Promise<ApiKey[]> {
+  async findByUserId(_userId: string): Promise<ApiKey[]> {
     try {
       // Implementation will be added later
       return [];
@@ -64,7 +71,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async update(id: Shared.IRI, data: Partial<ApiKey>): Promise<ApiKey | null> {
+  async update(_id: Shared.IRI, _data: Partial<ApiKey>): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
@@ -74,7 +81,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async delete(id: Shared.IRI): Promise<boolean> {
+  async delete(_id: Shared.IRI): Promise<boolean> {
     try {
       // Implementation will be added later
       return false;
@@ -84,7 +91,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async revoke(id: Shared.IRI): Promise<ApiKey | null> {
+  async revoke(_id: Shared.IRI): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
@@ -94,7 +101,7 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async updateLastUsed(id: Shared.IRI): Promise<ApiKey | null> {
+  async updateLastUsed(_id: Shared.IRI): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;

@@ -2,7 +2,7 @@
  * SQLite schema definitions for Open Badges API
  *
  * This file defines the database schema for the SQLite module using Drizzle ORM.
- * It includes tables for Issuers, BadgeClasses, and Assertions following the Open Badges 3.0 specification.
+ * It includes tables for Issuers, BadgeClasses, Assertions, API Keys, and Roles following the Open Badges 3.0 specification.
  *
  * Note: SQLite stores JSON as text and timestamps as integers (epoch milliseconds).
  */
@@ -95,6 +95,74 @@ export const assertions = sqliteTable(
       revokedIdx: index('assertion_revoked_idx').on(table.revoked),
       // Add index on expires for filtering expired assertions
       expiresIdx: index('assertion_expires_idx').on(table.expires)
+    };
+  }
+);
+
+// API Keys table
+export const apiKeys = sqliteTable(
+  'api_keys',
+  {
+    id: text('id').primaryKey(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    userId: text('user_id').notNull(),
+    description: text('description'),
+    permissions: text('permissions').notNull(), // JSON stored as text
+    revoked: integer('revoked').notNull().default(0),
+    revokedAt: integer('revoked_at'),
+    lastUsed: integer('last_used'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on key for faster lookups
+      keyIdx: index('api_key_key_idx').on(table.key),
+      // Add index on userId for faster lookups
+      userIdIdx: index('api_key_user_id_idx').on(table.userId),
+      // Add index on revoked for filtering
+      revokedIdx: index('api_key_revoked_idx').on(table.revoked),
+    };
+  }
+);
+
+// Roles table
+export const roles = sqliteTable(
+  'roles',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    description: text('description'),
+    permissions: text('permissions').notNull(), // JSON stored as text
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on name for faster lookups
+      nameIdx: index('role_name_idx').on(table.name),
+    };
+  }
+);
+
+// User Roles table (many-to-many relationship)
+export const userRoles = sqliteTable(
+  'user_roles',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    roleId: text('role_id').notNull().references(() => roles.id),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on userId for faster lookups
+      userIdIdx: index('user_role_user_id_idx').on(table.userId),
+      // Add index on roleId for faster lookups
+      roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
+      // Add index on userId and roleId
+      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
     };
   }
 );
