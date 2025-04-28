@@ -4,7 +4,7 @@ This project supports both SQLite and PostgreSQL databases. The selection is det
 
 ## Environment Variables
 
--   `DB_TYPE`: Specifies the database dialect. 
+-   `DB_TYPE`: Specifies the database dialect.
     -   Set to `sqlite` for SQLite (default).
     -   Set to `postgresql` for PostgreSQL.
 
@@ -19,6 +19,7 @@ This project supports both SQLite and PostgreSQL databases. The selection is det
     -   Format: `postgres://USER:PASSWORD@HOST:PORT/DATABASE_NAME`
     -   Example: `DATABASE_URL=postgres://admin:secret@localhost:5432/openbadges_dev`
 
+For detailed PostgreSQL configuration, see [PostgreSQL Configuration Guide](./postgresql-configuration.md).
 ### Optional Settings
 
 -   `DB_QUERY_LOGGING`: (Optional) Enable (`true`) or disable (`false`) logging of database queries. Defaults to `true`.
