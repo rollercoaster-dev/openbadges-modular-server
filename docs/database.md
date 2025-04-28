@@ -20,7 +20,6 @@ This project supports both SQLite and PostgreSQL databases. The selection is det
     -   Example: `DATABASE_URL=postgres://admin:secret@localhost:5432/openbadges_dev`
 
 For detailed PostgreSQL configuration, see [PostgreSQL Configuration Guide](./postgresql-configuration.md).
-
 ### Optional Settings
 
 -   `DB_QUERY_LOGGING`: (Optional) Enable (`true`) or disable (`false`) logging of database queries. Defaults to `true`.
