@@ -43,14 +43,14 @@ This document outlines the implementation plan for the MVP (Minimum Viable Produ
   - ✅ Updated RepositoryFactory to use the new SQLite repositories
   - ✅ Added basic tests for SQLite repository implementations
 
-- ⬜ Verify `.env` configuration for PostgreSQL
-  - ⬜ Ensure environment variables for PostgreSQL connection are properly defined
-  - ⬜ Document PostgreSQL configuration requirements
+- ✅ Verify `.env` configuration for PostgreSQL
+  - ✅ Ensure environment variables for PostgreSQL connection are properly defined
+  - ✅ Document PostgreSQL configuration requirements
 
-- ⬜ Add basic tests for repository methods against Postgres
-  - ⬜ Create tests for all repository methods
-  - ⬜ Include tests for error cases and edge conditions
-  - ⬜ Ensure tests run against both PostgreSQL and SQLite
+- ✅ Add basic tests for repository methods against Postgres
+  - ✅ Create tests for all repository methods
+  - ✅ Include tests for error cases and edge conditions
+  - ✅ Ensure tests run against both PostgreSQL and SQLite
 
 ## 3. API Endpoints
 
@@ -69,7 +69,7 @@ This document outlines the implementation plan for the MVP (Minimum Viable Produ
   - ⬜ Implement API key storage and retrieval
   - ⬜ Add middleware for API key validation
 
-- ⬜ Implement basic authorization
+- ⬜ Implement basic authorization (is this a good idea? Would JWT Be better?)
   - ⬜ Define roles and permissions
   - ⬜ Implement role-based access control
   - ⬜ Add middleware for authorization
