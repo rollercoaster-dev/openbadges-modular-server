@@ -4,12 +4,8 @@
  * This file contains tests for the API Key entity and repository.
  */
 
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import { ApiKey } from '../../../src/domains/auth/apiKey.entity';
-import { RepositoryFactory } from '../../../src/infrastructure/repository.factory';
-import { ApiKeyRepository } from '../../../src/domains/auth/apiKey.repository';
-import { config } from '../../../src/config/config';
-import { runMigrations } from '../../../src/infrastructure/database/migrations';
 
 describe('API Key', () => {
   // Test the API Key entity

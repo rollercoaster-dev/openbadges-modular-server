@@ -10,12 +10,15 @@ import postgres from 'postgres';
 import { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { AssertionRepository } from '@domains/assertion/assertion.repository';
+import { ApiKeyRepository } from '@domains/auth/apiKey.repository';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
+import { PostgresApiKeyRepository } from './database/modules/postgresql/repositories/postgres-api-key.repository';
 import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
+import { SqliteApiKeyRepository } from './database/modules/sqlite/repositories/sqlite-api-key.repository';
 import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
@@ -153,6 +156,31 @@ export class RepositoryFactory {
 
       // Wrap with cache if enabled
       return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
+    }
+
+    throw new Error(`Unsupported database type: ${this.dbType}`);
+  }
+
+  /**
+   * Creates an API Key repository
+   * @returns An implementation of ApiKeyRepository
+   */
+  static async createApiKeyRepository(): Promise<ApiKeyRepository> {
+    if (this.dbType === 'postgresql') {
+      if (!this.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // Create the repository (no caching for security-related repositories)
+      return new PostgresApiKeyRepository(this.client);
+    } else if (this.dbType === 'sqlite') {
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the repository
+      return new SqliteApiKeyRepository(client);
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
