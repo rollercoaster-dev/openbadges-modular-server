@@ -76,6 +76,7 @@ export function createVerification(dataToSign: string, privateKey: string): any 
     // Create the verification object
     return {
       type: 'SignedBadge',
+      creator: 'https://example.org/public-keys/default', // Default creator URL
       created: new Date().toISOString(),
       signatureValue: signature
     };
