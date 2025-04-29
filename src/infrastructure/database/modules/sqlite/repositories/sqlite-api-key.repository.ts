@@ -5,14 +5,15 @@
  * and the Data Mapper pattern.
  */
 
-import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { ApiKey } from '@domains/auth/apiKey.entity';
 import type { ApiKeyRepository } from '@domains/auth/apiKey.repository';
-import { apiKeys } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+// These imports will be used in the full implementation
+// import { eq } from 'drizzle-orm';
+// import { apiKeys } from '../schema';
 
 export class SqliteApiKeyRepository implements ApiKeyRepository {
   private db: ReturnType<typeof drizzle>;

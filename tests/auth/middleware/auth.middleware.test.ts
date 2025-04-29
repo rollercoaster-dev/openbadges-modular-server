@@ -17,7 +17,7 @@ describe('Authentication Middleware', () => {
 
   beforeAll(() => {
     // Mock JWT service methods
-    JwtService.generateToken = mock(async (payload) => {
+    JwtService.generateToken = mock(async (_payload) => {
       return 'mock-jwt-token';
     });
 

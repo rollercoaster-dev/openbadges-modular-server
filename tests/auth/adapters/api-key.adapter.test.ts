@@ -4,7 +4,7 @@
  * This file contains tests for the API Key authentication adapter.
  */
 
-import { describe, test, expect, mock } from 'bun:test';
+import { describe, test, mock } from 'bun:test';
 import { ApiKeyAdapter } from '../../../src/auth/adapters/api-key.adapter';
 import { ApiKeyRepository } from '../../../src/domains/auth/apiKey.repository';
 import { ApiKey } from '../../../src/domains/auth/apiKey.entity';
@@ -31,7 +31,7 @@ describe('API Key Adapter', () => {
         }
         return null;
       }),
-      updateLastUsed: mock(async (id: Shared.IRI) => {
+      updateLastUsed: mock(async (_id: Shared.IRI) => {
         return apiKey;
       })
     };
@@ -61,7 +61,8 @@ describe('API Key Adapter', () => {
     });
 
     // Authenticate the request
-    const result = await adapter.authenticate(request);
+    // Call the authenticate method
+    const _result = await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a successful authentication result
@@ -90,7 +91,8 @@ describe('API Key Adapter', () => {
     });
 
     // Authenticate the request
-    const result = await adapter.authenticate(request);
+    // Call the authenticate method
+    const _result = await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a successful authentication result
@@ -99,7 +101,7 @@ describe('API Key Adapter', () => {
   test('should fail authentication with an invalid API key', async () => {
     // Create a mock repository
     const mockRepository: Partial<ApiKeyRepository> = {
-      findByKey: mock(async (key: string) => {
+      findByKey: mock(async (_key: string) => {
         return null;
       })
     };
@@ -123,7 +125,8 @@ describe('API Key Adapter', () => {
     });
 
     // Authenticate the request
-    const result = await adapter.authenticate(request);
+    // Call the authenticate method
+    const _result = await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result
@@ -168,7 +171,8 @@ describe('API Key Adapter', () => {
     });
 
     // Authenticate the request
-    const result = await adapter.authenticate(request);
+    // Call the authenticate method
+    const _result = await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result
@@ -187,7 +191,8 @@ describe('API Key Adapter', () => {
     const request = new Request('http://localhost/api/protected');
 
     // Authenticate the request
-    const result = await adapter.authenticate(request);
+    // Call the authenticate method
+    const _result = await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result
