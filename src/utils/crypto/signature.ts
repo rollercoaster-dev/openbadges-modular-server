@@ -7,6 +7,7 @@
 
 import * as crypto from 'crypto';
 import { logger } from '../logging/logger.service';
+import { config } from '../../config/config';
 
 /**
  * Generates a key pair for digital signatures
@@ -76,7 +77,7 @@ export function createVerification(dataToSign: string, privateKey: string): any 
     // Create the verification object
     return {
       type: 'SignedBadge',
-      creator: 'https://example.org/public-keys/default', // Default creator URL
+      creator: `${config.openBadges.baseUrl}/public-keys/default`, // Default creator URL from config
       created: new Date().toISOString(),
       signatureValue: signature
     };
