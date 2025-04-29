@@ -165,7 +165,10 @@ function createVersionedRouter(
 
   // Assertion routes
   router.post('/assertions',
-    ({ body }) => assertionController.createAssertion(body as Record<string, any>, version),
+    ({ body, query }) => {
+      const sign = query.sign !== 'false'; // Default to true if not specified
+      return assertionController.createAssertion(body as Record<string, any>, version, sign);
+    },
     { beforeHandle: [validateAssertionMiddleware] }
   );
   router.get('/assertions', () => assertionController.getAllAssertions(version));
@@ -179,7 +182,17 @@ function createVersionedRouter(
     const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
     return assertionController.revokeAssertion(params.id, reason);
   });
+
+  // Verification routes
   router.get('/assertions/:id/verify', ({ params }) => assertionController.verifyAssertion(params.id));
+  router.post('/assertions/:id/sign', ({ params, query }) => {
+    const keyId = query.keyId || 'default';
+    return assertionController.signAssertion(params.id, keyId as string, version);
+  });
+
+  // Public key routes
+  router.get('/public-keys', () => assertionController.getPublicKeys());
+  router.get('/public-keys/:id', ({ params }) => assertionController.getPublicKey(params.id));
 
   return router;
 }

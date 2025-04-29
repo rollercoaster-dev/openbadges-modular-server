@@ -1,20 +1,22 @@
 /**
  * Cryptographic utilities for Open Badges API
- * 
+ *
  * This file contains utilities for digital signatures and verification
  * according to the Open Badges 3.0 specification.
  */
 
 import * as crypto from 'crypto';
-import { config } from '../../config/config';
+import { logger } from '../logging/logger.service';
 
 /**
  * Generates a key pair for digital signatures
  * @returns An object containing the public and private keys
  */
-export function generateKeyPair(): { publicKey: string; privateKey: string } {
+export function generateKeyPair(options: { modulusLength?: number } = {}): { publicKey: string; privateKey: string } {
+  // Default to 2048 bits if not specified
+  const modulusLength = options.modulusLength || 2048;
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength,
     publicKeyEncoding: {
       type: 'spki',
       format: 'pem'
@@ -24,7 +26,7 @@ export function generateKeyPair(): { publicKey: string; privateKey: string } {
       format: 'pem'
     }
   });
-  
+
   return { publicKey, privateKey };
 }
 
@@ -55,43 +57,54 @@ export function verifySignature(data: string, signature: string, publicKey: stri
     verify.end();
     return verify.verify(publicKey, signature, 'base64');
   } catch (error) {
-    console.error('Signature verification error:', error);
+    logger.logError('Signature verification error', error as Error);
     return false;
   }
 }
 
 /**
  * Creates a verification object for an assertion
- * @param assertionId The ID of the assertion
+ * @param dataToSign The data to sign (typically a canonical representation of the assertion)
  * @param privateKey The private key to use for signing
  * @returns A verification object with the signature
  */
-export function createVerification(assertionId: string, privateKey: string): any {
-  const dataToSign = assertionId;
-  const signature = signData(dataToSign, privateKey);
-  
-  return {
-    type: 'SignedBadge',
-    creator: `${config.openBadges.baseUrl}/public-key`,
-    created: new Date().toISOString(),
-    signatureValue: signature
-  };
+export function createVerification(dataToSign: string, privateKey: string): any {
+  try {
+    // Sign the data
+    const signature = signData(dataToSign, privateKey);
+
+    // Create the verification object
+    return {
+      type: 'SignedBadge',
+      created: new Date().toISOString(),
+      signatureValue: signature
+    };
+  } catch (error) {
+    logger.logError('Failed to create verification', error as Error);
+    throw error;
+  }
 }
 
 /**
  * Verifies an assertion's signature
- * @param assertionId The ID of the assertion
+ * @param dataToVerify The data to verify (typically a canonical representation of the assertion)
  * @param verification The verification object with the signature
  * @param publicKey The public key to use for verification
  * @returns True if the signature is valid, false otherwise
  */
-export function verifyAssertion(assertionId: string, verification: any, publicKey: string): boolean {
-  if (!verification || !verification.signatureValue) {
+export function verifyAssertion(dataToVerify: string, verification: any, publicKey: string): boolean {
+  try {
+    if (!verification || !verification.signatureValue) {
+      logger.warn('Verification object is missing or has no signature value');
+      return false;
+    }
+
+    // Verify the signature
+    return verifySignature(dataToVerify, verification.signatureValue, publicKey);
+  } catch (error) {
+    logger.logError('Failed to verify assertion', error as Error);
     return false;
   }
-  
-  const dataToVerify = assertionId;
-  return verifySignature(dataToVerify, verification.signatureValue, publicKey);
 }
 
 /**
@@ -101,4 +114,13 @@ export function verifyAssertion(assertionId: string, verification: any, publicKe
  */
 export function hashData(data: string): string {
   return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+/**
+ * Generates a nonce (number used once) for cryptographic operations
+ * @param length The length of the nonce in bytes (default: 16)
+ * @returns The nonce as a hex string
+ */
+export function generateNonce(length: number = 16): string {
+  return crypto.randomBytes(length).toString('hex');
 }

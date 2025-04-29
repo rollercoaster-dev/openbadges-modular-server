@@ -12,6 +12,9 @@ import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared } from 'openbadges-types';
+import { VerificationService } from '../../core/verification.service';
+import { KeyService } from '../../core/key.service';
+import { logger } from '../../utils/logging/logger.service';
 
 /**
  * Controller for assertion-related operations
@@ -33,24 +36,46 @@ export class AssertionController {
    * Creates a new assertion
    * @param data The assertion data
    * @param version The badge version to use for the response
+   * @param sign Whether to sign the assertion (default: true)
    * @returns The created assertion
    */
-  async createAssertion(data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>> {
-    const assertion = Assertion.create(data);
-    const createdAssertion = await this.assertionRepository.create(assertion);
+  async createAssertion(
+    data: Record<string, any>,
+    version: BadgeVersion = BadgeVersion.V3,
+    sign: boolean = true
+  ): Promise<Record<string, any>> {
+    try {
+      // Initialize the key service
+      await KeyService.initialize();
 
-    // For a complete response, we need the badge class and issuer
-    if (version === BadgeVersion.V3) {
-      const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
-      if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return createdAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
+      // Create the assertion
+      const assertion = Assertion.create(data);
+
+      // Sign the assertion if requested
+      let signedAssertion = assertion;
+      if (sign) {
+        signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+      }
+
+      // Save the assertion
+      const createdAssertion = await this.assertionRepository.create(signedAssertion);
+
+      // For a complete response, we need the badge class and issuer
+      if (version === BadgeVersion.V3) {
+        const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
+        if (badgeClass) {
+          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          if (issuer) {
+            return createdAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
+          }
         }
       }
-    }
 
-    return createdAssertion.toJsonLd(version);
+      return createdAssertion.toJsonLd(version);
+    } catch (error) {
+      logger.logError('Failed to create assertion', error as Error);
+      throw error;
+    }
   }
 
   /**
@@ -168,45 +193,161 @@ export class AssertionController {
   /**
    * Verifies an assertion
    * @param id The assertion ID
-   * @returns True if the assertion is valid, false otherwise
+   * @returns Verification results
    */
-  async verifyAssertion(id: string): Promise<{ isValid: boolean; reason?: string }> {
-    const assertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
-    if (!assertion) {
-      return { isValid: false, reason: 'Assertion not found' };
-    }
+  async verifyAssertion(id: string): Promise<{
+    isValid: boolean;
+    isExpired: boolean;
+    isRevoked: boolean;
+    hasValidSignature: boolean;
+    details?: string;
+  }> {
+    try {
+      // Initialize the key service
+      await KeyService.initialize();
 
-    // Check if revoked
-    if (assertion.revoked) {
+      // Get the assertion
+      const assertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
+      if (!assertion) {
+        return {
+          isValid: false,
+          isExpired: false,
+          isRevoked: false,
+          hasValidSignature: false,
+          details: 'Assertion not found'
+        };
+      }
+
+      // Verify badge class exists
+      const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
+      if (!badgeClass) {
+        return {
+          isValid: false,
+          isExpired: false,
+          isRevoked: false,
+          hasValidSignature: false,
+          details: 'Referenced badge class not found'
+        };
+      }
+
+      // Verify issuer exists
+      const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+      if (!issuer) {
+        return {
+          isValid: false,
+          isExpired: false,
+          isRevoked: false,
+          hasValidSignature: false,
+          details: 'Referenced issuer not found'
+        };
+      }
+
+      // Use the verification service to verify the assertion
+      return await VerificationService.verifyAssertion(assertion);
+    } catch (error) {
+      logger.logError(`Failed to verify assertion with ID ${id}`, error as Error);
       return {
         isValid: false,
-        reason: assertion.revocationReason || 'Assertion has been revoked'
+        isExpired: false,
+        isRevoked: false,
+        hasValidSignature: false,
+        details: 'Error during verification process'
       };
     }
+  }
 
-    // Check if expired
-    if (assertion.expires) {
-      const expiryDate = new Date(assertion.expires);
-      const now = new Date();
-      if (expiryDate < now) {
-        return { isValid: false, reason: 'Assertion has expired' };
+  /**
+   * Signs an existing assertion
+   * @param id The assertion ID
+   * @param keyId Optional key ID to use for signing (defaults to 'default')
+   * @param version The badge version to use for the response
+   * @returns The signed assertion
+   */
+  async signAssertion(
+    id: string,
+    keyId: string = 'default',
+    version: BadgeVersion = BadgeVersion.V3
+  ): Promise<Record<string, any> | null> {
+    try {
+      // Initialize the key service
+      await KeyService.initialize();
+
+      // Get the assertion
+      const assertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
+      if (!assertion) {
+        return null;
       }
+
+      // Sign the assertion
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion, keyId);
+
+      // Update the assertion in the repository
+      const updatedAssertion = await this.assertionRepository.update(assertion.id, signedAssertion.toObject());
+      if (!updatedAssertion) {
+        return null;
+      }
+
+      // For a complete response, we need the badge class and issuer
+      if (version === BadgeVersion.V3) {
+        const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
+        if (badgeClass) {
+          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          if (issuer) {
+            return updatedAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
+          }
+        }
+      }
+
+      return updatedAssertion.toJsonLd(version);
+    } catch (error) {
+      logger.logError(`Failed to sign assertion with ID ${id}`, error as Error);
+      return null;
     }
+  }
 
-    // Verify badge class exists
-    const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
-    if (!badgeClass) {
-      return { isValid: false, reason: 'Referenced badge class not found' };
+  /**
+   * Gets the public keys used for verification
+   * @returns List of public keys
+   */
+  async getPublicKeys(): Promise<{ id: string; publicKey: string }[]> {
+    try {
+      // Initialize the key service
+      await KeyService.initialize();
+
+      // Get all key IDs
+      const keyIds = KeyService.listKeyIds();
+
+      // Get the public keys for each ID
+      return keyIds.map(id => ({
+        id,
+        publicKey: KeyService.getPublicKey(id)
+      }));
+    } catch (error) {
+      logger.logError('Failed to get public keys', error as Error);
+      return [];
     }
+  }
 
-    // Verify issuer exists
-    const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-    if (!issuer) {
-      return { isValid: false, reason: 'Referenced issuer not found' };
+  /**
+   * Gets a specific public key
+   * @param keyId The key ID
+   * @returns The public key or null if not found
+   */
+  async getPublicKey(keyId: string): Promise<{ id: string; publicKey: string } | null> {
+    try {
+      // Initialize the key service
+      await KeyService.initialize();
+
+      // Get the public key
+      const publicKey = KeyService.getPublicKey(keyId);
+
+      return {
+        id: keyId,
+        publicKey
+      };
+    } catch (error) {
+      logger.logError(`Failed to get public key with ID ${keyId}`, error as Error);
+      return null;
     }
-
-    // Additional verification logic could be added here
-
-    return { isValid: true };
   }
 }
