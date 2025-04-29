@@ -28,6 +28,7 @@ import { logger } from '@utils/logging/logger.service';
 export class RepositoryFactory {
   private static client: postgres.Sql | null = null;
   private static dbType: string = 'postgresql'; // Default database type
+  private static isInitialized: boolean = false;
 
   /**
    * Initializes the repository factory with a database connection
@@ -41,6 +42,12 @@ export class RepositoryFactory {
     sqliteSyncMode?: string;
     sqliteCacheSize?: number;
   }): Promise<void> {
+    // Prevent multiple initializations
+    if (this.isInitialized) {
+      logger.warn('RepositoryFactory already initialized. Skipping redundant initialization.');
+      return;
+    }
+
     this.dbType = config.type;
 
     if (this.dbType === 'postgresql') {
@@ -57,6 +64,10 @@ export class RepositoryFactory {
     } else {
       throw new Error(`Unsupported database type: ${this.dbType}`);
     }
+
+    // Mark as initialized
+    this.isInitialized = true;
+    logger.info(`Repository factory initialized with ${this.dbType} database`);
   }
 
   /**
@@ -190,6 +201,11 @@ export class RepositoryFactory {
    * Closes the database connection
    */
   static async close(): Promise<void> {
+    if (!this.isInitialized) {
+      logger.warn('RepositoryFactory not initialized. Nothing to close.');
+      return;
+    }
+
     if (this.dbType === 'postgresql' && this.client) {
       await this.client.end();
       this.client = null;
@@ -205,5 +221,9 @@ export class RepositoryFactory {
         });
       }
     }
+
+    // Reset initialization state
+    this.isInitialized = false;
+    logger.info('Repository factory closed');
   }
 }

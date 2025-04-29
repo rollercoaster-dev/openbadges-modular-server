@@ -45,16 +45,23 @@ async function generateAdminKey(): Promise<void> {
     // Save the API key
     const createdApiKey = await apiKeyRepository.create(apiKey);
 
-    // Log the API key
+    // Log the API key (without sensitive information)
     logger.info('Admin API key generated successfully');
-    logger.info('API Key:', {
+    logger.info('API Key metadata:', {
       id: createdApiKey.id,
-      key: createdApiKey.key,
       name: createdApiKey.name,
       userId: createdApiKey.userId,
       description: createdApiKey.description,
       permissions: createdApiKey.permissions
     });
+
+    // Only log the actual key value to the console, not to the log files
+    // This ensures the key is only shown once during generation
+    console.log('\n===========================================================');
+    console.log('IMPORTANT: SAVE THIS API KEY - IT WILL NOT BE SHOWN AGAIN');
+    console.log('===========================================================');
+    console.log(`API Key: ${createdApiKey.key}`);
+    console.log('===========================================================\n');
 
     // Close the database connection
     await RepositoryFactory.close();
