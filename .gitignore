@@ -39,3 +39,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.db-wal
 
 uploads/*
+
+# Cryptographic keys
+keys/
+test-keys/
