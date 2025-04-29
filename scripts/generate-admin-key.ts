@@ -27,16 +27,6 @@ async function generateAdminKey(): Promise<void> {
 
     logger.info(`Connected to ${config.database.type} database`);
 
-    // Initialize the database
-    await RepositoryFactory.initialize({
-      type: config.database.type,
-      connectionString: config.database.connectionString,
-      sqliteFile: config.database.sqliteFile,
-      sqliteBusyTimeout: config.database.sqliteBusyTimeout,
-      sqliteSyncMode: config.database.sqliteSyncMode,
-      sqliteCacheSize: config.database.sqliteCacheSize
-    });
-
     // Create the API key repository
     const apiKeyRepository = await RepositoryFactory.createApiKeyRepository();
 
