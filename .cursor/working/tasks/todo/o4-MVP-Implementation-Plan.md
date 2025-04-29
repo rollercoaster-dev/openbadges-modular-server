@@ -64,27 +64,27 @@ This document outlines the implementation plan for the MVP (Minimum Viable Produ
 
 ## 4. Authentication and Authorization
 
-- ⬜ Implement API key authentication
-  - ⬜ Create API key generation and validation
-  - ⬜ Implement API key storage and retrieval
-  - ⬜ Add middleware for API key validation
+- ✅ Implement API key authentication
+  - ✅ Create API key generation and validation
+  - ✅ Implement API key storage and retrieval
+  - ✅ Add middleware for API key validation
 
-- ⬜ Implement basic authorization (is this a good idea? Would JWT or OAuth Be better?)
-  - ⬜ Define roles and permissions
-  - ⬜ Implement role-based access control
-  - ⬜ Add middleware for authorization
+- ✅ Implement basic authorization (is this a good idea? Would JWT or OAuth Be better?)
+  - ✅ Define roles and permissions
+  - ✅ Implement role-based access control
+  - ✅ Add middleware for authorization
 
 ## 5. Assertion Verification
 
-- ⬜ Implement assertion verification
-  - ⬜ Verify assertion signature
-  - ⬜ Verify assertion expiration
-  - ⬜ Verify assertion revocation status
+- ✅ Implement assertion verification
+  - ✅ Verify assertion signature
+  - ✅ Verify assertion expiration
+  - ✅ Verify assertion revocation status
 
-- ⬜ Implement assertion signing
-  - ⬜ Generate key pairs for signing
-  - ⬜ Sign assertions with private key
-  - ⬜ Verify assertions with public key
+- ✅ Implement assertion signing
+  - ✅ Generate key pairs for signing
+  - ✅ Sign assertions with private key
+  - ✅ Verify assertions with public key
 
 ## 6. Documentation
 
