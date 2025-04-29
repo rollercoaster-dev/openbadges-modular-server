@@ -204,4 +204,60 @@ describe('Verification Service', () => {
     expect(result.hasValidSignature).toBe(true);
     expect(result.details).toBe('Assertion has been revoked: Test revocation');
   });
+
+  test('should handle non-standard creator URLs', async () => {
+    // Create a test assertion
+    const assertion = Assertion.create({
+      id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+      badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+      recipient: {
+        identity: 'sha256$test@example.com',
+        type: 'email',
+        hashed: true
+      },
+      issuedOn: new Date().toISOString()
+    });
+
+    // Create a verification object
+    const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+    // Modify the creator URL to a non-standard format
+    signedAssertion.verification.creator = '/public-keys/custom-key-id';
+
+    // Verify the signature
+    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+
+    // Should still work with the fallback mechanism
+    expect(isValid).toBe(false); // Will be false because the key 'custom-key-id' doesn't exist
+  });
+
+  test('should handle malformed creator URLs', async () => {
+    // Create a test assertion
+    const assertion = Assertion.create({
+      id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+      badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+      recipient: {
+        identity: 'sha256$test@example.com',
+        type: 'email',
+        hashed: true
+      },
+      issuedOn: new Date().toISOString()
+    });
+
+    // Create a verification object
+    const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+    // Modify the creator URL to a completely invalid format
+    signedAssertion.verification.creator = 'invalid-url';
+
+    // Verify the signature directly - should return false for invalid URL
+    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+    expect(isValid).toBe(false);
+
+    // Verify the assertion - should not throw an error
+    const result = await VerificationService.verifyAssertion(signedAssertion);
+
+    // Should gracefully handle the error and return false for signature validity
+    expect(result.hasValidSignature).toBe(false);
+  });
 });

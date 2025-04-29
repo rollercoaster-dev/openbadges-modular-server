@@ -88,12 +88,44 @@ export class VerificationService {
 
       // Extract the key ID from the creator URL
       let keyId = 'default';
+      let validCreatorUrl = true;
+
       if (assertion.verification.creator) {
         const creatorUrl = assertion.verification.creator as string;
-        const match = creatorUrl.match(/\/public-keys\/([^/]+)$/);
-        if (match && match[1]) {
-          keyId = match[1];
+        try {
+          // Try to parse as a valid URL
+          const url = new URL(creatorUrl);
+          const match = url.pathname.match(/\/public-keys\/([^/]+)$/);
+          if (match && match[1]) {
+            keyId = match[1];
+          } else {
+            logger.warn(`Creator URL does not match the expected pattern: ${creatorUrl}`);
+            // Fallback to simple regex for non-standard URLs
+            const simpleMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
+            if (simpleMatch && simpleMatch[1]) {
+              keyId = simpleMatch[1];
+              logger.info(`Extracted key ID using fallback method: ${keyId}`);
+            } else {
+              validCreatorUrl = false;
+            }
+          }
+        } catch (error) {
+          // If URL parsing fails, fall back to simple regex
+          logger.warn(`Invalid creator URL format: ${creatorUrl}`, error as Error);
+          const fallbackMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
+          if (fallbackMatch && fallbackMatch[1]) {
+            keyId = fallbackMatch[1];
+            logger.info(`Extracted key ID using fallback method: ${keyId}`);
+          } else {
+            validCreatorUrl = false;
+          }
         }
+      }
+
+      // If we couldn't extract a valid key ID from the creator URL, return false
+      if (!validCreatorUrl) {
+        logger.warn(`Could not extract a valid key ID from creator URL: ${assertion.verification.creator}`);
+        return false;
       }
 
       // Create a canonical representation of the assertion for verification
