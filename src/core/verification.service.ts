@@ -11,8 +11,13 @@ import { createVerification, verifyAssertion } from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
 import { config } from '../config/config';
 import { Shared } from 'openbadges-types';
-import { AssertionRepository } from '../domains/assertion/assertion.repository';
 import { URL } from 'url';
+
+// Define a type for the assertion repository interface
+interface IAssertionRepository {
+  // eslint-disable-next-line no-unused-vars
+  findById(id: Shared.IRI): Promise<Assertion | null>;
+}
 
 export class VerificationService {
   /**
@@ -88,38 +93,93 @@ export class VerificationService {
         return false;
       }
 
-      // Extract the key ID from the creator URL
+      /**
+       * Extract the key ID from the creator URL
+       *
+       * The creator URL is expected to be in the format:
+       * https://example.com/public-keys/{keyId}
+       *
+       * We handle several edge cases:
+       * 1. Standard URL with the expected pattern
+       * 2. Valid URL but with unexpected path format
+       * 3. Invalid URL format but with recognizable pattern
+       * 4. Completely invalid or unrecognizable format
+       */
       let keyId = 'default';
       let validCreatorUrl = true;
 
       if (assertion.verification.creator) {
         const creatorUrl = assertion.verification.creator as string;
+
+        // Helper function to extract key ID using regex
+        const extractKeyIdWithRegex = (url: string): string | null => {
+          // Match patterns like "/public-keys/abc123" or "public-keys/abc123"
+          // or even "public-keys\abc123" (Windows paths)
+          const patterns = [
+            /\/public-keys\/([^/\\]+)$/,  // Standard URL path
+            /public-keys\/([^/\\]+)$/,    // Without leading slash
+            /public-keys\\([^/\\]+)$/     // Windows path format
+          ];
+
+          for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+              return match[1];
+            }
+          }
+
+          return null;
+        };
+
         try {
           // Try to parse as a valid URL
           const url = new URL(creatorUrl);
+
+          // First attempt: Extract from pathname using URL API
           const match = url.pathname.match(/\/public-keys\/([^/]+)$/);
           if (match && match[1]) {
             keyId = match[1];
+            logger.debug(`Extracted key ID from URL pathname: ${keyId}`);
           } else {
-            logger.warn(`Creator URL does not match the expected pattern: ${creatorUrl}`);
-            // Fallback to simple regex for non-standard URLs
-            const simpleMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
-            if (simpleMatch && simpleMatch[1]) {
-              keyId = simpleMatch[1];
-              logger.info(`Extracted key ID using fallback method: ${keyId}`);
+            // Second attempt: Try the full URL with our regex patterns
+            logger.warn(`Creator URL does not match the expected pathname pattern: ${creatorUrl}`);
+            const extractedId = extractKeyIdWithRegex(creatorUrl);
+
+            if (extractedId) {
+              keyId = extractedId;
+              logger.info(`Extracted key ID using fallback regex on full URL: ${keyId}`);
             } else {
-              validCreatorUrl = false;
+              // Third attempt: Check if the hostname itself might contain the key ID
+              // This handles cases where the URL might be malformed but still contains useful info
+              const hostnameMatch = url.hostname.match(/([^.]+)/);
+              if (hostnameMatch && hostnameMatch[1] && hostnameMatch[1] !== 'www') {
+                keyId = hostnameMatch[1];
+                logger.info(`Extracted potential key ID from hostname: ${keyId}`);
+              } else {
+                validCreatorUrl = false;
+                logger.warn(`Could not extract key ID from URL: ${creatorUrl}`);
+              }
             }
           }
         } catch (error) {
-          // If URL parsing fails, fall back to simple regex
+          // If URL parsing fails, fall back to simple regex on the string
           logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error: (error as Error).message });
-          const fallbackMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
-          if (fallbackMatch && fallbackMatch[1]) {
-            keyId = fallbackMatch[1];
-            logger.info(`Extracted key ID using fallback method: ${keyId}`);
+
+          const extractedId = extractKeyIdWithRegex(creatorUrl);
+          if (extractedId) {
+            keyId = extractedId;
+            logger.info(`Extracted key ID from invalid URL using regex: ${keyId}`);
           } else {
-            validCreatorUrl = false;
+            // Last resort: Try to find anything that looks like an ID
+            // This is very permissive and should only be used as a last resort
+            const lastResortMatch = creatorUrl.match(/([a-zA-Z0-9_-]{4,})/);
+            if (lastResortMatch && lastResortMatch[1]) {
+              keyId = lastResortMatch[1];
+              logger.info(`Extracted potential key ID using last resort method: ${keyId}`);
+            } else {
+              validCreatorUrl = false;
+              logger.warn(`Could not extract any valid key ID from: ${creatorUrl}`);
+            }
           }
         }
       }
@@ -224,7 +284,7 @@ export class VerificationService {
    */
   static async verifyAssertionById(
     assertionId: Shared.IRI,
-    assertionRepository: AssertionRepository
+    assertionRepository: IAssertionRepository
   ): Promise<{
     isValid: boolean;
     isExpired: boolean;

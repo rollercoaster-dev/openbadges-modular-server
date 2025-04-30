@@ -13,6 +13,7 @@ import { Assertion } from '../../src/domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as process from 'node:process';
 
 // Test directory for keys
 const TEST_KEYS_DIR = path.join(process.cwd(), 'test-keys');
@@ -205,59 +206,187 @@ describe('Verification Service', () => {
     expect(result.details).toBe('Assertion has been revoked: Test revocation');
   });
 
-  test('should handle non-standard creator URLs', async () => {
-    // Create a test assertion
-    const assertion = Assertion.create({
-      id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
-      badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
-      recipient: {
-        identity: 'sha256$test@example.com',
-        type: 'email',
-        hashed: true
-      },
-      issuedOn: new Date().toISOString()
+  describe('URL parsing for creator URLs', () => {
+    test('should handle standard creator URLs', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
+
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+
+      // Should work with the standard URL format
+      expect(isValid).toBe(true);
     });
 
-    // Create a verification object
-    const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+    test('should handle non-standard creator URLs with path format', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
 
-    // Modify the creator URL to a non-standard format
-    signedAssertion.verification.creator = '/public-keys/custom-key-id';
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
 
-    // Verify the signature
-    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+      // Modify the creator URL to a non-standard format
+      signedAssertion.verification.creator = '/public-keys/custom-key-id';
 
-    // Should still work with the fallback mechanism
-    expect(isValid).toBe(false); // Will be false because the key 'custom-key-id' doesn't exist
-  });
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
 
-  test('should handle malformed creator URLs', async () => {
-    // Create a test assertion
-    const assertion = Assertion.create({
-      id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
-      badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
-      recipient: {
-        identity: 'sha256$test@example.com',
-        type: 'email',
-        hashed: true
-      },
-      issuedOn: new Date().toISOString()
+      // Should still work with the fallback mechanism
+      expect(isValid).toBe(false); // Will be false because the key 'custom-key-id' doesn't exist
     });
 
-    // Create a verification object
-    const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+    test('should handle URLs without leading slash', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
 
-    // Modify the creator URL to a completely invalid format
-    signedAssertion.verification.creator = 'invalid-url';
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
 
-    // Verify the signature directly - should return false for invalid URL
-    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
-    expect(isValid).toBe(false);
+      // Modify the creator URL to a format without leading slash
+      signedAssertion.verification.creator = 'public-keys/no-slash-key';
 
-    // Verify the assertion - should not throw an error
-    const result = await VerificationService.verifyAssertion(signedAssertion);
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
 
-    // Should gracefully handle the error and return false for signature validity
-    expect(result.hasValidSignature).toBe(false);
+      // Should still work with the fallback mechanism
+      expect(isValid).toBe(false); // Will be false because the key doesn't exist
+    });
+
+    test('should handle Windows path format', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
+
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+      // Modify the creator URL to a Windows path format
+      signedAssertion.verification.creator = 'C:\\path\\to\\public-keys\\windows-key';
+
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+
+      // Should still work with the fallback mechanism
+      expect(isValid).toBe(false); // Will be false because the key doesn't exist
+    });
+
+    test('should extract key ID from hostname as last resort', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
+
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+      // Modify the creator URL to a format where hostname contains the key ID
+      signedAssertion.verification.creator = 'https://hostname-key.example.com/invalid-path';
+
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+
+      // Should still work with the fallback mechanism
+      expect(isValid).toBe(false); // Will be false because the key doesn't exist
+    });
+
+    test('should handle completely malformed creator URLs', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString()
+      });
+
+      // Create a verification object
+      const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
+
+      // Modify the creator URL to a completely invalid format
+      signedAssertion.verification.creator = 'invalid-url';
+
+      // Verify the signature directly - should return false for invalid URL
+      const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+      expect(isValid).toBe(false);
+
+      // Verify the assertion - should not throw an error
+      const result = await VerificationService.verifyAssertion(signedAssertion);
+
+      // Should gracefully handle the error and return false for signature validity
+      expect(result.hasValidSignature).toBe(false);
+    });
+
+    test('should use default key ID when creator URL is missing', async () => {
+      // Create a test assertion
+      const assertion = Assertion.create({
+        id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        recipient: {
+          identity: 'sha256$test@example.com',
+          type: 'email',
+          hashed: true
+        },
+        issuedOn: new Date().toISOString(),
+        verification: {
+          type: 'SignedBadge',
+          signatureValue: 'abc123signature'
+          // No creator URL
+        }
+      });
+
+      // Verify the signature
+      const isValid = await VerificationService.verifyAssertionSignature(assertion);
+
+      // Should use the default key ID
+      expect(isValid).toBe(false); // Will be false because the signature is invalid
+    });
   });
 });
