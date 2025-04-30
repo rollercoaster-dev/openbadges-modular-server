@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', '.github/**', '.husky/**']
+    ignores: ['node_modules/**', 'dist/**', '.github/**', '.husky/**', 'docs/examples/**']
   },
   {
     files: ['**/*.ts'],
@@ -19,14 +19,14 @@ export default [
     },
     rules: {
       // ESLint core rules
-      'no-console': 'off', // Temporarily disabled
-      'no-unused-vars': 'off',
-      'no-undef': 'off', // Handled by TypeScript
+      'no-console': 'error', 
+      'no-unused-vars': 'error',
+      'no-undef': 'error', 
       'no-constant-condition': 'warn',
 
       // TypeScript rules
-      '@typescript-eslint/explicit-module-boundary-types': 'off', // Temporarily disabled
-      '@typescript-eslint/no-explicit-any': 'off', // Temporarily disabled
+      '@typescript-eslint/explicit-module-boundary-types': 'error', 
+      '@typescript-eslint/no-explicit-any': 'error', 
       '@typescript-eslint/no-unused-vars': ['error', {
   argsIgnorePattern: '^_',
   varsIgnorePattern: '^_',
