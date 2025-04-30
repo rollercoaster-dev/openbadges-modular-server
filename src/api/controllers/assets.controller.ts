@@ -1,6 +1,11 @@
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { createAssetProvider } from '../../infrastructure/assets/asset-storage.factory';
 import { logger } from '../../utils/logging/logger.service';
+import * as process from 'node:process';
+import { Buffer } from 'node:buffer';
+
+// Define Blob type for Node.js environment
+type Blob = globalThis.Blob;
 
 const assetStorage = createAssetProvider();
 
@@ -22,19 +27,19 @@ export class AssetsController {
 
   constructor() {
     this.router = new Elysia();
-    this.router.post('/v1/assets', async (context: any) => {
+    this.router.post('/v1/assets', async ({ body, set }: { body: { file: { data: Blob; filename: string; mimetype: string } }; set: { status: number; headers: Record<string, string> } }) => {
       try {
-        const file = context.body?.file;
+        const file = body.file;
 
         // Validate file upload
         if (!file || !file.data || !file.filename || !file.mimetype) {
-          context.set.status = 400;
+          set.status = 400;
           return { error: 'Missing file upload' };
         }
 
         // Validate file type
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-          context.set.status = 400;
+          set.status = 400;
           return {
             error: 'Invalid file type',
             allowedTypes: ALLOWED_MIME_TYPES
@@ -46,7 +51,7 @@ export class AssetsController {
         const buffer = Buffer.from(arrayBuffer);
 
         if (buffer.length > MAX_FILE_SIZE) {
-          context.set.status = 400;
+          set.status = 400;
           return {
             error: 'File too large',
             maxSize: `${MAX_FILE_SIZE / 1024 / 1024}MB`
@@ -69,11 +74,17 @@ export class AssetsController {
         logger.error('Error uploading asset', {
           error: error instanceof Error ? error.message : String(error)
         });
-        context.set.status = 500;
+        set.status = 500;
         return { error: 'Internal server error' };
       }
     }, {
-      body: 'formdata' as any,
+      body: t.Object({
+        file: t.Object({
+          data: t.Any(),
+          filename: t.String(),
+          mimetype: t.String()
+        })
+      }),
       detail: {
         summary: 'Upload asset',
         description: 'Upload a badge image or issuer logo. Returns public URL.',

@@ -5,8 +5,8 @@
  * LRU (Least Recently Used) cache implementation that's compatible with Bun.js.
  */
 
-import * as LRUModule from 'lru.min';
-type LRUType = any; // Type definition for LRU
+import { LRUCache } from 'lru-cache';
+type LRUType = LRUCache<string, unknown>; // Type definition for LRU
 import { CacheInterface, CacheStats } from './cache.interface';
 
 export interface CacheOptions {
@@ -43,10 +43,7 @@ export class CacheService implements CacheInterface {
     const { max = 1000, ttl = 3600, updateAgeOnGet = true } = options;
 
     // Create a new LRU cache instance
-    // @ts-ignore - LRU.min doesn't have proper TypeScript definitions
-    const LRU = LRUModule.default || LRUModule;
-    // @ts-ignore - Using any type to bypass TypeScript errors
-    this.cache = new LRU({
+    this.cache = new LRUCache({
       max,
       updateAgeOnGet
     });
@@ -63,7 +60,8 @@ export class CacheService implements CacheInterface {
    */
   set<T>(key: string, value: T, ttl?: number): boolean {
     const maxAge = (ttl || this.defaultTtl) * 1000; // Convert to milliseconds
-    return this.cache.set(key, value, maxAge);
+    this.cache.set(key, value, { ttl: maxAge });
+    return true;
   }
 
   /**
@@ -129,7 +127,7 @@ export class CacheService implements CacheInterface {
    * @returns Array of cache keys
    */
   keys(): string[] {
-    return this.cache.keys();
+    return Array.from(this.cache.keys());
   }
 
   /**
@@ -172,7 +170,7 @@ export class CacheService implements CacheInterface {
    * @param obj The object to estimate
    * @returns Size in bytes
    */
-  private estimateObjectSize(obj: any): number {
+  private estimateObjectSize(obj: unknown): number {
     if (obj === null || obj === undefined) {
       return 0;
     }
@@ -193,12 +191,12 @@ export class CacheService implements CacheInterface {
       return obj.reduce((size, item) => size + this.estimateObjectSize(item), 0);
     }
 
-    if (typeof obj === 'object') {
+    if (typeof obj === 'object' && obj !== null) {
       let size = 0;
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
           size += key.length * 2; // Key size
-          size += this.estimateObjectSize(obj[key]); // Value size
+          size += this.estimateObjectSize((obj as Record<string, unknown>)[key]); // Value size
         }
       }
       return size;

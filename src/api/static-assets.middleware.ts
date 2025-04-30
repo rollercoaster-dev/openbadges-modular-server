@@ -4,6 +4,10 @@ import { existsSync } from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logging/logger.service';
 
+// Import Node.js modules
+import * as process from 'node:process';
+import { Buffer } from 'node:buffer';
+
 // Ensure UPLOADS_DIR has a trailing separator for secure path comparison
 let UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
 // Normalize and ensure trailing separator
@@ -24,7 +28,7 @@ const MIME_TYPES: Record<string, string> = {
   '.pdf': 'application/pdf'
 };
 
-export function staticAssetsMiddleware(router: Elysia) {
+export function staticAssetsMiddleware(router: Elysia): Elysia {
   router.get('/uploads/:filename', async ({ params, set }) => {
     try {
       // Validate filename to prevent directory traversal attacks
@@ -53,13 +57,13 @@ export function staticAssetsMiddleware(router: Elysia) {
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
       // Set response headers
-      const headers = {
+      set.headers = {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
         'ETag': Buffer.from(params.filename).toString('base64').substring(0, 16) // Simple ETag
       };
 
-      return new Response(fileBuffer, { headers });
+      return fileBuffer;
     } catch (error) {
       logger.error('Error serving static asset', {
         filename: params.filename,
@@ -69,4 +73,6 @@ export function staticAssetsMiddleware(router: Elysia) {
       return { error: 'Internal server error' };
     }
   });
+
+  return router;
 }

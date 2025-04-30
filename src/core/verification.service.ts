@@ -11,6 +11,8 @@ import { createVerification, verifyAssertion } from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
 import { config } from '../config/config';
 import { Shared } from 'openbadges-types';
+import { AssertionRepository } from '../domains/assertion/assertion.repository';
+import { URL } from 'url';
 
 export class VerificationService {
   /**
@@ -111,7 +113,7 @@ export class VerificationService {
           }
         } catch (error) {
           // If URL parsing fails, fall back to simple regex
-          logger.warn(`Invalid creator URL format: ${creatorUrl}`, error as Error);
+          logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error: (error as Error).message });
           const fallbackMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
           if (fallbackMatch && fallbackMatch[1]) {
             keyId = fallbackMatch[1];
@@ -222,7 +224,7 @@ export class VerificationService {
    */
   static async verifyAssertionById(
     assertionId: Shared.IRI,
-    assertionRepository: any
+    assertionRepository: AssertionRepository
   ): Promise<{
     isValid: boolean;
     isExpired: boolean;
