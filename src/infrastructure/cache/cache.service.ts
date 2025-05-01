@@ -61,7 +61,7 @@ export class CacheService implements CacheInterface {
   set<T>(key: string, value: T, ttl?: number): boolean {
     const maxAge = (ttl || this.defaultTtl) * 1000; // Convert to milliseconds
     this.cache.set(key, value, { ttl: maxAge });
-    return true;
+    return this.cache.has(key);
   }
 
   /**
