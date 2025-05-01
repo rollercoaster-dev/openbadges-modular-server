@@ -47,8 +47,8 @@ export const logger = {
 
   // Log an error object directly
   logError(msg: string, error: Error, additionalContext: LogContext = {}): void {
-    // Call the adapter's error method so spies work
-    logger.error(msg, { ...additionalContext, error });
+    // Call rdLogger.error directly to avoid potential issues with method overriding or recursion
+    rdLogger.error(msg, { ...additionalContext, error });
   },
 
   // New methods for sensitive data handling
