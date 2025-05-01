@@ -163,7 +163,7 @@ export class VerificationService {
           }
         } catch (error) {
           // If URL parsing fails, fall back to simple regex on the string
-          logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error: (error as Error).message });
+          logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error: error });
 
           const extractedId = extractKeyIdWithRegex(creatorUrl);
           if (extractedId) {
