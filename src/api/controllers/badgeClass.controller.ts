@@ -9,7 +9,7 @@ import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 
 /**
  * Controller for badge class-related operations
@@ -27,10 +27,12 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The created badge class
    */
-  async createBadgeClass(data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>> {
-    const badgeClass = BadgeClass.create(data);
+  async createBadgeClass(data: Partial<OB2.BadgeClass | OB3.Achievement>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement> {
+    // Note: Runtime validation needed here
+    const badgeClass = BadgeClass.create(data as Partial<BadgeClass>); // Cast needed
     const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
-    return createdBadgeClass.toJsonLd(version);
+    // Assuming toJsonLd will be refined to return the specific type based on version
+    return createdBadgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
   }
 
   /**
@@ -38,9 +40,10 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns All badge classes
    */
-  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.BadgeClass | OB3.Achievement)[]> {
     const badgeClasses = await this.badgeClassRepository.findAll();
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version));
+    // Assuming toJsonLd will be refined to return the specific type based on version
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement);
   }
 
   /**
@@ -49,12 +52,13 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The badge class with the specified ID
    */
-  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
+  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement | null> {
     const badgeClass = await this.badgeClassRepository.findById(toIRI(id) as Shared.IRI);
     if (!badgeClass) {
       return null;
     }
-    return badgeClass.toJsonLd(version);
+    // Assuming toJsonLd will be refined to return the specific type based on version
+    return badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
   }
 
   /**
@@ -63,9 +67,10 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The badge classes for the specified issuer
    */
-  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.BadgeClass | OB3.Achievement)[]> {
     const badgeClasses = await this.badgeClassRepository.findByIssuer(toIRI(issuerId) as Shared.IRI);
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version));
+    // Assuming toJsonLd will be refined to return the specific type based on version
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement);
   }
 
   /**
@@ -75,12 +80,14 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The updated badge class
    */
-  async updateBadgeClass(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data);
+  async updateBadgeClass(id: string, data: Partial<OB2.BadgeClass | OB3.Achievement>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement | null> {
+    // Note: Runtime validation needed here
+    const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data as Partial<BadgeClass>); // Cast needed
     if (!updatedBadgeClass) {
       return null;
     }
-    return updatedBadgeClass.toJsonLd(version);
+    // Assuming toJsonLd will be refined to return the specific type based on version
+    return updatedBadgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
   }
 
   /**

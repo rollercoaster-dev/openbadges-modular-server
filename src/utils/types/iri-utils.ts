@@ -6,13 +6,14 @@
  */
 
 import { Shared } from 'openbadges-types';
+import { IRICompatible, ObjectWithIRIs, ObjectWithStrings } from './iri.types';
 
 /**
  * Converts a string to a Shared.IRI
  * @param value The string to convert
  * @returns The converted Shared.IRI
  */
-export function toIRI(value: string | Shared.IRI | null | undefined): Shared.IRI | null {
+export function toIRI(value: IRICompatible): Shared.IRI | null {
   if (value === null || value === undefined || value === '') {
     return null;
   }
@@ -24,7 +25,7 @@ export function toIRI(value: string | Shared.IRI | null | undefined): Shared.IRI
  * @param value The Shared.IRI to convert
  * @returns The converted string
  */
-export function toString(value: Shared.IRI | string | null | undefined): string | null {
+export function toString(value: IRICompatible): string | null {
   if (value === null || value === undefined || value === '') {
     return null;
   }
@@ -36,7 +37,7 @@ export function toString(value: Shared.IRI | string | null | undefined): string 
  * @param value The value to check
  * @returns True if the value is a valid IRI, false otherwise
  */
-export function isValidIRI(value: any): boolean {
+export function isValidIRI(value: unknown): boolean {
   if (value === null || value === undefined || value === '') {
     return false;
   }
@@ -57,7 +58,7 @@ export function isValidIRI(value: any): boolean {
  * @param value The value to check
  * @returns The value as a Shared.IRI if valid, null otherwise
  */
-export function ensureValidIRI(value: any): Shared.IRI | null {
+export function ensureValidIRI(value: unknown): Shared.IRI | null {
   if (isValidIRI(value)) {
     return value as Shared.IRI;
   }
@@ -69,7 +70,7 @@ export function ensureValidIRI(value: any): Shared.IRI | null {
  * @param values The array of strings to convert
  * @returns The converted array of Shared.IRIs
  */
-export function toIRIArray(values: (string | Shared.IRI)[] | null | undefined): Shared.IRI[] {
+export function toIRIArray(values: IRICompatible[] | null | undefined): Shared.IRI[] {
   if (values === null || values === undefined) {
     return [];
   }
@@ -81,7 +82,7 @@ export function toIRIArray(values: (string | Shared.IRI)[] | null | undefined): 
  * @param values The array of Shared.IRIs to convert
  * @returns The converted array of strings
  */
-export function toStringArray(values: (Shared.IRI | string)[] | null | undefined): string[] {
+export function toStringArray(values: IRICompatible[] | null | undefined): string[] {
   if (values === null || values === undefined) {
     return [];
   }
@@ -94,11 +95,11 @@ export function toStringArray(values: (Shared.IRI | string)[] | null | undefined
  * @param iriProperties The properties to convert
  * @returns The converted object
  */
-export function objectWithIRIToString<T extends Record<string, any>>(
+export function objectWithIRIToString<T extends Record<string, unknown>>(
   obj: T,
   iriProperties: string[]
-): Record<string, any> {
-  const result = { ...obj } as Record<string, any>;
+): ObjectWithStrings<T> {
+  const result: Record<string, unknown> = { ...obj };
 
   for (const prop of iriProperties) {
     if (result[prop] !== undefined && result[prop] !== null) {
@@ -106,7 +107,7 @@ export function objectWithIRIToString<T extends Record<string, any>>(
     }
   }
 
-  return result;
+  return result as ObjectWithStrings<T>;
 }
 
 /**
@@ -115,11 +116,11 @@ export function objectWithIRIToString<T extends Record<string, any>>(
  * @param iriProperties The properties to convert
  * @returns The converted object
  */
-export function objectWithStringToIRI<T extends Record<string, any>>(
+export function objectWithStringToIRI<T extends Record<string, unknown>>(
   obj: T,
   iriProperties: string[]
-): Record<string, any> {
-  const result = { ...obj } as Record<string, any>;
+): ObjectWithIRIs<T> {
+  const result: Record<string, unknown> = { ...obj };
 
   for (const prop of iriProperties) {
     if (result[prop] !== undefined && result[prop] !== null) {
@@ -127,5 +128,5 @@ export function objectWithStringToIRI<T extends Record<string, any>>(
     }
   }
 
-  return result;
+  return result as ObjectWithIRIs<T>;
 }

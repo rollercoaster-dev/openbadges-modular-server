@@ -6,7 +6,8 @@
  */
 
 
-import { OB3, Shared } from 'openbadges-types';
+import { Shared } from 'openbadges-types';
+import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } from '../types/badge-data.types';
 
 /**
  * The Open Badges 3.0 JSON-LD context
@@ -18,7 +19,7 @@ export const OPEN_BADGES_CONTEXT = 'https://w3id.org/openbadges/v3';
  * @param obj The object to add context to
  * @returns The object with context added
  */
-export function addContext(obj: Record<string, any>): Record<string, any> {
+export function addContext<T extends Record<string, unknown>>(obj: T): T & { '@context': string } {
   return {
     '@context': OPEN_BADGES_CONTEXT,
     ...obj
@@ -30,7 +31,7 @@ export function addContext(obj: Record<string, any>): Record<string, any> {
  * @param issuer The issuer object
  * @returns A JSON-LD representation of the issuer
  */
-export function createIssuerJsonLd(issuer: Record<string, any>): Record<string, any> {
+export function createIssuerJsonLd(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
   return addContext({
     type: 'Profile',
     id: issuer.id,
@@ -48,7 +49,7 @@ export function createIssuerJsonLd(issuer: Record<string, any>): Record<string, 
  * @param badgeClass The badge class object
  * @returns A JSON-LD representation of the badge class
  */
-export function createBadgeClassJsonLd(badgeClass: Record<string, any>): Record<string, any> {
+export function createBadgeClassJsonLd(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
   return addContext({
     type: 'BadgeClass',
     id: badgeClass.id,
@@ -67,11 +68,11 @@ export function createBadgeClassJsonLd(badgeClass: Record<string, any>): Record<
  * @param assertion The assertion object
  * @returns A JSON-LD representation of the assertion
  */
-export function createAssertionJsonLd(assertion: Record<string, any>): Record<string, any> {
+export function createAssertionJsonLd(assertion: AssertionData): AssertionData & { '@context': string; type: string } {
   return addContext({
     type: 'Assertion',
     id: assertion.id,
-    badge: assertion.badgeClass,
+    badgeClass: assertion.badgeClass,
     recipient: assertion.recipient,
     issuedOn: assertion.issuedOn,
     ...(assertion.expires && { expires: assertion.expires }),
@@ -90,10 +91,10 @@ export function createAssertionJsonLd(assertion: Record<string, any>): Record<st
  * @returns A Verifiable Credential representation of the assertion
  */
 export function createVerifiableCredential(
-  assertion: Record<string, any>,
-  badgeClass: Record<string, any>,
-  issuer: Record<string, any>
-): Partial<OB3.VerifiableCredential> {
+  assertion: AssertionData,
+  badgeClass: BadgeClassData,
+  issuer: IssuerData
+): VerifiableCredentialData {
   return {
     '@context': [
       'https://www.w3.org/2018/credentials/v1',
