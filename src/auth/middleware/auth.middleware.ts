@@ -14,6 +14,21 @@ import { logger } from '../../utils/logging/logger.service';
 // Store registered auth adapters
 const authAdapters: AuthAdapter[] = [];
 
+// Define the structure for the user context derived during authentication
+interface AuthenticatedUserContext {
+  id: string;
+  provider: string;
+  claims: Record<string, unknown>;
+}
+
+/**
+ * Minimal context for authentication logic
+ */
+export interface AuthContext {
+  request: Request;
+  set: { headers: Record<string, string | number>; status?: number | string };
+}
+
 /**
  * Register an authentication adapter
  * @param adapter The adapter to register
@@ -24,73 +39,78 @@ export function registerAuthAdapter(adapter: AuthAdapter): void {
 }
 
 /**
- * Authentication middleware for Elysia.js
+ * Derive handler for authentication middleware
  */
-export const authMiddleware = new Elysia({ name: 'auth-middleware' })
-  .derive(async ({ request, set }) => {
-    try {
-      // Skip authentication for certain paths (e.g., public endpoints)
-      const url = new URL(request.url);
-      if (isPublicPath(url.pathname)) {
-        return { isAuthenticated: false, user: null };
-      }
+export async function authDerive({ request, set }: AuthContext): Promise<{ isAuthenticated: boolean; user: AuthenticatedUserContext | null }> {
+  try {
+    // Skip authentication for certain paths (e.g., public endpoints)
+    const url = new URL(request.url);
+    if (isPublicPath(url.pathname)) {
+      return { isAuthenticated: false, user: null };
+    }
 
-      // Check for JWT token first (for already authenticated sessions)
-      const authHeader = request.headers.get('Authorization');
-      const token = JwtService.extractTokenFromHeader(authHeader);
-      
-      if (token) {
-        try {
-          const payload = await JwtService.verifyToken(token);
+    // Check for JWT token first (for already authenticated sessions)
+    const authHeader = request.headers.get('Authorization');
+    const token = JwtService.extractTokenFromHeader(authHeader);
+    
+    if (token) {
+      try {
+        const payload = await JwtService.verifyToken(token);
+        return { 
+          isAuthenticated: true,
+          user: {
+            id: payload.sub,
+            provider: payload.provider,
+            claims: payload.claims || {}
+          }
+        };
+      } catch (_error) {
+        // Token invalid or expired - continue with adapter auth
+        logger.debug('JWT token invalid, trying adapter authentication');
+      }
+    }
+
+    // Try each registered adapter until one succeeds
+    for (const adapter of authAdapters) {
+      if (adapter.canHandle(request)) {
+        const result = await adapter.authenticate(request);
+        if (result.isAuthenticated && result.userId) {
+          // Generate JWT token for future requests
+          const token = await JwtService.generateToken({
+            sub: result.userId,
+            provider: result.provider,
+            claims: result.claims
+          });
+          
+          // Set token in response header
+          set.headers['X-Auth-Token'] = token;
+          
           return { 
             isAuthenticated: true,
             user: {
-              id: payload.sub,
-              provider: payload.provider,
-              claims: payload.claims || {}
+              id: result.userId,
+              provider: result.provider,
+              claims: result.claims || {}
             }
           };
-        } catch (_error) {
-          // Token invalid or expired - continue with adapter auth
-          logger.debug('JWT token invalid, trying adapter authentication');
         }
       }
-
-      // Try each registered adapter until one succeeds
-      for (const adapter of authAdapters) {
-        if (adapter.canHandle(request)) {
-          const result = await adapter.authenticate(request);
-          if (result.isAuthenticated && result.userId) {
-            // Generate JWT token for future requests
-            const token = await JwtService.generateToken({
-              sub: result.userId,
-              provider: result.provider,
-              claims: result.claims
-            });
-            
-            // Set token in response header
-            set.headers['X-Auth-Token'] = token;
-            
-            return { 
-              isAuthenticated: true,
-              user: {
-                id: result.userId,
-                provider: result.provider,
-                claims: result.claims || {}
-              }
-            };
-          }
-        }
-      }
-
-      // No adapter could authenticate the request
-      logger.debug('Authentication failed - no adapter could handle the request');
-      return { isAuthenticated: false, user: null };
-    } catch (_error) {
-      logger.logError('Authentication error', _error as Error);
-      return { isAuthenticated: false, user: null };
     }
-  });
+
+    // No adapter could authenticate the request
+    logger.debug('Authentication failed - no adapter could handle the request');
+    return { isAuthenticated: false, user: null };
+  } catch (_error) {
+    logger.logError('Authentication error', _error as Error);
+    return { isAuthenticated: false, user: null };
+  }
+}
+
+/**
+ * Authentication middleware for Elysia.js
+ */
+export const authMiddleware = new Elysia({ name: 'auth-middleware' })
+  .derive(ctx => authDerive({ request: ctx.request, set: ctx.set }));
 
 /**
  * Determines whether a path is public (no authentication required)

@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from 'bun:test';
 import {
   convertJson,
@@ -48,9 +49,10 @@ describe('Database Type Conversion Utilities', () => {
       expect(result).toHaveProperty('nested');
       // Type assertion for TypeScript
       if (result && typeof result === 'object') {
-        const typedResult = result as Record<string, any>;
-        if ('nested' in typedResult && typedResult.nested) {
-          expect(typedResult.nested.foo).toBe('bar');
+        const typedResult = result as Record<string, unknown>;
+        if ('nested' in typedResult && typedResult.nested && typeof typedResult.nested === 'object') {
+          const nested = typedResult.nested as { foo: string };
+          expect(nested.foo).toBe('bar');
         }
       }
       // Should pass through non-string values

@@ -25,12 +25,9 @@ export class PostgresIssuerRepository implements IssuerRepository {
 
   async create(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
     // Convert domain entity to database record
-    const record = this.mapper.toPersistence(issuer as Issuer);
-
-    // Remove id if it's empty (for new entities)
-    if (!record.id) {
-      delete record.id;
-    }
+    // The mapper now returns the correct shape for insertion (IssuerInsertModel)
+    // and handles required field validation internally.
+    const record = this.mapper.toPersistence(issuer);
 
     // Insert into database
     const result = await this.db.insert(issuers).values(record).returning();
@@ -67,14 +64,16 @@ export class PostgresIssuerRepository implements IssuerRepository {
       return null;
     }
 
-    // Create a merged entity
-    const mergedIssuer = Issuer.create({
-      ...existingIssuer.toObject(),
-      ...issuer as Partial<Issuer>
-    });
+    // Create a merged object with updated properties
+    // Spread existing properties first, then override with update properties
+    const mergedProps: Partial<Issuer> = {
+      ...existingIssuer,
+      ...issuer
+    };
 
     // Convert to database record
-    const record = this.mapper.toPersistence(mergedIssuer);
+    // Pass the merged properties directly to the mapper
+    const record = this.mapper.toPersistence(mergedProps);
 
     // Update in database
     const result = await this.db.update(issuers)

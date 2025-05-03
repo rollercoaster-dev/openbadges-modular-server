@@ -19,7 +19,12 @@ export class SqliteModule implements DatabaseModuleInterface {
    */
   async createDatabase(config: Record<string, unknown>): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
-    const filePath = config.sqliteFile || ':memory:';
+    let filePath: string;
+    if (typeof config.sqliteFile === 'string' && config.sqliteFile.trim()) {
+      filePath = config.sqliteFile;
+    } else {
+      filePath = ':memory:'; // Default to in-memory if no valid path provided
+    }
     const client = new Database(filePath);
 
     // Apply SQLite optimizations

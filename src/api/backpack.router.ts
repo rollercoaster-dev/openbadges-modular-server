@@ -28,8 +28,8 @@ export function createBackpackRouter(
   // Create platform auth middleware
   const platformAuth = createPlatformAuthMiddleware(platformRepository);
 
-  // Create router
-  const router = new Elysia({ prefix: '/backpack' });
+  // Create router without prefix - prefix applied during composition
+  const router = new Elysia();
 
   // Platform management endpoints (admin only)
   router.group('/platforms', (app) => {

@@ -69,8 +69,8 @@ export class CacheFactory {
    * Gets cache statistics for all caches
    * @returns A map of cache statistics by cache name
    */
-  static getAllCacheStats(): Record<string, any> {
-    const stats: Record<string, any> = {};
+  static getAllCacheStats(): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
 
     for (const [name, cache] of this.caches.entries()) {
       stats[name] = cache.getStats();

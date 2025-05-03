@@ -358,12 +358,41 @@ export class PostgresqlDatabase implements DatabaseInterface {
       throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
     }
 
+    // Helper function to safely convert input to Date or undefined
+    function safeConvertToDate(value: unknown): Date | undefined {
+      if (value === null || value === undefined) {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return isNaN(value.getTime()) ? undefined : value;
+      }
+      if (typeof value === 'string' || typeof value === 'number') {
+        try {
+          const dateObj = new Date(value);
+          if (isNaN(dateObj.getTime())) {
+            logger.warn(`Invalid date value provided during conversion`, { value });
+            return undefined;
+          }
+          return dateObj;
+        } catch (error) {
+          logger.warn(`Error parsing date value during conversion`, { value, error });
+          return undefined;
+        }
+      }
+      logger.warn(`Unexpected type provided for date conversion`, { type: typeof value, value });
+      return undefined;
+    }
+
+    // Safely convert dates before using them
+    const finalIssuedOn = safeConvertToDate(issuedOn) ?? new Date(); // Default to now if conversion fails or not provided
+    const finalExpires = safeConvertToDate(expires); // Undefined if conversion fails or not provided
+
     // Create an object with the correct types for Drizzle ORM
     const insertData = {
       badgeClassId: badgeClassId as string,
       recipient: JSON.stringify(recipient),
-      issuedOn: issuedOn ? new Date(issuedOn) : new Date(),
-      expires: expires ? new Date(expires) : undefined,
+      issuedOn: finalIssuedOn,
+      expires: finalExpires,
       evidence: evidence ? JSON.stringify(evidence) : undefined,
       verification: verification ? JSON.stringify(verification) : undefined,
       revoked: revoked !== undefined ? revoked : undefined,

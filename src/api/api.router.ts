@@ -20,6 +20,7 @@ import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/securit
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { AssetsController } from './controllers/assets.controller';
 import { createBackpackRouter } from './backpack.router';
+import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
 

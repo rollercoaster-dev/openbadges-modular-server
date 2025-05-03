@@ -133,9 +133,8 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return createdAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
+          // Pass entities directly
+          return createdAssertion.toJsonLd(version, badgeClass, issuer);
         }
       }
 
@@ -161,9 +160,8 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
+          // Pass entities directly
+          return assertion.toJsonLd(version, badgeClass, issuer);
         }
       }
 
@@ -188,9 +186,8 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-        }
+        // Pass entities directly
+        return assertion.toJsonLd(version, badgeClass, issuer);
       }
     }
 
@@ -210,11 +207,10 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(toIRI(badgeClassId) as Shared.IRI);
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return assertions.map(assertion =>
-            assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject())
-          );
-        }
+        // Pass entities directly
+        return assertions.map(assertion =>
+          assertion.toJsonLd(version, badgeClass, issuer)
+        );
       }
     }
 
@@ -243,9 +239,8 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return updatedAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-        }
+        // Pass entities directly
+        return updatedAssertion.toJsonLd(version, badgeClass, issuer);
       }
     }
 
@@ -340,7 +335,7 @@ export class AssertionController {
     id: string,
     keyId: string = 'default',
     version: BadgeVersion = BadgeVersion.V3
-  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
+  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> { 
     try {
       // Initialize the key service
       await KeyService.initialize();
@@ -362,16 +357,14 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
-        if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return updatedAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
-        }
+        const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
+        const issuer = await this.issuerRepository.findById(badgeClass?.issuer); // Use optional chaining for safety
+        // Pass entities directly
+        return signedAssertion.toJsonLd(version, badgeClass, issuer);
+      } else {
+        // For V2 or if related entities are not needed/found
+        return signedAssertion.toJsonLd(version);
       }
-
-      return updatedAssertion.toJsonLd(version);
     } catch (error) {
       logger.logError(`Failed to sign assertion with ID ${id}`, error as Error);
       return null;

@@ -60,8 +60,8 @@ export class PreparedStatementManager {
         try {
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(query, params, duration, 'postgresql');
-          return result;
+          QueryLoggerService.logQuery(`DIRECT: ${query}`, params, duration, 'postgresql');
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`ERROR: ${query}`, params, duration, 'postgresql');
@@ -120,7 +120,7 @@ export class PreparedStatementManager {
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`FALLBACK ${name}: ${query}`, params, duration, 'postgresql');
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`ERROR FALLBACK ${name}: ${query}`, params, duration, 'postgresql');
@@ -156,7 +156,7 @@ export class PreparedStatementManager {
           }
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(query, params, duration, 'sqlite');
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`ERROR: ${query}`, params, duration, 'sqlite');
@@ -226,7 +226,7 @@ export class PreparedStatementManager {
           }
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`FALLBACK ${name}: ${query}`, params, duration, 'sqlite');
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(`ERROR FALLBACK ${name}: ${query}`, params, duration, 'sqlite');

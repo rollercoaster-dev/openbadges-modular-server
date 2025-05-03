@@ -9,7 +9,10 @@ import { Shared, OB2, OB3 } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
-import { AssertionData, BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
+import { AssertionData } from '../../utils/types/badge-data.types';
+import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
+import { BadgeClass } from '../badgeClass/badgeClass.entity';
+import { Issuer } from '../issuer/issuer.entity';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -82,25 +85,42 @@ export class Assertion {
    */
   toJsonLd(
     version: BadgeVersion = BadgeVersion.V3,
-    badgeClass?: OB2.BadgeClass | OB3.Achievement,
-    issuer?: OB2.Profile | OB3.Issuer
+    badgeClass?: BadgeClass,
+    issuer?: Issuer
   ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
     
-    // Cast our entity to the expected data structure
-    // This is safe because our entity properties match the AssertionData interface
-    const assertionData = this.toObject() as unknown as AssertionData;
+    // Get partial data for the assertion itself
+    const assertionData = this.toObject() as AssertionData;
     
-    // Cast the optional parameters to their expected types
-    const typedBadgeClass = badgeClass as unknown as BadgeClassData;
-    const typedIssuer = issuer as unknown as IssuerData;
+    // Get JSON-LD representation from passed entities if they exist
+    const typedBadgeClass = badgeClass
+      ? badgeClass.toJsonLd(version) as BadgeClassData
+      : undefined;
+    const typedIssuer = issuer
+      ? issuer.toJsonLd(version) as IssuerData
+      : undefined;
     
     // Then serialize with the appropriate serializer
-    return serializer.serializeAssertion(
+    const output = serializer.serializeAssertion(
       assertionData,
-      typedBadgeClass,
-      typedIssuer
-    ) as unknown as OB2.Assertion | OB3.VerifiableCredential;
+      typedBadgeClass, // Pass the potentially undefined typed data
+      typedIssuer // Pass the potentially undefined typed data
+    ) as unknown as Record<string, unknown>;
+
+    // For Open Badges 3 (VerifiableCredential), alias badgeClass to badge and include verification
+    if (version === BadgeVersion.V3) {
+      if ('badgeClass' in output) {
+        output['badge'] = output['badgeClass'];
+        delete output['badgeClass'];
+      }
+      // Ensure verification is included
+      if (assertionData.verification) {
+        output['verification'] = assertionData.verification;
+      }
+    }
+
+    return output as OB2.Assertion | OB3.VerifiableCredential;
   }
 
   /**

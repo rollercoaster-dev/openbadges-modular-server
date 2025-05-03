@@ -76,15 +76,28 @@ describe('Logger Service', () => {
   });
 
   test('should handle Error objects correctly', () => {
+    // Spy on console.error and provide an empty implementation to suppress output
+    const consoleErrorSpy = spyOn(console, 'error');
+    consoleErrorSpy.mockImplementation(() => {});
+
     const error = new Error('Test error');
     // Assuming logError internally calls logger.error
     logger.logError('An error occurred', error);
     // logError passes error inside the context object as { error: error }
     expect(errorSpy).toHaveBeenCalledWith('An error occurred', { error: error });
+
+    // Restore the original console.error
+    consoleErrorSpy.mockRestore();
   });
 
+  // Define a type for the test object with a potential circular reference
+  type CircularObject = {
+    name: string;
+    self?: CircularObject;
+  };
+
   test('should handle circular references in context objects', () => {
-    const obj: any = { name: 'test' };
+    const obj: CircularObject = { name: 'test' }; // Use specific type
     obj.self = obj; // Create circular reference
     logger.info('Object with circular reference', { obj });
     // We just check if the method was called, the stringification happens internally
@@ -93,8 +106,7 @@ describe('Logger Service', () => {
 
   // This test is also affected by the inability to change log levels.
   // It duplicates the check from 'should respect initial log level configuration'.
-  // We can adjust it or remove it.
-  // Let's adjust it to re-verify based on the default 'debug' level.
+  // We can adjust it to re-verify based on the default 'debug' level.
   test('logger function should respect initial log level configuration (default is debug)', () => {
     // Assume config.logging.level was 'debug' during logger initialization
 

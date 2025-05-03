@@ -10,7 +10,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { VerificationService } from '../../src/core/verification.service';
 import { KeyService } from '../../src/core/key.service';
 import { Assertion } from '../../src/domains/assertion/assertion.entity';
-import { Shared } from 'openbadges-types';
+import { Shared, OB3 } from 'openbadges-types'; // Use correct imports
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -57,8 +57,8 @@ describe('Verification Service', () => {
     expect(signedAssertion).toBeDefined();
     expect(signedAssertion.verification).toBeDefined();
     expect(signedAssertion.verification.type).toBe('SignedBadge');
-    expect(signedAssertion.verification.created).toBeDefined();
-    expect(signedAssertion.verification.signatureValue).toBeDefined();
+    expect((signedAssertion.verification as OB3.Proof).created).toBeDefined(); // Use OB3.Proof
+    expect((signedAssertion.verification as OB3.Proof).signatureValue).toBeDefined(); // Use OB3.Proof
     expect(signedAssertion.verification.creator).toBeDefined();
   });
 
@@ -154,7 +154,7 @@ describe('Verification Service', () => {
       id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
       badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
       recipient: {
-        identity: 'sha256$test@example.com',
+        identity: 'sha256$expired@example.com',
         type: 'email',
         hashed: true
       },
@@ -182,7 +182,7 @@ describe('Verification Service', () => {
       id: 'urn:uuid:123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
       badgeClass: 'urn:uuid:123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
       recipient: {
-        identity: 'sha256$test@example.com',
+        identity: 'sha256$revoked@example.com',
         type: 'email',
         hashed: true
       },

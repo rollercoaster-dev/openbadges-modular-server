@@ -8,6 +8,19 @@
 import * as crypto from 'crypto';
 import { logger } from '../logging/logger.service';
 import { config } from '../../config/config';
+import { Shared } from 'openbadges-types';
+import { toIRI } from '../types/iri-utils';
+
+/**
+ * Represents the structure of the verification object created for signed badges.
+ */
+// Define a type that matches OB2.VerificationObject but uses IRI
+export interface SignedBadgeVerification {
+  type: 'SignedBadge'; // Assuming this specific type for now
+  creator: Shared.IRI;
+  created: string; // ISO String
+  signatureValue: string;
+}
 
 /**
  * Generates a key pair for digital signatures
@@ -69,7 +82,7 @@ export function verifySignature(data: string, signature: string, publicKey: stri
  * @param privateKey The private key to use for signing
  * @returns A verification object with the signature
  */
-export function createVerification(dataToSign: string, privateKey: string): any {
+export function createVerification(dataToSign: string, privateKey: string): SignedBadgeVerification {
   try {
     // Sign the data
     const signature = signData(dataToSign, privateKey);
@@ -77,7 +90,7 @@ export function createVerification(dataToSign: string, privateKey: string): any 
     // Create the verification object
     return {
       type: 'SignedBadge',
-      creator: `${config.openBadges.baseUrl}/public-keys/default`, // Default creator URL from config
+      creator: toIRI(`${config.openBadges.baseUrl}/public-keys/default`), // Default creator URL from config
       created: new Date().toISOString(),
       signatureValue: signature
     };
@@ -94,7 +107,7 @@ export function createVerification(dataToSign: string, privateKey: string): any 
  * @param publicKey The public key to use for verification
  * @returns True if the signature is valid, false otherwise
  */
-export function verifyAssertion(dataToVerify: string, verification: any, publicKey: string): boolean {
+export function verifyAssertion(dataToVerify: string, verification: SignedBadgeVerification, publicKey: string): boolean {
   try {
     if (!verification || !verification.signatureValue) {
       logger.warn('Verification object is missing or has no signature value');

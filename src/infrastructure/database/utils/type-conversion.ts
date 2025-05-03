@@ -126,43 +126,75 @@ export function convertTimestamp(
   else { // direction === 'from'
     if (dbType === 'postgresql') {
       // Assume PG returns a Date object or something parsable by Date constructor
-      if (value instanceof Date) {
+      if (value instanceof Date) { // Already a Date object
         // Check if date is valid
         return isNaN(value.getTime()) ? null : value;
       }
-      // Attempt to parse if not already a Date
-      try {
-        const dateObj = new Date(value as string | number);
-        // Check if date is valid
-        if (isNaN(dateObj.getTime())) {
-           // Use logger instead of console.warn
-           logger.warn(`Invalid date value received from PostgreSQL`, { value });
-           return null;
+      // Explicitly check if it's string or number before parsing
+      if (typeof value === 'string' || typeof value === 'number') {
+        try {
+          const dateObj = new Date(value);
+          // Check if date is valid
+          if (isNaN(dateObj.getTime())) {
+            // Use logger instead of console.warn
+            logger.warn(`Invalid date value received from PostgreSQL after parsing`, { value });
+            return null;
+          }
+          return dateObj;
+        } catch (_e) {
+          // Use logger instead of console.warn
+          logger.warn(`Error parsing date value from PostgreSQL`, { value });
+          return null;
         }
-        return dateObj;
-      } catch (_e) {
+      } else {
         // Use logger instead of console.warn
-        logger.warn(`Error parsing date value from PostgreSQL`, { value });
+        logger.warn(`Unexpected timestamp type received from PostgreSQL`, { type: typeof value, value });
         return null;
       }
     } else { // dbType === 'sqlite'
       // Assume SQLite returns a number (epoch ms)
       if (typeof value === 'number') {
-        const dateObj = new Date(value);
-        // Check if date is valid (e.g., handle potential huge numbers)
-        if (isNaN(dateObj.getTime())) {
-            // Use logger instead of console.warn
-            logger.warn(`Invalid timestamp number received from SQLite`, { value });
-            return null;
+        // Check for non-finite numbers before creating Date
+        if (!isFinite(value)) {
+          logger.warn(`Non-finite timestamp number received from SQLite`, { value });
+          return null;
         }
-        return dateObj;
+        try {
+          const dateObj = new Date(value);
+          // Check if date is valid (e.g., handle potential huge numbers)
+          if (isNaN(dateObj.getTime())) {
+            // Use logger instead of console.warn
+            logger.warn(`Invalid timestamp number received from SQLite after parsing`, { value });
+            return null;
+          }
+          return dateObj;
+        } catch (_e) {
+          // Use logger instead of console.warn
+          logger.warn(`Error creating Date from SQLite timestamp number`, { value });
+          return null;
+        }
+      } else {
+        // If SQLite returns something else, it's unexpected
+        // Use logger instead of console.warn
+        logger.warn(`Unexpected timestamp type received from SQLite`, { type: typeof value, value });
+        return null;
       }
-      // If SQLite returns something else, it's unexpected
-      // Use logger instead of console.warn
-      logger.warn(`Unexpected timestamp type received from SQLite`, { type: typeof value, value });
-      return null;
     }
   }
+}
+
+/**
+ * Safely converts a value to a Date object.
+ * Returns undefined if the value is null, undefined, or an invalid date string.
+ * @param value The value to convert.
+ * @returns A Date object or undefined.
+ */
+export function safeConvertToDate(value: unknown): Date | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  const date = new Date(value as string | number | Date);
+  return isNaN(date.getTime()) ? undefined : date;
 }
 
 /**
@@ -216,25 +248,38 @@ export function convertBoolean(
       }
       return value;
     } else {
-      // PostgreSQL returns boolean, no conversion needed
-      return value;
+      // Add safety check
+      if (typeof value === 'boolean') {
+        return value;
+      } else {
+        logger.warn('Unexpected boolean type received from PostgreSQL', { type: typeof value, value });
+        return null; // Or handle as needed, perhaps default to false?
+      }
     }
   }
 
   // For SQLite
   if (dbType === 'sqlite') {
     if (direction === 'to') {
-      // Convert to SQLite boolean (integer)
+      // Convert App -> DB (SQLite integer)
       if (typeof value === 'boolean') {
         return value ? 1 : 0;
-      }
+      } // If already number (0/1), pass through
       return value;
     } else {
-      // Convert from SQLite boolean (integer) to boolean
+      // Convert DB (SQLite integer) -> App (boolean)
       if (typeof value === 'number') {
-        return value !== 0;
+        // Add safety check for valid integer boolean
+        if (value === 0 || value === 1) {
+          return value === 1;
+        } else {
+          logger.warn('Unexpected integer value received for boolean from SQLite', { value });
+          return null; // Or default to false?
+        }
+      } else {
+        logger.warn('Unexpected boolean type received from SQLite', { type: typeof value, value });
+        return null; // Or default to false?
       }
-      return value;
     }
   }
 

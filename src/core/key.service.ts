@@ -13,21 +13,24 @@ import * as path from 'path';
 // In-memory cache of key pairs
 let keyPairs: Map<string, { publicKey: string; privateKey: string }> = new Map();
 
-// Path to store keys
-const KEYS_DIR = path.join(process.cwd(), 'keys');
-const DEFAULT_KEY_PATH = path.join(KEYS_DIR, 'default');
-
-// Ensure keys directory exists
-if (!fs.existsSync(KEYS_DIR)) {
-  fs.mkdirSync(KEYS_DIR, { recursive: true });
-}
-
+/**
+ * Key service class
+ */
 export class KeyService {
+  // Path to store keys - initialized in initialize()
+  private static KEYS_DIR: string | undefined;
+
   /**
    * Initializes the key service by loading or generating a default key pair
    */
   static async initialize(): Promise<void> {
     try {
+      // Define and ensure keys directory exists
+      this.KEYS_DIR = path.join(process.cwd(), 'keys');
+      if (!fs.existsSync(this.KEYS_DIR)) {
+        fs.mkdirSync(this.KEYS_DIR, { recursive: true });
+      }
+
       // Try to load existing keys first
       await this.loadKeys();
 
@@ -54,9 +57,14 @@ export class KeyService {
    */
   private static async loadKeys(): Promise<void> {
     try {
+      // Ensure KEYS_DIR is defined before proceeding
+      if (!this.KEYS_DIR) {
+        throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+      }
+
       // Check if default key pair exists
-      const publicKeyPath = `${DEFAULT_KEY_PATH}.pub`;
-      const privateKeyPath = `${DEFAULT_KEY_PATH}.key`;
+      const publicKeyPath = path.join(this.KEYS_DIR, 'default.pub');
+      const privateKeyPath = path.join(this.KEYS_DIR, 'default.key');
 
       if (fs.existsSync(publicKeyPath) && fs.existsSync(privateKeyPath)) {
         // Load default key pair
@@ -67,7 +75,7 @@ export class KeyService {
       }
 
       // Load other key pairs from the keys directory
-      const files = fs.readdirSync(KEYS_DIR);
+      const files = fs.readdirSync(this.KEYS_DIR);
       const keyIds = new Set<string>();
 
       // Find all key IDs (files ending with .pub)
@@ -80,8 +88,8 @@ export class KeyService {
 
       // Load each key pair
       for (const keyId of keyIds) {
-        const publicKeyPath = path.join(KEYS_DIR, `${keyId}.pub`);
-        const privateKeyPath = path.join(KEYS_DIR, `${keyId}.key`);
+        const publicKeyPath = path.join(this.KEYS_DIR, `${keyId}.pub`);
+        const privateKeyPath = path.join(this.KEYS_DIR, `${keyId}.key`);
 
         if (fs.existsSync(publicKeyPath) && fs.existsSync(privateKeyPath)) {
           const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
@@ -103,8 +111,13 @@ export class KeyService {
    */
   private static async saveKeyPair(id: string, keyPair: { publicKey: string; privateKey: string }): Promise<void> {
     try {
-      const publicKeyPath = path.join(KEYS_DIR, `${id}.pub`);
-      const privateKeyPath = path.join(KEYS_DIR, `${id}.key`);
+      // Ensure KEYS_DIR is defined before proceeding
+      if (!this.KEYS_DIR) {
+        throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+      }
+
+      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
+      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
 
       // Save public key
       fs.writeFileSync(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
@@ -192,8 +205,13 @@ export class KeyService {
   static getPublicKey(id: string): string {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
+      // Ensure KEYS_DIR is defined before proceeding
+      if (!this.KEYS_DIR) {
+        throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+      }
+
       // Try to load the key from storage
-      const publicKeyPath = path.join(KEYS_DIR, `${id}.pub`);
+      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
       if (fs.existsSync(publicKeyPath)) {
         return fs.readFileSync(publicKeyPath, 'utf8');
       }
@@ -210,8 +228,13 @@ export class KeyService {
   static getPrivateKey(id: string): string {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
+      // Ensure KEYS_DIR is defined before proceeding
+      if (!this.KEYS_DIR) {
+        throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+      }
+
       // Try to load the key from storage
-      const privateKeyPath = path.join(KEYS_DIR, `${id}.key`);
+      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
       if (fs.existsSync(privateKeyPath)) {
         return fs.readFileSync(privateKeyPath, 'utf8');
       }
@@ -235,6 +258,11 @@ export class KeyService {
    */
   static async deleteKeyPair(id: string): Promise<boolean> {
     try {
+      // Ensure KEYS_DIR is defined before proceeding
+      if (!this.KEYS_DIR) {
+        throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+      }
+
       // Don't allow deleting the default key pair
       if (id === 'default') {
         throw new Error('Cannot delete the default key pair');
@@ -244,8 +272,8 @@ export class KeyService {
       const removed = keyPairs.delete(id);
 
       // Remove from storage
-      const publicKeyPath = path.join(KEYS_DIR, `${id}.pub`);
-      const privateKeyPath = path.join(KEYS_DIR, `${id}.key`);
+      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
+      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
 
       if (fs.existsSync(publicKeyPath)) {
         fs.unlinkSync(publicKeyPath);

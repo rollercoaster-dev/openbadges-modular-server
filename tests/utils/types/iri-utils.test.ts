@@ -132,8 +132,8 @@ describe('IRI Utilities', () => {
   describe('objectWithIRIToString', () => {
     it('should convert IRI properties to string properties', () => {
       const obj = {
-        id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
-        url: 'https://example.com/badge' as Shared.IRI,
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        url: 'https://example.com/badge',
         name: 'Test Badge'
       };
       const result = objectWithIRIToString(obj, ['id', 'url']);
@@ -146,7 +146,7 @@ describe('IRI Utilities', () => {
 
     it('should handle null or undefined properties', () => {
       const obj = {
-        id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        id: '123e4567-e89b-12d3-a456-426614174000',
         url: null,
         image: undefined,
         name: 'Test Badge'
@@ -170,8 +170,8 @@ describe('IRI Utilities', () => {
       };
       const result = objectWithStringToIRI(obj, ['id', 'url']);
       expect(result).toEqual({
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        url: 'https://example.com/badge',
+        id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        url: 'https://example.com/badge' as Shared.IRI,
         name: 'Test Badge'
       });
     });
@@ -185,7 +185,7 @@ describe('IRI Utilities', () => {
       };
       const result = objectWithStringToIRI(obj, ['id', 'url', 'image']);
       expect(result).toEqual({
-        id: '123e4567-e89b-12d3-a456-426614174000',
+        id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
         url: null,
         image: undefined,
         name: 'Test Badge'

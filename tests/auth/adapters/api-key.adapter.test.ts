@@ -51,7 +51,7 @@ describe('API Key Adapter', () => {
     });
 
     // Set the repository
-    (adapter as any).apiKeyRepository = mockRepository;
+    adapter.apiKeyRepository = mockRepository;
 
     // Create a request with a valid API key
     const request = new Request('http://localhost/api/protected', {
@@ -115,7 +115,7 @@ describe('API Key Adapter', () => {
     });
 
     // Set the repository
-    (adapter as any).apiKeyRepository = mockRepository;
+    adapter.apiKeyRepository = mockRepository;
 
     // Create a request with an invalid API key
     const request = new Request('http://localhost/api/protected', {
@@ -161,7 +161,7 @@ describe('API Key Adapter', () => {
     });
 
     // Set the repository
-    (adapter as any).apiKeyRepository = mockRepository;
+    adapter.apiKeyRepository = mockRepository;
 
     // Create a request with a revoked API key
     const request = new Request('http://localhost/api/protected', {

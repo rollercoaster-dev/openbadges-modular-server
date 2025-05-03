@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'bun:test';
 import drizzleConfig from '../../drizzle.config';
 
+// Temporarily augment config type to include runtime-only credentials
+interface DrizzleConfigWithCreds {
+  dbCredentials: { url: string };
+}
+
 describe('Drizzle Configuration', () => {
   it('should export a valid drizzle configuration', () => {
     expect(drizzleConfig).toBeDefined();
     expect(drizzleConfig.dialect).toBeDefined();
     expect(drizzleConfig.schema).toBeDefined();
     expect(drizzleConfig.out).toBeDefined();
-    // dbCredentials is added at runtime, not in the type
-    expect((drizzleConfig as any).dbCredentials).toBeDefined();
+    // dbCredentials is added at runtime, not in the static type
+    expect((drizzleConfig as DrizzleConfigWithCreds).dbCredentials.url).toBeDefined();
   });
 
   it('should have the correct configuration for SQLite by default', () => {
@@ -22,7 +27,7 @@ describe('Drizzle Configuration', () => {
     expect(drizzleConfig.dialect).toBe('sqlite');
     expect(drizzleConfig.schema).toContain('sqlite/schema.ts');
     expect(drizzleConfig.out).toContain('drizzle/migrations');
-    expect(((drizzleConfig as any).dbCredentials as any).url).toBeDefined();
+    expect((drizzleConfig as DrizzleConfigWithCreds).dbCredentials.url).toBeDefined();
   });
 
   it('should have strict mode enabled', () => {

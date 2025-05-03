@@ -6,6 +6,7 @@
  */
 
 import { AuthAdapter, AuthAdapterOptions, AuthenticationResult } from './auth-adapter.interface';
+import { ApiKeyRepository } from '../../domains/auth/apiKey.repository';
 import { logger } from '../../utils/logging/logger.service';
 
 interface ApiKeyConfig {
@@ -23,13 +24,14 @@ export class ApiKeyAdapter implements AuthAdapter {
   private readonly providerName: string = 'api-key';
   private readonly apiKeyConfig: ApiKeyConfig;
   private readonly headerName: string = 'X-API-Key';
+  public apiKeyRepository!: Partial<ApiKeyRepository>; // Exposed for testing
 
   constructor(options: AuthAdapterOptions) {
     if (options.providerName) {
       this.providerName = options.providerName;
     }
 
-    this.apiKeyConfig = options.config as ApiKeyConfig;
+    this.apiKeyConfig = options.config as unknown as ApiKeyConfig;
 
     // Validate config
     if (!this.apiKeyConfig.keys || Object.keys(this.apiKeyConfig.keys).length === 0) {

@@ -9,15 +9,41 @@
 import { AuthAdapter, AuthAdapterOptions, AuthenticationResult } from './auth-adapter.interface';
 import { logger } from '../../utils/logging/logger.service';
 
+interface BasicAuthCredential {
+  password: string;
+  userId: string;
+  claims?: Record<string, unknown>;
+}
+
 interface BasicAuthConfig {
   /**
    * Username-password pairs and their associated user information
    */
-  credentials: Record<string, {
-    password: string;
-    userId: string;
-    claims?: Record<string, unknown>;
-  }>;
+  credentials: Record<string, BasicAuthCredential>;
+}
+
+// Type Guard function
+function isBasicAuthConfig(config: unknown): config is BasicAuthConfig {
+  if (
+    !config ||
+    typeof config !== 'object' ||
+    config === null ||
+    !('credentials' in config) || // Use 'in' operator for type safety
+    typeof (config as Record<string, unknown>).credentials !== 'object' ||
+    (config as Record<string, unknown>).credentials === null
+  ) {
+    return false;
+  }
+
+  // Optional: Add deeper validation for each credential if needed
+  // const creds = (config as BasicAuthConfig).credentials;
+  // for (const key in creds) {
+  //   if (typeof creds[key]?.password !== 'string' || typeof creds[key]?.userId !== 'string') {
+  //     return false;
+  //   }
+  // }
+
+  return true;
 }
 
 export class BasicAuthAdapter implements AuthAdapter {
@@ -25,11 +51,19 @@ export class BasicAuthAdapter implements AuthAdapter {
   private readonly config: BasicAuthConfig;
 
   constructor(options: AuthAdapterOptions) {
+    const providerName = options.providerName || 'basic-auth'; // Default provider name
+
     if (options.providerName) {
       this.providerName = options.providerName;
     }
 
-    this.config = options.config as BasicAuthConfig;
+    // Use the type guard to validate
+    if (!isBasicAuthConfig(options.config)) {
+      throw new Error(`Invalid configuration provided for ${providerName}: 'credentials' object is missing or invalid.`);
+    }
+
+    // If the guard passes, options.config is known to be BasicAuthConfig
+    this.config = options.config;
 
     // Validate configuration
     if (!this.config.credentials || Object.keys(this.config.credentials).length === 0) {

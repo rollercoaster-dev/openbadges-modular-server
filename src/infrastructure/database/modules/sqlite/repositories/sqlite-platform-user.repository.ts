@@ -9,6 +9,15 @@ import { PlatformUser } from '@domains/backpack/platform-user.entity';
 import type { PlatformUserRepository } from '@domains/backpack/platform-user.repository';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+import { InferSelectModel } from 'drizzle-orm';
+import { platformUsers } from '../schema';
+import {
+  convertJson,
+  convertTimestamp,
+  convertUuid,
+} from '@infrastructure/database/utils/type-conversion';
+
+type SqlitePlatformUserRecord = InferSelectModel<typeof platformUsers>;
 
 export class SqlitePlatformUserRepository implements PlatformUserRepository {
   private db: Database;
@@ -75,7 +84,9 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
   async findById(id: Shared.IRI): Promise<PlatformUser | null> {
     try {
       // Query database
-      const row = this.db.prepare(`SELECT * FROM platform_users WHERE id = ?`).get(id);
+      const row = this.db
+        .prepare(`SELECT * FROM platform_users WHERE id = ?`)
+        .get(id) as SqlitePlatformUserRecord | undefined;
 
       // Return null if not found
       if (!row) {
@@ -99,7 +110,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       const row = this.db.prepare(`
         SELECT * FROM platform_users
         WHERE platformId = ? AND externalUserId = ?
-      `).get(platformId, externalUserId);
+      `).get(platformId, externalUserId) as SqlitePlatformUserRecord | undefined;
 
       // Return null if not found
       if (!row) {
@@ -189,29 +200,57 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
    * @param row The database row
    * @returns A PlatformUser domain entity
    */
-  private rowToDomain(row: Record<string, unknown>): PlatformUser {
-    // Parse metadata if it exists
-    let metadata: Record<string, unknown> | undefined;
-    if (row.metadata) {
+  private rowToDomain(row: SqlitePlatformUserRecord): PlatformUser {
+    // Validate required fields from DB
+    if (!row.id) {
+      throw new Error('Platform user record is missing required field: id');
+    }
+    if (!row.platformId) {
+      throw new Error('Platform user record is missing required field: platformId');
+    }
+    if (!row.externalUserId) {
+      throw new Error(
+        'Platform user record is missing required field: externalUserId'
+      );
+    }
+    if (!row.createdAt) {
+      throw new Error('Platform user record is missing required field: createdAt');
+    }
+    if (!row.updatedAt) {
+      throw new Error('Platform user record is missing required field: updatedAt');
+    }
+
+    // Safely parse metadata
+    let metadata: Record<string, unknown> | undefined = undefined;
+    if (row.metadata !== null && row.metadata !== undefined) {
       try {
-        metadata = JSON.parse(row.metadata);
+        const parsed = convertJson<Record<string, unknown>>(
+          row.metadata,
+          'sqlite',
+          'from'
+        );
+        if (parsed && typeof parsed === 'object') {
+          metadata = parsed;
+        }
       } catch (error) {
         logger.warn('Error parsing platform user metadata', {
           error: error instanceof Error ? error.message : String(error),
-          metadata: row.metadata
+          metadata: row.metadata,
+          userId: row.id,
         });
+        // Decide whether to throw or continue with undefined metadata
       }
     }
 
     return PlatformUser.create({
-      id: row.id as Shared.IRI,
-      platformId: row.platformId as Shared.IRI,
-      externalUserId: row.externalUserId,
-      displayName: row.displayName,
-      email: row.email,
+      id: convertUuid(row.id, 'sqlite', 'from') as Shared.IRI,
+      platformId: convertUuid(row.platformId, 'sqlite', 'from') as Shared.IRI,
+      externalUserId: row.externalUserId, // Already validated non-null
+      displayName: row.displayName, // Optional field
+      email: row.email, // Optional field
       metadata,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt)
+      createdAt: new Date(convertTimestamp(row.createdAt, 'sqlite', 'from') as number), // Validated non-null
+      updatedAt: new Date(convertTimestamp(row.updatedAt, 'sqlite', 'from') as number), // Validated non-null
     });
   }
 }

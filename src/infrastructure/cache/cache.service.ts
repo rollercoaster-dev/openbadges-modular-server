@@ -6,7 +6,17 @@
  */
 
 import * as LRUModule from 'lru.min';
-type LRUType = any; // Type definition for LRU
+// Define a more specific type for the LRU cache
+type LRUType = {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown, maxAge?: number) => boolean;
+  has: (key: string) => boolean;
+  delete: (key: string) => boolean;
+  remove?: (key: string) => void;
+  clear: () => boolean;
+  keys: () => string[];
+  size: number;
+};
 import { CacheInterface, CacheStats } from './cache.interface';
 
 export interface CacheOptions {
@@ -172,7 +182,7 @@ export class CacheService implements CacheInterface {
    * @param obj The object to estimate
    * @returns Size in bytes
    */
-  private estimateObjectSize(obj: any): number {
+  private estimateObjectSize(obj: unknown): number {
     if (obj === null || obj === undefined) {
       return 0;
     }

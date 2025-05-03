@@ -12,6 +12,10 @@ import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../../src/domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 
+// Define input types for accurate casting
+type BadgeClassInput = Parameters<typeof BadgeClass.create>[0];
+type AssertionInput = Parameters<typeof Assertion.create>[0];
+
 describe('Entity Validators', () => {
   describe('Issuer Validator', () => {
     it('should validate a valid issuer', () => {
@@ -152,7 +156,7 @@ describe('Entity Validators', () => {
         name: 'Introduction to Programming',
         description: 'This badge is awarded to students who complete the Introduction to Programming course',
         image: 'https://example.edu/badges/intro-to-programming.png' as Shared.IRI,
-        criteria: null as any
+        criteria: null as unknown as BadgeClassInput['criteria']
       });
 
       const result = validateBadgeClass(invalidBadgeClass);
@@ -217,7 +221,7 @@ describe('Entity Validators', () => {
     it('should reject an assertion without a recipient', () => {
       const invalidAssertion = Assertion.create({
         badgeClass: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
-        recipient: null as any,
+        recipient: null as unknown as AssertionInput['recipient'],
         issuedOn: new Date().toISOString()
       });
 
@@ -230,9 +234,7 @@ describe('Entity Validators', () => {
     it('should reject an assertion with an invalid recipient', () => {
       const invalidAssertion = Assertion.create({
         badgeClass: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
-        recipient: {
-          // Missing type and identity
-        } as any,
+        recipient: {} as unknown as AssertionInput['recipient'],
         issuedOn: new Date().toISOString()
       });
 

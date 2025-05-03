@@ -22,7 +22,7 @@ export const BADGE_VERSION_CONTEXTS = {
  * @param obj The JSON-LD object to check
  * @returns The detected badge version or undefined if not detected
  */
-export function detectBadgeVersion(obj: Record<string, any>): BadgeVersion | undefined {
+export function detectBadgeVersion(obj: Record<string, unknown>): BadgeVersion | undefined {
   if (!obj || typeof obj !== 'object') {
     return undefined;
   }

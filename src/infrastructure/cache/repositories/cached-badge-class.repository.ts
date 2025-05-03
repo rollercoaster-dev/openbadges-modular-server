@@ -32,7 +32,7 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
     
     // Also invalidate issuer-related caches
     if ('issuerId' in badgeClass) {
-      this.cache.delete(`issuer:${(badgeClass as any).issuerId}`);
+      this.cache.delete(`issuer:${(badgeClass as { issuerId?: Shared.IRI }).issuerId}`);
     }
     
     return result;
@@ -145,7 +145,7 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
       
       // Also invalidate issuer-related caches
       if ('issuerId' in badgeClass) {
-        this.cache.delete(`issuer:${(badgeClass as any).issuerId}`);
+        this.cache.delete(`issuer:${(badgeClass as { issuerId?: Shared.IRI }).issuerId}`);
       } else if (result.issuerId) {
         this.cache.delete(`issuer:${result.issuerId}`);
       }

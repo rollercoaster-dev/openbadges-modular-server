@@ -4,15 +4,21 @@
  * @todo Fix these tests once the PostgreSQL implementation is complete
  */
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { Platform } from '../../../../../../src/domains/backpack/platform.entity';
+import { Platform } from '@domains/backpack/platform.entity';
 import { Shared } from 'openbadges-types';
-import { PlatformStatus } from '../../../../../../src/domains/backpack/backpack.types';
+import { PlatformStatus } from '@domains/backpack/backpack.types';
 
 // Mock the PostgresPlatformRepository
-class PostgresPlatformRepository {
-  constructor(private client: any) {}
+interface PlatformInput {
+  name: string;
+  clientId: string;
+  publicKey: string;
+}
 
-  async create(platform: any): Promise<Platform> {
+class PostgresPlatformRepository {
+  constructor(private client: unknown) {}
+
+  async create(platform: PlatformInput): Promise<Platform> {
     return Platform.create({
       id: 'platform-id' as Shared.IRI,
       name: platform.name,
@@ -118,7 +124,7 @@ describe('PostgresPlatformRepository', () => {
 
     // No need to setup mocks with our mock class
 
-    const result = await repository.create(platformData as any);
+    const result = await repository.create(platformData);
 
     // No need to verify mock calls with our mock class
     expect(result).toBeInstanceOf(Platform);

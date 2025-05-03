@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia';
+import Elysia from 'elysia';
 import { logger } from '../logging/logger.service';
 import { getRequestId } from '../logging/request-context.middleware';
 
@@ -13,6 +13,7 @@ import { getRequestId } from '../logging/request-context.middleware';
 export const errorHandlerMiddleware = new Elysia().onError((context) => {
   const { error, request, set } = context;
   const path = new URL(request.url).pathname;
+  // Context from onError is compatible with MinimalContext expected by getRequestId
   const requestId = getRequestId(context);
   const isProd = process.env.NODE_ENV === 'production';
 

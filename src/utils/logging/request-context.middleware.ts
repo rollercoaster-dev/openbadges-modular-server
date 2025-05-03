@@ -5,17 +5,21 @@
  * throughout the request lifecycle. It also adds the request ID to response headers.
  */
 
-import { Elysia } from 'elysia';
+import Elysia, { type Context } from 'elysia';
 import { randomUUID } from 'crypto';
 import { logger } from './logger.service';
 import { config } from '../../config/config';
 
 // Define a type for our extended context
 interface RequestContext {
-  store: {
-    requestId?: string;
-    requestStartTime?: number;
-  };
+  store: { requestId?: string; requestStartTime?: number };
+}
+
+/**
+ * Minimal context shape required by getRequestId.
+ */
+interface MinimalContext {
+  store: Context['store'];
 }
 
 /**
@@ -73,9 +77,10 @@ export const requestContextMiddleware = new Elysia()
 
 /**
  * Helper function to get the request ID from the current context
- * @param context Elysia context
+ * @param context Minimal context with store
  * @returns Request ID or 'unknown' if not available
  */
-export function getRequestId(context: any): string {
-  return context?.store ? (context.store as RequestContext['store']).requestId || 'unknown' : 'unknown';
+export function getRequestId(context: MinimalContext): string {
+  const store = context.store as RequestContext['store'];
+  return store?.requestId ?? 'unknown';
 }
