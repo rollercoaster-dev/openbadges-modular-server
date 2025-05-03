@@ -12,7 +12,7 @@ RUN apt-get update && \
 COPY package.json bun.lock ./
 
 # Install dependencies
-RUN bun install --production=false
+RUN bun install
 
 # Copy source code
 COPY . .

@@ -11,14 +11,22 @@ import { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { ApiKeyRepository } from '@domains/auth/apiKey.repository';
+import { PlatformRepository } from '@domains/backpack/platform.repository';
+import { PlatformUserRepository } from '@domains/backpack/platform-user.repository';
+import { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
 import { PostgresApiKeyRepository } from './database/modules/postgresql/repositories/postgres-api-key.repository';
+// TODO: Implement PostgreSQL repositories for backpack
+// These will be implemented when PostgreSQL support is added for backpack
 import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
 import { SqliteApiKeyRepository } from './database/modules/sqlite/repositories/sqlite-api-key.repository';
+import { SqlitePlatformRepository } from './database/modules/sqlite/repositories/sqlite-platform.repository';
+import { SqlitePlatformUserRepository } from './database/modules/sqlite/repositories/sqlite-platform-user.repository';
+import { SqliteUserAssertionRepository } from './database/modules/sqlite/repositories/sqlite-user-assertion.repository';
 import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
@@ -192,6 +200,81 @@ export class RepositoryFactory {
 
       // Create the repository
       return new SqliteApiKeyRepository(client);
+    }
+
+    throw new Error(`Unsupported database type: ${this.dbType}`);
+  }
+
+  /**
+   * Creates a platform repository
+   * @returns An implementation of PlatformRepository
+   */
+  static async createPlatformRepository(): Promise<PlatformRepository> {
+    if (this.dbType === 'postgresql') {
+      if (!this.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // TODO: Implement PostgreSQL repository for platforms
+      throw new Error('PostgreSQL platform repository not implemented yet');
+    } else if (this.dbType === 'sqlite') {
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the repository
+      return new SqlitePlatformRepository(client);
+    }
+
+    throw new Error(`Unsupported database type: ${this.dbType}`);
+  }
+
+  /**
+   * Creates a platform user repository
+   * @returns An implementation of PlatformUserRepository
+   */
+  static async createPlatformUserRepository(): Promise<PlatformUserRepository> {
+    if (this.dbType === 'postgresql') {
+      if (!this.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // TODO: Implement PostgreSQL repository for platform users
+      throw new Error('PostgreSQL platform user repository not implemented yet');
+    } else if (this.dbType === 'sqlite') {
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the repository
+      return new SqlitePlatformUserRepository(client);
+    }
+
+    throw new Error(`Unsupported database type: ${this.dbType}`);
+  }
+
+  /**
+   * Creates a user assertion repository
+   * @returns An implementation of UserAssertionRepository
+   */
+  static async createUserAssertionRepository(): Promise<UserAssertionRepository> {
+    if (this.dbType === 'postgresql') {
+      if (!this.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // TODO: Implement PostgreSQL repository for user assertions
+      throw new Error('PostgreSQL user assertion repository not implemented yet');
+    } else if (this.dbType === 'sqlite') {
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the repository
+      return new SqliteUserAssertionRepository(client);
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);

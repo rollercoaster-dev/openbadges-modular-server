@@ -217,8 +217,51 @@ export class HealthCheckService {
           }
         }
       } else if (dbType === 'postgresql') {
-        // For PostgreSQL, we would add specific metrics here
-        metrics.connectionPool = 'Not implemented';
+        // Get PostgreSQL metrics
+        const client = (db as any).client;
+        if (client) {
+          try {
+            // Get connection pool stats
+            metrics.connectionPool = {
+              total: client.options.max || 'unknown',
+              idle: client.options.idle_timeout || 'unknown',
+              connectionTimeout: client.options.connect_timeout || 'unknown'
+            };
+
+            // Get PostgreSQL version
+            const versionResult = await client`SELECT version();`;
+            if (versionResult && versionResult[0]) {
+              metrics.version = versionResult[0].version;
+            }
+
+            // Get table counts
+            try {
+              const tableResult = await client`
+                SELECT
+                  table_name,
+                  (SELECT count(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
+                FROM
+                  information_schema.tables t
+                WHERE
+                  table_schema = 'public'
+                  AND table_type = 'BASE TABLE'
+                ORDER BY
+                  table_name;
+              `;
+
+              if (tableResult && tableResult.length) {
+                metrics.tables = tableResult.map((row: any) => ({
+                  name: row.table_name,
+                  columnCount: row.column_count
+                }));
+              }
+            } catch (tableError) {
+              metrics.tables = { error: tableError.message };
+            }
+          } catch (pgError) {
+            metrics.error = pgError.message;
+          }
+        }
       }
 
       return metrics;
@@ -253,9 +296,28 @@ export class HealthCheckService {
                 responseTime: `${Date.now() - startTime}ms`
               };
             }
-          } else {
-            // For PostgreSQL, we would use the pg client
-            checks[`read_${table}`] = { status: 'not_implemented' };
+          } else if (config.database.type === 'postgresql') {
+            const client = (db as any).client;
+            if (client) {
+              try {
+                const result = await client`SELECT COUNT(*) FROM "${table}"`;
+                checks[`read_${table}`] = {
+                  status: 'ok',
+                  count: result[0]?.count || 0,
+                  responseTime: `${Date.now() - startTime}ms`
+                };
+              } catch (pgError) {
+                checks[`read_${table}`] = {
+                  status: 'error',
+                  error: pgError.message
+                };
+              }
+            } else {
+              checks[`read_${table}`] = {
+                status: 'error',
+                error: 'PostgreSQL client not available'
+              };
+            }
           }
         } catch (error) {
           checks[`read_${table}`] = {

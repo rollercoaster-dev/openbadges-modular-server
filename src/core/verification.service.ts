@@ -127,7 +127,6 @@ export class VerificationService {
         logger.warn(`Could not extract a valid key ID from creator URL: ${assertion.verification.creator}`);
         return false;
       }
-
       // Create a canonical representation of the assertion for verification
       const canonicalData = this.createCanonicalDataForSigning(assertion);
 

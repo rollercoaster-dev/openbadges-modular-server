@@ -167,3 +167,65 @@ export const userRoles = pgTable(
     };
   }
 );
+
+// Platforms table - for registering external platforms
+export const platforms = pgTable(
+  'platforms',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull().unique(),
+    description: text('description'),
+    clientId: text('client_id').notNull().unique(),
+    publicKey: text('public_key').notNull(), // For JWT verification
+    webhookUrl: text('webhook_url'),
+    status: text('status').notNull().default('active'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      nameIdx: index('platform_name_idx').on(table.name),
+      clientIdIdx: index('platform_client_id_idx').on(table.clientId),
+    };
+  }
+);
+
+// Platform Users table - for storing external users
+export const platformUsers = pgTable(
+  'platform_users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    platformId: uuid('platform_id').notNull().references(() => platforms.id, { onDelete: 'cascade' }),
+    externalUserId: text('external_user_id').notNull(), // User ID in the external platform
+    displayName: text('display_name'),
+    email: text('email'),
+    metadata: jsonb('metadata'), // Additional user data
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      platformUserIdx: index('platform_user_idx').on(table.platformId, table.externalUserId),
+      emailIdx: index('platform_user_email_idx').on(table.email),
+    };
+  }
+);
+
+// User Assertions table (Backpack) - links users to assertions
+export const userAssertions = pgTable(
+  'user_assertions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => platformUsers.id, { onDelete: 'cascade' }),
+    assertionId: uuid('assertion_id').notNull().references(() => assertions.id, { onDelete: 'cascade' }),
+    addedAt: timestamp('added_at').defaultNow().notNull(),
+    status: text('status').notNull().default('active'), // active, hidden, etc.
+    metadata: jsonb('metadata'), // Additional data about this user-assertion relationship
+  },
+  (table) => {
+    return {
+      userAssertionIdx: index('user_assertion_idx').on(table.userId, table.assertionId),
+      addedAtIdx: index('user_assertion_added_at_idx').on(table.addedAt),
+    };
+  }
+);
