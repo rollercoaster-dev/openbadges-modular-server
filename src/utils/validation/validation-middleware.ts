@@ -17,7 +17,7 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
  * @param set The Elysia set object for setting response status
  * @returns The validation result or throws an error
  */
-export function validateIssuerMiddleware({ body, set }: { body: any, set: any }) {
+export function validateIssuerMiddleware({ body, set }: { body: Record<string, unknown>, set: { status: number } }): { success: boolean; error?: string; details?: string[] } {
   const issuerData = Issuer.create(body);
   const { isValid, errors } = validateIssuer(issuerData);
 
@@ -39,7 +39,7 @@ export function validateIssuerMiddleware({ body, set }: { body: any, set: any })
  * @param set The Elysia set object for setting response status
  * @returns The validation result or throws an error
  */
-export function validateBadgeClassMiddleware({ body, set }: { body: any, set: any }) {
+export function validateBadgeClassMiddleware({ body, set }: { body: Record<string, unknown>, set: { status: number } }): { success: boolean; error?: string; details?: string[] } {
   const badgeClassData = BadgeClass.create(body);
   const { isValid, errors } = validateBadgeClass(badgeClassData);
 
@@ -61,7 +61,7 @@ export function validateBadgeClassMiddleware({ body, set }: { body: any, set: an
  * @param set The Elysia set object for setting response status
  * @returns The validation result or throws an error
  */
-export function validateAssertionMiddleware({ body, set }: { body: any, set: any }) {
+export function validateAssertionMiddleware({ body, set }: { body: Record<string, unknown>, set: { status: number } }): { success: boolean; error?: string; details?: string[] } {
   const assertionData = Assertion.create(body);
   const { isValid, errors } = validateAssertion(assertionData);
 
