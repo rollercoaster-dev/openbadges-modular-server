@@ -1,3 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
+# Check for weakened ESLint rules
+echo "Checking for weakened ESLint rules..."
+.husky/pre-commit-eslint-rules-check
+
+# Run lint-staged
 echo "Running lint-staged..."
 npx lint-staged

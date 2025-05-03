@@ -27,6 +27,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# old eslint config (using eslint.config.js instead)
+.eslintrc.js
+
 # IntelliJ based IDEs
 .idea
 
