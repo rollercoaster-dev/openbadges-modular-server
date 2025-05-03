@@ -30,7 +30,12 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (this.connected) return;
 
     try {
-      this.client = postgres(this.config.connectionString as string);
+      // Validate connection string before creating client
+      if (typeof this.config.connectionString !== 'string' || !this.config.connectionString) {
+        logger.error('Invalid or missing PostgreSQL connection string in configuration');
+        throw new Error('Invalid or missing PostgreSQL connection string in configuration');
+      }
+      this.client = postgres(this.config.connectionString);
       this.db = drizzle(this.client);
       this.connected = true;
     } catch (error) {
@@ -43,7 +48,10 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (!this.connected || !this.client) return;
 
     try {
-      await this.client.end();
+      // Ensure the client exists and has an end method before trying to end the connection
+      if (this.client && typeof this.client.end === 'function') {
+        await this.client.end();
+      }
       this.client = null;
       this.db = null;
       this.connected = false;

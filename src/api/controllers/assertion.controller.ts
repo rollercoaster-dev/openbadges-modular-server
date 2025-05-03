@@ -358,7 +358,9 @@ export class AssertionController {
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
-        const issuer = await this.issuerRepository.findById(badgeClass?.issuer); // Use optional chaining for safety
+        const issuer = badgeClass?.issuer 
+          ? await this.issuerRepository.findById(badgeClass.issuer)
+          : null; 
         // Pass entities directly
         return signedAssertion.toJsonLd(version, badgeClass, issuer);
       } else {

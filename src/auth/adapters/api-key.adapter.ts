@@ -20,6 +20,16 @@ interface ApiKeyConfig {
   }>;
 }
 
+// Type guard to check if an object conforms to ApiKeyConfig
+function isApiKeyConfig(config: unknown): config is ApiKeyConfig {
+  return (
+    typeof config === 'object' &&
+    config !== null &&
+    typeof (config as ApiKeyConfig).keys === 'object' && // Check if keys property exists and is an object
+    (config as ApiKeyConfig).keys !== null
+  );
+}
+
 export class ApiKeyAdapter implements AuthAdapter {
   private readonly providerName: string = 'api-key';
   private readonly apiKeyConfig: ApiKeyConfig;
@@ -31,9 +41,14 @@ export class ApiKeyAdapter implements AuthAdapter {
       this.providerName = options.providerName;
     }
 
-    this.apiKeyConfig = options.config as unknown as ApiKeyConfig;
+    // Use the type guard for validation
+    if (!isApiKeyConfig(options.config)) {
+      throw new Error('Invalid or missing ApiKeyConfig structure provided.');
+    }
+    // Type guard ensures options.config is ApiKeyConfig here
+    this.apiKeyConfig = options.config;
 
-    // Validate config
+    // Validate config contents
     if (!this.apiKeyConfig.keys || Object.keys(this.apiKeyConfig.keys).length === 0) {
       logger.warn(`No API keys configured for ${this.providerName} adapter`);
     }
