@@ -7,6 +7,7 @@
 
 import { BadgeVersion, BADGE_VERSION_CONTEXTS } from './badge-version';
 import { Shared } from 'openbadges-types';
+import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } from '../types/badge-data.types';
 
 /**
  * Base serializer interface for Open Badges
@@ -17,14 +18,14 @@ export interface BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in the appropriate format
    */
-  serializeIssuer(issuer: Record<string, any>): Record<string, any>;
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string };
 
   /**
    * Serializes a badge class to the appropriate format
    * @param badgeClass The badge class object
    * @returns A serialized badge class in the appropriate format
    */
-  serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any>;
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string };
 
   /**
    * Serializes an assertion to the appropriate format
@@ -34,10 +35,10 @@ export interface BadgeSerializer {
    * @returns A serialized assertion in the appropriate format
    */
   serializeAssertion(
-    assertion: Record<string, any>,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
-  ): Record<string, any>;
+    assertion: AssertionData,
+    badgeClass?: BadgeClassData,
+    issuer?: IssuerData
+  ): AssertionData & { '@context': string; type: string } | VerifiableCredentialData;
 
   /**
    * Gets the badge version supported by this serializer
@@ -55,7 +56,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in Open Badges 2.0 format
    */
-  serializeIssuer(issuer: Record<string, any>): Record<string, any> {
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
       id: issuer.id as Shared.IRI,
@@ -74,7 +75,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 2.0 format
    */
-  serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
       id: badgeClass.id as Shared.IRI,
@@ -97,9 +98,9 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @returns A serialized assertion in Open Badges 2.0 format
    */
   serializeAssertion(
-    assertion: Record<string, any>,
-    badgeClass?: Record<string, any>
-  ): Record<string, any> {
+    assertion: AssertionData,
+    badgeClass?: BadgeClassData
+  ): AssertionData & { '@context': string; type: string } {
     // Create verification object if not present
     const verification = assertion.verification || {
       type: 'hosted',
@@ -111,7 +112,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
       id: assertion.id as Shared.IRI,
       type: 'Assertion',
       recipient: assertion.recipient,
-      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
+      badgeClass: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       verification: verification,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -139,7 +140,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in Open Badges 3.0 format
    */
-  serializeIssuer(issuer: Record<string, any>): Record<string, any> {
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
       id: issuer.id as Shared.IRI,
@@ -158,7 +159,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 3.0 format
    */
-  serializeBadgeClass(badgeClass: Record<string, any>): Record<string, any> {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
       id: badgeClass.id as Shared.IRI,
@@ -181,10 +182,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @returns A serialized assertion in Open Badges 3.0 format
    */
   serializeAssertion(
-    assertion: Record<string, any>,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
-  ): Record<string, any> {
+    assertion: AssertionData,
+    badgeClass?: BadgeClassData,
+    issuer?: IssuerData
+  ): AssertionData & { '@context': string; type: string } | VerifiableCredentialData {
     // If we have all the necessary components, create a VerifiableCredential
     if (badgeClass && issuer) {
       return this.createVerifiableCredential(assertion, badgeClass, issuer);
@@ -195,7 +196,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
       id: assertion.id as Shared.IRI,
       type: 'Assertion',
-      badge: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
+      badgeClass: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       recipient: assertion.recipient,
       issuedOn: assertion.issuedOn,
       ...(assertion.expires && { expires: assertion.expires }),
@@ -214,10 +215,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @returns A Verifiable Credential representation of the assertion
    */
   private createVerifiableCredential(
-    assertion: Record<string, any>,
-    badgeClass: Record<string, any>,
-    issuer: Record<string, any>
-  ): Record<string, any> {
+    assertion: AssertionData,
+    badgeClass: BadgeClassData,
+    issuer: IssuerData
+  ): VerifiableCredentialData {
     return {
       '@context': [
         'https://www.w3.org/2018/credentials/v1',
@@ -262,11 +263,11 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       }),
       ...(assertion.revoked !== undefined && {
         credentialStatus: {
-          id: `${assertion.id}#status`,
+          id: `${assertion.id}#status` as Shared.IRI,
           type: 'StatusList2021Entry',
           statusPurpose: 'revocation',
           statusListIndex: '0',
-          statusListCredential: `${assertion.id}#list`
+          statusListCredential: `${assertion.id}#list` as Shared.IRI
         }
       })
     };
