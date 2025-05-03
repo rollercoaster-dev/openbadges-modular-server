@@ -41,7 +41,7 @@ export function createPlatformAuthMiddleware(platformRepository: PlatformReposit
 
     try {
       // Decode token to get issuer (client ID)
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));
       const clientId = payload.iss;
 
       // Get platform by client ID
