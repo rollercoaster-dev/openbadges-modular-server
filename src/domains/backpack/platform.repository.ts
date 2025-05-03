@@ -3,6 +3,7 @@
  */
 import { Platform } from './platform.entity';
 import { Shared } from 'openbadges-types';
+import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams } from './repository.types';
 
 export interface PlatformRepository {
   /**
@@ -10,13 +11,13 @@ export interface PlatformRepository {
    * @param platform The platform to create
    * @returns The created platform with its ID
    */
-  create(platform: Omit<Platform, 'id'>): Promise<Platform>;
+  create(params: PlatformCreateParams): Promise<Platform>;
 
   /**
    * Finds all platforms
    * @returns An array of all platforms
    */
-  findAll(): Promise<Platform[]>;
+  findAll(params?: PlatformQueryParams): Promise<Platform[]>;
 
   /**
    * Finds a platform by its ID
@@ -38,7 +39,7 @@ export interface PlatformRepository {
    * @param platform The updated platform data
    * @returns The updated platform if found, null otherwise
    */
-  update(id: Shared.IRI, platform: Partial<Platform>): Promise<Platform | null>;
+  update(id: Shared.IRI, params: PlatformUpdateParams): Promise<Platform | null>;
 
   /**
    * Deletes a platform

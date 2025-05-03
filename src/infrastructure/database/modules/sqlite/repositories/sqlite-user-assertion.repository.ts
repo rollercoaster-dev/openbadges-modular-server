@@ -10,6 +10,7 @@ import type { UserAssertionRepository } from '@domains/backpack/user-assertion.r
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { UserAssertionStatus } from '@domains/backpack/backpack.types';
+import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/backpack/repository.types';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
   private db: Database;
@@ -37,8 +38,35 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_user_assertions_assertion ON user_assertions(assertionId)`);
   }
 
-  async addAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+  async addAssertion(userIdOrParams: Shared.IRI | UserAssertionCreateParams, assertionId?: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
     try {
+      // Handle params object
+      if (typeof userIdOrParams !== 'string') {
+        const params = userIdOrParams;
+        return this.createUserAssertion(params.userId, params.assertionId, params.metadata);
+      }
+
+      // Handle individual parameters
+      if (!assertionId) {
+        throw new Error('Assertion ID is required when userId is provided');
+      }
+
+      return this.createUserAssertion(userIdOrParams, assertionId, metadata);
+    } catch (error) {
+      logger.error('Error adding assertion to user in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userIdOrParams,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Internal method to create a user assertion
+   */
+  private async createUserAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+
       // Create a new user assertion entity
       const userAssertion = UserAssertion.create({
         userId,
@@ -70,14 +98,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       );
 
       return userAssertion;
-    } catch (error) {
-      logger.error('Error adding assertion to user in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-        assertionId
-      });
-      throw error;
-    }
+
   }
 
   async removeAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
@@ -122,13 +143,33 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     }
   }
 
-  async getUserAssertions(userId: Shared.IRI): Promise<UserAssertion[]> {
+  async getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
     try {
+      // Build query
+      let query = `SELECT * FROM user_assertions WHERE userId = ? AND status != ?`;
+      const queryParams: any[] = [String(userId), String(UserAssertionStatus.DELETED)];
+
+      // Add filters if provided
+      if (params) {
+        if (params.status) {
+          query = query.replace('AND status != ?', 'AND status = ?');
+          queryParams[1] = String(params.status);
+        }
+
+        // Add limit and offset if provided
+        if (params.limit) {
+          query += ` LIMIT ?`;
+          queryParams.push(params.limit);
+
+          if (params.offset) {
+            query += ` OFFSET ?`;
+            queryParams.push(params.offset);
+          }
+        }
+      }
+
       // Query database
-      const rows = this.db.prepare(`
-        SELECT * FROM user_assertions
-        WHERE userId = ? AND status != ?
-      `).all(String(userId), String(UserAssertionStatus.DELETED));
+      const rows = this.db.prepare(query).all(...queryParams);
 
       // Convert rows to domain entities
       return rows.map(row => this.rowToDomain(row));

@@ -3,6 +3,7 @@
  */
 import { PlatformUser } from './platform-user.entity';
 import { Shared } from 'openbadges-types';
+import { PlatformUserCreateParams, PlatformUserUpdateParams } from './repository.types';
 
 export interface PlatformUserRepository {
   /**
@@ -10,7 +11,7 @@ export interface PlatformUserRepository {
    * @param user The platform user to create
    * @returns The created platform user with its ID
    */
-  create(user: Omit<PlatformUser, 'id'>): Promise<PlatformUser>;
+  create(params: PlatformUserCreateParams): Promise<PlatformUser>;
 
   /**
    * Finds a platform user by its ID
@@ -33,7 +34,7 @@ export interface PlatformUserRepository {
    * @param user The updated platform user data
    * @returns The updated platform user if found, null otherwise
    */
-  update(id: Shared.IRI, user: Partial<PlatformUser>): Promise<PlatformUser | null>;
+  update(id: Shared.IRI, params: PlatformUserUpdateParams): Promise<PlatformUser | null>;
 
   /**
    * Deletes a platform user

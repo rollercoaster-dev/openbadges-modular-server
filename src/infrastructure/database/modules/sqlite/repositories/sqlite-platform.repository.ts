@@ -9,6 +9,7 @@ import { Platform } from '@domains/backpack/platform.entity';
 import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams } from '@domains/backpack/repository.types';
 
 export class SqlitePlatformRepository implements PlatformRepository {
   private db: Database;
@@ -32,10 +33,10 @@ export class SqlitePlatformRepository implements PlatformRepository {
     `);
   }
 
-  async create(platform: Omit<Platform, 'id'>): Promise<Platform> {
+  async create(params: PlatformCreateParams): Promise<Platform> {
     try {
       // Create a new platform entity
-      const newPlatform = Platform.create(platform as Platform);
+      const newPlatform = Platform.create(params as Platform);
       const obj = newPlatform.toObject();
 
       // Insert into database
@@ -59,16 +60,50 @@ export class SqlitePlatformRepository implements PlatformRepository {
     } catch (error) {
       logger.error('Error creating platform in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
-        platform
+        params
       });
       throw error;
     }
   }
 
-  async findAll(): Promise<Platform[]> {
+  async findAll(params?: PlatformQueryParams): Promise<Platform[]> {
     try {
+      // Build query
+      let query = `SELECT * FROM platforms`;
+      const queryParams: any[] = [];
+
+      // Add filters if provided
+      if (params) {
+        const whereConditions: string[] = [];
+
+        if (params.status) {
+          whereConditions.push(`status = ?`);
+          queryParams.push(params.status);
+        }
+
+        if (params.name) {
+          whereConditions.push(`name LIKE ?`);
+          queryParams.push(`%${params.name}%`);
+        }
+
+        if (whereConditions.length > 0) {
+          query += ` WHERE ${whereConditions.join(' AND ')}`;
+        }
+
+        // Add limit and offset if provided
+        if (params.limit) {
+          query += ` LIMIT ?`;
+          queryParams.push(params.limit);
+
+          if (params.offset) {
+            query += ` OFFSET ?`;
+            queryParams.push(params.offset);
+          }
+        }
+      }
+
       // Query database
-      const rows = this.db.prepare(`SELECT * FROM platforms`).all();
+      const rows = this.db.prepare(query).all(...queryParams);
 
       // Convert rows to domain entities
       return rows.map(row => this.rowToDomain(row));
@@ -122,7 +157,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
     }
   }
 
-  async update(id: Shared.IRI, platform: Partial<Platform>): Promise<Platform | null> {
+  async update(id: Shared.IRI, params: PlatformUpdateParams): Promise<Platform | null> {
     try {
       // Check if platform exists
       const existingPlatform = await this.findById(id);
@@ -133,7 +168,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
       // Create a merged entity
       const mergedPlatform = Platform.create({
         ...existingPlatform.toObject(),
-        ...platform as any,
+        ...params as any,
         updatedAt: new Date()
       });
       const obj = mergedPlatform.toObject();
@@ -165,7 +200,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
       logger.error('Error updating platform in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         id,
-        platform
+        params
       });
       throw error;
     }

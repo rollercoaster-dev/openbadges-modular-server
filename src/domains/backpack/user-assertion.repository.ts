@@ -2,9 +2,9 @@
  * Interface for UserAssertion repositories
  */
 import { UserAssertion } from './user-assertion.entity';
-// import { Assertion } from '../assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus } from './backpack.types';
+import { UserAssertionCreateParams, UserAssertionQueryParams } from './repository.types';
 
 export interface UserAssertionRepository {
   /**
@@ -15,6 +15,13 @@ export interface UserAssertionRepository {
    * @returns The created user assertion
    */
   addAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion>;
+
+  /**
+   * Adds an assertion to a user's backpack using params object
+   * @param params The user assertion creation parameters
+   * @returns The created user assertion
+   */
+  addAssertion(params: UserAssertionCreateParams): Promise<UserAssertion>;
 
   /**
    * Removes an assertion from a user's backpack
@@ -38,7 +45,7 @@ export interface UserAssertionRepository {
    * @param userId The ID of the platform user
    * @returns An array of assertions in the user's backpack
    */
-  getUserAssertions(userId: Shared.IRI): Promise<UserAssertion[]>;
+  getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]>;
 
   /**
    * Checks if a user has a specific assertion in their backpack
