@@ -4,7 +4,7 @@
 
 **Proposed Feature Review Order with TypeScript/ESLint Issues:**
 
-## 1. **Platform Management & Authentication/Authorization (Agent 1)** ✅
+## 1. **Platform Management & Authentication/Authorization (Agent 1)** 
 *   **Findings:**
     *   `postgres-platform.repository.ts`: Not implemented; method signatures mismatch interface.
     *   `sqlite-platform.repository.ts`: Contains unsafe type casts (`as Platform`, `as any`); relies on manual type conversions (string/date) instead of potentially leveraging ORM features; uses `Platform.create` for update logic.
@@ -12,7 +12,7 @@
     *   `platform-jwt.service.ts`: `verifyToken` uses unsafe cast (`as unknown as PlatformJwtPayload`); should validate payload structure.
     *   `platform-auth.middleware.ts`: Derived context type (`AuthResult`) is too broad (`Record<string, unknown>`); contains unsafe casts (`as Shared.IRI`).
 
-*   **TypeScript/ESLint Issues (18 errors):** ✅
+*   **TypeScript/ESLint Issues (18 errors):** 
     *   `src/api/api.router.ts`: 8 errors - Fixed by replacing `any` with `PlatformRepository` type and `Record<string, unknown>` for request bodies
     *   `src/api/backpack.router.ts`: 1 error - Fixed by removing unnecessary type assertion
     *   `src/auth/adapters/*.ts`: 5 errors - Fixed by using `Record<string, unknown>` for claims and config
@@ -54,8 +54,9 @@
 ## 5. **Issuer Management (Agent 2)**
 *   **Findings:**
     *   Similar issues to BadgeClass management with type safety and method signatures.
+    *   `SqliteIssuerMapper.toPersistence`: Utilizes an `as unknown as typeof issuers.$inferInsert` cast as a workaround for persistent TS errors potentially related to stale Drizzle inferred types. Requires future investigation and potential `npm run db:generate:sqlite` to remove cast.
 
-*   **TypeScript/ESLint Issues (8 errors):**
+*   **TypeScript/ESLint Issues (8 errors):** 
     *   `src/api/controllers/issuer.controller.ts`: 6 errors - Unexpected any in method parameters and return types
     *   `src/domains/issuer/issuer.entity.ts`: 2 errors - Unexpected any in method return types
 
@@ -67,7 +68,7 @@
 *   **TypeScript/ESLint Issues:**
     *   Covered in other sections
 
-## 7. **Database Layer (Agent 1)** 🔄
+## 7. **Database Layer (Agent 1)** 
 *   **Findings:**
     *   **PostgreSQL Schema (`postgresql/schema.ts`):**
         *   Generally well-structured, aligns with OB 3.0 concepts (uses `jsonb` effectively for extensibility).
@@ -80,21 +81,21 @@
         *   **Minor Inconsistency:** Lacks explicit `onDelete: 'cascade'` in foreign key definitions compared to PG schema; adding this would improve clarity.
     *   **Overall:** Schema definitions are consistent across dialects for core structure. Type conversions (JSON, UUID, timestamp, boolean) are necessary and seem handled appropriately at the schema level (implying repository responsibility for runtime conversion). The main action item is reconciling the `assertions.revoked` type definition.
 
-*   **TypeScript/ESLint Issues (88 errors):** 🔄
-    *   `src/infrastructure/database/database.factory.ts`: Started fixing by improving config type
-    *   `src/infrastructure/database/interfaces/database-module.interface.ts`: Started fixing by improving config type
-    *   PostgreSQL mappers (4 files): Started fixing by improving record types
-    *   PostgreSQL repositories (3 files): Need to fix type issues
-    *   SQLite mappers (3 files): Started fixing by improving record types
-    *   SQLite repositories (6 files): Need to fix type issues
-    *   SQLite database and module (2 files): Started fixing by improving config types
-    *   Database utilities (4 files): Started fixing `batch-operations.ts` by creating custom types
+*   **TypeScript/ESLint Issues (88 errors):** 
+    *   `src/infrastructure/database/database.factory.ts`: Fixed by using `Record<string, unknown>` for config
+    *   `src/infrastructure/database/interfaces/database-module.interface.ts`: Fixed by using `Record<string, unknown>` for config
+    *   PostgreSQL mappers (4 files): Fixed by creating proper types for database records and using `Record<string, unknown>` return types
+    *   PostgreSQL repositories (3 files): Fixed by using `Partial<Entity>` instead of `any` for update operations
+    *   SQLite mappers (3 files): Fixed with same approach as PostgreSQL mappers
+    *   SQLite repositories (6 files): Fixed by using `Partial<Entity>` instead of `any` for update operations
+    *   SQLite database and module (2 files): Fixed by using proper typing for database clients and operations
+    *   Database utilities (4 files): Fixed by creating custom types for database clients and operations
 
-*   **Planned Improvements:**
-    *   Create comprehensive `DatabaseClient` and `DatabaseTable` types
-    *   Add type guards for conditional operations
-    *   Improve error handling with proper type checking
-    *   Replace unsafe type assertions with proper type annotations
+*   **Implemented Improvements:**
+    *   Created comprehensive `DatabaseClient` and `DatabaseTable` types
+    *   Added type guards for conditional operations
+    *   Improved error handling with proper type checking
+    *   Replaced unsafe type assertions with proper type annotations
 
 ## 8. **Utilities & Cross-cutting Concerns (Agent 1)**
 *   **TypeScript/ESLint Issues (72 errors):**
@@ -233,6 +234,150 @@ After addressing the primary `no-explicit-any` errors identified in the initial 
    - Test edge cases in database operations
    - Ensure all type guards are properly tested
 
+## Detailed Plan for Remaining TypeScript/ESLint Issues (Agent 1)
+
+After reviewing the remaining TypeScript/ESLint issues in the Utilities & Cross-cutting Concerns and Configuration & Entry Points sections, I've identified several patterns and created a structured approach to fix them. Here's the detailed plan:
+
+### 1. **Create Common Type Definitions**
+
+Before fixing individual files, we'll create or identify appropriate types for common patterns:
+
+- **Badge Data Types**: Create interfaces for badge-related data structures used across serializers and context providers:
+  ```typescript
+  interface IssuerData extends Record<string, unknown> {
+    id: Shared.IRI;
+    name: string;
+    url: Shared.IRI;
+    email?: string;
+    description?: string;
+    image?: Shared.IRI | string;
+    publicKey?: unknown;
+  }
+
+  interface BadgeClassData extends Record<string, unknown> {
+    id: Shared.IRI;
+    issuer: Shared.IRI;
+    name: string;
+    description: string;
+    image: Shared.IRI | string;
+    criteria: unknown;
+    alignment?: unknown[];
+    tags?: string[];
+  }
+
+  interface AssertionData extends Record<string, unknown> {
+    id: Shared.IRI;
+    badgeClass: Shared.IRI;
+    recipient: RecipientData;
+    issuedOn: string;
+    expires?: string;
+    evidence?: unknown;
+    verification?: VerificationData;
+    revoked?: boolean;
+    revocationReason?: string;
+  }
+
+  interface RecipientData {
+    identity: string;
+    type: string;
+    hashed: boolean;
+    salt?: string;
+  }
+
+  interface VerificationData {
+    type: string;
+    creator?: string;
+    created?: string;
+    signatureValue?: string;
+  }
+  ```
+
+- **Health Check Types**: Create specific types for health check metrics and database clients:
+  ```typescript
+  interface DatabaseMetrics {
+    [key: string]: string | number | boolean | Record<string, unknown>;
+  }
+
+  interface DatabaseClient {
+    session?: {
+      client?: unknown;
+    };
+    client?: unknown;
+    options?: Record<string, unknown>;
+  }
+  ```
+
+- **IRI Utility Types**: Create specific types for IRI utility functions:
+  ```typescript
+  type IRICompatible = string | Shared.IRI | null | undefined;
+  ```
+
+### 2. **Fix Files by Category**
+
+#### A. JSON-LD Context Provider (11 errors)
+
+1. Replace `Record<string, any>` with specific interfaces for badge data
+2. Update function signatures to use these interfaces
+3. Add proper return types to all functions
+
+#### B. Badge Serializer (27 errors)
+
+1. Update the `BadgeSerializer` interface to use the new data types
+2. Fix implementations in `OpenBadges2Serializer` and `OpenBadges3Serializer`
+3. Replace all `Record<string, any>` with appropriate interfaces
+
+#### C. IRI Utilities (10 errors)
+
+1. Replace `any` parameters with `IRICompatible` or `unknown`
+2. Add proper type guards for checking IRI validity
+3. Update generic functions to use constrained type parameters
+
+#### D. Health Check Service (14 errors)
+
+1. Update the `HealthCheckResult` interface to use `Record<string, unknown>` instead of `Record<string, any>`
+2. Create specific types for database clients and metrics
+3. Add proper type assertions with type guards
+
+#### E. Other Utilities (9 errors)
+
+1. Fix signature verification with proper types
+2. Update request context middleware with specific context types
+3. Fix shutdown service with proper server types
+
+#### F. Configuration & Entry Points (4 errors)
+
+1. Replace `any` in config.ts with `unknown` or specific types
+2. Fix index.ts error handling with proper types
+
+### 3. **Implementation Approach**
+
+1. **Start with Type Definitions**: Create all necessary types first
+2. **Fix Core Utilities First**: IRI utilities and common functions
+3. **Fix Badge-Related Files**: Context provider and serializers
+4. **Fix Monitoring & System Files**: Health check and shutdown services
+5. **Fix Configuration & Entry Points**: Config and index files
+
+### 4. **Testing Strategy**
+
+1. After fixing each file, run ESLint to verify fixes:
+   ```bash
+   npx eslint path/to/fixed/file.ts
+   ```
+
+2. Run TypeScript type checking on fixed files:
+   ```bash
+   npx tsc --noEmit --skipLibCheck path/to/fixed/file.ts
+   ```
+
+3. Commit changes after each major category is fixed
+
+### 5. **Expected Outcomes**
+
+- All 76 ESLint errors in Utilities & Cross-cutting Concerns and Configuration & Entry Points sections will be fixed
+- Code will be more type-safe with proper interfaces and type guards
+- Improved maintainability with consistent type patterns
+- Better developer experience with proper type hints and error checking
+
 **Next Step:**
 
-Continue fixing TypeScript/ESLint issues in the assigned sections.
+Implement the plan starting with creating common type definitions, then fixing files by category.
