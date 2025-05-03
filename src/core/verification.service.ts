@@ -10,7 +10,7 @@ import { KeyService } from './key.service';
 import { createVerification, verifyAssertion } from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
 import { config } from '../config/config';
-import { Shared } from 'openbadges-types';
+import { Shared, OB3 } from 'openbadges-types';
 
 export class VerificationService {
   /**
@@ -81,17 +81,22 @@ export class VerificationService {
       // Ensure the key service is initialized
       await KeyService.initialize();
 
-      if (!assertion.verification || !assertion.verification.signatureValue) {
-        logger.warn(`Assertion ${assertion.id} has no verification or signature`);
+      // Type guard to check if verification is likely an OB3.Proof object
+      if (!assertion.verification || typeof assertion.verification !== 'object' || 
+          !('signatureValue' in assertion.verification) || !assertion.verification.signatureValue) {
+        logger.warn(`Assertion ${assertion.id} has no verification or signature suitable for checking.`);
         return false;
       }
+
+      // At this point, assertion.verification is likely OB3.Proof, proceed with checks
+      const verificationProof = assertion.verification as OB3.Proof; // Safe assertion after guard
 
       // Extract the key ID from the creator URL
       let keyId = 'default';
       let validCreatorUrl = true;
 
-      if (assertion.verification.creator) {
-        const creatorUrl = assertion.verification.creator as string;
+      if (verificationProof.creator) {
+        const creatorUrl = verificationProof.creator as string;
         try {
           // Try to parse as a valid URL
           const url = new URL(creatorUrl);
@@ -124,7 +129,7 @@ export class VerificationService {
 
       // If we couldn't extract a valid key ID from the creator URL, return false
       if (!validCreatorUrl) {
-        logger.warn(`Could not extract a valid key ID from creator URL: ${assertion.verification.creator}`);
+        logger.warn(`Could not extract a valid key ID from creator URL: ${verificationProof.creator}`);
         return false;
       }
       // Create a canonical representation of the assertion for verification
@@ -133,7 +138,7 @@ export class VerificationService {
       // Verify the signature
       const isValid = verifyAssertion(
         canonicalData,
-        assertion.verification,
+        verificationProof,
         KeyService.getPublicKey(keyId)
       );
 

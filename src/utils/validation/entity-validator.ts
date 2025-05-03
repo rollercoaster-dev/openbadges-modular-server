@@ -8,7 +8,7 @@
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
-import { Shared } from 'openbadges-types';
+import { Shared, OB3 } from 'openbadges-types';
 
 /**
  * Validates an issuer entity
@@ -33,13 +33,26 @@ export function validateIssuer(issuer: Issuer): { isValid: boolean; errors: stri
     errors.push('Issuer URL must be a valid URL');
   }
 
-  // Check optional fields if provided
-  if (issuer.email && !isValidEmail(issuer.email)) {
-    errors.push('Issuer email must be a valid email address');
+  if (issuer.image) {
+    if (typeof issuer.image === 'string') {
+      // Handle IRI or OB2.Image (which is just an IRI string)
+      if (!isValidUrl(issuer.image)) {
+        errors.push('Issuer image URL must be a valid URL');
+      }
+    } else if (typeof issuer.image === 'object' && 'id' in issuer.image) {
+      // Handle OB3.ImageObject
+      if (!isValidUrl(issuer.image.id)) {
+        errors.push('Issuer image object ID must be a valid URL');
+      }
+    } else {
+      // Handle unexpected type if necessary, though TypeScript should prevent this
+      errors.push('Issuer image has an invalid type');
+    }
   }
 
-  if (issuer.image && !isValidUrl(issuer.image)) {
-    errors.push('Issuer image must be a valid URL');
+  // Validate email if provided
+  if (issuer.email && !isValidEmail(issuer.email)) {
+    errors.push('Issuer email must be a valid email address');
   }
 
   return {
@@ -164,28 +177,31 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
   }
 
   // Check verification if provided
-  if (assertion.verification) {
-    if (!assertion.verification.type) {
-      errors.push('Verification type is required');
-    }
+  if (assertion.verification && typeof assertion.verification === 'object') {
+    // Type guard: Check for properties unique to OB3.Proof to validate Proof-specific fields
+    if ('signatureValue' in assertion.verification && 'creator' in assertion.verification && 'created' in assertion.verification) {
+      const verificationProof = assertion.verification as OB3.Proof;
 
-    // Only check these fields if verification type is not 'hosted'
-    if (assertion.verification.type !== 'hosted') {
-      if (!assertion.verification.creator) {
+      if (!verificationProof.creator) {
         errors.push('Verification creator is required');
-      } else if (typeof assertion.verification.creator === 'string' && !isValidUrl(assertion.verification.creator)) {
+      } else if (typeof verificationProof.creator === 'string' && !isValidUrl(verificationProof.creator)) {
         errors.push('Verification creator must be a valid URL');
       }
 
-      if (!assertion.verification.created) {
+      if (!verificationProof.created) {
         errors.push('Verification created is required');
-      } else if (!isValidDate(assertion.verification.created)) {
+      } else if (!isValidDate(verificationProof.created)) {
         errors.push('Verification created must be a valid ISO date string');
       }
 
-      if (!assertion.verification.signatureValue) {
+      if (!verificationProof.signatureValue) {
         errors.push('Verification signatureValue is required');
       }
+    } else if (assertion.verification.type === 'hosted') {
+      // Handle hosted verification specific checks if any (currently none needed here)
+    } else {
+      // Handle cases where verification is present but not OB3 Proof or Hosted Verification
+      // Add checks specific to OB2 VerificationObject or OB3 CredentialStatus if needed
     }
   }
 
@@ -200,7 +216,7 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
  * @param url The URL to validate
  * @returns True if the URL is valid, false otherwise
  */
-function isValidUrl(url: string | Shared.IRI | any): boolean {
+function isValidUrl(url: string | Shared.IRI): boolean {
   try {
     new URL(url.toString());
     return true;

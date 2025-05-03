@@ -7,6 +7,7 @@
 
 import { OB2, OB3, Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
+import { IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
 
@@ -63,13 +64,25 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
   }
 
   /**
+   * Returns a partial representation of the issuer's internal state.
+   * Suitable for use cases like updates where only a subset of properties is needed.
+   * @returns A shallow copy of the issuer object as Partial<Issuer>.
+   */
+  toPartial(): Partial<Issuer> {
+    // Return a shallow copy of the internal state
+    return { ...this };
+  }
+
+  /**
    * Converts the issuer to a JSON-LD representation in the specified version
    * @param version The badge version to use (defaults to 3.0)
    * @returns A JSON-LD representation of the issuer
    */
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    return serializer.serializeIssuer(this.toObject());
+    // Use toPartial() for serialization to ensure correct types are passed
+    // The serializer expects IssuerData, which aligns with Partial<Issuer>
+    return serializer.serializeIssuer(this.toPartial() as IssuerData);
   }
 
   /**

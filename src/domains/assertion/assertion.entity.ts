@@ -5,10 +5,11 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
+import { AssertionData, BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -20,23 +21,14 @@ export class Assertion {
   id: Shared.IRI;
   type: string = 'Assertion';
   badgeClass: Shared.IRI;
-  recipient: any; // OB2.Recipient | OB3.CredentialSubject
+  recipient: OB2.IdentityObject | OB3.CredentialSubject;
   issuedOn: string;
   expires?: string;
-  evidence?: any[]; // OB2.Evidence[] | OB3.Evidence[]
-  verification?: any | {
-    type: string;
-    creator?: Shared.IRI;
-    created?: string;
-    signatureValue?: string;
-    verificationProperty?: string;
-    startsWith?: string;
-    allowedOrigins?: string | string[];
-    [key: string]: any;
-  };
+  evidence?: OB2.Evidence[] | OB3.Evidence[];
+  verification?: OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 
   /**
    * Private constructor to enforce creation through factory method
@@ -73,9 +65,11 @@ export class Assertion {
 
   /**
    * Converts the assertion to a plain object
-   * @returns A plain object representation of the assertion
+   * @returns A plain object representation of the assertion, compatible with OB2.Assertion and OB3.VerifiableCredential
    */
-  toObject(): Record<string, any> {
+  toObject(): Record<string, unknown> {
+    // Note: This returns a direct shallow copy. Minor discrepancies might exist
+    // with strict OB2/OB3 types, but this is generally compatible for serialization.
     return { ...this };
   }
 
@@ -88,11 +82,25 @@ export class Assertion {
    */
   toJsonLd(
     version: BadgeVersion = BadgeVersion.V3,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
-  ): Record<string, any> {
+    badgeClass?: OB2.BadgeClass | OB3.Achievement,
+    issuer?: OB2.Profile | OB3.Issuer
+  ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    return serializer.serializeAssertion(this.toObject(), badgeClass, issuer);
+    
+    // Cast our entity to the expected data structure
+    // This is safe because our entity properties match the AssertionData interface
+    const assertionData = this.toObject() as unknown as AssertionData;
+    
+    // Cast the optional parameters to their expected types
+    const typedBadgeClass = badgeClass as unknown as BadgeClassData;
+    const typedIssuer = issuer as unknown as IssuerData;
+    
+    // Then serialize with the appropriate serializer
+    return serializer.serializeAssertion(
+      assertionData,
+      typedBadgeClass,
+      typedIssuer
+    ) as unknown as OB2.Assertion | OB3.VerifiableCredential;
   }
 
   /**
@@ -100,7 +108,7 @@ export class Assertion {
    * @param property The property name
    * @returns The property value or undefined if not found
    */
-  getProperty(property: string): any {
+  getProperty(property: string): unknown {
     return this[property];
   }
 
