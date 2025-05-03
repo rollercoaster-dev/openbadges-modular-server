@@ -43,3 +43,5 @@ uploads/*
 # Cryptographic keys
 keys/
 test-keys/
+
+.eslintrc.js
