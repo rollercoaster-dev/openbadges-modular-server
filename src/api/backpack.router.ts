@@ -274,5 +274,5 @@ export function createBackpackRouter(
       });
   });
 
-  return router;
+  return router as any;
 }
