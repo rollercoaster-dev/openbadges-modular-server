@@ -1,6 +1,6 @@
 /**
  * API Key Authentication Adapter
- * 
+ *
  * This adapter provides API key-based authentication for headless integrations.
  * API keys are passed in the X-API-Key header and validated against configured keys.
  */
@@ -15,7 +15,7 @@ interface ApiKeyConfig {
   keys: Record<string, {
     userId: string;
     description?: string;
-    claims?: Record<string, any>;
+    claims?: Record<string, unknown>;
   }>;
 }
 
@@ -23,14 +23,14 @@ export class ApiKeyAdapter implements AuthAdapter {
   private readonly providerName: string = 'api-key';
   private readonly apiKeyConfig: ApiKeyConfig;
   private readonly headerName: string = 'X-API-Key';
-  
+
   constructor(options: AuthAdapterOptions) {
     if (options.providerName) {
       this.providerName = options.providerName;
     }
-    
+
     this.apiKeyConfig = options.config as ApiKeyConfig;
-    
+
     // Validate config
     if (!this.apiKeyConfig.keys || Object.keys(this.apiKeyConfig.keys).length === 0) {
       logger.warn(`No API keys configured for ${this.providerName} adapter`);
@@ -47,7 +47,7 @@ export class ApiKeyAdapter implements AuthAdapter {
 
   async authenticate(request: Request): Promise<AuthenticationResult> {
     const apiKey = request.headers.get(this.headerName);
-    
+
     if (!apiKey) {
       return {
         isAuthenticated: false,
@@ -58,7 +58,7 @@ export class ApiKeyAdapter implements AuthAdapter {
 
     // Check if the API key exists in the configuration
     const keyConfig = this.apiKeyConfig.keys[apiKey];
-    
+
     if (!keyConfig) {
       logger.warn(`Invalid API key attempt: ${apiKey.substring(0, 8)}...`);
       return {
@@ -67,7 +67,7 @@ export class ApiKeyAdapter implements AuthAdapter {
         provider: this.providerName
       };
     }
-    
+
     return {
       isAuthenticated: true,
       userId: keyConfig.userId,
