@@ -12,9 +12,10 @@ import { AssertionRepository } from '../assertion/assertion.repository';
 import { Platform } from './platform.entity';
 import { PlatformUser } from './platform-user.entity';
 import { UserAssertion } from './user-assertion.entity';
-import { Assertion } from '../assertion/assertion.entity';
+// import { Assertion } from '../assertion/assertion.entity';
 import { logger } from '../../utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
+import { UserAssertionStatus } from './backpack.types';
 
 export class BackpackService {
   constructor(
@@ -192,7 +193,7 @@ export class BackpackService {
   async updateAssertionStatus(
     userId: Shared.IRI,
     assertionId: Shared.IRI,
-    status: string
+    status: UserAssertionStatus
   ): Promise<boolean> {
     try {
       return await this.userAssertionRepository.updateStatus(userId, assertionId, status);
@@ -207,7 +208,7 @@ export class BackpackService {
    * @param userId The platform user ID
    * @returns The assertions in the user's backpack
    */
-  async getUserAssertions(userId: Shared.IRI): Promise<Assertion[]> {
+  async getUserAssertions(userId: Shared.IRI): Promise<UserAssertion[]> {
     try {
       return await this.userAssertionRepository.getUserAssertions(userId);
     } catch (error) {

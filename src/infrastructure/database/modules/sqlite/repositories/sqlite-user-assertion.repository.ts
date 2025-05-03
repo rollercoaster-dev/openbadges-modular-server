@@ -1,1 +1,236 @@
-export class SqliteUserAssertionRepository {}
+/**
+ * SQLite implementation of the UserAssertion repository
+ *
+ * This class implements the UserAssertionRepository interface using SQLite
+ */
+
+import { Database } from 'bun:sqlite';
+import { UserAssertion } from '@domains/backpack/user-assertion.entity';
+import type { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
+import { Shared } from 'openbadges-types';
+import { logger } from '@utils/logging/logger.service';
+import { UserAssertionStatus } from '@domains/backpack/backpack.types';
+
+export class SqliteUserAssertionRepository implements UserAssertionRepository {
+  private db: Database;
+
+  constructor(db: Database) {
+    this.db = db;
+
+    // Create the user_assertions table if it doesn't exist
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS user_assertions (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        assertionId TEXT NOT NULL,
+        addedAt TEXT NOT NULL,
+        status TEXT NOT NULL,
+        metadata TEXT,
+        FOREIGN KEY (userId) REFERENCES platform_users(id) ON DELETE CASCADE,
+        FOREIGN KEY (assertionId) REFERENCES assertions(id) ON DELETE CASCADE,
+        UNIQUE (userId, assertionId)
+      )
+    `);
+
+    // Create indexes
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_user_assertions_user ON user_assertions(userId)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_user_assertions_assertion ON user_assertions(assertionId)`);
+  }
+
+  async addAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+    try {
+      // Create a new user assertion entity
+      const userAssertion = UserAssertion.create({
+        userId,
+        assertionId,
+        metadata
+      });
+      const obj = userAssertion.toObject();
+
+      // Convert metadata to JSON string if it exists
+      const metadataStr = obj.metadata ? JSON.stringify(obj.metadata) : null;
+
+      // Insert into database
+      this.db.prepare(`
+        INSERT INTO user_assertions (
+          id, userId, assertionId, addedAt, status, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (userId, assertionId) DO UPDATE SET
+          status = ?,
+          metadata = ?
+      `).run(
+        String(obj.id),
+        String(obj.userId),
+        String(obj.assertionId),
+        (obj.addedAt instanceof Date) ? obj.addedAt.toISOString() : String(obj.addedAt),
+        String(obj.status),
+        metadataStr,
+        String(obj.status),
+        metadataStr
+      );
+
+      return userAssertion;
+    } catch (error) {
+      logger.error('Error adding assertion to user in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  async removeAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+    try {
+      // Delete from database
+      const result = this.db.prepare(`
+        DELETE FROM user_assertions
+        WHERE userId = ? AND assertionId = ?
+      `).run(String(userId), String(assertionId));
+
+      // Return true if something was deleted
+      return result.changes > 0;
+    } catch (error) {
+      logger.error('Error removing assertion from user in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
+    try {
+      // Update status in database
+      const result = this.db.prepare(`
+        UPDATE user_assertions
+        SET status = ?
+        WHERE userId = ? AND assertionId = ?
+      `).run(String(status), String(userId), String(assertionId));
+
+      // Return true if something was updated
+      return result.changes > 0;
+    } catch (error) {
+      logger.error('Error updating assertion status in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId,
+        status
+      });
+      throw error;
+    }
+  }
+
+  async getUserAssertions(userId: Shared.IRI): Promise<UserAssertion[]> {
+    try {
+      // Query database
+      const rows = this.db.prepare(`
+        SELECT * FROM user_assertions
+        WHERE userId = ? AND status != ?
+      `).all(String(userId), String(UserAssertionStatus.DELETED));
+
+      // Convert rows to domain entities
+      return rows.map(row => this.rowToDomain(row));
+    } catch (error) {
+      logger.error('Error getting user assertions in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId
+      });
+      throw error;
+    }
+  }
+
+  async getAssertionUsers(assertionId: Shared.IRI): Promise<UserAssertion[]> {
+    try {
+      // Query database
+      const rows = this.db.prepare(`
+        SELECT * FROM user_assertions
+        WHERE assertionId = ?
+      `).all(String(assertionId));
+
+      // Convert rows to domain entities
+      return rows.map(row => this.rowToDomain(row));
+    } catch (error) {
+      logger.error('Error getting assertion users in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  async hasAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+    try {
+      // Query database
+      const row = this.db.prepare(`
+        SELECT 1 FROM user_assertions
+        WHERE userId = ? AND assertionId = ? AND status != ?
+      `).get(String(userId), String(assertionId), String(UserAssertionStatus.DELETED));
+
+      // Return true if found
+      return !!row;
+    } catch (error) {
+      logger.error('Error checking if user has assertion in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  async findByUserAndAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<UserAssertion | null> {
+    try {
+      // Query database
+      const row = this.db.prepare(`
+        SELECT * FROM user_assertions
+        WHERE userId = ? AND assertionId = ?
+      `).get(String(userId), String(assertionId));
+
+      // Return null if not found
+      if (!row) {
+        return null;
+      }
+
+      // Convert row to domain entity
+      return this.rowToDomain(row);
+    } catch (error) {
+      logger.error('Error finding user assertion in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Converts a database row to a domain entity
+   * @param row The database row
+   * @returns A UserAssertion domain entity
+   */
+  private rowToDomain(row: any): UserAssertion {
+    // Parse metadata if it exists
+    let metadata: Record<string, unknown> | undefined;
+    if (row.metadata) {
+      try {
+        metadata = JSON.parse(row.metadata);
+      } catch (error) {
+        logger.warn('Error parsing user assertion metadata', {
+          error: error instanceof Error ? error.message : String(error),
+          metadata: row.metadata
+        });
+      }
+    }
+
+    return UserAssertion.create({
+      id: row.id as Shared.IRI,
+      userId: row.userId as Shared.IRI,
+      assertionId: row.assertionId as Shared.IRI,
+      addedAt: new Date(row.addedAt),
+      status: row.status as UserAssertionStatus,
+      metadata
+    });
+  }
+}

@@ -3,6 +3,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
+import { PlatformStatus, PlatformMetadata } from './backpack.types';
 
 export class Platform {
   id: Shared.IRI;
@@ -11,7 +12,8 @@ export class Platform {
   clientId: string;
   publicKey: string;
   webhookUrl?: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: PlatformStatus;
+  metadata?: PlatformMetadata;
   createdAt: Date;
   updatedAt: Date;
 
@@ -35,7 +37,7 @@ export class Platform {
 
     // Set default status if not provided
     if (!data.status) {
-      data.status = 'active';
+      data.status = PlatformStatus.ACTIVE;
     }
 
     // Set timestamps if not provided
@@ -64,7 +66,8 @@ export class Platform {
       webhookUrl: this.webhookUrl,
       status: this.status,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
+      metadata: this.metadata
     };
   }
 }

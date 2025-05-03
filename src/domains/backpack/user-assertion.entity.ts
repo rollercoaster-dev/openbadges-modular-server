@@ -3,14 +3,15 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
+import { UserAssertionStatus, UserAssertionMetadata } from './backpack.types';
 
 export class UserAssertion {
   id: Shared.IRI;
   userId: Shared.IRI;
   assertionId: Shared.IRI;
   addedAt: Date;
-  status: 'active' | 'hidden' | 'deleted';
-  metadata?: Record<string, unknown>;
+  status: UserAssertionStatus;
+  metadata?: UserAssertionMetadata;
 
   /**
    * Private constructor to enforce creation through factory method
@@ -32,7 +33,7 @@ export class UserAssertion {
 
     // Set default status if not provided
     if (!data.status) {
-      data.status = 'active';
+      data.status = UserAssertionStatus.ACTIVE;
     }
 
     // Set addedAt if not provided

@@ -3,6 +3,7 @@
  */
 import { describe, test, expect } from 'bun:test';
 import { UserAssertion } from '../../../src/domains/backpack/user-assertion.entity';
+import { UserAssertionStatus } from '../../../src/domains/backpack/backpack.types';
 import { Shared } from 'openbadges-types';
 
 describe('UserAssertion Entity', () => {
@@ -10,7 +11,7 @@ describe('UserAssertion Entity', () => {
   const validUserAssertionData = {
     userId: 'user-id' as Shared.IRI,
     assertionId: 'assertion-id' as Shared.IRI,
-    status: 'active' as const,
+    status: UserAssertionStatus.ACTIVE,
     metadata: { source: 'test' }
   };
 
@@ -40,7 +41,7 @@ describe('UserAssertion Entity', () => {
     const { status: _status, ...dataWithoutStatus } = validUserAssertionData;
     const userAssertion = UserAssertion.create(dataWithoutStatus);
 
-    expect(userAssertion.status).toBe('active');
+    expect(userAssertion.status).toBe(UserAssertionStatus.ACTIVE);
   });
 
   test('should set custom addedAt if provided', () => {

@@ -5,6 +5,9 @@ import * as jose from 'jose';
 
 /**
  * Platform JWT payload structure
+ *
+ * This interface defines the expected structure of JWT tokens
+ * issued by external platforms for authentication.
  */
 export interface PlatformJwtPayload {
   /**
@@ -18,24 +21,44 @@ export interface PlatformJwtPayload {
   iss: string;
 
   /**
-   * Platform UUID in our system
+   * Platform UUID in our system (optional as it might not be known by the platform)
    */
-  platformId: string;
+  platformId?: string;
 
   /**
-   * Authentication provider identifier
+   * Authentication provider identifier (e.g., 'google', 'local', 'oauth')
    */
-  provider: string;
+  provider?: string;
 
   /**
-   * User display name
+   * User display name (optional)
    */
-  displayName: string;
+  displayName?: string;
 
   /**
-   * User email
+   * User email (optional)
    */
-  email: string;
+  email?: string;
+
+  /**
+   * Expiration time (standard JWT claim)
+   */
+  exp?: number;
+
+  /**
+   * Issued at time (standard JWT claim)
+   */
+  iat?: number;
+
+  /**
+   * JWT ID (standard JWT claim)
+   */
+  jti?: string;
+
+  /**
+   * User roles or permissions
+   */
+  roles?: string[];
 
   /**
    * Additional properties

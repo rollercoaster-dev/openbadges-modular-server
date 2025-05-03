@@ -3,6 +3,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
+import { PlatformUserMetadata } from './backpack.types';
 
 export class PlatformUser {
   id: Shared.IRI;
@@ -10,7 +11,7 @@ export class PlatformUser {
   externalUserId: string;
   displayName?: string;
   email?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: PlatformUserMetadata;
   createdAt: Date;
   updatedAt: Date;
 

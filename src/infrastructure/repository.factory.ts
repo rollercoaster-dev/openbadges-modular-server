@@ -18,9 +18,8 @@ import { PostgresIssuerRepository } from './database/modules/postgresql/reposito
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
 import { PostgresApiKeyRepository } from './database/modules/postgresql/repositories/postgres-api-key.repository';
-import { PostgresPlatformRepository } from './database/modules/postgresql/repositories/postgres-platform.repository';
-import { PostgresPlatformUserRepository } from './database/modules/postgresql/repositories/postgres-platform-user.repository';
-import { PostgresUserAssertionRepository } from './database/modules/postgresql/repositories/postgres-user-assertion.repository';
+// TODO: Implement PostgreSQL repositories for backpack
+// These will be implemented when PostgreSQL support is added for backpack
 import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
@@ -216,8 +215,8 @@ export class RepositoryFactory {
         throw new Error('PostgreSQL client not initialized');
       }
 
-      // Create the repository
-      return new PostgresPlatformRepository(this.client);
+      // TODO: Implement PostgreSQL repository for platforms
+      throw new Error('PostgreSQL platform repository not implemented yet');
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');
@@ -241,8 +240,8 @@ export class RepositoryFactory {
         throw new Error('PostgreSQL client not initialized');
       }
 
-      // Create the repository
-      return new PostgresPlatformUserRepository(this.client);
+      // TODO: Implement PostgreSQL repository for platform users
+      throw new Error('PostgreSQL platform user repository not implemented yet');
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');
@@ -266,8 +265,8 @@ export class RepositoryFactory {
         throw new Error('PostgreSQL client not initialized');
       }
 
-      // Create the repository
-      return new PostgresUserAssertionRepository(this.client);
+      // TODO: Implement PostgreSQL repository for user assertions
+      throw new Error('PostgreSQL user assertion repository not implemented yet');
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');

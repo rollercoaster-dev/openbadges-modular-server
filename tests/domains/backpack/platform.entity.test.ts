@@ -3,6 +3,7 @@
  */
 import { describe, test, expect } from 'bun:test';
 import { Platform } from '../../../src/domains/backpack/platform.entity';
+import { PlatformStatus } from '../../../src/domains/backpack/backpack.types';
 import { Shared } from 'openbadges-types';
 
 describe('Platform Entity', () => {
@@ -13,7 +14,7 @@ describe('Platform Entity', () => {
     clientId: 'test-client-id',
     publicKey: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0+JdYLHloVeU+HkZ3N5u\nYrDOCYSUxw/nPVYnFHLCvRSRnzXLBYAkWjgMdz7gV8Q0PE9XJU7S8yyGNuGCUgKd\nP9F9S5GJLzEbV4/d0w1Zz/xnQlkCDFGGvnmMYqFwcxDlr9zTm5K7bXl0ioGNYpfs\nZVo9AOsOTGQxkUbTAMBA+9+ZnkPCa2kVYnOLKgdCvN6u8wIDAQAB\n-----END PUBLIC KEY-----',
     webhookUrl: 'https://example.com/webhook',
-    status: 'active' as const
+    status: PlatformStatus.ACTIVE
   };
 
   test('should create a platform with factory method', () => {
@@ -45,7 +46,7 @@ describe('Platform Entity', () => {
     const { status: _status, ...dataWithoutStatus } = validPlatformData;
     const platform = Platform.create(dataWithoutStatus);
 
-    expect(platform.status).toBe('active');
+    expect(platform.status).toBe(PlatformStatus.ACTIVE);
   });
 
   test('should convert to plain object', () => {

@@ -15,9 +15,9 @@ import { Shared } from 'openbadges-types';
 export function createPlatformAuthMiddleware(platformRepository: PlatformRepository): Elysia {
   return new Elysia().derive(async ({ request, set }) => {
     // Default response
-    const response = {
+    let response: Record<string, unknown> = {
       isAuthenticated: false,
-      platformUser: null as PlatformUser | null,
+      platformUser: null,
       error: ''
     };
 
@@ -54,15 +54,19 @@ export function createPlatformAuthMiddleware(platformRepository: PlatformReposit
       const decodedToken = await PlatformJwtService.verifyToken(token, platform.publicKey);
 
       // Create platform user
-      response.platformUser = PlatformUser.create({
+      const platformUser = PlatformUser.create({
         platformId: platform.id as Shared.IRI,
         externalUserId: decodedToken.sub,
         displayName: decodedToken.displayName,
         email: decodedToken.email
       });
 
-      response.isAuthenticated = true;
-      return response;
+      // Create success response
+      return {
+        isAuthenticated: true,
+        platformUser,
+        error: null
+      } as Record<string, unknown>;
     } catch (_error) {
       set.status = 401;
       response.error = 'Authentication failed';

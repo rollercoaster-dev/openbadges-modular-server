@@ -7,9 +7,15 @@
 
 import { BackpackService } from './backpack.service';
 import { Platform } from './platform.entity';
+import { PlatformUser } from './platform-user.entity';
 import { logger } from '../../utils/logging/logger.service';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { Shared } from 'openbadges-types';
+import {
+  ApiResponse,
+  UserAssertionStatus,
+  UserAssertionMetadata
+} from './backpack.types';
 
 export class BackpackController {
   constructor(private backpackService: BackpackService) {}
@@ -19,7 +25,7 @@ export class BackpackController {
    * @param data The platform data
    * @returns The created platform
    */
-  async createPlatform(data: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  async createPlatform(data: Record<string, unknown>): Promise<{ status: number; body: ApiResponse<{ platform: Record<string, unknown> }> }> {
     try {
       const platform = await this.backpackService.createPlatform(data as Omit<Platform, 'id'>);
       return {
@@ -45,7 +51,7 @@ export class BackpackController {
    * Gets all platforms
    * @returns All platforms
    */
-  async getAllPlatforms(): Promise<{ status: number; body: Record<string, unknown> }> {
+  async getAllPlatforms(): Promise<{ status: number; body: ApiResponse<{ platforms: Record<string, unknown>[] }> }> {
     try {
       const platforms = await this.backpackService.getAllPlatforms();
       return {
@@ -72,7 +78,7 @@ export class BackpackController {
    * @param id The platform ID
    * @returns The platform if found
    */
-  async getPlatformById(id: Shared.IRI): Promise<{ status: number; body: Record<string, unknown> }> {
+  async getPlatformById(id: Shared.IRI): Promise<{ status: number; body: ApiResponse<{ platform: Record<string, unknown> }> }> {
     try {
       const platform = await this.backpackService.getPlatformById(id);
       if (!platform) {
@@ -109,9 +115,9 @@ export class BackpackController {
    * @param data The updated platform data
    * @returns The updated platform if found
    */
-  async updatePlatform(id: Shared.IRI, data: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  async updatePlatform(id: Shared.IRI, data: Partial<Platform>): Promise<{ status: number; body: ApiResponse<{ platform: Record<string, unknown> }> }> {
     try {
-      const platform = await this.backpackService.updatePlatform(id, data as Partial<Platform>);
+      const platform = await this.backpackService.updatePlatform(id, data);
       if (!platform) {
         return {
           status: 404,
@@ -145,7 +151,7 @@ export class BackpackController {
    * @param id The platform ID
    * @returns Success status
    */
-  async deletePlatform(id: Shared.IRI): Promise<{ status: number; body: Record<string, unknown> }> {
+  async deletePlatform(id: Shared.IRI): Promise<{ status: number; body: ApiResponse<null> }> {
     try {
       const success = await this.backpackService.deletePlatform(id);
       if (!success) {
@@ -183,10 +189,10 @@ export class BackpackController {
    * @returns Success status
    */
   async addAssertion(
-    platformUser: { platformId: Shared.IRI; externalUserId: string; displayName?: string; email?: string },
+    platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>,
     assertionId: Shared.IRI,
-    metadata?: Record<string, unknown>
-  ): Promise<{ status: number; body: Record<string, unknown> }> {
+    metadata?: UserAssertionMetadata
+  ): Promise<{ status: number; body: ApiResponse<null> }> {
     try {
       // Get or create the user
       const user = await this.backpackService.getOrCreateUser(
@@ -224,9 +230,9 @@ export class BackpackController {
    * @returns The assertions in the user's backpack
    */
   async getUserAssertions(
-    platformUser: { platformId: Shared.IRI; externalUserId: string; displayName?: string; email?: string },
+    platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>,
     _version: BadgeVersion = BadgeVersion.V3
-  ): Promise<{ status: number; body: Record<string, unknown> }> {
+  ): Promise<{ status: number; body: ApiResponse<{ assertions: Record<string, unknown>[] }> }> {
     try {
       // Get or create the user
       const user = await this.backpackService.getOrCreateUser(
@@ -265,9 +271,9 @@ export class BackpackController {
    * @returns Success status
    */
   async removeAssertion(
-    platformUser: { platformId: Shared.IRI; externalUserId: string; displayName?: string; email?: string },
+    platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>,
     assertionId: Shared.IRI
-  ): Promise<{ status: number; body: Record<string, unknown> }> {
+  ): Promise<{ status: number; body: ApiResponse<null> }> {
     try {
       // Get or create the user
       const user = await this.backpackService.getOrCreateUser(
@@ -316,10 +322,10 @@ export class BackpackController {
    * @returns Success status
    */
   async updateAssertionStatus(
-    platformUser: { platformId: Shared.IRI; externalUserId: string; displayName?: string; email?: string },
+    platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>,
     assertionId: Shared.IRI,
-    status: string
-  ): Promise<{ status: number; body: Record<string, unknown> }> {
+    status: UserAssertionStatus
+  ): Promise<{ status: number; body: ApiResponse<null> }> {
     try {
       // Get or create the user
       const user = await this.backpackService.getOrCreateUser(

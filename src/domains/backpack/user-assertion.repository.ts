@@ -2,8 +2,9 @@
  * Interface for UserAssertion repositories
  */
 import { UserAssertion } from './user-assertion.entity';
-import { Assertion } from '../assertion/assertion.entity';
+// import { Assertion } from '../assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
+import { UserAssertionStatus } from './backpack.types';
 
 export interface UserAssertionRepository {
   /**
@@ -30,14 +31,14 @@ export interface UserAssertionRepository {
    * @param status The new status of the assertion
    * @returns True if the assertion status was updated, false otherwise
    */
-  updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: string): Promise<boolean>;
+  updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean>;
 
   /**
    * Gets all assertions in a user's backpack
    * @param userId The ID of the platform user
    * @returns An array of assertions in the user's backpack
    */
-  getUserAssertions(userId: Shared.IRI): Promise<Assertion[]>;
+  getUserAssertions(userId: Shared.IRI): Promise<UserAssertion[]>;
 
   /**
    * Checks if a user has a specific assertion in their backpack
