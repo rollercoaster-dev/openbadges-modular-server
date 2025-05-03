@@ -26,12 +26,42 @@ interface ValidationResponse {
  * @returns Record with error messages grouped by field
  */
 function formatValidationErrors(errors: string[]): Record<string, string[]> {
-  const formattedErrors: Record<string, string[]> = { validation: [] };
+  const formattedErrors: Record<string, string[]> = {};
+
+  // Common field names in validation errors
+  const knownFields = [
+    'name', 'url', 'email', 'image', 'description', 'criteria',
+    'issuer', 'badgeClass', 'recipient', 'issuedOn', 'expires',
+    'verification', 'alignment', 'evidence', 'id', 'type'
+  ];
 
   // Group errors by field or use 'general' for generic errors
   errors.forEach(error => {
-    formattedErrors['validation'].push(error);
+    // Try to determine which field this error relates to
+    const matchedField = knownFields.find(field =>
+      error.toLowerCase().includes(`${field.toLowerCase()} is required`) ||
+      error.toLowerCase().includes(`${field.toLowerCase()} must be`)
+    );
+
+    if (matchedField) {
+      // Initialize the array for this field if it doesn't exist
+      if (!formattedErrors[matchedField]) {
+        formattedErrors[matchedField] = [];
+      }
+      formattedErrors[matchedField].push(error);
+    } else {
+      // Use 'general' for errors that don't match a specific field
+      if (!formattedErrors['general']) {
+        formattedErrors['general'] = [];
+      }
+      formattedErrors['general'].push(error);
+    }
   });
+
+  // If no errors were categorized, fall back to the previous behavior
+  if (Object.keys(formattedErrors).length === 0) {
+    formattedErrors['validation'] = errors;
+  }
 
   return formattedErrors;
 }
