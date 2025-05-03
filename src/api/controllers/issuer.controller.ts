@@ -10,6 +10,8 @@ import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared } from 'openbadges-types';
+import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
+import { logger } from '../../utils/logging/logger.service';
 
 /**
  * Controller for issuer-related operations
@@ -27,10 +29,26 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The created issuer
    */
-  async createIssuer(data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>> {
-    const issuer = Issuer.create(data);
-    const createdIssuer = await this.issuerRepository.create(issuer);
-    return createdIssuer.toJsonLd(version);
+  async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto> {
+    try {
+      // Validate required fields
+      if (!data.name || !data.url) {
+        throw new Error('Missing required fields: name and url are required');
+      }
+
+      // Create issuer entity
+      const issuer = Issuer.create(data as Partial<Issuer>);
+      const createdIssuer = await this.issuerRepository.create(issuer);
+      
+      // Return formatted response
+      return createdIssuer.toJsonLd(version) as IssuerResponseDto;
+    } catch (error) {
+      logger.error('Error creating issuer', { 
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -38,9 +56,9 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns All issuers
    */
-  async getAllIssuers(version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getAllIssuers(version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto[]> {
     const issuers = await this.issuerRepository.findAll();
-    return issuers.map(issuer => issuer.toJsonLd(version));
+    return issuers.map(issuer => issuer.toJsonLd(version) as IssuerResponseDto);
   }
 
   /**
@@ -49,12 +67,12 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The issuer with the specified ID
    */
-  async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
+  async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
     const issuer = await this.issuerRepository.findById(toIRI(id) as Shared.IRI);
     if (!issuer) {
       return null;
     }
-    return issuer.toJsonLd(version);
+    return issuer.toJsonLd(version) as IssuerResponseDto;
   }
 
   /**
@@ -64,12 +82,21 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The updated issuer
    */
-  async updateIssuer(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data);
-    if (!updatedIssuer) {
-      return null;
+  async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
+    try {
+      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data as Partial<Issuer>);
+      if (!updatedIssuer) {
+        return null;
+      }
+      return updatedIssuer.toJsonLd(version) as IssuerResponseDto;
+    } catch (error) {
+      logger.error('Error updating issuer', { 
+        id,
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
     }
-    return updatedIssuer.toJsonLd(version);
   }
 
   /**

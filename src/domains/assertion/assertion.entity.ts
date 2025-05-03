@@ -5,10 +5,14 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
+import { AssertionData } from '../../utils/types/badge-data.types';
+import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
+import { BadgeClass } from '../badgeClass/badgeClass.entity';
+import { Issuer } from '../issuer/issuer.entity';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -20,23 +24,14 @@ export class Assertion {
   id: Shared.IRI;
   type: string = 'Assertion';
   badgeClass: Shared.IRI;
-  recipient: any; // OB2.Recipient | OB3.CredentialSubject
+  recipient: OB2.IdentityObject | OB3.CredentialSubject;
   issuedOn: string;
   expires?: string;
-  evidence?: any[]; // OB2.Evidence[] | OB3.Evidence[]
-  verification?: any | {
-    type: string;
-    creator?: Shared.IRI;
-    created?: string;
-    signatureValue?: string;
-    verificationProperty?: string;
-    startsWith?: string;
-    allowedOrigins?: string | string[];
-    [key: string]: any;
-  };
+  evidence?: OB2.Evidence[] | OB3.Evidence[];
+  verification?: OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 
   /**
    * Private constructor to enforce creation through factory method
@@ -73,9 +68,11 @@ export class Assertion {
 
   /**
    * Converts the assertion to a plain object
-   * @returns A plain object representation of the assertion
+   * @returns A plain object representation of the assertion, compatible with OB2.Assertion and OB3.VerifiableCredential
    */
-  toObject(): Record<string, any> {
+  toObject(): Record<string, unknown> {
+    // Note: This returns a direct shallow copy. Minor discrepancies might exist
+    // with strict OB2/OB3 types, but this is generally compatible for serialization.
     return { ...this };
   }
 
@@ -88,11 +85,42 @@ export class Assertion {
    */
   toJsonLd(
     version: BadgeVersion = BadgeVersion.V3,
-    badgeClass?: Record<string, any>,
-    issuer?: Record<string, any>
-  ): Record<string, any> {
+    badgeClass?: BadgeClass,
+    issuer?: Issuer
+  ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    return serializer.serializeAssertion(this.toObject(), badgeClass, issuer);
+    
+    // Get partial data for the assertion itself
+    const assertionData = this.toObject() as AssertionData;
+    
+    // Get JSON-LD representation from passed entities if they exist
+    const typedBadgeClass = badgeClass
+      ? badgeClass.toJsonLd(version) as BadgeClassData
+      : undefined;
+    const typedIssuer = issuer
+      ? issuer.toJsonLd(version) as IssuerData
+      : undefined;
+    
+    // Then serialize with the appropriate serializer
+    const output = serializer.serializeAssertion(
+      assertionData,
+      typedBadgeClass, // Pass the potentially undefined typed data
+      typedIssuer // Pass the potentially undefined typed data
+    ) as unknown as Record<string, unknown>;
+
+    // For Open Badges 3 (VerifiableCredential), alias badgeClass to badge and include verification
+    if (version === BadgeVersion.V3) {
+      if ('badgeClass' in output) {
+        output['badge'] = output['badgeClass'];
+        delete output['badgeClass'];
+      }
+      // Ensure verification is included
+      if (assertionData.verification) {
+        output['verification'] = assertionData.verification;
+      }
+    }
+
+    return output as OB2.Assertion | OB3.VerifiableCredential;
   }
 
   /**
@@ -100,7 +128,7 @@ export class Assertion {
    * @param property The property name
    * @returns The property value or undefined if not found
    */
-  getProperty(property: string): any {
+  getProperty(property: string): unknown {
     return this[property];
   }
 

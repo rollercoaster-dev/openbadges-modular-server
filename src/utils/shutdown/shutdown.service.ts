@@ -41,7 +41,7 @@ export interface ShutdownOptions {
 
 export class ShutdownService {
   private static isShuttingDown = false;
-  private static server: any = null;
+  private static server: unknown = null;
   private static shutdownHooks: Array<() => Promise<void>> = [];
   private static defaultOptions: Required<ShutdownOptions> = {
     timeout: 5000,
@@ -54,7 +54,7 @@ export class ShutdownService {
    * Initializes the shutdown service
    * @param server The HTTP server instance
    */
-  static init(server: any): void {
+  static init(server: unknown): void {
     this.server = server;
     this.registerSignalHandlers();
   }
@@ -149,7 +149,7 @@ export class ShutdownService {
           logger.info('Closing HTTP server...');
         }
         await new Promise<void>((resolve) => {
-          this.server.close(() => {
+          (this.server as { close: (callback: () => void) => void }).close(() => {
             if (opts.logging) {
               logger.info('HTTP server closed.');
             }

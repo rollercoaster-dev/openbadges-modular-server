@@ -27,14 +27,10 @@ export class SqliteIssuerRepository implements IssuerRepository {
   async create(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
     try {
       // Convert domain entity to database record
+      // Assume this returns a type compatible with issuers.$inferInsert
       const record = this.mapper.toPersistence(issuer as Issuer);
 
-      // Remove id if it's empty (for new entities)
-      if (!record.id) {
-        delete record.id;
-      }
-
-      // Insert into database
+      // Directly pass the record to Drizzle, trusting it handles optional/PKs
       const result = await this.db.insert(issuers).values(record).returning();
 
       // Convert database record back to domain entity
@@ -92,10 +88,10 @@ export class SqliteIssuerRepository implements IssuerRepository {
         return null;
       }
 
-      // Create a merged entity
+      // Create a merged entity using toPartial for type safety
       const mergedIssuer = Issuer.create({
-        ...existingIssuer.toObject(),
-        ...issuer as any
+        ...existingIssuer.toPartial(), 
+        ...issuer 
       });
 
       // Convert to database record

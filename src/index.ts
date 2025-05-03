@@ -19,6 +19,7 @@ import { BackpackController } from './domains/backpack/backpack.controller';
 import { BackpackService } from './domains/backpack/backpack.service';
 import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
+
 import { requestContextMiddleware } from './utils/logging/request-context.middleware';
 import { initializeAuthentication } from './auth/auth.initializer';
 import { authMiddleware } from './auth/middleware/auth.middleware';
@@ -43,7 +44,7 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
 
 // Database instance for graceful shutdown
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-let database: any = null;
+let database: unknown = null;
 
 // Async function to setup repositories and controllers
 async function setupApp() {
@@ -170,7 +171,7 @@ bootstrap();
  * Sets up graceful shutdown handlers for the server
  * @param server The HTTP server instance
  */
-function setupGracefulShutdown(server: any) {
+function setupGracefulShutdown(server: unknown) {
   // Initialize the shutdown service
   ShutdownService.init(server);
 

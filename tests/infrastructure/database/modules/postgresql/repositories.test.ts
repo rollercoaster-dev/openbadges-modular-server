@@ -20,6 +20,7 @@ import { BadgeClass } from '../../../../../src/domains/badgeClass/badgeClass.ent
 import { Assertion } from '../../../../../src/domains/assertion/assertion.entity';
 import * as schema from '../../../../../src/infrastructure/database/modules/postgresql/schema';
 import { Shared } from 'openbadges-types';
+import { logger } from '../../../../../src/utils/logging/logger.service';
 
 // Skip PostgreSQL tests in CI environment
 const isCI = process.env.CI === 'true';
@@ -33,7 +34,7 @@ if (!isCI) {
     await sql.end();
     canConnect = true;
   } catch (error) {
-    console.log('Could not connect to PostgreSQL:', error.message);
+    logger.warn('Could not connect to PostgreSQL for tests', { error: error instanceof Error ? error.message : String(error) });
     // No connection
   }
 }
@@ -123,7 +124,7 @@ describePg('PostgreSQL Repositories', () => {
         );
       `);
     } catch (error) {
-      console.error('Error setting up test database:', error);
+      logger.error('Error setting up test database', { error });
       throw error;
     }
   });

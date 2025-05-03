@@ -23,14 +23,12 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
     this.mapper = new PostgresBadgeClassMapper();
   }
 
-  async create(badgeClass: Omit<BadgeClass, 'id'>): Promise<BadgeClass> {
+  async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
+    // Use BadgeClass.create to ensure defaults and ID
+    const newBadgeClass = BadgeClass.create(badgeClass);
+    
     // Convert domain entity to database record
-    const record = this.mapper.toPersistence(badgeClass as BadgeClass);
-
-    // Remove id if it's empty (for new entities)
-    if (!record.id) {
-      delete record.id;
-    }
+    const record = this.mapper.toPersistence(newBadgeClass);
 
     // Insert into database
     const result = await this.db.insert(badgeClasses).values(record).returning();
@@ -75,11 +73,13 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
       return null;
     }
 
-    // Create a merged entity
-    const mergedBadgeClass = BadgeClass.create({
-      ...existingBadgeClass.toObject(),
-      ...badgeClass as any
-    });
+    // Create a merged entity by spreading existing and new data
+    const dataForCreate: Partial<BadgeClass> = {
+      ...existingBadgeClass, // Spread properties from the existing entity instance
+      ...badgeClass,       // Spread the partial update data over it
+      id: existingBadgeClass.id // Ensure ID is preserved
+    };
+    const mergedBadgeClass = BadgeClass.create(dataForCreate);
 
     // Convert to database record
     const record = this.mapper.toPersistence(mergedBadgeClass);

@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { createAssetProvider } from '../../infrastructure/assets/asset-storage.factory';
 import { logger } from '../../utils/logging/logger.service';
 
@@ -22,7 +22,7 @@ export class AssetsController {
 
   constructor() {
     this.router = new Elysia();
-    this.router.post('/v1/assets', async (context: any) => {
+    this.router.post('/v1/assets', async (context: { body?: { file?: { data: { arrayBuffer(): Promise<ArrayBuffer> }, filename: string, mimetype: string } }, set: { status: number } }) => {
       try {
         const file = context.body?.file;
 
@@ -73,7 +73,9 @@ export class AssetsController {
         return { error: 'Internal server error' };
       }
     }, {
-      body: 'formdata' as any,
+      body: t.Object({
+        file: t.File()
+      }),
       detail: {
         summary: 'Upload asset',
         description: 'Upload a badge image or issuer logo. Returns public URL.',

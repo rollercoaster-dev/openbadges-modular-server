@@ -6,6 +6,7 @@
  */
 
 import { Elysia } from 'elysia';
+import { CreateIssuerDto, UpdateIssuerDto, CreateBadgeClassDto, UpdateBadgeClassDto, CreateAssertionDto, UpdateAssertionDto } from './dtos';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
@@ -20,6 +21,7 @@ import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/securit
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { AssetsController } from './controllers/assets.controller';
 import { createBackpackRouter } from './backpack.router';
+import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
 
@@ -35,7 +37,7 @@ export function createApiRouter(
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
   backpackController?: BackpackController,
-  platformRepository?: any
+  platformRepository?: PlatformRepository
 ): Elysia {
   // Create the router
   const router = new Elysia();
@@ -148,27 +150,27 @@ function createVersionedRouter(
 
   // Issuer routes
   router.post('/issuers',
-    ({ body }) => issuerController.createIssuer(body as Record<string, any>, version),
+    ({ body }) => issuerController.createIssuer(body as CreateIssuerDto, version),
     { beforeHandle: [validateIssuerMiddleware] }
   );
   router.get('/issuers', () => issuerController.getAllIssuers(version));
   router.get('/issuers/:id', ({ params }) => issuerController.getIssuerById(params.id, version));
   router.put('/issuers/:id',
-    ({ params, body }) => issuerController.updateIssuer(params.id, body as Record<string, any>, version),
+    ({ params, body }) => issuerController.updateIssuer(params.id, body as UpdateIssuerDto, version),
     { beforeHandle: [validateIssuerMiddleware] }
   );
   router.delete('/issuers/:id', ({ params }) => issuerController.deleteIssuer(params.id));
 
   // Badge class routes
   router.post('/badge-classes',
-    ({ body }) => badgeClassController.createBadgeClass(body as Record<string, any>, version),
+    ({ body }) => badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version),
     { beforeHandle: [validateBadgeClassMiddleware] }
   );
   router.get('/badge-classes', () => badgeClassController.getAllBadgeClasses(version));
   router.get('/badge-classes/:id', ({ params }) => badgeClassController.getBadgeClassById(params.id, version));
   router.get('/issuers/:id/badge-classes', ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version));
   router.put('/badge-classes/:id',
-    ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as Record<string, any>, version),
+    ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as UpdateBadgeClassDto, version),
     { beforeHandle: [validateBadgeClassMiddleware] }
   );
   router.delete('/badge-classes/:id', ({ params }) => badgeClassController.deleteBadgeClass(params.id));
@@ -177,7 +179,7 @@ function createVersionedRouter(
   router.post('/assertions',
     ({ body, query }) => {
       const sign = query.sign !== 'false'; // Default to true if not specified
-      return assertionController.createAssertion(body as Record<string, any>, version, sign);
+      return assertionController.createAssertion(body as CreateAssertionDto, version, sign);
     },
     { beforeHandle: [validateAssertionMiddleware] }
   );
@@ -185,7 +187,7 @@ function createVersionedRouter(
   router.get('/assertions/:id', ({ params }) => assertionController.getAssertionById(params.id, version));
   router.get('/badge-classes/:id/assertions', ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version));
   router.put('/assertions/:id',
-    ({ params, body }) => assertionController.updateAssertion(params.id, body as Record<string, any>, version),
+    ({ params, body }) => assertionController.updateAssertion(params.id, body as UpdateAssertionDto, version),
     { beforeHandle: [validateAssertionMiddleware] }
   );
   router.post('/assertions/:id/revoke', ({ params, body }) => {

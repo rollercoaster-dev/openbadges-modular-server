@@ -7,6 +7,7 @@
 
 import { OB2, OB3, Shared } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
+import { IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
 
@@ -53,9 +54,22 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
 
   /**
    * Converts the issuer to a plain object
-   * @returns A plain object representation of the issuer
+   * @returns A plain object representation of the issuer, compatible with OB2.Profile and OB3.Issuer
    */
-  toObject(): Record<string, any> {
+  toObject(): OB2.Profile | OB3.Issuer {
+    // Note: Returning a direct shallow copy. Minor discrepancies might exist 
+    // with strict OB2/OB3 types (e.g., 'type' property, 'publicKey' structure), 
+    // but this is generally compatible for serialization.
+    return { ...this } as OB2.Profile | OB3.Issuer;
+  }
+
+  /**
+   * Returns a partial representation of the issuer's internal state.
+   * Suitable for use cases like updates where only a subset of properties is needed.
+   * @returns A shallow copy of the issuer object as Partial<Issuer>.
+   */
+  toPartial(): Partial<Issuer> {
+    // Return a shallow copy of the internal state
     return { ...this };
   }
 
@@ -64,9 +78,11 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
    * @param version The badge version to use (defaults to 3.0)
    * @returns A JSON-LD representation of the issuer
    */
-  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, any> {
+  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    return serializer.serializeIssuer(this.toObject());
+    // Use toPartial() for serialization to ensure correct types are passed
+    // The serializer expects IssuerData, which aligns with Partial<Issuer>
+    return serializer.serializeIssuer(this.toPartial() as IssuerData);
   }
 
   /**

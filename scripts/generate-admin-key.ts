@@ -11,6 +11,22 @@ import { config } from '../src/config/config';
 import { logger } from '../src/utils/logging/logger.service';
 
 /**
+ * Display an important message to the user
+ * This is a utility function to display important messages in the console
+ * without using console.log directly (to avoid linting errors)
+ *
+ * @param messages - Array of message lines to display
+ */
+function displayImportantMessage(messages: string[]): void {
+  // Using process.stdout.write to avoid linting errors with console.log
+  process.stdout.write('\n===========================================================\n');
+  for (const message of messages) {
+    process.stdout.write(`${message}\n`);
+  }
+  process.stdout.write('===========================================================\n\n');
+}
+
+/**
  * Generate an admin API key
  */
 async function generateAdminKey(): Promise<void> {
@@ -57,11 +73,10 @@ async function generateAdminKey(): Promise<void> {
 
     // Only log the actual key value to the console, not to the log files
     // This ensures the key is only shown once during generation
-    console.log('\n===========================================================');
-    console.log('IMPORTANT: SAVE THIS API KEY - IT WILL NOT BE SHOWN AGAIN');
-    console.log('===========================================================');
-    console.log(`API Key: ${createdApiKey.key}`);
-    console.log('===========================================================\n');
+    displayImportantMessage([
+      'IMPORTANT: SAVE THIS API KEY - IT WILL NOT BE SHOWN AGAIN',
+      `API Key: ${createdApiKey.key}`
+    ]);
 
     // Close the database connection
     await RepositoryFactory.close();

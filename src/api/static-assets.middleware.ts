@@ -24,7 +24,7 @@ const MIME_TYPES: Record<string, string> = {
   '.pdf': 'application/pdf'
 };
 
-export function staticAssetsMiddleware(router: Elysia) {
+export function staticAssetsMiddleware(router: Elysia): Elysia {
   router.get('/uploads/:filename', async ({ params, set }) => {
     try {
       // Validate filename to prevent directory traversal attacks
@@ -69,4 +69,6 @@ export function staticAssetsMiddleware(router: Elysia) {
       return { error: 'Internal server error' };
     }
   });
+
+  return router;
 }

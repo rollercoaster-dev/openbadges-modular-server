@@ -10,7 +10,7 @@ import { logger } from '../../../utils/logging/logger.service';
 
 export interface QueryLogEntry {
   query: string;
-  params?: any[];
+  params?: unknown[];
   duration: number;
   timestamp: string;
   database: string;
@@ -29,7 +29,7 @@ export class QueryLoggerService {
    * @param duration Query execution duration in milliseconds
    * @param database Database type (e.g., 'sqlite', 'postgresql')
    */
-  static logQuery(query: string, params: any[] | undefined, duration: number, database: string): void {
+  static logQuery(query: string, params: unknown[] | undefined, duration: number, database: string): void {
     if (!this.enabled) return;
 
     const entry: QueryLogEntry = {

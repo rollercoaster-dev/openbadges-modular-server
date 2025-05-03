@@ -9,16 +9,120 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../domains/assertion/assertion.repository';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
+import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
+import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 import { VerificationService } from '../../core/verification.service';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
+import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
+import { InvalidDateFormatError } from '../../utils/errors/validation.errors';
+
+/**
+ * Maps incoming partial OB2/OB3 data to the internal Partial<Assertion> format.
+ * Only copies properties defined in the internal Assertion entity.
+ * @param data Input data (CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>)
+ * @returns Mapped data (Partial<Assertion>)
+ */
+const mapToPartialAssertion = (
+  data: CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>
+): Partial<Assertion> => {
+  const mappedData: Partial<Assertion> = {};
+
+  // Helper to format dates as ISO strings for the Assertion entity
+  const formatAssertionDateString = (dateInput: unknown): string | undefined => {
+    if (dateInput instanceof Date) {
+      return dateInput.toISOString();
+    }
+    // Pass through strings/numbers assuming they are valid ISO/epoch representations
+    // Downstream validation should catch invalid formats if necessary
+    if (typeof dateInput === 'string') {
+      // Basic check: return string directly
+      return dateInput;
+    }
+     if (typeof dateInput === 'number') {
+        // Convert epoch ms to ISO string
+        try {
+          return new Date(dateInput).toISOString();
+        } catch {
+          logger.warn('Could not convert numeric date to ISO string', { value: dateInput });
+          throw new InvalidDateFormatError('Could not convert numeric date to ISO string', dateInput);
+        }
+    }
+    logger.warn('Unsupported date format received in mapToPartialAssertion', { value: dateInput });
+    throw new InvalidDateFormatError('Unsupported date format', dateInput);
+  };
+
+  // Map properties using safe assertions based on Assertion entity types
+  if (data.id !== undefined) mappedData.id = data.id as Shared.IRI;
+  if (data.badgeClass !== undefined) mappedData.badgeClass = data.badgeClass as Shared.IRI;
+  if (data.recipient !== undefined) mappedData.recipient = data.recipient as OB2.IdentityObject | OB3.CredentialSubject;
+  if (data.verification !== undefined) mappedData.verification = data.verification as OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
+  if (data.evidence !== undefined) mappedData.evidence = data.evidence as OB2.Evidence[] | OB3.Evidence[];
+  if (data.revoked !== undefined) mappedData.revoked = data.revoked as boolean;
+  if (data.revocationReason !== undefined) mappedData.revocationReason = data.revocationReason as string;
+
+  // Map date properties, ensuring they are strings
+  if (data.issuedOn) {
+    try {
+      // Needs robust date parsing/validation
+      const formattedDate = formatAssertionDateString(data.issuedOn);
+      mappedData.issuedOn = formattedDate;
+    } catch (error) {
+      // Re-throw InvalidDateFormatError, or wrap other errors
+      if (error instanceof InvalidDateFormatError) {
+        logger.error('Invalid issuedOn date format received', { value: data.issuedOn });
+        throw error;
+      }
+      throw new InvalidDateFormatError('Invalid date format for issuedOn', data.issuedOn);
+    }
+  }
+  if (data.expires !== undefined) {
+    try {
+      const expiresDate = formatAssertionDateString(data.expires);
+      mappedData.expires = expiresDate;
+    } catch (error) {
+      // For expires, we'll log a warning but not fail the request
+      // This is a design decision - expires is optional so we can continue
+      logger.warn('Invalid expires date format received, skipping assignment', { 
+        value: data.expires,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      // Note: We're intentionally not re-throwing the error for expires
+    }
+  }
+
+  // Properties not part of internal Assertion entity are intentionally ignored:
+  // issuer, narrative, image, etc.
+
+  return mappedData;
+};
 
 /**
  * Controller for assertion-related operations
  */
+/**
+ * Helper function to convert an Assertion entity to JSON-LD format with proper typing
+ * @param assertion The assertion entity to convert
+ * @param version The badge version to use
+ * @param badgeClass Optional badge class entity for enriched response
+ * @param issuer Optional issuer entity for enriched response
+ * @returns The assertion in JSON-LD format with proper typing
+ */
+function convertAssertionToJsonLd(
+  assertion: Assertion,
+  version: BadgeVersion,
+  badgeClass?: BadgeClass,
+  issuer?: Issuer
+): AssertionResponseDto {
+  if (badgeClass && issuer) {
+    return assertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
+  }
+  return assertion.toJsonLd(version) as AssertionResponseDto;
+}
+
 export class AssertionController {
   /**
    * Constructor
@@ -40,16 +144,29 @@ export class AssertionController {
    * @returns The created assertion
    */
   async createAssertion(
-    data: Record<string, any>,
+    data: CreateAssertionDto,
     version: BadgeVersion = BadgeVersion.V3,
     sign: boolean = true
-  ): Promise<Record<string, any>> {
+  ): Promise<AssertionResponseDto> {
     try {
       // Initialize the key service
       await KeyService.initialize();
 
-      // Create the assertion
-      const assertion = Assertion.create(data);
+      // Map incoming data to internal format
+      let mappedData: Partial<Assertion>;
+      try {
+        mappedData = mapToPartialAssertion(data);
+      } catch (error) {
+        if (error instanceof InvalidDateFormatError) {
+          // We can directly use the error since it has the value and proper message
+          logger.error('Date validation error in createAssertion', { error });
+          throw error;
+        }
+        throw error;
+      }
+
+      // Create the assertion using the mapped data
+      const assertion = Assertion.create(mappedData);
 
       // Sign the assertion if requested
       let signedAssertion = assertion;
@@ -65,13 +182,11 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return createdAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
+          return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
         }
       }
 
-      return createdAssertion.toJsonLd(version);
+      return convertAssertionToJsonLd(createdAssertion, version);
     } catch (error) {
       logger.logError('Failed to create assertion', error as Error);
       throw error;
@@ -83,7 +198,7 @@ export class AssertionController {
    * @param version The badge version to use for the response
    * @returns All assertions
    */
-  async getAllAssertions(version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getAllAssertions(version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.Assertion | OB3.VerifiableCredential)[]> {
     const assertions = await this.assertionRepository.findAll();
 
     // Use Promise.all for all versions to maintain consistency
@@ -93,9 +208,8 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
+          // Pass entities directly
+          return assertion.toJsonLd(version, badgeClass, issuer);
         }
       }
 
@@ -110,7 +224,7 @@ export class AssertionController {
    * @param version The badge version to use for the response
    * @returns The assertion with the specified ID
    */
-  async getAssertionById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
+  async getAssertionById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
     const assertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
     if (!assertion) {
       return null;
@@ -120,13 +234,12 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-        }
+        // Pass entities directly
+        return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
     }
 
-    return assertion.toJsonLd(version);
+    return convertAssertionToJsonLd(assertion, version);
   }
 
   /**
@@ -135,22 +248,21 @@ export class AssertionController {
    * @param version The badge version to use for the response
    * @returns The assertions for the specified badge class
    */
-  async getAssertionsByBadgeClass(badgeClassId: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getAssertionsByBadgeClass(badgeClassId: string, version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.Assertion | OB3.VerifiableCredential)[]> {
     const assertions = await this.assertionRepository.findByBadgeClass(toIRI(badgeClassId) as Shared.IRI);
 
     if (version === BadgeVersion.V3) {
       const badgeClass = await this.badgeClassRepository.findById(toIRI(badgeClassId) as Shared.IRI);
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return assertions.map(assertion =>
-            assertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject())
-          );
-        }
+        // Pass entities directly
+        return assertions.map(assertion => 
+          convertAssertionToJsonLd(assertion, version, badgeClass, issuer)
+        );
       }
     }
 
-    return assertions.map(assertion => assertion.toJsonLd(version));
+    return assertions.map(assertion => convertAssertionToJsonLd(assertion, version));
   }
 
   /**
@@ -160,23 +272,35 @@ export class AssertionController {
    * @param version The badge version to use for the response
    * @returns The updated assertion
    */
-  async updateAssertion(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedAssertion = await this.assertionRepository.update(toIRI(id) as Shared.IRI, data);
-    if (!updatedAssertion) {
-      return null;
-    }
+  async updateAssertion(
+    id: string, 
+    data: UpdateAssertionDto, 
+    version: BadgeVersion = BadgeVersion.V3
+  ): Promise<AssertionResponseDto | null> {
+    try {
+      const mappedData = mapToPartialAssertion(data);
+      const updatedAssertion = await this.assertionRepository.update(toIRI(id) as Shared.IRI, mappedData);
+      if (!updatedAssertion) {
+        return null;
+      }
 
-    if (version === BadgeVersion.V3) {
-      const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
-      if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        if (issuer) {
-          return updatedAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
+      if (version === BadgeVersion.V3) {
+        const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
+        if (badgeClass) {
+          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          return convertAssertionToJsonLd(updatedAssertion, version, badgeClass, issuer);
         }
       }
-    }
 
-    return updatedAssertion.toJsonLd(version);
+      return convertAssertionToJsonLd(updatedAssertion, version);
+    } catch (error) {
+      if (error instanceof InvalidDateFormatError) {
+        // We can directly use the error since it has the value and proper message
+        logger.error('Date validation error in updateAssertion', { error });
+        throw error;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -267,7 +391,7 @@ export class AssertionController {
     id: string,
     keyId: string = 'default',
     version: BadgeVersion = BadgeVersion.V3
-  ): Promise<Record<string, any> | null> {
+  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> { 
     try {
       // Initialize the key service
       await KeyService.initialize();
@@ -289,16 +413,16 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
-        if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          if (issuer) {
-            return updatedAssertion.toJsonLd(version, badgeClass.toObject(), issuer.toObject());
-          }
-        }
+        const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
+        const issuer = badgeClass?.issuer 
+          ? await this.issuerRepository.findById(badgeClass.issuer)
+          : null; 
+        // Pass entities directly
+        return signedAssertion.toJsonLd(version, badgeClass, issuer);
+      } else {
+        // For V2 or if related entities are not needed/found
+        return signedAssertion.toJsonLd(version);
       }
-
-      return updatedAssertion.toJsonLd(version);
     } catch (error) {
       logger.logError(`Failed to sign assertion with ID ${id}`, error as Error);
       return null;

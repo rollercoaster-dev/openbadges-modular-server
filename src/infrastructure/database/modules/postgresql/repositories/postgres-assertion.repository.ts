@@ -25,12 +25,9 @@ export class PostgresAssertionRepository implements AssertionRepository {
 
   async create(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
     // Convert domain entity to database record
-    const record = this.mapper.toPersistence(assertion as Assertion);
-
-    // Remove id if it's empty (for new entities)
-    if (!record.id) {
-      delete record.id;
-    }
+    // The mapper now returns the correct shape for insertion (InferInsertModel)
+    // and handles required field validation internally.
+    const record = this.mapper.toPersistence(assertion);
 
     // Insert into database
     const result = await this.db.insert(assertions).values(record).returning();
@@ -87,7 +84,7 @@ export class PostgresAssertionRepository implements AssertionRepository {
     // Create a merged entity
     const mergedAssertion = Assertion.create({
       ...existingAssertion.toObject(),
-      ...assertion as any
+      ...assertion as Partial<Assertion>
     });
 
     // Convert to database record

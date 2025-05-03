@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../../../utils/logging/logger.service';
 
 const UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
 
@@ -19,7 +20,7 @@ export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetRes
         // Use Node.js built-in fs module for synchronous operation
         require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
       } catch (error) {
-        console.error('Failed to create uploads directory:', error);
+        logger.error('Failed to create uploads directory', { error });
       }
     }
   }
@@ -45,7 +46,7 @@ export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetRes
       await fs.unlink(filePath);
       return true;
     } catch (error) {
-      console.error(`Error deleting file ${filePath}:`, error);
+      logger.error(`Error deleting file`, { filePath, error });
       return false;
     }
   }

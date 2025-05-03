@@ -7,9 +7,9 @@ import { QueryLoggerService } from '../../../../src/infrastructure/database/util
 import { logger } from '../../../../src/utils/logging/logger.service';
 
 describe('QueryLoggerService', () => {
-  let warnSpy: any;
-  let debugSpy: any;
-  let originalEnv: any;
+  let warnSpy: ReturnType<typeof spyOn>;
+  let debugSpy: ReturnType<typeof spyOn>;
+  let originalEnv: NodeJS.ProcessEnv;
   beforeEach(() => {
     // Save original environment
     originalEnv = { ...process.env };
@@ -40,12 +40,15 @@ describe('QueryLoggerService', () => {
 
     // Verify warn was called
     expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls.some((call: any[]) =>
-      call[0] === 'Slow query detected' &&
-      call[1].duration === '10ms' &&
-      call[1].database === 'sqlite' &&
-      call[1].query === 'SELECT * FROM users'
-    )).toBe(true);
+    expect(
+      warnSpy.mock.calls.some(
+        ([msg, meta]: [string, { duration: string; database: string; query: string }]) =>
+          msg === 'Slow query detected' &&
+          meta.duration === '10ms' &&
+          meta.database === 'sqlite' &&
+          meta.query === 'SELECT * FROM users'
+      )
+    ).toBe(true);
   });
 
   test('should not log normal queries as slow', () => {
@@ -69,7 +72,7 @@ describe('QueryLoggerService', () => {
 
     // Verify debug was called
     expect(debugSpy).toHaveBeenCalled();
-    expect(debugSpy.mock.calls.some((call: any[]) =>
+    expect(debugSpy.mock.calls.some((call: [string, { duration: string; database: string; query: string }]) =>
       call[0] === 'Database query executed' &&
       call[1].duration === '5ms' &&
       call[1].database === 'sqlite' &&
@@ -100,7 +103,7 @@ describe('QueryLoggerService', () => {
 
     // Verify debug was called with parameters
     expect(debugSpy).toHaveBeenCalled();
-    expect(debugSpy.mock.calls.some((call: any[]) =>
+    expect(debugSpy.mock.calls.some((call: [string, { params: string[] }]) =>
       call[0] === 'Database query executed' &&
       call[1].params.includes('123') &&
       call[1].params.includes('test')

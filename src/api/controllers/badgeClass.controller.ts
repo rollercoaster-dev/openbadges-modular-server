@@ -10,6 +10,8 @@ import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.reposi
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared } from 'openbadges-types';
+import { CreateBadgeClassDto, BadgeClassResponseDto, UpdateBadgeClassDto } from '../dtos';
+import { logger } from '../../utils/logging/logger.service';
 
 /**
  * Controller for badge class-related operations
@@ -27,10 +29,26 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The created badge class
    */
-  async createBadgeClass(data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>> {
-    const badgeClass = BadgeClass.create(data);
-    const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
-    return createdBadgeClass.toJsonLd(version);
+  async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto> {
+    try {
+      // Validate required fields
+      if (!data.name || !data.description || !data.image || !data.issuer) {
+        throw new Error('Missing required fields: name, description, image, and issuer are required');
+      }
+
+      // Create badge class entity
+      const badgeClass = BadgeClass.create(data as Partial<BadgeClass>);
+      const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
+      
+      // Return formatted response
+      return createdBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error creating badge class', { 
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -38,9 +56,9 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns All badge classes
    */
-  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto[]> {
     const badgeClasses = await this.badgeClassRepository.findAll();
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version));
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as BadgeClassResponseDto);
   }
 
   /**
@@ -49,23 +67,23 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The badge class with the specified ID
    */
-  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
+  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
     const badgeClass = await this.badgeClassRepository.findById(toIRI(id) as Shared.IRI);
     if (!badgeClass) {
       return null;
     }
-    return badgeClass.toJsonLd(version);
+    return badgeClass.toJsonLd(version) as BadgeClassResponseDto;
   }
 
   /**
-   * Gets badge classes by issuer
+   * Gets badge classes by issuer ID
    * @param issuerId The issuer ID
    * @param version The badge version to use for the response
    * @returns The badge classes for the specified issuer
    */
-  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any>[]> {
+  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto[]> {
     const badgeClasses = await this.badgeClassRepository.findByIssuer(toIRI(issuerId) as Shared.IRI);
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version));
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as BadgeClassResponseDto);
   }
 
   /**
@@ -75,12 +93,21 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The updated badge class
    */
-  async updateBadgeClass(id: string, data: Record<string, any>, version: BadgeVersion = BadgeVersion.V3): Promise<Record<string, any> | null> {
-    const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data);
-    if (!updatedBadgeClass) {
-      return null;
+  async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
+    try {
+      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data as Partial<BadgeClass>);
+      if (!updatedBadgeClass) {
+        return null;
+      }
+      return updatedBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error updating badge class', { 
+        id,
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
     }
-    return updatedBadgeClass.toJsonLd(version);
   }
 
   /**

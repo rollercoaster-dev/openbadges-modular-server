@@ -1,6 +1,6 @@
 /**
  * Authentication Adapter Interface
- * 
+ *
  * This interface defines the contract for authentication adapters that connect
  * to external identity providers. It allows the badge server to work with various
  * authentication systems while maintaining a consistent internal authentication flow.
@@ -20,7 +20,7 @@ export interface AuthenticationResult {
   /**
    * Additional claims/attributes about the user from the external system
    */
-  claims?: Record<string, any>;
+  claims?: Record<string, unknown>;
 
   /**
    * Error message if authentication failed
@@ -37,8 +37,8 @@ export interface AuthAdapterOptions {
   /**
    * Configuration options for the adapter
    */
-  config: Record<string, any>;
-  
+  config: Record<string, unknown>;
+
   /**
    * Optional provider name override
    */
@@ -50,14 +50,14 @@ export interface AuthAdapter {
    * Get the name of this authentication provider
    */
   getProviderName(): string;
-  
+
   /**
    * Authenticate a request using provider-specific details
    * @param request The HTTP request to authenticate
    * @returns Authentication result with user information or error
    */
   authenticate(request: Request): Promise<AuthenticationResult>;
-  
+
   /**
    * Verify if this adapter can handle the given request
    * @param request The HTTP request to check

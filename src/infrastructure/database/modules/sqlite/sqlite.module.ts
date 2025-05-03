@@ -17,9 +17,14 @@ export class SqliteModule implements DatabaseModuleInterface {
   /**
    * Creates and returns a DatabaseInterface instance for SQLite using bun:sqlite
    */
-  async createDatabase(config: Record<string, any>): Promise<DatabaseInterface> {
+  async createDatabase(config: Record<string, unknown>): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
-    const filePath = config.sqliteFile || ':memory:';
+    let filePath: string;
+    if (typeof config.sqliteFile === 'string' && config.sqliteFile.trim()) {
+      filePath = config.sqliteFile;
+    } else {
+      filePath = ':memory:'; // Default to in-memory if no valid path provided
+    }
     const client = new Database(filePath);
 
     // Apply SQLite optimizations
@@ -39,7 +44,7 @@ export class SqliteModule implements DatabaseModuleInterface {
    * @param client The SQLite database client
    * @param config Configuration options
    */
-  private applySqliteOptimizations(client: Database, config: Record<string, any>): void {
+  private applySqliteOptimizations(client: Database, config: Record<string, unknown>): void {
     // Use WAL mode for better concurrency and performance
     // This allows reads and writes to happen concurrently
     client.exec('PRAGMA journal_mode = WAL;');
@@ -89,7 +94,7 @@ export class SqliteModule implements DatabaseModuleInterface {
     try {
       // Check if tables exist before creating indexes
       const tables = client.query("SELECT name FROM sqlite_master WHERE type='table'").all();
-      const tableNames = tables.map((t: any) => t.name);
+      const tableNames = tables.map((t: { name: string }) => t.name);
 
       // Only create indexes if tables exist
       if (tableNames.includes('assertions')) {

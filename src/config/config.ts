@@ -90,7 +90,7 @@ export const config = {
         // AUTH_API_KEY_<KEY_NAME>=<API_KEY>:<USER_ID>:<DESCRIPTION>
         // Example: AUTH_API_KEY_SYSTEM=abc123:system-user:System integration
         keys: (() => {
-          const apiKeyConfig: Record<string, { userId: string; description?: string; claims?: Record<string, any> }> = {};
+          const apiKeyConfig: Record<string, { userId: string; description?: string; claims?: Record<string, unknown> }> = {};
           
           // Parse environment variables for API keys
           Object.keys(process.env).forEach(key => {
@@ -119,7 +119,7 @@ export const config = {
         // AUTH_BASIC_AUTH_<USERNAME>=<PASSWORD>:<USER_ID>:<ROLE>
         // Example: AUTH_BASIC_AUTH_ADMIN=securepass:admin-user:admin
         credentials: (() => {
-          const basicAuthConfig: Record<string, { password: string; userId: string; claims?: Record<string, any> }> = {};
+          const basicAuthConfig: Record<string, { password: string; userId: string; claims?: Record<string, unknown> }> = {};
           
           // Parse environment variables for basic auth credentials
           Object.keys(process.env).forEach(key => {

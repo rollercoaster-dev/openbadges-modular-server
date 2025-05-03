@@ -1,6 +1,6 @@
 /**
  * JWT Service
- * 
+ *
  * This service handles JWT token generation, validation, and management
  * for the authentication system. It uses the jose library for standards-compliant
  * JWT operations.
@@ -18,27 +18,27 @@ export interface JwtPayload {
    * Subject - typically the user ID
    */
   sub: string;
-  
+
   /**
    * Claims about the user from the authentication provider
    */
-  claims?: Record<string, any>;
-  
+  claims?: Record<string, unknown>;
+
   /**
    * Authentication provider that originally authenticated the user
    */
   provider: string;
-  
+
   /**
    * Issuer - typically the badge server URL or identifier
    */
   iss?: string;
-  
+
   /**
    * Expiration time (Unix timestamp)
    */
   exp?: number;
-  
+
   /**
    * Issued at time (Unix timestamp)
    */
@@ -59,25 +59,25 @@ export class JwtService {
   static async generateToken(payload: JwtPayload): Promise<string> {
     try {
       const now = Math.floor(Date.now() / 1000);
-      
+
       // Add standard claims if not provided
       payload.iss = payload.iss || this.ISSUER;
       payload.iat = payload.iat || now;
       payload.exp = payload.exp || now + this.TOKEN_EXPIRY;
-      
+
       // Convert our JwtPayload to a standard JWTPayload compatible object
       const jwtPayload: JWTPayload = {
         ...payload,
         // Add any other required properties for JWTPayload
       };
-      
+
       const token = await new SignJWT(jwtPayload)
         .setProtectedHeader({ alg: this.ALGORITHM })
         .setIssuedAt()
         .setIssuer(payload.iss)
         .setExpirationTime(payload.exp)
         .sign(this.SECRET);
-      
+
       return token;
     } catch (error) {
       logger.logError('Failed to generate JWT token', error as Error);
@@ -95,16 +95,16 @@ export class JwtService {
       const { payload } = await jwtVerify(token, this.SECRET, {
         issuer: this.ISSUER,
       });
-      
+
       // Ensure the payload has the required provider property
       if (!payload.provider) {
         throw new Error('Token payload missing required provider property');
       }
-      
+
       return {
         sub: payload.sub as string,
         provider: payload.provider as string,
-        claims: payload.claims as Record<string, any> | undefined,
+        claims: payload.claims as Record<string, unknown> | undefined,
         iss: payload.iss,
         exp: payload.exp,
         iat: payload.iat,
@@ -124,7 +124,7 @@ export class JwtService {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return null;
     }
-    
+
     return authHeader.substring(7); // Remove 'Bearer ' prefix
   }
 }

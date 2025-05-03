@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, InferInsertModel } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { Assertion } from '@domains/assertion/assertion.entity';
@@ -14,6 +14,7 @@ import { assertions } from '../schema';
 import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+import { createId } from '@paralleldrive/cuid2';
 
 export class SqliteAssertionRepository implements AssertionRepository {
   private db: ReturnType<typeof drizzle>;
@@ -26,19 +27,29 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async create(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
     try {
-      // Convert domain entity to database record
-      const record = this.mapper.toPersistence(assertion as Assertion);
+      // Generate ID and create full entity
+      const id = createId() as Shared.IRI;
+      const fullAssertion = Assertion.create({ ...assertion, id });
 
-      // Remove id if it's empty (for new entities)
-      if (!record.id) {
-        delete record.id;
-      }
+      // Convert domain entity to database record
+      const record: InferInsertModel<typeof assertions> =
+        this.mapper.toPersistence(fullAssertion);
 
       // Insert into database
       const result = await this.db.insert(assertions).values(record).returning();
 
       // Convert database record back to domain entity
-      return this.mapper.toDomain(result[0]);
+      // Ensure the returned result from 'returning()' matches the expected input for toDomain
+      // Assuming result[0] has the correct shape after insertion.
+      // If 'returning()' doesn't return all needed fields, a separate findById might be necessary.
+      const createdRecord = result[0];
+      if (!createdRecord) {
+        throw new Error('Failed to retrieve created assertion record after insert.');
+      }
+      // We need to ensure createdRecord matches the input type for toDomain
+      // Let's assume for now it does, but this might need adjustment
+      // based on the actual return shape of .returning() in SQLite/Drizzle.
+      return this.mapper.toDomain(createdRecord);
     } catch (error) {
       logger.error('Error creating assertion in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
@@ -129,7 +140,7 @@ export class SqliteAssertionRepository implements AssertionRepository {
       // Create a merged entity
       const mergedAssertion = Assertion.create({
         ...existingAssertion.toObject(),
-        ...assertion as any
+        ...assertion as Partial<Assertion>
       });
 
       // Convert to database record

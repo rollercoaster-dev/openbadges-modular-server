@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, mock } from 'bun:test';
-import { authMiddleware, registerAuthAdapter } from '../../../src/auth/middleware/auth.middleware';
+import { authDerive, registerAuthAdapter, AuthContext } from '../../../src/auth/middleware/auth.middleware';
 import { AuthAdapter } from '../../../src/auth/adapters/auth-adapter.interface';
 import { JwtService } from '../../../src/auth/services/jwt.service';
 
@@ -17,11 +17,11 @@ describe('Authentication Middleware', () => {
 
   beforeAll(() => {
     // Mock JWT service methods
-    JwtService.generateToken = mock(async (_payload) => {
+    JwtService.generateToken = mock(async (_payload: unknown) => {
       return 'mock-jwt-token';
     });
 
-    JwtService.verifyToken = mock(async (token) => {
+    JwtService.verifyToken = mock(async (token: string) => {
       if (token === 'valid-token') {
         return {
           sub: 'test-user',
@@ -33,7 +33,7 @@ describe('Authentication Middleware', () => {
       }
     });
 
-    JwtService.extractTokenFromHeader = mock((header) => {
+    JwtService.extractTokenFromHeader = mock((header?: string) => {
       if (header?.startsWith('Bearer ')) {
         return header.substring(7);
       }
@@ -70,10 +70,10 @@ describe('Authentication Middleware', () => {
     const request = new Request('http://localhost/api/protected');
 
     // Create a mock set object
-    const set = { headers: {} };
+    const set: AuthContext['set'] = { headers: {} };
 
     // Call the middleware
-    const result = await authMiddleware.derive({ request, set } as any);
+    const result = await authDerive({ request, set });
 
     // Check that the middleware authenticated successfully
     expect(result).toBeDefined();
@@ -104,10 +104,10 @@ describe('Authentication Middleware', () => {
     const request = new Request('http://localhost/public/resource');
 
     // Create a mock set object
-    const set = { headers: {} };
+    const set: AuthContext['set'] = { headers: {} };
 
     // Call the middleware
-    const result = await authMiddleware.derive({ request, set } as any);
+    const result = await authDerive({ request, set });
 
     // Check that the middleware skipped authentication
     expect(result).toBeDefined();
@@ -141,10 +141,10 @@ describe('Authentication Middleware', () => {
     });
 
     // Create a mock set object
-    const set = { headers: {} };
+    const set: AuthContext['set'] = { headers: {} };
 
     // Call the middleware
-    const result = await authMiddleware.derive({ request, set } as any);
+    const result = await authDerive({ request, set });
 
     // Check that the middleware authenticated successfully
     expect(result).toBeDefined();
@@ -178,10 +178,10 @@ describe('Authentication Middleware', () => {
     });
 
     // Create a mock set object
-    const set = { headers: {} };
+    const set: AuthContext['set'] = { headers: {} };
 
     // Call the middleware
-    const result = await authMiddleware.derive({ request, set } as any);
+    const result = await authDerive({ request, set });
 
     // Check that the middleware failed authentication
     expect(result).toBeDefined();

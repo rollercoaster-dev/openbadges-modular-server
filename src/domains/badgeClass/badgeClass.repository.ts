@@ -15,7 +15,7 @@ export interface BadgeClassRepository {
    * @param badgeClass The badge class to create
    * @returns The created badge class with its ID
    */
-  create(badgeClass: Omit<BadgeClass, 'id'>): Promise<BadgeClass>;
+  create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass>;
 
   /**
    * Finds all badge classes

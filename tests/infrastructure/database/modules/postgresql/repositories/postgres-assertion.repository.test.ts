@@ -275,7 +275,7 @@ const runTests = await isDatabaseAvailable();
     await repository.create(Assertion.create({
       badgeClass: testBadgeClass.id,
       recipient: {
-        id: 'recipient-search@example.com', // Use id instead of identity for PostgreSQL
+        identity: 'recipient-search@example.com',
         type: 'email',
         hashed: false
       },
@@ -286,7 +286,7 @@ const runTests = await isDatabaseAvailable();
     await repository.create(Assertion.create({
       badgeClass: testBadgeClass.id,
       recipient: {
-        id: 'another-recipient@example.com', // Use id instead of identity for PostgreSQL
+        identity: 'another-recipient@example.com',
         type: 'email',
         hashed: false
       },
@@ -295,12 +295,12 @@ const runTests = await isDatabaseAvailable();
     }));
 
     // Find assertions by recipient
-    const recipientAssertions = await repository.findByRecipient('recipient-search@example.com');
+    const recipientAssertions = await repository.findByRecipient('recipient-search@example.com' as Shared.IRI);
 
     // Verify assertions were found correctly
     expect(recipientAssertions).toBeDefined();
     expect(recipientAssertions.length).toBe(1);
-    expect(recipientAssertions[0].recipient.id).toBe('recipient-search@example.com');
+    expect(recipientAssertions[0].recipient.identity).toBe('recipient-search@example.com');
   });
 
   it('should revoke an assertion', async () => {

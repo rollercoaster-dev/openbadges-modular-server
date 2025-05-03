@@ -14,14 +14,15 @@ import { Assertion } from '../../../../domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { issuers, badgeClasses, assertions } from './schema';
+import { logger } from '../../../../utils/logging/logger.service';
 
 export class PostgresqlDatabase implements DatabaseInterface {
   private client: postgres.Sql | null = null;
   private db: ReturnType<typeof drizzle> | null = null;
   private connected: boolean = false;
-  private config: Record<string, any>;
+  private config: Record<string, unknown>;
 
-  constructor(config: Record<string, any>) {
+  constructor(config: Record<string, unknown>) {
     this.config = config;
   }
 
@@ -29,11 +30,16 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (this.connected) return;
 
     try {
+      // Validate connection string before creating client
+      if (typeof this.config.connectionString !== 'string' || !this.config.connectionString) {
+        logger.error('Invalid or missing PostgreSQL connection string in configuration');
+        throw new Error('Invalid or missing PostgreSQL connection string in configuration');
+      }
       this.client = postgres(this.config.connectionString);
       this.db = drizzle(this.client);
       this.connected = true;
     } catch (error) {
-      console.error('Failed to connect to PostgreSQL database:', error);
+      logger.error('Failed to connect to PostgreSQL database', { error });
       throw error;
     }
   }
@@ -42,12 +48,15 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (!this.connected || !this.client) return;
 
     try {
-      await this.client.end();
+      // Ensure the client exists and has an end method before trying to end the connection
+      if (this.client && typeof this.client.end === 'function') {
+        await this.client.end();
+      }
       this.client = null;
       this.db = null;
       this.connected = false;
     } catch (error) {
-      console.error('Failed to disconnect from PostgreSQL database:', error);
+      logger.error('Failed to disconnect from PostgreSQL database', { error });
       throw error;
     }
   }
@@ -70,12 +79,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
     const { name, url, email, description, image, publicKey, ...additionalFields } = issuer;
 
     // Create an object with the correct types for Drizzle ORM
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
-      name: name,
+    const insertData = {
+      name: name as string,
       url: url as string,
-      email: email,
-      description: description,
+      email: email as string | null,
+      description: description as string | null,
       image: typeof image === 'string' ? image : image ? JSON.stringify(image) : undefined,
       publicKey: publicKey ? JSON.stringify(publicKey) : undefined,
       additionalFields: Object.keys(additionalFields).length > 0 ? additionalFields : undefined
@@ -196,11 +204,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
       throw new Error(`Issuer with ID ${issuerId} does not exist`);
     }
 
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
+    // Create an object with the correct types for Drizzle ORM
+    const insertData = {
       issuerId: issuerId as string,
-      name: name,
-      description: description || '',
+      name: name as string,
+      description: (description || '') as string,
       image: typeof image === 'string' ? image : image ? JSON.stringify(image) : '',
       criteria: criteria ? JSON.stringify(criteria) : '{}',
       alignment: alignment ? JSON.stringify(alignment) : undefined,
@@ -358,16 +366,45 @@ export class PostgresqlDatabase implements DatabaseInterface {
       throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
     }
 
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
+    // Helper function to safely convert input to Date or undefined
+    function safeConvertToDate(value: unknown): Date | undefined {
+      if (value === null || value === undefined) {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return isNaN(value.getTime()) ? undefined : value;
+      }
+      if (typeof value === 'string' || typeof value === 'number') {
+        try {
+          const dateObj = new Date(value);
+          if (isNaN(dateObj.getTime())) {
+            logger.warn(`Invalid date value provided during conversion`, { value });
+            return undefined;
+          }
+          return dateObj;
+        } catch (error) {
+          logger.warn(`Error parsing date value during conversion`, { value, error });
+          return undefined;
+        }
+      }
+      logger.warn(`Unexpected type provided for date conversion`, { type: typeof value, value });
+      return undefined;
+    }
+
+    // Safely convert dates before using them
+    const finalIssuedOn = safeConvertToDate(issuedOn) ?? new Date(); // Default to now if conversion fails or not provided
+    const finalExpires = safeConvertToDate(expires); // Undefined if conversion fails or not provided
+
+    // Create an object with the correct types for Drizzle ORM
+    const insertData = {
       badgeClassId: badgeClassId as string,
       recipient: JSON.stringify(recipient),
-      issuedOn: issuedOn ? new Date(issuedOn) : new Date(),
-      expires: expires ? new Date(expires) : undefined,
+      issuedOn: finalIssuedOn,
+      expires: finalExpires,
       evidence: evidence ? JSON.stringify(evidence) : undefined,
       verification: verification ? JSON.stringify(verification) : undefined,
       revoked: revoked !== undefined ? revoked : undefined,
-      revocationReason: revocationReason,
+      revocationReason: revocationReason as string | null,
       additionalFields: Object.keys(additionalFields).length > 0 ? additionalFields : undefined
     };
 

@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
+import type { Database } from 'bun:sqlite'; // Import the type
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { Issuer } from '../../../../domains/issuer/issuer.entity';
@@ -9,6 +10,31 @@ import { Shared } from 'openbadges-types';
 import { issuers, badgeClasses, assertions } from './schema';
 import { config } from '../../../../config/config';
 import { logger } from '../../../../utils/logging/logger.service';
+
+// Helper function to safely convert input to Date or undefined
+function safeConvertToDate(value: unknown): Date | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? undefined : value;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    try {
+      const dateObj = new Date(value);
+      if (isNaN(dateObj.getTime())) {
+        logger.warn(`Invalid date value provided during conversion`, { value });
+        return undefined;
+      }
+      return dateObj;
+    } catch (error) {
+      logger.warn(`Error parsing date value during conversion`, { value, error });
+      return undefined;
+    }
+  }
+  logger.warn(`Unexpected type provided for date conversion`, { type: typeof value, value });
+  return undefined;
+}
 
 export class SqliteDatabase implements DatabaseInterface {
   private db: ReturnType<typeof drizzle>;
@@ -27,7 +53,7 @@ export class SqliteDatabase implements DatabaseInterface {
     try {
       // For SQLite, the connection is already established when the Database object is created
       // We just need to check if the database is accessible by getting the underlying client
-      const client = (this.db as any).session?.client;
+      const client = (this.db as { session?: { client?: Database } }).session?.client;
 
       if (!client) {
         throw new Error('SQLite client not available');
@@ -75,7 +101,7 @@ export class SqliteDatabase implements DatabaseInterface {
 
     try {
       // Get the underlying SQLite client
-      const client = (this.db as any).session?.client;
+      const client = (this.db as { session?: { client?: Database } }).session?.client;
 
       if (client) {
         // Flush any pending writes
@@ -133,7 +159,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create issuer');
@@ -230,7 +256,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create badge class');
@@ -342,13 +368,21 @@ export class SqliteDatabase implements DatabaseInterface {
     const id = uuidv4() as Shared.IRI;
     const badgeClassId = badgeClass as Shared.IRI;
     const now = Date.now();
+
+    // Safely convert dates and get timestamps
+    const finalIssuedOn = safeConvertToDate(issuedOn);
+    const finalExpires = safeConvertToDate(expires);
+
+    const issuedOnTimestamp = finalIssuedOn ? finalIssuedOn.getTime() : now; // Default to now if conversion fails or not provided
+    const expiresTimestamp = finalExpires ? finalExpires.getTime() : null; // Null if conversion fails or not provided
+
     // @ts-ignore: casting payload to any because Drizzle's insert types are too strict
     const result = await this.db.insert(assertions).values({
       id,
       badgeClassId: badgeClassId as string,
       recipient: JSON.stringify(recipient),
-      issuedOn: issuedOn ? new Date(issuedOn).getTime() : now,
-      expires: expires ? new Date(expires).getTime() : null,
+      issuedOn: issuedOnTimestamp,
+      expires: expiresTimestamp,
       evidence: evidence ? JSON.stringify(evidence) : null,
       verification: verification ? JSON.stringify(verification) : null,
       revoked: revoked !== undefined ? (revoked ? 1 : 0) : null,
@@ -356,7 +390,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create assertion');
@@ -444,8 +478,14 @@ export class SqliteDatabase implements DatabaseInterface {
       updateData.badgeClassId = badgeClassId as string;
     }
     if (recipient !== undefined) updateData.recipient = JSON.stringify(recipient);
-    if (issuedOn !== undefined) updateData.issuedOn = new Date(issuedOn).getTime();
-    if (expires !== undefined) updateData.expires = expires ? new Date(expires).getTime() : null;
+    if (issuedOn !== undefined) {
+      const finalIssuedOn = safeConvertToDate(issuedOn);
+      updateData.issuedOn = finalIssuedOn ? finalIssuedOn.getTime() : Date.now();
+    }
+    if (expires !== undefined) {
+      const finalExpires = safeConvertToDate(expires);
+      updateData.expires = finalExpires ? finalExpires.getTime() : null;
+    }
     if (evidence !== undefined) updateData.evidence = evidence ? JSON.stringify(evidence) : null;
     if (verification !== undefined) updateData.verification = verification ? JSON.stringify(verification) : null;
     if (revoked !== undefined) updateData.revoked = revoked ? 1 : 0;

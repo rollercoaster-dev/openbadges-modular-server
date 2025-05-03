@@ -147,7 +147,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     try {
       // Build query
       let query = `SELECT * FROM user_assertions WHERE userId = ? AND status != ?`;
-      const queryParams: any[] = [String(userId), String(UserAssertionStatus.DELETED)];
+      const queryParams: (string | number | boolean)[] = [String(userId), String(UserAssertionStatus.DELETED)];
 
       // Add filters if provided
       if (params) {
@@ -172,7 +172,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       const rows = this.db.prepare(query).all(...queryParams);
 
       // Convert rows to domain entities
-      return rows.map(row => this.rowToDomain(row));
+      return rows.map(row => this.rowToDomain(row as Record<string, unknown>));
     } catch (error) {
       logger.error('Error getting user assertions in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
@@ -191,7 +191,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       `).all(String(assertionId));
 
       // Convert rows to domain entities
-      return rows.map(row => this.rowToDomain(row));
+      return rows.map(row => this.rowToDomain(row as Record<string, unknown>));
     } catch (error) {
       logger.error('Error getting assertion users in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
@@ -229,15 +229,13 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         WHERE userId = ? AND assertionId = ?
       `).get(String(userId), String(assertionId));
 
-      // Return null if not found
       if (!row) {
         return null;
       }
 
-      // Convert row to domain entity
-      return this.rowToDomain(row);
+      return this.rowToDomain(row as Record<string, unknown>);
     } catch (error) {
-      logger.error('Error finding user assertion in SQLite repository', {
+      logger.error('Error finding user assertion by user and assertion ID in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         userId,
         assertionId
@@ -251,26 +249,29 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
    * @param row The database row
    * @returns A UserAssertion domain entity
    */
-  private rowToDomain(row: any): UserAssertion {
+  private rowToDomain(row: Record<string, unknown>): UserAssertion {
     // Parse metadata if it exists
     let metadata: Record<string, unknown> | undefined;
-    if (row.metadata) {
+    if (row.metadata && typeof row.metadata === 'string') {
       try {
-        metadata = JSON.parse(row.metadata);
+        const parsedMetadata = JSON.parse(row.metadata);
+        // Ensure the parsed data is a non-null object before assigning
+        if (parsedMetadata && typeof parsedMetadata === 'object') {
+          metadata = parsedMetadata as Record<string, unknown>; // Cast after check
+        } else {
+          logger.warn('Parsed user assertion metadata is not an object', { metadataValue: row.metadata });
+        }
       } catch (error) {
-        logger.warn('Error parsing user assertion metadata', {
-          error: error instanceof Error ? error.message : String(error),
-          metadata: row.metadata
-        });
+        logger.warn('Failed to parse user assertion metadata', { error });
       }
     }
 
     return UserAssertion.create({
-      id: row.id as Shared.IRI,
-      userId: row.userId as Shared.IRI,
-      assertionId: row.assertionId as Shared.IRI,
-      addedAt: new Date(row.addedAt),
-      status: row.status as UserAssertionStatus,
+      id: typeof row.id === 'string' ? row.id as Shared.IRI : String(row.id) as Shared.IRI,
+      userId: typeof row.userId === 'string' ? row.userId as Shared.IRI : String(row.userId) as Shared.IRI,
+      assertionId: typeof row.assertionId === 'string' ? row.assertionId as Shared.IRI : String(row.assertionId) as Shared.IRI,
+      addedAt: typeof row.addedAt === 'string' || typeof row.addedAt === 'number' ? new Date(row.addedAt) : new Date(),
+      status: typeof row.status === 'string' ? row.status as UserAssertionStatus : UserAssertionStatus.ACTIVE,
       metadata
     });
   }

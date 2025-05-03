@@ -8,37 +8,106 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { describe, expect, it, mock } from 'bun:test';
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 import { IssuerController } from '../../src/api/controllers/issuer.controller';
 import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
 import { AssertionController } from '../../src/api/controllers/assertion.controller';
+import { toIRI } from '../../src/utils/types/iri-utils';
+import { toDateTime } from '../../src/utils/types/type-utils';
+import { BadgeVersion, BADGE_VERSION_CONTEXTS } from '../../src/utils/version/badge-version';
 
 // Mock controllers
 const mockIssuerController = {
-  createIssuer: mock(async (data: any) => ({ id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI, ...data })),
-  getAllIssuers: mock(async () => [{ id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI, name: 'Test Issuer' }]),
-  getIssuerById: mock(async (id: string) => ({ id: id as Shared.IRI, name: 'Test Issuer' })),
-  updateIssuer: mock(async (id: string, data: any) => ({ id: id as Shared.IRI, ...data })),
-  deleteIssuer: mock(async (id: string) => true)
+  createIssuer: mock(async (data: Partial<OB2.Profile | OB3.Issuer>): Promise<OB2.Profile | OB3.Issuer> => {
+    return { id: toIRI('123e4567-e89b-12d3-a456-426614174000'), ...data } as OB2.Profile | OB3.Issuer;
+  }),
+  getIssuerById: mock(async (id: string): Promise<OB2.Profile | OB3.Issuer> => {
+    return { id: toIRI(id), name: 'Test Issuer', url: toIRI('https://test.edu') } as OB2.Profile | OB3.Issuer;
+  }),
+  updateIssuer: mock(async (id: string, data: Partial<OB2.Profile | OB3.Issuer>): Promise<OB2.Profile | OB3.Issuer> => {
+    return { id: toIRI(id), ...data } as OB2.Profile | OB3.Issuer;
+  }),
+  deleteIssuer: mock(async (id: string): Promise<boolean> => {
+    return true;
+  })
 } as unknown as IssuerController;
 
 const mockBadgeClassController = {
-  createBadgeClass: mock(async (data: any) => ({ id: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI, ...data })),
-  getAllBadgeClasses: mock(async () => [{ id: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI, name: 'Test Badge' }]),
-  getBadgeClassById: mock(async (id: string) => ({ id: id as Shared.IRI, name: 'Test Badge' })),
-  getBadgeClassesByIssuer: mock(async (issuerId: string) => [{ id: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI, issuer: issuerId as Shared.IRI, name: 'Test Badge' }]),
-  updateBadgeClass: mock(async (id: string, data: any) => ({ id: id as Shared.IRI, ...data })),
-  deleteBadgeClass: mock(async (id: string) => true)
+  createBadgeClass: mock(async (data: Partial<OB2.BadgeClass | OB3.Achievement>): Promise<OB2.BadgeClass | OB3.Achievement> => {
+    return { id: toIRI('123e4567-e89b-12d3-a456-426614174001'), ...data } as OB2.BadgeClass | OB3.Achievement;
+  }),
+  getBadgeClassById: mock(async (id: string): Promise<OB2.BadgeClass | OB3.Achievement> => {
+    return {
+      id: toIRI(id),
+      issuer: toIRI('123e4567-e89b-12d3-a456-426614174000'),
+      name: 'Test Badge',
+      description: 'A test badge',
+      image: toIRI('https://test.edu/badge.png'),
+      criteria: { narrative: 'Complete the test' }
+    } as OB2.BadgeClass | OB3.Achievement;
+  }),
+  updateBadgeClass: mock(async (id: string, data: Partial<OB2.BadgeClass | OB3.Achievement>): Promise<OB2.BadgeClass | OB3.Achievement> => {
+    return { id: toIRI(id), ...data } as OB2.BadgeClass | OB3.Achievement;
+  }),
+  deleteBadgeClass: mock(async (id: string): Promise<boolean> => {
+    return true;
+  }),
+  getBadgeClassesByIssuer: mock(async (issuerId: string): Promise<(OB2.BadgeClass | OB3.Achievement)[]> => {
+    return [
+      {
+        type: 'BadgeClass',
+        id: toIRI('123e4567-e89b-12d3-a456-426614174001'),
+        issuer: toIRI(issuerId),
+        name: 'Test Badge',
+        description: 'A test badge',
+        image: toIRI('https://test.edu/badge.png'),
+        criteria: { narrative: 'Complete the test' }
+      }
+    ];
+  })
 } as unknown as BadgeClassController;
 
 const mockAssertionController = {
-  createAssertion: mock(async (data: any) => ({ id: '123e4567-e89b-12d3-a456-426614174002' as Shared.IRI, ...data })),
-  getAllAssertions: mock(async () => [{ id: '123e4567-e89b-12d3-a456-426614174002' as Shared.IRI, badgeClass: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI }]),
-  getAssertionById: mock(async (id: string) => ({ id: id as Shared.IRI, badgeClass: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI })),
-  getAssertionsByBadgeClass: mock(async (badgeClassId: string) => [{ id: '123e4567-e89b-12d3-a456-426614174002' as Shared.IRI, badgeClass: badgeClassId as Shared.IRI }]),
-  updateAssertion: mock(async (id: string, data: any) => ({ id: id as Shared.IRI, ...data })),
-  revokeAssertion: mock(async (id: string, reason: string) => ({ id: id as Shared.IRI, revoked: true, revocationReason: reason })),
-  verifyAssertion: mock(async (id: string) => ({ isValid: true }))
+  createAssertion: mock(async (data: Partial<OB2.Assertion | OB3.VerifiableCredential>): Promise<OB2.Assertion | OB3.VerifiableCredential> => {
+    return { id: toIRI('123e4567-e89b-12d3-a456-426614174002'), ...data } as OB2.Assertion | OB3.VerifiableCredential;
+  }),
+  getAssertionById: mock(async (id: string): Promise<OB2.Assertion | OB3.VerifiableCredential> => {
+    return {
+      '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
+      type: 'Assertion',
+      id: toIRI(id),
+      badgeClass: toIRI('123e4567-e89b-12d3-a456-426614174001'),
+      badge: toIRI('123e4567-e89b-12d3-a456-426614174001'),
+      recipient: {
+        type: 'email',
+        identity: 'recipient@test.edu',
+        hashed: false
+      } as OB2.IdentityObject,
+      issuedOn: toDateTime(new Date().toISOString()),
+      verification: { type: 'HostedBadge' }
+    } as OB2.Assertion;
+  }),
+  getAssertionsByBadgeClass: mock(async (badgeClassId: string): Promise<(OB2.Assertion | OB3.VerifiableCredential)[]> => {
+    return [
+      {
+        '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
+        type: 'Assertion',
+        id: toIRI('123e4567-e89b-12d3-a456-426614174002'),
+        badgeClass: toIRI(badgeClassId),
+        badge: toIRI(badgeClassId),
+        recipient: {
+          type: 'email',
+          identity: 'recipient@test.edu',
+          hashed: false
+        } as OB2.IdentityObject,
+        issuedOn: toDateTime(new Date().toISOString()),
+        verification: { type: 'HostedBadge' }
+      }
+    ];
+  }) as unknown as () => Promise<(OB2.Assertion | OB3.VerifiableCredential)[]>,
+  revokeAssertion: mock(async (id: string, reason: string): Promise<boolean> => {
+    return true;
+  })
 } as unknown as AssertionController;
 
 describe('API Endpoints', () => {
@@ -117,14 +186,14 @@ describe('API Endpoints', () => {
       // Test createIssuer
       const issuerData = {
         name: 'Test Issuer',
-        url: 'https://test.edu' as Shared.IRI
+        url: toIRI('https://test.edu')
       };
       const createdIssuer = await mockIssuerController.createIssuer(issuerData);
-      expect(createdIssuer.id).toBe('123e4567-e89b-12d3-a456-426614174000');
-      expect(createdIssuer.url).toBe('https://test.edu');
+      expect(createdIssuer.id).toBe(toIRI('123e4567-e89b-12d3-a456-426614174000'));
+      expect(createdIssuer.url).toBe(toIRI('https://test.edu'));
 
       // Test getIssuerById
-      const id = '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI;
+      const id = toIRI('123e4567-e89b-12d3-a456-426614174000');
       const issuer = await mockIssuerController.getIssuerById(id);
       expect(issuer.id).toBe(id);
       expect(mockIssuerController.getIssuerById).toHaveBeenCalledWith(id);
@@ -132,37 +201,37 @@ describe('API Endpoints', () => {
       // Test updateIssuer
       const updatedData = {
         name: 'Updated Issuer',
-        url: 'https://updated.edu' as Shared.IRI
+        url: toIRI('https://updated.edu')
       };
       const updatedIssuer = await mockIssuerController.updateIssuer(id, updatedData);
       expect(updatedIssuer.id).toBe(id);
       expect(updatedIssuer.name).toBe('Updated Issuer');
-      expect(updatedIssuer.url).toBe('https://updated.edu');
+      expect(updatedIssuer.url).toBe(toIRI('https://updated.edu'));
       expect(mockIssuerController.updateIssuer).toHaveBeenCalledWith(id, updatedData);
     });
 
     it('should handle Shared.IRI in BadgeClassController', async () => {
       // Test createBadgeClass
       const badgeClassData = {
-        issuer: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
+        issuer: toIRI('123e4567-e89b-12d3-a456-426614174000'),
         name: 'Test Badge',
         description: 'A test badge',
-        image: 'https://test.edu/badge.png' as Shared.IRI,
+        image: toIRI('https://test.edu/badge.png'),
         criteria: { narrative: 'Complete the test' }
       };
       const createdBadgeClass = await mockBadgeClassController.createBadgeClass(badgeClassData);
-      expect(createdBadgeClass.id).toBe('123e4567-e89b-12d3-a456-426614174001');
-      expect(createdBadgeClass.issuer).toBe('123e4567-e89b-12d3-a456-426614174000');
-      expect(createdBadgeClass.image).toBe('https://test.edu/badge.png');
+      expect(createdBadgeClass.id).toBe(toIRI('123e4567-e89b-12d3-a456-426614174001'));
+      expect(createdBadgeClass.issuer).toBe(toIRI('123e4567-e89b-12d3-a456-426614174000'));
+      expect(createdBadgeClass.image).toBe(toIRI('https://test.edu/badge.png'));
 
       // Test getBadgeClassById
-      const id = '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI;
+      const id = toIRI('123e4567-e89b-12d3-a456-426614174001');
       const badgeClass = await mockBadgeClassController.getBadgeClassById(id);
       expect(badgeClass.id).toBe(id);
       expect(mockBadgeClassController.getBadgeClassById).toHaveBeenCalledWith(id);
 
       // Test getBadgeClassesByIssuer
-      const issuerId = '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI;
+      const issuerId = toIRI('123e4567-e89b-12d3-a456-426614174000');
       const badgeClasses = await mockBadgeClassController.getBadgeClassesByIssuer(issuerId);
       expect(badgeClasses[0].issuer).toBe(issuerId);
       expect(mockBadgeClassController.getBadgeClassesByIssuer).toHaveBeenCalledWith(issuerId);
@@ -171,35 +240,34 @@ describe('API Endpoints', () => {
     it('should handle Shared.IRI in AssertionController', async () => {
       // Test createAssertion
       const assertionData = {
-        badgeClass: '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI,
+        badge: toIRI('123e4567-e89b-12d3-a456-426614174001'), // Changed from badgeClass to badge to match DTO
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',
           hashed: false
         },
-        issuedOn: new Date().toISOString()
+        issuedOn: toDateTime(new Date().toISOString())
       };
       const createdAssertion = await mockAssertionController.createAssertion(assertionData);
-      expect(createdAssertion.id).toBe('123e4567-e89b-12d3-a456-426614174002');
-      expect(createdAssertion.badgeClass).toBe('123e4567-e89b-12d3-a456-426614174001');
+      expect(createdAssertion.id).toBe(toIRI('123e4567-e89b-12d3-a456-426614174002'));
+      // The property is called 'badge' in the DTO but the internal model and response use 'badgeClass'
+      expect(createdAssertion.badge || createdAssertion.badgeClass).toBe(toIRI('123e4567-e89b-12d3-a456-426614174001'));
 
       // Test getAssertionById
-      const id = '123e4567-e89b-12d3-a456-426614174002' as Shared.IRI;
+      const id = toIRI('123e4567-e89b-12d3-a456-426614174002');
       const assertion = await mockAssertionController.getAssertionById(id);
       expect(assertion.id).toBe(id);
       expect(mockAssertionController.getAssertionById).toHaveBeenCalledWith(id);
 
       // Test getAssertionsByBadgeClass
-      const badgeClassId = '123e4567-e89b-12d3-a456-426614174001' as Shared.IRI;
+      const badgeClassId = toIRI('123e4567-e89b-12d3-a456-426614174001');
       const assertions = await mockAssertionController.getAssertionsByBadgeClass(badgeClassId);
       expect(assertions[0].badgeClass).toBe(badgeClassId);
       expect(mockAssertionController.getAssertionsByBadgeClass).toHaveBeenCalledWith(badgeClassId);
 
       // Test revokeAssertion
-      const revokedAssertion = await mockAssertionController.revokeAssertion(id, 'Test revocation');
-      expect((revokedAssertion as any).id).toBe(id);
-      expect((revokedAssertion as any).revoked).toBe(true);
-      expect((revokedAssertion as any).revocationReason).toBe('Test revocation');
+      const wasRevoked = await mockAssertionController.revokeAssertion(id, 'Test revocation');
+      expect(wasRevoked).toBe(true);
       expect(mockAssertionController.revokeAssertion).toHaveBeenCalledWith(id, 'Test revocation');
     });
   });

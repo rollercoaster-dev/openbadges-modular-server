@@ -24,15 +24,13 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     this.mapper = new SqliteBadgeClassMapper();
   }
 
-  async create(badgeClass: Omit<BadgeClass, 'id'>): Promise<BadgeClass> {
+  async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
     try {
-      // Convert domain entity to database record
-      const record = this.mapper.toPersistence(badgeClass as BadgeClass);
-
-      // Remove id if it's empty (for new entities)
-      if (!record.id) {
-        delete record.id;
-      }
+      // Instantiate entity first to ensure defaults
+      const newEntity = BadgeClass.create(badgeClass);
+      
+      // Convert domain entity to database record, indicating it's new
+      const record = this.mapper.toPersistence(newEntity, true);
 
       // Insert into database
       const result = await this.db.insert(badgeClasses).values(record).returning();
@@ -108,11 +106,17 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
         return null;
       }
 
-      // Create a merged entity
-      const mergedBadgeClass = BadgeClass.create({
-        ...existingBadgeClass.toObject(),
-        ...badgeClass as any
-      });
+      // Create a merged entity using the internal representation from toPartial()
+      const partialExistingData = existingBadgeClass.toPartial();
+      const updateData = badgeClass; // Already Partial<BadgeClass>
+      
+      // Simple merge as both are Partial<BadgeClass>
+      const mergedData: Partial<BadgeClass> = {
+        ...partialExistingData,
+        ...updateData,
+      };
+
+      const mergedBadgeClass = BadgeClass.create(mergedData);
 
       // Convert to database record
       const record = this.mapper.toPersistence(mergedBadgeClass);
