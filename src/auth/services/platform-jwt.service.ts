@@ -36,7 +36,7 @@ export class PlatformJwtService {
       // Return payload
       return payload as unknown as PlatformJwtPayload;
     } catch (error) {
-      throw new Error('Invalid token', error as Error);
+      throw new Error(`Invalid token: ${(error as Error).message}`);
     }
   }
 }
