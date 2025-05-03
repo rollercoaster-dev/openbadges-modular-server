@@ -26,11 +26,10 @@ interface ValidationResponse {
  * @returns Record with error messages grouped by field
  */
 function formatValidationErrors(errors: string[]): Record<string, string[]> {
-  const formattedErrors: Record<string, string[]> = {};
+  const formattedErrors: Record<string, string[]> = { validation: [] };
 
   // Group errors by field or use 'general' for generic errors
   errors.forEach(error => {
-    formattedErrors['validation'] = formattedErrors['validation'] || [];
     formattedErrors['validation'].push(error);
   });
 
