@@ -240,7 +240,7 @@ describe('API Endpoints', () => {
     it('should handle Shared.IRI in AssertionController', async () => {
       // Test createAssertion
       const assertionData = {
-        badgeClass: toIRI('123e4567-e89b-12d3-a456-426614174001'),
+        badge: toIRI('123e4567-e89b-12d3-a456-426614174001'), // Changed from badgeClass to badge to match DTO
         recipient: {
           type: 'email',
           identity: 'recipient@test.edu',
