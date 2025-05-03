@@ -3,68 +3,7 @@
  */
 import * as jose from 'jose';
 
-/**
- * Platform JWT payload structure
- *
- * This interface defines the expected structure of JWT tokens
- * issued by external platforms for authentication.
- */
-export interface PlatformJwtPayload {
-  /**
-   * Subject - typically the external user ID
-   */
-  sub: string;
-
-  /**
-   * Issuer - typically the platform identifier (clientId)
-   */
-  iss: string;
-
-  /**
-   * Platform UUID in our system (optional as it might not be known by the platform)
-   */
-  platformId?: string;
-
-  /**
-   * Authentication provider identifier (e.g., 'google', 'local', 'oauth')
-   */
-  provider?: string;
-
-  /**
-   * User display name (optional)
-   */
-  displayName?: string;
-
-  /**
-   * User email (optional)
-   */
-  email?: string;
-
-  /**
-   * Expiration time (standard JWT claim)
-   */
-  exp?: number;
-
-  /**
-   * Issued at time (standard JWT claim)
-   */
-  iat?: number;
-
-  /**
-   * JWT ID (standard JWT claim)
-   */
-  jti?: string;
-
-  /**
-   * User roles or permissions
-   */
-  roles?: string[];
-
-  /**
-   * Additional properties
-   */
-  [key: string]: unknown;
-}
+import { PlatformJwtPayload } from '../../domains/backpack/auth.types';
 
 /**
  * Service for handling platform JWT tokens
@@ -95,7 +34,7 @@ export class PlatformJwtService {
       const { payload } = await jose.jwtVerify(token, key);
 
       // Return payload
-      return payload as PlatformJwtPayload;
+      return payload as unknown as PlatformJwtPayload;
     } catch (error) {
       throw new Error('Invalid token', error as Error);
     }

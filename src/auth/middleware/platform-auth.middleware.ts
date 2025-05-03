@@ -6,6 +6,8 @@ import { PlatformRepository } from '../../domains/backpack/platform.repository';
 import { PlatformJwtService } from '../services/platform-jwt.service';
 import { PlatformUser } from '../../domains/backpack/platform-user.entity';
 import { Shared } from 'openbadges-types';
+import { PlatformAuthSuccess, PlatformAuthFailure } from '../../domains/backpack/auth.types';
+type AuthResult = Record<string, unknown>;
 
 /**
  * Create a middleware for platform authentication
@@ -13,9 +15,9 @@ import { Shared } from 'openbadges-types';
  * @returns An Elysia middleware
  */
 export function createPlatformAuthMiddleware(platformRepository: PlatformRepository): Elysia {
-  return new Elysia().derive(async ({ request, set }) => {
+  return new Elysia().derive(async ({ request, set }): Promise<AuthResult> => {
     // Default response
-    let response: Record<string, unknown> = {
+    let response: PlatformAuthFailure & AuthResult = {
       isAuthenticated: false,
       platformUser: null,
       error: ''
@@ -62,11 +64,18 @@ export function createPlatformAuthMiddleware(platformRepository: PlatformReposit
       });
 
       // Create success response
-      return {
+      const successResponse: PlatformAuthSuccess & AuthResult = {
         isAuthenticated: true,
-        platformUser,
+        platformUser: {
+          id: platformUser.id as Shared.IRI,
+          platformId: platformUser.platformId,
+          externalUserId: platformUser.externalUserId,
+          displayName: platformUser.displayName,
+          email: platformUser.email
+        },
         error: null
-      } as Record<string, unknown>;
+      };
+      return successResponse;
     } catch (_error) {
       set.status = 401;
       response.error = 'Authentication failed';

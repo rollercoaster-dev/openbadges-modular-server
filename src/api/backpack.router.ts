@@ -5,11 +5,15 @@ import { Elysia } from 'elysia';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { createPlatformAuthMiddleware } from '../auth/middleware/platform-auth.middleware';
 import { PlatformRepository } from '../domains/backpack/platform.repository';
-import { Platform } from '../domains/backpack/platform.entity';
 import { PlatformUser } from '../domains/backpack/platform-user.entity';
 import { Shared } from 'openbadges-types';
 import { BadgeVersion } from '../utils/version/badge-version';
-import { PlatformStatus, UserAssertionStatus } from '../domains/backpack/backpack.types';
+import {
+  CreatePlatformRequest,
+  UpdatePlatformRequest,
+  AddAssertionRequest,
+  UpdateAssertionStatusRequest
+} from '../domains/backpack/api.types';
 
 /**
  * Create a router for backpack endpoints
@@ -40,19 +44,19 @@ export function createBackpackRouter(
         };
       })
       .post('/', async ({ body }) => {
-        const { name, clientId, publicKey, description, webhookUrl } = body as Record<string, string>;
+        const { name, clientId, publicKey, description, webhookUrl } = body as CreatePlatformRequest;
 
         // Create platform data
-        const platformData = {
+        const platformData: CreatePlatformRequest = {
           name,
           clientId,
           publicKey,
           description,
-          webhookUrl,
-          status: PlatformStatus.ACTIVE
+          webhookUrl
         };
 
-        const platform = await backpackController.createPlatform(platformData);
+        const result = await backpackController.createPlatform(platformData);
+        const platform = result.body;
 
         return {
           status: 201,
@@ -84,17 +88,19 @@ export function createBackpackRouter(
         };
       })
       .put('/:id', async ({ params: { id }, body }) => {
-        const { name, clientId, publicKey, status, description, webhookUrl, metadata } = body as Partial<Platform>;
+        const { name, clientId, publicKey, status, description, webhookUrl } = body as UpdatePlatformRequest;
 
-        const platform = await backpackController.updatePlatform(id as Shared.IRI, {
+        const platformData: UpdatePlatformRequest = {
           name,
           clientId,
           publicKey,
-          status: status as PlatformStatus,
+          status,
           description,
-          webhookUrl,
-          metadata
-        });
+          webhookUrl
+        };
+
+        const result = await backpackController.updatePlatform(id as Shared.IRI, platformData);
+        const platform = result.body;
 
         if (!platform) {
           return {
@@ -140,7 +146,7 @@ export function createBackpackRouter(
   router.group('/assertions', (app) => {
     return app
       .use(platformAuth)
-      .post('/', async ({ body, platformUser }: { body: any, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
+      .post('/', async ({ body, platformUser }: { body: AddAssertionRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
         if (!platformUser) {
           return {
             status: 401,
@@ -151,16 +157,14 @@ export function createBackpackRouter(
           };
         }
 
-        const { assertionId, metadata } = body as {
-          assertionId: Shared.IRI;
-          metadata?: Record<string, unknown>;
-        };
+        const { assertionId, metadata } = body;
 
-        const userAssertion = await backpackController.addAssertion(
+        const result = await backpackController.addAssertion(
           platformUser,
-          assertionId,
+          assertionId as Shared.IRI,
           metadata
         );
+        const userAssertion = result.body;
 
         return {
           status: 201,
@@ -183,10 +187,11 @@ export function createBackpackRouter(
 
         const version = query.version || 'v3';
 
-        const assertions = await backpackController.getUserAssertions(
+        const result = await backpackController.getUserAssertions(
           platformUser,
           version === 'v2' ? BadgeVersion.V2 : BadgeVersion.V3
         );
+        const assertions = result.body;
 
         return {
           status: 200,
@@ -207,10 +212,11 @@ export function createBackpackRouter(
           };
         }
 
-        const success = await backpackController.removeAssertion(
+        const result = await backpackController.removeAssertion(
           platformUser,
           assertionId as Shared.IRI
         );
+        const success = result.body.success;
 
         if (!success) {
           return {
@@ -229,7 +235,7 @@ export function createBackpackRouter(
           }
         };
       })
-      .patch('/:assertionId/status', async ({ params: { assertionId }, body, platformUser }: { params: { assertionId: string }, body: any, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
+      .patch('/:assertionId/status', async ({ params: { assertionId }, body, platformUser }: { params: { assertionId: string }, body: UpdateAssertionStatusRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
         if (!platformUser) {
           return {
             status: 401,
@@ -240,13 +246,14 @@ export function createBackpackRouter(
           };
         }
 
-        const { status } = body as { status: UserAssertionStatus };
+        const { status } = body;
 
-        const success = await backpackController.updateAssertionStatus(
+        const result = await backpackController.updateAssertionStatus(
           platformUser,
           assertionId as Shared.IRI,
           status
         );
+        const success = result.body.success;
 
         if (!success) {
           return {
