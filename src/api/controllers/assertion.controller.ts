@@ -15,15 +15,16 @@ import { Shared, OB2, OB3 } from 'openbadges-types';
 import { VerificationService } from '../../core/verification.service';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
+import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
 
 /**
  * Maps incoming partial OB2/OB3 data to the internal Partial<Assertion> format.
  * Only copies properties defined in the internal Assertion entity.
- * @param data Input data (Partial<OB2.Assertion | OB3.VerifiableCredential>)
+ * @param data Input data (CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>)
  * @returns Mapped data (Partial<Assertion>)
  */
 const mapToPartialAssertion = (
-  data: Partial<OB2.Assertion | OB3.VerifiableCredential>
+  data: CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>
 ): Partial<Assertion> => {
   const mappedData: Partial<Assertion> = {};
 
@@ -66,13 +67,20 @@ const mapToPartialAssertion = (
     if (formattedDate !== undefined) {
       mappedData.issuedOn = formattedDate;
     } else {
-      // Log warning? Or should this be an error since issuedOn is required by entity?
-      // For now, let's log and skip assignment if format is invalid.
-       logger.warn('Skipping invalid issuedOn assignment due to format', { value: data.issuedOn });
+      // Throw an error if the date format is invalid and issuedOn is required 
+      logger.error('Invalid issuedOn date format received', { value: data.issuedOn }); 
+      throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`); 
     }
   }
   if (data.expires !== undefined) {
-     mappedData.expires = formatAssertionDateString(data.expires); // Undefined is acceptable for expires
+     const expiresDate = formatAssertionDateString(data.expires);
+     if (expiresDate !== undefined) {
+       mappedData.expires = expiresDate;
+     } else {
+       // Decide if invalid expires should be an error or logged warning
+       logger.warn('Invalid expires date format received, skipping assignment', { value: data.expires });
+       // Consider throwing BadRequestException here too if expires is critical
+     }
   }
 
   // Properties not part of internal Assertion entity are intentionally ignored:
@@ -105,16 +113,24 @@ export class AssertionController {
    * @returns The created assertion
    */
   async createAssertion(
-    data: Partial<OB2.Assertion | OB3.VerifiableCredential>,
+    data: CreateAssertionDto,
     version: BadgeVersion = BadgeVersion.V3,
     sign: boolean = true
-  ): Promise<OB2.Assertion | OB3.VerifiableCredential> {
+  ): Promise<AssertionResponseDto> {
     try {
       // Initialize the key service
       await KeyService.initialize();
 
       // Map incoming data to internal format
-      const mappedData = mapToPartialAssertion(data);
+      let mappedData: Partial<Assertion>;
+      try {
+        mappedData = mapToPartialAssertion(data);
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('Invalid date format for issuedOn')) {
+          throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`);
+        }
+        throw error;
+      }
 
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
@@ -134,11 +150,11 @@ export class AssertionController {
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
           // Pass entities directly
-          return createdAssertion.toJsonLd(version, badgeClass, issuer);
+          return createdAssertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
         }
       }
 
-      return createdAssertion.toJsonLd(version);
+      return createdAssertion.toJsonLd(version) as AssertionResponseDto;
     } catch (error) {
       logger.logError('Failed to create assertion', error as Error);
       throw error;
@@ -226,25 +242,32 @@ export class AssertionController {
    */
   async updateAssertion(
     id: string, 
-    data: Partial<OB2.Assertion | OB3.VerifiableCredential>, 
+    data: UpdateAssertionDto, 
     version: BadgeVersion = BadgeVersion.V3
-  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
-    const mappedData = mapToPartialAssertion(data);
-    const updatedAssertion = await this.assertionRepository.update(toIRI(id) as Shared.IRI, mappedData);
-    if (!updatedAssertion) {
-      return null;
-    }
-
-    if (version === BadgeVersion.V3) {
-      const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
-      if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-        // Pass entities directly
-        return updatedAssertion.toJsonLd(version, badgeClass, issuer);
+  ): Promise<AssertionResponseDto | null> {
+    try {
+      const mappedData = mapToPartialAssertion(data);
+      const updatedAssertion = await this.assertionRepository.update(toIRI(id) as Shared.IRI, mappedData);
+      if (!updatedAssertion) {
+        return null;
       }
-    }
 
-    return updatedAssertion.toJsonLd(version);
+      if (version === BadgeVersion.V3) {
+        const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
+        if (badgeClass) {
+          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          // Pass entities directly
+          return updatedAssertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
+        }
+      }
+
+      return updatedAssertion.toJsonLd(version) as AssertionResponseDto;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Invalid date format for issuedOn')) {
+        throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`);
+      }
+      throw error;
+    }
   }
 
   /**

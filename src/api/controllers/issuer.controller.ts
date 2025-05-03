@@ -9,7 +9,9 @@ import { Issuer } from '../../domains/issuer/issuer.entity';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
-import { Shared, OB2, OB3 } from 'openbadges-types';
+import { Shared } from 'openbadges-types';
+import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
+import { logger } from '../../utils/logging/logger.service';
 
 /**
  * Controller for issuer-related operations
@@ -27,12 +29,26 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The created issuer
    */
-  async createIssuer(data: Partial<OB2.Profile | OB3.Issuer>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.Profile | OB3.Issuer> {
-    // Note: Runtime validation needed here to ensure 'data' conforms to expected structure
-    const issuer = Issuer.create(data as Partial<Issuer>); // Cast needed as Issuer entity internal structure might differ slightly
-    const createdIssuer = await this.issuerRepository.create(issuer);
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return createdIssuer.toJsonLd(version) as OB2.Profile | OB3.Issuer;
+  async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto> {
+    try {
+      // Validate required fields
+      if (!data.name || !data.url) {
+        throw new Error('Missing required fields: name and url are required');
+      }
+
+      // Create issuer entity
+      const issuer = Issuer.create(data as Partial<Issuer>);
+      const createdIssuer = await this.issuerRepository.create(issuer);
+      
+      // Return formatted response
+      return createdIssuer.toJsonLd(version) as IssuerResponseDto;
+    } catch (error) {
+      logger.error('Error creating issuer', { 
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -40,10 +56,9 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns All issuers
    */
-  async getAllIssuers(version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.Profile | OB3.Issuer)[]> {
+  async getAllIssuers(version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto[]> {
     const issuers = await this.issuerRepository.findAll();
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return issuers.map(issuer => issuer.toJsonLd(version) as OB2.Profile | OB3.Issuer);
+    return issuers.map(issuer => issuer.toJsonLd(version) as IssuerResponseDto);
   }
 
   /**
@@ -52,13 +67,12 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The issuer with the specified ID
    */
-  async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.Profile | OB3.Issuer | null> {
+  async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
     const issuer = await this.issuerRepository.findById(toIRI(id) as Shared.IRI);
     if (!issuer) {
       return null;
     }
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return issuer.toJsonLd(version) as OB2.Profile | OB3.Issuer;
+    return issuer.toJsonLd(version) as IssuerResponseDto;
   }
 
   /**
@@ -68,14 +82,21 @@ export class IssuerController {
    * @param version The badge version to use for the response
    * @returns The updated issuer
    */
-  async updateIssuer(id: string, data: Partial<OB2.Profile | OB3.Issuer>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.Profile | OB3.Issuer | null> {
-    // Note: Runtime validation needed here
-    const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data as Partial<Issuer>); // Cast needed
-    if (!updatedIssuer) {
-      return null;
+  async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
+    try {
+      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data as Partial<Issuer>);
+      if (!updatedIssuer) {
+        return null;
+      }
+      return updatedIssuer.toJsonLd(version) as IssuerResponseDto;
+    } catch (error) {
+      logger.error('Error updating issuer', { 
+        id,
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
     }
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return updatedIssuer.toJsonLd(version) as OB2.Profile | OB3.Issuer;
   }
 
   /**

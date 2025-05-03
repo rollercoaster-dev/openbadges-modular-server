@@ -9,7 +9,9 @@ import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
-import { Shared, OB2, OB3 } from 'openbadges-types';
+import { Shared } from 'openbadges-types';
+import { CreateBadgeClassDto, BadgeClassResponseDto, UpdateBadgeClassDto } from '../dtos';
+import { logger } from '../../utils/logging/logger.service';
 
 /**
  * Controller for badge class-related operations
@@ -27,12 +29,26 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The created badge class
    */
-  async createBadgeClass(data: Partial<OB2.BadgeClass | OB3.Achievement>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement> {
-    // Note: Runtime validation needed here
-    const badgeClass = BadgeClass.create(data as Partial<BadgeClass>); // Cast needed
-    const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return createdBadgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
+  async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto> {
+    try {
+      // Validate required fields
+      if (!data.name || !data.description || !data.image || !data.issuer) {
+        throw new Error('Missing required fields: name, description, image, and issuer are required');
+      }
+
+      // Create badge class entity
+      const badgeClass = BadgeClass.create(data as Partial<BadgeClass>);
+      const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
+      
+      // Return formatted response
+      return createdBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error creating badge class', { 
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -40,10 +56,9 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns All badge classes
    */
-  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.BadgeClass | OB3.Achievement)[]> {
+  async getAllBadgeClasses(version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto[]> {
     const badgeClasses = await this.badgeClassRepository.findAll();
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement);
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as BadgeClassResponseDto);
   }
 
   /**
@@ -52,25 +67,23 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The badge class with the specified ID
    */
-  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement | null> {
+  async getBadgeClassById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
     const badgeClass = await this.badgeClassRepository.findById(toIRI(id) as Shared.IRI);
     if (!badgeClass) {
       return null;
     }
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
+    return badgeClass.toJsonLd(version) as BadgeClassResponseDto;
   }
 
   /**
-   * Gets badge classes by issuer
+   * Gets badge classes by issuer ID
    * @param issuerId The issuer ID
    * @param version The badge version to use for the response
    * @returns The badge classes for the specified issuer
    */
-  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<(OB2.BadgeClass | OB3.Achievement)[]> {
+  async getBadgeClassesByIssuer(issuerId: string, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto[]> {
     const badgeClasses = await this.badgeClassRepository.findByIssuer(toIRI(issuerId) as Shared.IRI);
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement);
+    return badgeClasses.map(badgeClass => badgeClass.toJsonLd(version) as BadgeClassResponseDto);
   }
 
   /**
@@ -80,14 +93,21 @@ export class BadgeClassController {
    * @param version The badge version to use for the response
    * @returns The updated badge class
    */
-  async updateBadgeClass(id: string, data: Partial<OB2.BadgeClass | OB3.Achievement>, version: BadgeVersion = BadgeVersion.V3): Promise<OB2.BadgeClass | OB3.Achievement | null> {
-    // Note: Runtime validation needed here
-    const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data as Partial<BadgeClass>); // Cast needed
-    if (!updatedBadgeClass) {
-      return null;
+  async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
+    try {
+      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data as Partial<BadgeClass>);
+      if (!updatedBadgeClass) {
+        return null;
+      }
+      return updatedBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error updating badge class', { 
+        id,
+        error: error instanceof Error ? error.message : String(error),
+        data 
+      });
+      throw error;
     }
-    // Assuming toJsonLd will be refined to return the specific type based on version
-    return updatedBadgeClass.toJsonLd(version) as OB2.BadgeClass | OB3.Achievement;
   }
 
   /**
