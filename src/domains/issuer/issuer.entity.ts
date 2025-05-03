@@ -53,10 +53,13 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
 
   /**
    * Converts the issuer to a plain object
-   * @returns A plain object representation of the issuer
+   * @returns A plain object representation of the issuer, compatible with OB2.Profile and OB3.Issuer
    */
-  toObject(): Record<string, any> {
-    return { ...this };
+  toObject(): OB2.Profile | OB3.Issuer {
+    // Note: Returning a direct shallow copy. Minor discrepancies might exist 
+    // with strict OB2/OB3 types (e.g., 'type' property, 'publicKey' structure), 
+    // but this is generally compatible for serialization.
+    return { ...this } as OB2.Profile | OB3.Issuer;
   }
 
   /**
@@ -64,7 +67,7 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
    * @param version The badge version to use (defaults to 3.0)
    * @returns A JSON-LD representation of the issuer
    */
-  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, any> {
+  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
     return serializer.serializeIssuer(this.toObject());
   }

@@ -16,6 +16,8 @@ interface ValidationResponse {
   details?: Record<string, string[]>;
 }
 
+// Since formatValidationErrors is not exported, we'll test it indirectly through validateIssuerMiddleware
+
 describe('Validation Middleware', () => {
   describe('validateIssuerMiddleware', () => {
     it('should return validation errors grouped by field', () => {

@@ -132,7 +132,7 @@ export function convertTimestamp(
       }
       // Attempt to parse if not already a Date
       try {
-        const dateObj = new Date(value as any);
+        const dateObj = new Date(value as string | number);
         // Check if date is valid
         if (isNaN(dateObj.getTime())) {
            // Use logger instead of console.warn

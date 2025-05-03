@@ -24,7 +24,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
   criteria?: OB2.Criteria | OB3.Criteria;
   alignment?: OB2.AlignmentObject[] | OB3.Alignment[];
   tags?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 
   /**
    * Private constructor to enforce creation through factory method
@@ -54,10 +54,13 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
 
   /**
    * Converts the badge class to a plain object
-   * @returns A plain object representation of the badge class
+   * @returns A plain object representation of the badge class, compatible with OB2.BadgeClass and OB3.Achievement
    */
-  toObject(): Record<string, any> {
-    return { ...this };
+  toObject(): OB2.BadgeClass | OB3.Achievement {
+    // Note: Returning a direct shallow copy. Minor discrepancies might exist 
+    // with strict OB2/OB3 types (e.g., 'type' property), 
+    // but this is generally compatible for serialization.
+    return { ...this } as OB2.BadgeClass | OB3.Achievement;
   }
 
   /**
@@ -65,7 +68,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
    * @param version The badge version to use (defaults to 3.0)
    * @returns A JSON-LD representation of the badge class
    */
-  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, any> {
+  toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
     return serializer.serializeBadgeClass(this.toObject());
   }
@@ -75,7 +78,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
    * @param property The property name
    * @returns The property value or undefined if not found
    */
-  getProperty(property: string): any {
+  getProperty(property: string): unknown {
     return this[property];
   }
 }
