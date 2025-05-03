@@ -7,6 +7,40 @@
 import { QueryLoggerService } from './query-logger.service';
 import { logger } from '../../../utils/logging/logger.service';
 
+// Define types for database operations
+type DatabaseClient = {
+  query?: (sql: string) => Promise<unknown>;
+  session?: {
+    client?: {
+      exec: (sql: string) => void;
+    };
+  };
+  insert: (table: DatabaseTable) => {
+    values: (record: Record<string, unknown> | Record<string, unknown>[]) => {
+      returning: () => Promise<unknown[]>;
+    };
+  };
+  update: (table: DatabaseTable) => {
+    set: (data: Record<string, unknown>) => {
+      where: (condition: unknown) => {
+        returning: () => Promise<unknown[]>;
+      };
+    };
+  };
+  delete: (table: DatabaseTable) => {
+    where: (condition: unknown) => {
+      returning: () => Promise<unknown[]>;
+    };
+  };
+  eq: (field: unknown, value: unknown) => unknown;
+  inArray: (field: unknown, values: unknown[]) => unknown;
+};
+
+type DatabaseTable = {
+  name: string;
+  [key: string]: unknown;
+};
+
 /**
  * Executes a batch of operations in a transaction
  * @param db Database client
@@ -15,12 +49,12 @@ import { logger } from '../../../utils/logging/logger.service';
  * @returns Results of the operations
  */
 export async function executeBatch<T>(
-  db: any,
+  db: DatabaseClient,
   operations: (() => Promise<T>)[],
   dbType: 'sqlite' | 'postgresql'
 ): Promise<T[]> {
   const startTime = Date.now();
-  let transaction: any;
+  let transaction: DatabaseClient | { exec: (sql: string) => void } | null = null;
 
   try {
     // Start transaction
@@ -29,7 +63,7 @@ export async function executeBatch<T>(
       transaction = db;
     } else if (dbType === 'sqlite') {
       // For SQLite, we need to use the underlying client
-      const client = (db as any).session?.client;
+      const client = db.session?.client;
       client.exec('BEGIN TRANSACTION');
       transaction = client;
     } else {
@@ -47,7 +81,9 @@ export async function executeBatch<T>(
     if (dbType === 'postgresql') {
       await db.query('COMMIT');
     } else if (dbType === 'sqlite') {
-      transaction.exec('COMMIT');
+      if ('exec' in transaction) {
+        transaction.exec('COMMIT');
+      }
     }
 
     const duration = Date.now() - startTime;
@@ -65,7 +101,9 @@ export async function executeBatch<T>(
       if (dbType === 'postgresql') {
         await db.query('ROLLBACK');
       } else if (dbType === 'sqlite') {
-        transaction.exec('ROLLBACK');
+        if (transaction && 'exec' in transaction) {
+          transaction.exec('ROLLBACK');
+        }
       }
     } catch (rollbackError) {
       logger.logError('Error rolling back transaction', rollbackError, {
@@ -95,9 +133,9 @@ export async function executeBatch<T>(
  * @returns Results of the insert operations
  */
 export async function batchInsert<T>(
-  db: any,
-  table: any,
-  records: any[],
+  db: DatabaseClient,
+  table: DatabaseTable,
+  records: Record<string, unknown>[],
   dbType: 'sqlite' | 'postgresql'
 ): Promise<T[]> {
   if (records.length === 0) {
@@ -120,7 +158,7 @@ export async function batchInsert<T>(
     }
 
     // For larger batches, use bulk insert if supported
-    let result;
+    let result: unknown[] = [];
     if (dbType === 'postgresql') {
       // PostgreSQL supports bulk insert
       result = await db.insert(table).values(records).returning();
@@ -170,9 +208,9 @@ export async function batchInsert<T>(
  * @returns Results of the update operations
  */
 export async function batchUpdate<T>(
-  db: any,
-  table: any,
-  records: any[],
+  db: DatabaseClient,
+  table: DatabaseTable,
+  records: Record<string, unknown>[],
   idField: string,
   dbType: 'sqlite' | 'postgresql'
 ): Promise<T[]> {
@@ -234,8 +272,8 @@ export async function batchUpdate<T>(
  * @returns Number of deleted records
  */
 export async function batchDelete(
-  db: any,
-  table: any,
+  db: DatabaseClient,
+  table: DatabaseTable,
   ids: string[],
   idField: string,
   dbType: 'sqlite' | 'postgresql'

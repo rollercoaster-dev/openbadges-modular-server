@@ -14,8 +14,8 @@ export class PostgresBadgeClassMapper {
    * @param record The database record
    * @returns A BadgeClass domain entity
    */
-  toDomain(record: any): BadgeClass {
-    if (!record) return null as any;
+  toDomain(record: Record<string, unknown>): BadgeClass {
+    if (!record) return null as unknown as BadgeClass;
 
     // Extract the standard fields from the record
     const {
@@ -49,7 +49,7 @@ export class PostgresBadgeClassMapper {
    * @param entity The BadgeClass domain entity
    * @returns A database record
    */
-  toPersistence(entity: BadgeClass): any {
+  toPersistence(entity: BadgeClass): Record<string, unknown> {
     if (!entity) return null;
 
     // Convert the entity to a plain object

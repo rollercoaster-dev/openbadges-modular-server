@@ -40,7 +40,7 @@ export class DatabaseFactory {
    */
   static async createDatabase(
     moduleName?: string,
-    config: Record<string, any> = {}
+    config: Record<string, unknown> = {}
   ): Promise<DatabaseInterface> {
     const moduleToUse = moduleName || this.defaultModule;
 

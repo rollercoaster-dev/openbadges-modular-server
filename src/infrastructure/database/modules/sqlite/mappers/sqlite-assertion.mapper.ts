@@ -15,8 +15,8 @@ export class SqliteAssertionMapper {
    * @param record The database record
    * @returns An Assertion domain entity
    */
-  toDomain(record: any): Assertion {
-    if (!record) return null as any;
+  toDomain(record: Record<string, unknown>): Assertion {
+    if (!record) return null as unknown as Assertion;
 
     // Extract the standard fields from the record
     const {
@@ -52,7 +52,7 @@ export class SqliteAssertionMapper {
    * @param entity The Assertion domain entity
    * @returns A database record
    */
-  toPersistence(entity: Assertion): any {
+  toPersistence(entity: Assertion): Record<string, unknown> {
     if (!entity) return null;
 
     // Convert the entity to a plain object
@@ -74,16 +74,16 @@ export class SqliteAssertionMapper {
 
     // Create and return the database record
     return {
-      id: convertUuid(id, 'sqlite', 'to'),
+      id: convertUuid(id as string, 'sqlite', 'to'),
       badgeClassId: convertUuid(badgeClass as string, 'sqlite', 'to'),
-      recipient: convertJson(recipient, 'sqlite', 'to'),
-      issuedOn: convertTimestamp(issuedOn, 'sqlite', 'to'),
-      expires: expires ? convertTimestamp(expires, 'sqlite', 'to') : null,
-      evidence: convertJson(evidence, 'sqlite', 'to'),
-      verification: convertJson(verification, 'sqlite', 'to'),
-      revoked: revoked !== undefined ? convertBoolean(revoked, 'sqlite', 'to') : null,
-      revocationReason: revocationReason || null,
-      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
+      recipient: convertJson(recipient as object, 'sqlite', 'to'),
+      issuedOn: convertTimestamp(issuedOn as string | Date, 'sqlite', 'to'),
+      expires: expires ? convertTimestamp(expires as string | Date, 'sqlite', 'to') : null,
+      evidence: convertJson(evidence as object, 'sqlite', 'to'),
+      verification: convertJson(verification as object, 'sqlite', 'to'),
+      revoked: revoked !== undefined ? convertBoolean(revoked as boolean, 'sqlite', 'to') : null,
+      revocationReason: (revocationReason as string) || null,
+      additionalFields: convertJson(additionalFields as object, 'sqlite', 'to'),
       updatedAt: convertTimestamp(new Date(), 'sqlite', 'to')
     };
   }

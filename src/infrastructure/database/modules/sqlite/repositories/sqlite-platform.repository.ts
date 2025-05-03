@@ -9,7 +9,7 @@ import { Platform } from '@domains/backpack/platform.entity';
 import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
-import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams } from '@domains/backpack/repository.types';
+import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams, PlatformStatus } from '@domains/backpack/repository.types';
 
 export class SqlitePlatformRepository implements PlatformRepository {
   private db: Database;
@@ -70,7 +70,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
     try {
       // Build query
       let query = `SELECT * FROM platforms`;
-      const queryParams: any[] = [];
+      const queryParams: (string | number)[] = [];
 
       // Add filters if provided
       if (params) {
@@ -168,7 +168,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
       // Create a merged entity
       const mergedPlatform = Platform.create({
         ...existingPlatform.toObject(),
-        ...params as any,
+        ...params as Partial<Platform>,
         updatedAt: new Date()
       });
       const obj = mergedPlatform.toObject();
@@ -227,17 +227,19 @@ export class SqlitePlatformRepository implements PlatformRepository {
    * @param row The database row
    * @returns A Platform domain entity
    */
-  private rowToDomain(row: any): Platform {
+  private rowToDomain(row: unknown): Platform {
+    // Cast row to the expected type
+    const typedRow = row as Record<string, string | number | null>;
     return Platform.create({
-      id: row.id as Shared.IRI,
-      name: row.name,
-      description: row.description,
-      clientId: row.clientId,
-      publicKey: row.publicKey,
-      webhookUrl: row.webhookUrl,
-      status: row.status,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt)
+      id: String(typedRow.id) as Shared.IRI,
+      name: String(typedRow.name),
+      description: typedRow.description ? String(typedRow.description) : undefined,
+      clientId: String(typedRow.clientId),
+      publicKey: String(typedRow.publicKey),
+      webhookUrl: typedRow.webhookUrl ? String(typedRow.webhookUrl) : undefined,
+      status: String(typedRow.status) as PlatformStatus,
+      createdAt: new Date(String(typedRow.createdAt)),
+      updatedAt: new Date(String(typedRow.updatedAt))
     });
   }
 }

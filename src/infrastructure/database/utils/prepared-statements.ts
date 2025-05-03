@@ -8,8 +8,22 @@ import { config } from '../../../config/config';
 import { QueryLoggerService } from './query-logger.service';
 import { logger } from '../../../utils/logging/logger.service';
 
+// Database client types
+type PostgresClient = {
+  query: (sql: string, params?: unknown[]) => Promise<unknown>;
+};
+
+type SqliteStatement = {
+  all: (...params: unknown[]) => unknown[];
+  run: (...params: unknown[]) => { changes: number; lastInsertRowid?: number };
+};
+
+type SqliteClient = {
+  prepare: (sql: string) => SqliteStatement;
+};
+
 // Type for prepared statement functions
-export type PreparedStatementFn<T = any> = (...args: any[]) => Promise<T>;
+export type PreparedStatementFn<T = unknown> = (...args: unknown[]) => Promise<T>;
 
 // Interface for prepared statement cache
 interface PreparedStatementCache {
@@ -32,16 +46,16 @@ export class PreparedStatementManager {
    * @param types Parameter types (optional)
    * @returns Prepared statement function
    */
-  static preparePostgres<T = any>(
-    client: any,
+  static preparePostgres<T = unknown>(
+    client: PostgresClient,
     name: string,
     query: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    types?: any[]
+    types?: unknown[]
   ): PreparedStatementFn<T> {
     if (!this.enabled) {
       // If prepared statements are disabled, just execute the query directly
-      return async (...params: any[]) => {
+      return async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           const result = await client.query(query, params);
@@ -65,7 +79,7 @@ export class PreparedStatementManager {
     try {
       // This is a simplified implementation - in a real application, you would
       // use the actual prepared statement API of your PostgreSQL client
-      const preparedFn = async (...params: any[]) => {
+      const preparedFn = async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           // In a real implementation, you would use the prepared statement
@@ -100,7 +114,7 @@ export class PreparedStatementManager {
       logger.logError(`Failed to prepare statement`, error, { name, query });
 
       // Fallback to direct query execution
-      return async (...params: any[]) => {
+      return async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           const result = await client.query(query, params);
@@ -123,14 +137,14 @@ export class PreparedStatementManager {
    * @param query SQL query
    * @returns Prepared statement function
    */
-  static prepareSqlite<T = any>(
-    client: any,
+  static prepareSqlite<T = unknown>(
+    client: SqliteClient,
     name: string,
     query: string
   ): PreparedStatementFn<T> {
     if (!this.enabled) {
       // If prepared statements are disabled, just execute the query directly
-      return async (...params: any[]) => {
+      return async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution
@@ -161,7 +175,7 @@ export class PreparedStatementManager {
       // For SQLite, we can actually prepare the statement
       const stmt = client.prepare(query);
 
-      const preparedFn = async (...params: any[]) => {
+      const preparedFn = async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           // Determine if this is a query or an execution
@@ -200,7 +214,7 @@ export class PreparedStatementManager {
       logger.logError(`Failed to prepare statement`, error, { name, query });
 
       // Fallback to direct query execution
-      return async (...params: any[]) => {
+      return async (...params: unknown[]) => {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution

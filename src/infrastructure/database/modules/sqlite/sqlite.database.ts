@@ -27,7 +27,7 @@ export class SqliteDatabase implements DatabaseInterface {
     try {
       // For SQLite, the connection is already established when the Database object is created
       // We just need to check if the database is accessible by getting the underlying client
-      const client = (this.db as any).session?.client;
+      const client = (this.db as { session?: { client?: unknown } }).session?.client;
 
       if (!client) {
         throw new Error('SQLite client not available');
@@ -75,7 +75,7 @@ export class SqliteDatabase implements DatabaseInterface {
 
     try {
       // Get the underlying SQLite client
-      const client = (this.db as any).session?.client;
+      const client = (this.db as { session?: { client?: unknown } }).session?.client;
 
       if (client) {
         // Flush any pending writes
@@ -133,7 +133,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create issuer');
@@ -230,7 +230,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create badge class');
@@ -356,7 +356,7 @@ export class SqliteDatabase implements DatabaseInterface {
       createdAt: now,
       updatedAt: now,
       additionalFields: Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null
-    } as any).returning();
+    } as Record<string, unknown>).returning();
 
     if (!result?.[0]) {
       throw new Error('Failed to create assertion');

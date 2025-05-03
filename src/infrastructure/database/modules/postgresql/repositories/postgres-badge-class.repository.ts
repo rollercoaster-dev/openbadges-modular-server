@@ -78,7 +78,7 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
     // Create a merged entity
     const mergedBadgeClass = BadgeClass.create({
       ...existingBadgeClass.toObject(),
-      ...badgeClass as any
+      ...badgeClass as Partial<BadgeClass>
     });
 
     // Convert to database record

@@ -14,8 +14,8 @@ export class PostgresAssertionMapper {
    * @param record The database record
    * @returns An Assertion domain entity
    */
-  toDomain(record: any): Assertion {
-    if (!record) return null as any;
+  toDomain(record: Record<string, unknown>): Assertion {
+    if (!record) return null as unknown as Assertion;
 
     // Extract the standard fields from the record
     const {
@@ -51,7 +51,7 @@ export class PostgresAssertionMapper {
    * @param entity The Assertion domain entity
    * @returns A database record
    */
-  toPersistence(entity: Assertion): any {
+  toPersistence(entity: Assertion): Record<string, unknown> {
     if (!entity) return null;
 
     // Convert the entity to a plain object

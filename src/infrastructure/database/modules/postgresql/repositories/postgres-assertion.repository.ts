@@ -87,7 +87,7 @@ export class PostgresAssertionRepository implements AssertionRepository {
     // Create a merged entity
     const mergedAssertion = Assertion.create({
       ...existingAssertion.toObject(),
-      ...assertion as any
+      ...assertion as Partial<Assertion>
     });
 
     // Convert to database record

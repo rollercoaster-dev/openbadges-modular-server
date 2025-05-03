@@ -129,7 +129,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       // Create a merged entity
       const mergedUser = PlatformUser.create({
         ...existingUser.toObject(),
-        ...user as any,
+        ...user as Partial<PlatformUser>,
         updatedAt: new Date()
       });
       const obj = mergedUser.toObject();
@@ -189,7 +189,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
    * @param row The database row
    * @returns A PlatformUser domain entity
    */
-  private rowToDomain(row: any): PlatformUser {
+  private rowToDomain(row: Record<string, unknown>): PlatformUser {
     // Parse metadata if it exists
     let metadata: Record<string, unknown> | undefined;
     if (row.metadata) {

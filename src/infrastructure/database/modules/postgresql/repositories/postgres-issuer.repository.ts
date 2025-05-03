@@ -70,7 +70,7 @@ export class PostgresIssuerRepository implements IssuerRepository {
     // Create a merged entity
     const mergedIssuer = Issuer.create({
       ...existingIssuer.toObject(),
-      ...issuer as any
+      ...issuer as Partial<Issuer>
     });
 
     // Convert to database record

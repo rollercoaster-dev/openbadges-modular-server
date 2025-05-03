@@ -15,8 +15,8 @@ export class SqliteIssuerMapper {
    * @param record The database record
    * @returns An Issuer domain entity
    */
-  toDomain(record: any): Issuer {
-    if (!record) return null as any;
+  toDomain(record: Record<string, unknown>): Issuer {
+    if (!record) return null as unknown as Issuer;
 
     // Extract the standard fields from the record
     const {
@@ -48,7 +48,7 @@ export class SqliteIssuerMapper {
    * @param entity The Issuer domain entity
    * @returns A database record
    */
-  toPersistence(entity: Issuer): any {
+  toPersistence(entity: Issuer): Record<string, unknown> {
     if (!entity) return null;
 
     // Convert the entity to a plain object

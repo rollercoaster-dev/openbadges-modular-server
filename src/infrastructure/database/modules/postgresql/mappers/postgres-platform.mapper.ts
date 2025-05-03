@@ -6,6 +6,7 @@
  */
 
 import { Platform } from '@domains/backpack/platform.entity';
+import { PlatformStatus } from '@domains/backpack/backpack.types';
 import { Shared } from 'openbadges-types';
 
 export class PostgresPlatformMapper {
@@ -14,8 +15,8 @@ export class PostgresPlatformMapper {
    * @param record The database record
    * @returns A Platform domain entity
    */
-  toDomain(record: any): Platform {
-    if (!record) return null as any;
+  toDomain(record: Record<string, unknown>): Platform {
+    if (!record) return null as unknown as Platform;
 
     // Extract the standard fields from the record
     const {
@@ -33,14 +34,14 @@ export class PostgresPlatformMapper {
     // Create and return the domain entity
     return Platform.create({
       id: id.toString() as Shared.IRI,
-      name,
-      description,
-      clientId,
-      publicKey,
-      webhookUrl,
-      status,
-      createdAt: createdAt instanceof Date ? createdAt : new Date(createdAt),
-      updatedAt: updatedAt instanceof Date ? updatedAt : new Date(updatedAt)
+      name: name as string,
+      description: description as string,
+      clientId: clientId as string,
+      publicKey: publicKey as string,
+      webhookUrl: webhookUrl as string,
+      status: status as PlatformStatus,
+      createdAt: createdAt instanceof Date ? createdAt : new Date(createdAt as string | number),
+      updatedAt: updatedAt instanceof Date ? updatedAt : new Date(updatedAt as string | number)
     });
   }
 
@@ -49,7 +50,7 @@ export class PostgresPlatformMapper {
    * @param entity The Platform domain entity
    * @returns A database record
    */
-  toPersistence(entity: Platform): any {
+  toPersistence(entity: Platform): Record<string, unknown> {
     if (!entity) return null;
 
     // Convert the entity to a plain object
