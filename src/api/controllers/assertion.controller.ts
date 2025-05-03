@@ -9,6 +9,8 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../domains/assertion/assertion.repository';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
+import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
+import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared, OB2, OB3 } from 'openbadges-types';
@@ -101,6 +103,26 @@ const mapToPartialAssertion = (
 /**
  * Controller for assertion-related operations
  */
+/**
+ * Helper function to convert an Assertion entity to JSON-LD format with proper typing
+ * @param assertion The assertion entity to convert
+ * @param version The badge version to use
+ * @param badgeClass Optional badge class entity for enriched response
+ * @param issuer Optional issuer entity for enriched response
+ * @returns The assertion in JSON-LD format with proper typing
+ */
+function convertAssertionToJsonLd(
+  assertion: Assertion,
+  version: BadgeVersion,
+  badgeClass?: BadgeClass,
+  issuer?: Issuer
+): AssertionResponseDto {
+  if (badgeClass && issuer) {
+    return assertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
+  }
+  return assertion.toJsonLd(version) as AssertionResponseDto;
+}
+
 export class AssertionController {
   /**
    * Constructor
@@ -160,12 +182,11 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          // Pass entities directly
-          return createdAssertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
+          return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
         }
       }
 
-      return createdAssertion.toJsonLd(version) as AssertionResponseDto;
+      return convertAssertionToJsonLd(createdAssertion, version);
     } catch (error) {
       logger.logError('Failed to create assertion', error as Error);
       throw error;
@@ -214,11 +235,11 @@ export class AssertionController {
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
         // Pass entities directly
-        return assertion.toJsonLd(version, badgeClass, issuer);
+        return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
     }
 
-    return assertion.toJsonLd(version);
+    return convertAssertionToJsonLd(assertion, version);
   }
 
   /**
@@ -235,13 +256,13 @@ export class AssertionController {
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
         // Pass entities directly
-        return assertions.map(assertion =>
-          assertion.toJsonLd(version, badgeClass, issuer)
+        return assertions.map(assertion => 
+          convertAssertionToJsonLd(assertion, version, badgeClass, issuer)
         );
       }
     }
 
-    return assertions.map(assertion => assertion.toJsonLd(version));
+    return assertions.map(assertion => convertAssertionToJsonLd(assertion, version));
   }
 
   /**
@@ -267,12 +288,11 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          // Pass entities directly
-          return updatedAssertion.toJsonLd(version, badgeClass, issuer) as AssertionResponseDto;
+          return convertAssertionToJsonLd(updatedAssertion, version, badgeClass, issuer);
         }
       }
 
-      return updatedAssertion.toJsonLd(version) as AssertionResponseDto;
+      return convertAssertionToJsonLd(updatedAssertion, version);
     } catch (error) {
       if (error instanceof InvalidDateFormatError) {
         // We can directly use the error since it has the value and proper message
