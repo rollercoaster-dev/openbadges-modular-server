@@ -7,6 +7,7 @@ import { PlatformJwtService } from '../services/platform-jwt.service';
 import { PlatformUser } from '../../domains/backpack/platform-user.entity';
 import { Shared } from 'openbadges-types';
 import { PlatformAuthSuccess, PlatformAuthFailure } from '../../domains/backpack/auth.types';
+import { decodeJwt } from 'jose';
 type AuthResult = Record<string, unknown>;
 
 /**
@@ -41,7 +42,7 @@ export function createPlatformAuthMiddleware(platformRepository: PlatformReposit
 
     try {
       // Decode token to get issuer (client ID)
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));
+      const payload = decodeJwt(token);
       const clientId = payload.iss;
 
       // Get platform by client ID
