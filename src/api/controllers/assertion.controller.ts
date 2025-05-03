@@ -16,6 +16,7 @@ import { VerificationService } from '../../core/verification.service';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
 import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
+import { InvalidDateFormatError } from '../../utils/errors/validation.errors';
 
 /**
  * Maps incoming partial OB2/OB3 data to the internal Partial<Assertion> format.
@@ -45,11 +46,11 @@ const mapToPartialAssertion = (
           return new Date(dateInput).toISOString();
         } catch {
           logger.warn('Could not convert numeric date to ISO string', { value: dateInput });
-          return undefined;
+          throw new InvalidDateFormatError('Could not convert numeric date to ISO string', dateInput);
         }
     }
     logger.warn('Unsupported date format received in mapToPartialAssertion', { value: dateInput });
-    return undefined;
+    throw new InvalidDateFormatError('Unsupported date format', dateInput);
   };
 
   // Map properties using safe assertions based on Assertion entity types
@@ -62,25 +63,33 @@ const mapToPartialAssertion = (
   if (data.revocationReason !== undefined) mappedData.revocationReason = data.revocationReason as string;
 
   // Map date properties, ensuring they are strings
-  if (data.issuedOn !== undefined) {
-    const formattedDate = formatAssertionDateString(data.issuedOn);
-    if (formattedDate !== undefined) {
+  if (data.issuedOn) {
+    try {
+      // Needs robust date parsing/validation
+      const formattedDate = formatAssertionDateString(data.issuedOn);
       mappedData.issuedOn = formattedDate;
-    } else {
-      // Throw an error if the date format is invalid and issuedOn is required 
-      logger.error('Invalid issuedOn date format received', { value: data.issuedOn }); 
-      throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`); 
+    } catch (error) {
+      // Re-throw InvalidDateFormatError, or wrap other errors
+      if (error instanceof InvalidDateFormatError) {
+        logger.error('Invalid issuedOn date format received', { value: data.issuedOn });
+        throw error;
+      }
+      throw new InvalidDateFormatError('Invalid date format for issuedOn', data.issuedOn);
     }
   }
   if (data.expires !== undefined) {
-     const expiresDate = formatAssertionDateString(data.expires);
-     if (expiresDate !== undefined) {
-       mappedData.expires = expiresDate;
-     } else {
-       // Decide if invalid expires should be an error or logged warning
-       logger.warn('Invalid expires date format received, skipping assignment', { value: data.expires });
-       // Consider throwing BadRequestException here too if expires is critical
-     }
+    try {
+      const expiresDate = formatAssertionDateString(data.expires);
+      mappedData.expires = expiresDate;
+    } catch (error) {
+      // For expires, we'll log a warning but not fail the request
+      // This is a design decision - expires is optional so we can continue
+      logger.warn('Invalid expires date format received, skipping assignment', { 
+        value: data.expires,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      // Note: We're intentionally not re-throwing the error for expires
+    }
   }
 
   // Properties not part of internal Assertion entity are intentionally ignored:
@@ -126,8 +135,10 @@ export class AssertionController {
       try {
         mappedData = mapToPartialAssertion(data);
       } catch (error) {
-        if (error instanceof Error && error.message.startsWith('Invalid date format for issuedOn')) {
-          throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`);
+        if (error instanceof InvalidDateFormatError) {
+          // We can directly use the error since it has the value and proper message
+          logger.error('Date validation error in createAssertion', { error });
+          throw error;
         }
         throw error;
       }
@@ -263,8 +274,10 @@ export class AssertionController {
 
       return updatedAssertion.toJsonLd(version) as AssertionResponseDto;
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('Invalid date format for issuedOn')) {
-        throw new Error(`Invalid date format for issuedOn: ${data.issuedOn}`);
+      if (error instanceof InvalidDateFormatError) {
+        // We can directly use the error since it has the value and proper message
+        logger.error('Date validation error in updateAssertion', { error });
+        throw error;
       }
       throw error;
     }

@@ -28,7 +28,10 @@ export function createBackpackRouter(
   // Create platform auth middleware
   const platformAuth = createPlatformAuthMiddleware(platformRepository);
 
-  // Create router without prefix - prefix applied during composition
+  // Create router without prefix. This is intentional because the prefix
+  // is applied later during the composition of the application. This design
+  // choice allows for greater modularity and flexibility in routing, as the
+  // same router can be reused with different prefixes if needed.
   const router = new Elysia();
 
   // Platform management endpoints (admin only)
