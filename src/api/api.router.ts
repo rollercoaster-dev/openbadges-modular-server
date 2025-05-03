@@ -19,6 +19,8 @@ import { openApiConfig } from './openapi';
 import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { AssetsController } from './controllers/assets.controller';
+import { createBackpackRouter } from './backpack.router';
+import { BackpackController } from '../domains/backpack/backpack.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
 
 /**
@@ -31,7 +33,9 @@ import { staticAssetsMiddleware } from './static-assets.middleware';
 export function createApiRouter(
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
-  assertionController: AssertionController
+  assertionController: AssertionController,
+  backpackController?: BackpackController,
+  platformRepository?: any
 ): Elysia {
   // Create the router
   const router = new Elysia();
@@ -116,6 +120,12 @@ export function createApiRouter(
 
   // Default routes (use v3)
   router.group('', app => app.use(v3Router));
+
+  // Backpack routes (if controller is provided)
+  if (backpackController && platformRepository) {
+    const backpackRouter = createBackpackRouter(backpackController, platformRepository);
+    router.group('/api/v1', app => app.use(backpackRouter));
+  }
 
   return router;
 }

@@ -15,6 +15,8 @@ import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
+import { BackpackController } from './domains/backpack/backpack.controller';
+import { BackpackService } from './domains/backpack/backpack.service';
 import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
 import { requestContextMiddleware } from './utils/logging/request-context.middleware';
@@ -78,6 +80,11 @@ async function setupApp() {
     const badgeClassRepository = await RepositoryFactory.createBadgeClassRepository();
     const assertionRepository = await RepositoryFactory.createAssertionRepository();
 
+    // Initialize backpack repositories
+    const platformRepository = await RepositoryFactory.createPlatformRepository();
+    const platformUserRepository = await RepositoryFactory.createPlatformUserRepository();
+    const userAssertionRepository = await RepositoryFactory.createUserAssertionRepository();
+
     // Initialize controllers with repositories
     const issuerController = new IssuerController(issuerRepository);
     const badgeClassController = new BadgeClassController(badgeClassRepository);
@@ -87,11 +94,22 @@ async function setupApp() {
       issuerRepository
     );
 
+    // Initialize backpack service and controller
+    const backpackService = new BackpackService(
+      platformRepository,
+      platformUserRepository,
+      userAssertionRepository,
+      assertionRepository
+    );
+    const backpackController = new BackpackController(backpackService);
+
     // Create API router with controllers
     const apiRouter = createApiRouter(
       issuerController,
       badgeClassController,
-      assertionController
+      assertionController,
+      backpackController,
+      platformRepository
     );
 
     // Add API routes

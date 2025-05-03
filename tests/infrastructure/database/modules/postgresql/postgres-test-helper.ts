@@ -177,8 +177,22 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
 
     return true;
   } catch (error) {
+    // Provide more detailed error message based on the error type
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    let detailedMessage = '';
+
+    if (errorMessage.includes('ECONNREFUSED')) {
+      detailedMessage = 'PostgreSQL server is not running. Please start the PostgreSQL server using "bun run test:pg:setup" or Docker directly.';
+    } else if (errorMessage.includes('does not exist')) {
+      detailedMessage = 'PostgreSQL database does not exist. Please create the database using "bun run test:pg:setup".';
+    } else if (errorMessage.includes('password authentication failed')) {
+      detailedMessage = 'PostgreSQL authentication failed. Please check your credentials in TEST_DATABASE_URL environment variable.';
+    }
+
     logger.warn('PostgreSQL database is not available for testing', {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage,
+      details: detailedMessage || 'See error message for details',
+      help: 'Run "bun run test:pg:setup" to start a PostgreSQL container for testing'
     });
     return false;
   } finally {

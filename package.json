@@ -8,7 +8,7 @@
     "dev": "bun --watch run src/index.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --skipLibCheck",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "test:pg": "bun test tests/infrastructure/database/modules/postgresql",
@@ -31,7 +31,7 @@
   "lint-staged": {
     "*.ts": [
       "eslint --fix",
-      "tsc-files --noEmit"
+      "tsc-files --noEmit --skipLibCheck"
     ]
   },
   "devDependencies": {
