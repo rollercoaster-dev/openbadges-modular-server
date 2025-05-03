@@ -39,7 +39,7 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
  * @param client The PostgreSQL client
  * @returns A Drizzle ORM instance
  */
-export function createDrizzleInstance(client: postgres.Sql) {
+export function createDrizzleInstance(client: postgres.Sql): ReturnType<typeof drizzle> {
   return drizzle(client);
 }
 

@@ -2,6 +2,7 @@ import type { Config } from 'drizzle-kit';
 import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
+import { logger } from './src/utils/logging/logger.service';
 
 /**
  * Drizzle Kit configuration
@@ -16,7 +17,7 @@ const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
 if (!supportedDbTypes.includes(dbType)) {
-  console.error(`Error: Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
+  logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
   process.exit(1);
 }
 
@@ -26,11 +27,11 @@ let drizzleConfig: Config;
 if (dbType === 'postgresql') {
   // Parse connection string to extract credentials
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
-  let url;
+  let url: URL;
   try {
     url = new URL(connectionString);
   } catch (error) {
-    console.error('Invalid connection string:', connectionString, error);
+    logger.error('Invalid connection string', { connectionString, error });
     throw new Error('Failed to parse the database connection string. Please check your configuration.');
   }
 
@@ -72,11 +73,11 @@ export default drizzleConfig;
  * @param config The drizzle configuration
  * @param dbType The database type
  */
-function verifyConfiguration(config: any, dbType: string) {
+function verifyConfiguration(config: Config, dbType: string) {
   // Check if schema file exists
   const schemaPath = Array.isArray(config.schema) ? config.schema[0] : config.schema;
   if (schemaPath && !existsSync(schemaPath)) {
-    console.error("🔴 Error: Schema file not found:", schemaPath);
+    logger.error("Schema file not found", { schemaPath });
     process.exit(1);
   }
 
@@ -84,28 +85,41 @@ function verifyConfiguration(config: any, dbType: string) {
   if (config.out) {
     const migrationsDir = dirname(config.out);
     if (!existsSync(migrationsDir)) {
-      console.warn(`Warning: Migrations directory not found: ${migrationsDir}. It will be created.`);
+      logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
     }
   }
 
   // PostgreSQL specific checks
-  const configAny = config as any; // Cast to any to access potentially non-standard dbCredentials
-  if (dbType === 'postgresql' && configAny.dbCredentials) {
-    const { host, port, user, database } = configAny.dbCredentials;
+  // We need to access dbCredentials which is not directly defined in the Config type
+  // Define a type for database credentials
+  type DbCredentials = {
+    host?: string;
+    port?: number;
+    user?: string;
+    password?: string;
+    database?: string;
+    url?: string;
+  };
+
+  // Use type assertion to access dbCredentials
+  const dbCredentials = (config as { dbCredentials?: DbCredentials }).dbCredentials;
+
+  if (dbType === 'postgresql' && dbCredentials) {
+    const { host, port, user, database } = dbCredentials;
     if (!host || !port || !user || !database) {
-      console.error(
-        "🔴 Error: Missing PostgreSQL connection details (host, port, user, database) in dbCredentials."
-      );
+      logger.error("Missing PostgreSQL connection details", {
+        missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
+      });
       process.exit(1);
     }
-  } else if (dbType === 'sqlite' && configAny.dbCredentials) {
-    const { url } = configAny.dbCredentials;
+  } else if (dbType === 'sqlite' && dbCredentials) {
+    const { url } = dbCredentials;
     if (!url) {
-      console.error("🔴 Error: Missing SQLite connection URL in dbCredentials.");
+      logger.error("Missing SQLite connection URL");
       process.exit(1);
     }
     if (url && url !== ':memory:' && !existsSync(url) && !url.includes(':memory:')) {
-      console.warn(`Warning: SQLite database file not found: ${url}. It will be created.`);
+      logger.warn(`SQLite database file not found: ${url}. It will be created.`);
     }
   }
 }

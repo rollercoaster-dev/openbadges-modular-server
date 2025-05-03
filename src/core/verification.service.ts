@@ -111,7 +111,7 @@ export class VerificationService {
           }
         } catch (error) {
           // If URL parsing fails, fall back to simple regex
-          logger.warn(`Invalid creator URL format: ${creatorUrl}`, error as Error);
+          logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error });
           const fallbackMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
           if (fallbackMatch && fallbackMatch[1]) {
             keyId = fallbackMatch[1];
@@ -221,7 +221,7 @@ export class VerificationService {
    */
   static async verifyAssertionById(
     assertionId: Shared.IRI,
-    assertionRepository: any
+    assertionRepository: { findById: (id: Shared.IRI) => Promise<Assertion | null> }
   ): Promise<{
     isValid: boolean;
     isExpired: boolean;

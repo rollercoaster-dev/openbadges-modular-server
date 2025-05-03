@@ -14,14 +14,15 @@ import { Assertion } from '../../../../domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { issuers, badgeClasses, assertions } from './schema';
+import { logger } from '../../../../utils/logging/logger.service';
 
 export class PostgresqlDatabase implements DatabaseInterface {
   private client: postgres.Sql | null = null;
   private db: ReturnType<typeof drizzle> | null = null;
   private connected: boolean = false;
-  private config: Record<string, any>;
+  private config: Record<string, unknown>;
 
-  constructor(config: Record<string, any>) {
+  constructor(config: Record<string, unknown>) {
     this.config = config;
   }
 
@@ -29,11 +30,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (this.connected) return;
 
     try {
-      this.client = postgres(this.config.connectionString);
+      this.client = postgres(this.config.connectionString as string);
       this.db = drizzle(this.client);
       this.connected = true;
     } catch (error) {
-      console.error('Failed to connect to PostgreSQL database:', error);
+      logger.error('Failed to connect to PostgreSQL database', { error });
       throw error;
     }
   }
@@ -47,7 +48,7 @@ export class PostgresqlDatabase implements DatabaseInterface {
       this.db = null;
       this.connected = false;
     } catch (error) {
-      console.error('Failed to disconnect from PostgreSQL database:', error);
+      logger.error('Failed to disconnect from PostgreSQL database', { error });
       throw error;
     }
   }
@@ -70,12 +71,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
     const { name, url, email, description, image, publicKey, ...additionalFields } = issuer;
 
     // Create an object with the correct types for Drizzle ORM
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
-      name: name,
+    const insertData = {
+      name: name as string,
       url: url as string,
-      email: email,
-      description: description,
+      email: email as string | null,
+      description: description as string | null,
       image: typeof image === 'string' ? image : image ? JSON.stringify(image) : undefined,
       publicKey: publicKey ? JSON.stringify(publicKey) : undefined,
       additionalFields: Object.keys(additionalFields).length > 0 ? additionalFields : undefined
@@ -196,11 +196,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
       throw new Error(`Issuer with ID ${issuerId} does not exist`);
     }
 
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
+    // Create an object with the correct types for Drizzle ORM
+    const insertData = {
       issuerId: issuerId as string,
-      name: name,
-      description: description || '',
+      name: name as string,
+      description: (description || '') as string,
       image: typeof image === 'string' ? image : image ? JSON.stringify(image) : '',
       criteria: criteria ? JSON.stringify(criteria) : '{}',
       alignment: alignment ? JSON.stringify(alignment) : undefined,
@@ -358,8 +358,8 @@ export class PostgresqlDatabase implements DatabaseInterface {
       throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
     }
 
-    // Using any type to bypass TypeScript's strict checking
-    const insertData: any = {
+    // Create an object with the correct types for Drizzle ORM
+    const insertData = {
       badgeClassId: badgeClassId as string,
       recipient: JSON.stringify(recipient),
       issuedOn: issuedOn ? new Date(issuedOn) : new Date(),
@@ -367,7 +367,7 @@ export class PostgresqlDatabase implements DatabaseInterface {
       evidence: evidence ? JSON.stringify(evidence) : undefined,
       verification: verification ? JSON.stringify(verification) : undefined,
       revoked: revoked !== undefined ? revoked : undefined,
-      revocationReason: revocationReason,
+      revocationReason: revocationReason as string | null,
       additionalFields: Object.keys(additionalFields).length > 0 ? additionalFields : undefined
     };
 
