@@ -32,9 +32,9 @@ type ValidatedUpdateAssertionData = z.infer<typeof UpdateAssertionSchema>;
  * @param data Input data (ValidatedCreateAssertionData | ValidatedUpdateAssertionData)
  * @returns Mapped data (Partial<Assertion>)
  */
-const mapToPartialAssertion = (
+function mapToAssertionEntity(
   data: ValidatedCreateAssertionData | ValidatedUpdateAssertionData
-): Partial<Assertion> => {
+): Partial<Assertion> {
   const mappedData: Partial<Assertion> = {};
 
   // Map properties directly from validated data
@@ -46,7 +46,11 @@ const mapToPartialAssertion = (
   if (data.badge !== undefined) mappedData.badgeClass = data.badge as Shared.IRI; // Renamed: badge -> badgeClass
   if (data.recipient !== undefined) mappedData.recipient = data.recipient as OB2.IdentityObject | OB3.CredentialSubject; // Assume Zod structure matches
   if (data.verification !== undefined) mappedData.verification = data.verification as OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus; // Assume Zod structure matches
-  if (data.evidence !== undefined) mappedData.evidence = data.evidence as unknown as OB2.Evidence[] | OB3.Evidence[]; // Cast needed due to string vs IRI in Evidence.id potentially
+  if (data.evidence !== undefined) {
+    // Define a type for the evidence union to improve readability and type safety
+    type EvidenceUnion = OB2.Evidence[] | OB3.Evidence[];
+    mappedData.evidence = data.evidence as EvidenceUnion; // Single cast with explicit type
+  }
   if (data.revoked !== undefined) mappedData.revoked = data.revoked as boolean;
   if (data.revocationReason !== undefined) mappedData.revocationReason = data.revocationReason as string;
   if (data.issuedOn !== undefined) mappedData.issuedOn = data.issuedOn; // Zod validated format
@@ -56,7 +60,7 @@ const mapToPartialAssertion = (
   // narrative, image, type, credentialSubject etc. are handled by Assertion entity itself or are not stored directly.
 
   return mappedData;
-};
+}
 
 /**
  * Controller for assertion-related operations
@@ -117,7 +121,7 @@ export class AssertionController {
       let mappedData: Partial<Assertion>;
       try {
         // Pass validatedData instead of raw data
-        mappedData = mapToPartialAssertion(validatedData);
+        mappedData = mapToAssertionEntity(validatedData);
       } catch (error) {
         // Handle potential mapping errors if any (though simplified map should be safer)
         logger.error('Error mapping validated assertion data', { error });
@@ -215,7 +219,7 @@ export class AssertionController {
       if (badgeClass) {
         const issuer = await this.issuerRepository.findById(badgeClass.issuer);
         // Pass entities directly
-        return assertions.map(assertion => 
+        return assertions.map(assertion =>
           convertAssertionToJsonLd(assertion, version, badgeClass, issuer)
         );
       }
@@ -232,8 +236,8 @@ export class AssertionController {
    * @returns The updated assertion
    */
   async updateAssertion(
-    id: string, 
-    data: UpdateAssertionDto, 
+    id: string,
+    data: UpdateAssertionDto,
     version: BadgeVersion = BadgeVersion.V3
   ): Promise<AssertionResponseDto | null> {
     try {
@@ -244,7 +248,7 @@ export class AssertionController {
       let mappedData: Partial<Assertion>;
       try {
         // Pass validatedData instead of raw data
-        mappedData = mapToPartialAssertion(validatedData);
+        mappedData = mapToAssertionEntity(validatedData);
       } catch (error) {
         // Handle potential mapping errors
         logger.error('Error mapping validated assertion data for update', { error });
@@ -358,7 +362,7 @@ export class AssertionController {
     id: string,
     keyId: string = 'default',
     version: BadgeVersion = BadgeVersion.V3
-  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> { 
+  ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
     try {
       // Initialize the key service
       await KeyService.initialize();
@@ -381,9 +385,9 @@ export class AssertionController {
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
-        const issuer = badgeClass?.issuer 
+        const issuer = badgeClass?.issuer
           ? await this.issuerRepository.findById(badgeClass.issuer)
-          : null; 
+          : null;
         // Pass entities directly
         return signedAssertion.toJsonLd(version, badgeClass, issuer);
       } else {

@@ -9,10 +9,44 @@ import { Issuer } from '../../domains/issuer/issuer.entity';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
-import { Shared } from 'openbadges-types';
+import { Shared, OB2 } from 'openbadges-types';
 import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
 import { CreateIssuerSchema, UpdateIssuerSchema } from '../validation/issuer.schemas';
 import { logger } from '../../utils/logging/logger.service';
+import { z } from 'zod';
+
+// Define types inferred from Zod schemas
+type ValidatedCreateIssuerData = z.infer<typeof CreateIssuerSchema>;
+type ValidatedUpdateIssuerData = z.infer<typeof UpdateIssuerSchema>;
+
+/**
+ * Maps validated issuer data to an internal Issuer entity format
+ * @param data Validated issuer data from Zod schema
+ * @returns Data mapped to Partial<Issuer> format
+ */
+function mapToIssuerEntity(data: ValidatedCreateIssuerData | ValidatedUpdateIssuerData): Partial<Issuer> {
+  // Create a clean object with only the properties needed for the Issuer entity
+  const mappedData: Partial<Issuer> = {};
+
+  // Map standard properties
+  if (data.name !== undefined) mappedData.name = data.name;
+  if (data.url !== undefined) mappedData.url = data.url as Shared.IRI; // Cast URL to IRI type
+  if (data.email !== undefined) mappedData.email = data.email;
+  if (data.description !== undefined) mappedData.description = data.description;
+  if (data.image !== undefined) {
+    // Handle image which could be string URL or object
+    if (typeof data.image === 'string') {
+      mappedData.image = data.image as Shared.IRI; // Cast string to IRI
+    } else {
+      // Handle image object (could be OB2.Image or similar structure for OB3)
+      mappedData.image = data.image as OB2.Image;
+    }
+  }
+  if ('id' in data && data.id !== undefined) mappedData.id = data.id as Shared.IRI;
+
+  // Return the mapped data
+  return mappedData;
+}
 
 /**
  * Controller for issuer-related operations
@@ -35,16 +69,16 @@ export class IssuerController {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateIssuerSchema.parse(data);
 
-      // Create issuer entity
-      const issuer = Issuer.create(validatedData as Partial<Issuer>);
+      // Create issuer entity using the mapping function
+      const issuer = Issuer.create(mapToIssuerEntity(validatedData));
       const createdIssuer = await this.issuerRepository.create(issuer);
-      
+
       // Return formatted response
       return createdIssuer.toJsonLd(version) as IssuerResponseDto;
     } catch (error) {
-      logger.error('Error creating issuer', { 
+      logger.error('Error creating issuer', {
         error: error instanceof Error ? error.message : String(error),
-        data 
+        data
       });
       throw error;
     }
@@ -86,17 +120,17 @@ export class IssuerController {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateIssuerSchema.parse(data);
 
-      // Use validated data. Casting might still be needed depending on alignment with internal entity types.
-      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, validatedData as Partial<Issuer>);
+      // Use validated data mapped to entity format
+      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, mapToIssuerEntity(validatedData));
       if (!updatedIssuer) {
         return null;
       }
       return updatedIssuer.toJsonLd(version) as IssuerResponseDto;
     } catch (error) {
-      logger.error('Error updating issuer', { 
+      logger.error('Error updating issuer', {
         id,
         error: error instanceof Error ? error.message : String(error),
-        data 
+        data
       });
       throw error;
     }

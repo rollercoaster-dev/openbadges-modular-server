@@ -13,6 +13,53 @@ import { Shared } from 'openbadges-types';
 import { CreateBadgeClassDto, BadgeClassResponseDto, UpdateBadgeClassDto } from '../dtos';
 import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../validation/badgeClass.schemas';
 import { logger } from '../../utils/logging/logger.service';
+import { z } from 'zod';
+
+// Define types inferred from Zod schemas
+type ValidatedCreateBadgeClassData = z.infer<typeof CreateBadgeClassSchema>;
+type ValidatedUpdateBadgeClassData = z.infer<typeof UpdateBadgeClassSchema>;
+
+/**
+ * Maps validated badge class data to an internal BadgeClass entity format
+ * @param data Validated badge class data from Zod schema
+ * @returns Data mapped to Partial<BadgeClass> format
+ */
+function mapToBadgeClassEntity(data: ValidatedCreateBadgeClassData | ValidatedUpdateBadgeClassData): Partial<BadgeClass> {
+  // Create a clean object with only the properties needed for the BadgeClass entity
+  const mappedData: Partial<BadgeClass> = {};
+
+  // Map standard properties
+  if (data.name !== undefined) mappedData.name = data.name;
+  if (data.description !== undefined) mappedData.description = data.description;
+  if (data.issuer !== undefined) mappedData.issuer = data.issuer as Shared.IRI;
+
+  // Handle image which could be string URL or object
+  if (data.image !== undefined) {
+    // For simplicity, we'll just pass the image through and let the entity handle it
+    // This avoids complex type casting issues
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mappedData as any).image = data.image;
+  }
+
+  // Handle criteria which could be string URL or object
+  if (data.criteria !== undefined) {
+    // For simplicity, we'll just pass the criteria through and let the entity handle it
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mappedData as any).criteria = data.criteria;
+  }
+
+  // Handle other properties
+  if ('id' in data && data.id !== undefined) mappedData.id = data.id as Shared.IRI;
+  if (data.tags !== undefined) mappedData.tags = data.tags;
+  if (data.alignment !== undefined) {
+    // For simplicity, we'll just pass the alignment through and let the entity handle it
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mappedData as any).alignment = data.alignment;
+  }
+
+  // Return the mapped data
+  return mappedData;
+}
 
 /**
  * Controller for badge class-related operations
@@ -35,16 +82,16 @@ export class BadgeClassController {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateBadgeClassSchema.parse(data);
 
-      // Create badge class entity
-      const badgeClass = BadgeClass.create(validatedData as Partial<BadgeClass>);
+      // Create badge class entity using the mapping function
+      const badgeClass = BadgeClass.create(mapToBadgeClassEntity(validatedData));
       const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
-      
+
       // Return formatted response
       return createdBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
     } catch (error) {
-      logger.error('Error creating badge class', { 
+      logger.error('Error creating badge class', {
         error: error instanceof Error ? error.message : String(error),
-        data 
+        data
       });
       throw error;
     }
@@ -97,17 +144,17 @@ export class BadgeClassController {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateBadgeClassSchema.parse(data);
 
-      // Use validated data. Casting might still be needed depending on alignment with internal entity types.
-      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, validatedData as Partial<BadgeClass>);
+      // Use validated data mapped to entity format
+      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, mapToBadgeClassEntity(validatedData));
       if (!updatedBadgeClass) {
         return null;
       }
       return updatedBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
     } catch (error) {
-      logger.error('Error updating badge class', { 
+      logger.error('Error updating badge class', {
         id,
         error: error instanceof Error ? error.message : String(error),
-        data 
+        data
       });
       throw error;
     }
