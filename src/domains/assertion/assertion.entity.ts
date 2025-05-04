@@ -23,6 +23,12 @@ export class Assertion {
   // Note: We're not implementing the interfaces directly due to type conflicts
   // between OB2 and OB3 specifications
   id: Shared.IRI;
+  /**
+   * The type of the assertion, which can be a single string or an array of strings.
+   * - For Open Badges 2.0, this is typically a single string, e.g., 'Assertion'.
+   * - For Open Badges 3.0, this can be an array of strings to represent multiple types.
+   * The default value is 'Assertion'.
+   */
   type: string | string[] = 'Assertion';
   badgeClass: Shared.IRI;
   recipient: OB2.IdentityObject | OB3.CredentialSubject;
@@ -118,8 +124,8 @@ export class Assertion {
           achievement: this.badgeClass,
         } as unknown as OB3.CredentialSubject,
       };
-      // Cast to unknown first to avoid type errors
-      return ob3Data as unknown as OB3.VerifiableCredential;
+      // Validate and type-check ob3Data as OB3.VerifiableCredential
+      return this.validateAsVerifiableCredential(ob3Data);
     }
   }
 
@@ -208,5 +214,27 @@ export class Assertion {
     }
 
     return true;
+  }
+
+  /**
+   * Validates that an object conforms to the OB3.VerifiableCredential interface
+   * @param data The object to validate
+   * @returns The validated object as OB3.VerifiableCredential
+   * @throws Error if the object does not conform to the OB3.VerifiableCredential interface
+   */
+  private validateAsVerifiableCredential(data: unknown): OB3.VerifiableCredential {
+    // Check for required fields in OB3.VerifiableCredential
+    const vcData = data as Record<string, unknown>;
+
+    // Validate required fields
+    if (!vcData.id) throw new Error('VerifiableCredential must have an id');
+    if (!vcData.type) throw new Error('VerifiableCredential must have a type');
+    if (!vcData.issuer) throw new Error('VerifiableCredential must have an issuer');
+    if (!vcData.issuanceDate) throw new Error('VerifiableCredential must have an issuanceDate');
+    if (!vcData.credentialSubject) throw new Error('VerifiableCredential must have a credentialSubject');
+    if (!vcData['@context']) throw new Error('VerifiableCredential must have a @context');
+
+    // If all validations pass, cast to the proper type
+    return vcData as unknown as OB3.VerifiableCredential;
   }
 }
