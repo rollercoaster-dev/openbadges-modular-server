@@ -17,7 +17,6 @@ import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/ba
 import { userAssertions } from '../schema';
 import { SqliteUserAssertionMapper } from '../mappers/sqlite-user-assertion.mapper';
 import { createId } from '@paralleldrive/cuid2';
-import { InferInsertModel } from 'drizzle-orm';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
   private db: ReturnType<typeof drizzle>;
