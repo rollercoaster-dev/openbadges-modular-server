@@ -5,8 +5,11 @@
  * LRU (Least Recently Used) cache implementation that's compatible with Bun.js.
  */
 
-import * as LRUModule from 'lru.min';
-// Define a more specific type for the LRU cache
+// Import LRU module - using dynamic import since the module doesn't have proper TypeScript definitions
+ 
+const lruModule = require('lru.min');
+
+// Define a more specific type for the LRU cache instance
 type LRUType = {
   get: (key: string) => unknown;
   set: (key: string, value: unknown, maxAge?: number) => boolean;
@@ -54,10 +57,8 @@ export class CacheService implements CacheInterface {
 
     // Create a new LRU cache instance
     // LRU.min exports a function, not a class constructor
-    // @ts-ignore - LRU.min doesn't have proper TypeScript definitions
-    const LRU = LRUModule.default || LRUModule;
-    // Call the function directly instead of using 'new'
-    this.cache = LRU({
+    // Call the function directly with properly typed options
+    this.cache = lruModule({
       max,
       updateAgeOnGet
     }) as LRUType;

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import drizzleConfig from '../../drizzle.config';
 
-// Temporarily augment config type to include runtime-only credentials
+// Define a proper type for the drizzle config with credentials
 interface DrizzleConfigWithCreds {
+  dialect: string;
+  schema: string | string[];
+  out: string;
+  strict?: boolean;
   dbCredentials: {
     url?: string;
     host?: string;
@@ -13,15 +17,25 @@ interface DrizzleConfigWithCreds {
   };
 }
 
+/**
+ * Helper function to check database credentials
+ * @param config The drizzle config object
+ * @returns The credentials object with proper typing
+ */
+function getDbCredentials(config: unknown): DrizzleConfigWithCreds['dbCredentials'] {
+  const typedConfig = config as DrizzleConfigWithCreds;
+  expect(typedConfig.dbCredentials).toBeDefined();
+  return typedConfig.dbCredentials;
+}
+
 describe('Drizzle Configuration', () => {
   it('should export a valid drizzle configuration', () => {
     expect(drizzleConfig).toBeDefined();
     expect(drizzleConfig.dialect).toBeDefined();
     expect(drizzleConfig.schema).toBeDefined();
     expect(drizzleConfig.out).toBeDefined();
-    // dbCredentials is added at runtime, not in the static type
-    const creds = (drizzleConfig as DrizzleConfigWithCreds).dbCredentials;
-    expect(creds).toBeDefined();
+    // Get database credentials using our helper function
+    const creds = getDbCredentials(drizzleConfig);
 
     // Check for either SQLite URL or PostgreSQL connection details
     const hasSqliteUrl = creds.url !== undefined;
@@ -45,8 +59,7 @@ describe('Drizzle Configuration', () => {
     expect(drizzleConfig.schema).toContain('sqlite/schema.ts');
     expect(drizzleConfig.out).toContain('drizzle/migrations');
 
-    const creds = (drizzleConfig as DrizzleConfigWithCreds).dbCredentials;
-    expect(creds).toBeDefined();
+    const creds = getDbCredentials(drizzleConfig);
     expect(creds.url).toBeDefined();
   });
 
