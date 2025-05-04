@@ -44,7 +44,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       return newUser;
     } catch (error) {
       logger.error('Error creating platform user in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         user
       });
       throw error;
@@ -68,7 +68,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       return this.mapper.toDomain(result[0]);
     } catch (error) {
       logger.error('Error finding platform user by ID in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         id
       });
       throw error;
@@ -97,7 +97,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       return this.mapper.toDomain(result[0]);
     } catch (error) {
       logger.error('Error finding platform user by platform and external ID in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         platformId,
         externalUserId
       });
@@ -123,25 +123,15 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       // Convert domain entity to database record
       const record = this.mapper.toPersistence(mergedUser);
 
-      // Prepare update data with required fields
+      // Prepare update data with all fields, including optional ones with null handling
       const updateData: Record<string, unknown> = {
         platformId: record.platformId,
         externalUserId: record.externalUserId,
-        updatedAt: record.updatedAt
+        updatedAt: record.updatedAt,
+        displayName: record.displayName ?? null,
+        email: record.email ?? null,
+        metadata: record.metadata ?? null
       };
-
-      // Add optional fields if they exist in the record
-      if ('displayName' in record) {
-        updateData.displayName = record.displayName;
-      }
-
-      if ('email' in record) {
-        updateData.email = record.email;
-      }
-
-      if ('metadata' in record) {
-        updateData.metadata = record.metadata;
-      }
 
       // Update in database using Drizzle ORM
       await this.db
@@ -154,7 +144,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       return mergedUser;
     } catch (error) {
       logger.error('Error updating platform user in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         id,
         user
       });
@@ -174,7 +164,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       return result.length > 0;
     } catch (error) {
       logger.error('Error deleting platform user in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         id
       });
       throw error;

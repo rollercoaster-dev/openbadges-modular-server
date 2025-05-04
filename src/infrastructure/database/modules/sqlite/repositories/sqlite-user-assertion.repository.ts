@@ -82,8 +82,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         updateData.metadata = extendedRecord.metadata as string;
       }
 
-      // Create a properly typed update object for Drizzle
-      const drizzleUpdateSet: Record<string, unknown> = {};
+      // Define a properly typed update object for Drizzle
+      type DrizzleUpdateSet = {
+        [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
+      };
+      const drizzleUpdateSet: DrizzleUpdateSet = {};
 
       if (updateData.status !== undefined) {
         drizzleUpdateSet[userAssertions.status.name] = updateData.status;
@@ -106,7 +109,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return userAssertion;
     } catch (error) {
       logger.error('Error creating user assertion in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId
       });
@@ -131,7 +134,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return result.length > 0;
     } catch (error) {
       logger.error('Error removing assertion from user in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId
       });
@@ -142,8 +145,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
       // Update status in database using Drizzle ORM
-      // Create a properly typed update object for Drizzle
-      const drizzleUpdateSet: Record<string, unknown> = {};
+      // Define a properly typed update object for Drizzle
+      type DrizzleUpdateSet = {
+        [key in typeof userAssertions.status.name]?: string;
+      };
+      const drizzleUpdateSet: DrizzleUpdateSet = {};
       drizzleUpdateSet[userAssertions.status.name] = String(status);
 
       const result = await this.db
@@ -161,7 +167,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return result.length > 0;
     } catch (error) {
       logger.error('Error updating assertion status in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId,
         status
@@ -207,7 +213,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return result.map(record => this.mapper.toDomain(record));
     } catch (error) {
       logger.error('Error getting user assertions in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         params
       });
@@ -227,7 +233,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return result.map(record => this.mapper.toDomain(record));
     } catch (error) {
       logger.error('Error getting assertion users in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         assertionId
       });
       throw error;
@@ -252,7 +258,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return result.length > 0;
     } catch (error) {
       logger.error('Error checking if user has assertion in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId
       });
@@ -282,7 +288,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       return this.mapper.toDomain(result[0]);
     } catch (error) {
       logger.error('Error finding user assertion by user and assertion ID in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId
       });
