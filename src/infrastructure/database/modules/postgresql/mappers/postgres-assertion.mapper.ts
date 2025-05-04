@@ -91,8 +91,7 @@ export class PostgresAssertionMapper {
       // Include ID if provided in the entity
       ...(entity.id && { id: entity.id as string }),
       // Use badgeClass if available, otherwise use badge (from toObject)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      badgeClassId: (entity.badgeClass || (entity as any).badge) as string, // Map from entity.badgeClass (IRI) and cast to string
+      badgeClassId: (entity.badgeClass || entity.badge) as string, // Map from entity.badgeClass (IRI) and cast to string
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
       // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
       ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),

@@ -52,8 +52,20 @@ export class VerificationService {
       verification.creator = toIRI(`${config.openBadges.baseUrl}/public-keys/${keyId}`);
 
       // Get the assertion data as a plain object
-      // We need to use destructuring to get a copy of the properties
-      const assertionData = { ...assertion };
+      // Explicitly select the required fields from the assertion object
+      const assertionData = {
+        id: assertion.id,
+        type: assertion.type,
+        badgeClass: assertion.badgeClass,
+        recipient: assertion.recipient,
+        issuedOn: assertion.issuedOn,
+        expires: assertion.expires,
+        evidence: assertion.evidence,
+        verification: assertion.verification,
+        revoked: assertion.revoked,
+        revocationReason: assertion.revocationReason,
+        issuer: assertion.issuer,
+      };
 
       // Create a new assertion with the verification
       return Assertion.create({

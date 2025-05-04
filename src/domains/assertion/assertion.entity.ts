@@ -95,8 +95,8 @@ export class Assertion {
       } as OB2.Assertion;
     } else {
       // OB3 VerifiableCredential
-      // First cast to unknown to avoid type errors
-      const ob3Data = {
+      // Create a properly typed OB3 VerifiableCredential
+      const ob3Data: OB3.VerifiableCredential = {
         ...baseObject,
         type: 'VerifiableCredential',
         badge: this.badgeClass, // In OB3, badge is the IRI of the Achievement
@@ -107,7 +107,7 @@ export class Assertion {
         issuanceDate: this.issuedOn,
         credentialSubject: this.recipient,
       };
-      return ob3Data as unknown as OB3.VerifiableCredential;
+      return ob3Data;
     }
   }
 
@@ -125,12 +125,7 @@ export class Assertion {
   ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
-    // Get properly typed data for the assertion itself
-    // We don't use typedData directly anymore, but keeping this for reference
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const typedData = this.toObject(version);
-
-    // Convert to AssertionData format expected by serializer
+    // Convert directly to AssertionData format expected by serializer
     const assertionData: AssertionData = {
       id: this.id,
       badgeClass: this.badgeClass,
