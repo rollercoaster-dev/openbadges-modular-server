@@ -106,17 +106,17 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
-    // Use toObject() with the specified version to get properly typed data
-    const typedData = this.toObject(version);
-
-    // Ensure the data has all required fields for the serializer
+    // Use direct properties instead of typedData to avoid type issues
     const dataForSerializer: BadgeClassData = {
-      ...typedData,
-      id: typedData.id,
-      issuer: typedData.issuer,
-      name: typedData.name,
-      description: typedData.description || '', // Ensure description is never undefined
-      image: typedData.image || '', // Ensure image is never undefined
+      id: this.id,
+      issuer: this.issuer as Shared.IRI,
+      name: this.name as string,
+      description: this.description as string || '', // Ensure description is never undefined
+      image: this.image as Shared.IRI || '', // Ensure image is never undefined
+      criteria: this.criteria as Shared.IRI || '',
+      // Add other required fields
+      alignment: this.alignment,
+      tags: this.tags,
     };
 
     // Pass the properly typed data to the serializer

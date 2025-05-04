@@ -9,7 +9,7 @@ import { Shared, OB2, OB3 } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
-import { AssertionData } from '../../utils/types/badge-data.types';
+import { AssertionData, RecipientData, VerificationData } from '../../utils/types/badge-data.types';
 import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
@@ -31,6 +31,7 @@ export class Assertion {
   verification?: OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
+  issuer?: Shared.IRI;
   [key: string]: unknown;
 
   /**
@@ -94,12 +95,19 @@ export class Assertion {
       } as OB2.Assertion;
     } else {
       // OB3 VerifiableCredential
-      return {
+      // First cast to unknown to avoid type errors
+      const ob3Data = {
         ...baseObject,
         type: 'VerifiableCredential',
         badge: this.badgeClass, // In OB3, badge is the IRI of the Achievement
         verification: this.verification as OB3.Proof,
-      } as OB3.VerifiableCredential;
+        // Add required OB3 properties
+        '@context': 'https://www.w3.org/2018/credentials/v1',
+        issuer: this.issuer || '',
+        issuanceDate: this.issuedOn,
+        credentialSubject: this.recipient,
+      };
+      return ob3Data as unknown as OB3.VerifiableCredential;
     }
   }
 
@@ -122,11 +130,14 @@ export class Assertion {
 
     // Convert to AssertionData format expected by serializer
     const assertionData: AssertionData = {
-      ...typedData,
-      id: typedData.id,
-      badgeClass: version === BadgeVersion.V2 ? (typedData as OB2.Assertion).badge : (typedData as OB3.VerifiableCredential).badge,
-      recipient: typedData.recipient,
-      issuedOn: typedData.issuedOn,
+      id: this.id,
+      badgeClass: this.badgeClass,
+      recipient: this.recipient as RecipientData,
+      issuedOn: this.issuedOn,
+      // Add other properties as needed
+      expires: this.expires,
+      evidence: this.evidence,
+      verification: this.verification as VerificationData,
     };
 
     // Get JSON-LD representation from passed entities if they exist

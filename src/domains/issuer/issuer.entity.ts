@@ -102,15 +102,15 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
-    // Use toObject() with the specified version to get properly typed data
-    const typedData = this.toObject(version);
-
-    // Ensure the data has all required fields for the serializer
+    // Use direct properties instead of typedData to avoid type issues
     const dataForSerializer: IssuerData = {
-      ...typedData,
-      id: typedData.id,
-      name: typedData.name,
-      url: typedData.url,
+      id: this.id,
+      name: this.name as string,
+      url: this.url as Shared.IRI,
+      // Add other fields
+      email: this.email,
+      description: this.description,
+      image: this.image as Shared.IRI,
     };
 
     // Pass the properly typed data to the serializer
