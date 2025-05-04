@@ -164,9 +164,9 @@
 
 ## Proposed PR Plan
 
-1.  **PR 1: Stabilize Database Schema & Migrations (Critical)**
+1.  **PR 1: Stabilize Database Schema & Migrations (Critical)** – ✅ (branch `fix/db-migrations`, PR opened)
     *   **Goal:** Ensure reliable and consistent database setup across both dialects.
-    *   **Tasks:** Fix `sqlite/schema.ts` (`onDelete`), regenerate complete/correct migrations for PG/SQLite, verify generated SQL, ensure `PRAGMA foreign_keys=ON` for SQLite. (Addresses #66, #67, #68, #70, #71, #72).
+    *   **Tasks Completed:** Fixed `sqlite/schema.ts` `onDelete: 'cascade'`, regenerated PostgreSQL & SQLite migrations, verified SQL, ensured `PRAGMA foreign_keys = ON`, and replaced temporary console logging in `drizzle.config.ts` with an isolated `RdLogger` instance to satisfy lint hooks. All tests and pre-push checks pass. **Learning:** `drizzle-kit` config must avoid importing the full application logger; instantiating a minimal logger resolves module-resolution issues.
 2.  **PR 2: Implement Robust Input Validation (Critical/High)**
     *   **Goal:** Secure API endpoints by validating incoming data structures.
     *   **Tasks:** Add Zod, define schemas for DTOs (`CreateAssertionDto`, etc.), refactor controllers (`AssertionController`) to use Zod parsing, standardize date error handling. (Addresses #74, #75, #76).
