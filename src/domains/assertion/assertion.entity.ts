@@ -108,7 +108,8 @@ export class Assertion {
         // Cast to proper types for OB3
         issuer: this.issuer as Shared.IRI,
         // OB3 uses string for dates but with a specific format
-        issuanceDate: this.issuedOn,
+        // We need to cast to unknown first and then to DateTime
+        issuanceDate: this.issuedOn as unknown as OB3.DateTime,
         // Create a proper CredentialSubject with required achievement property
         // First cast to unknown to avoid type errors
         credentialSubject: {
@@ -117,7 +118,8 @@ export class Assertion {
           achievement: this.badgeClass,
         } as unknown as OB3.CredentialSubject,
       };
-      return ob3Data as OB3.VerifiableCredential;
+      // Cast to unknown first to avoid type errors
+      return ob3Data as unknown as OB3.VerifiableCredential;
     }
   }
 
