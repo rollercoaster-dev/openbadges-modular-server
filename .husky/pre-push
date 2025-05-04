@@ -15,46 +15,57 @@ if [ -n "$ALL_FILES" ]; then
   echo "$ALL_FILES" | xargs bun eslint --fix
   LINT_EXIT_CODE=$?
 
-  echo "🔎 Type checking changed files..."
-  echo "$ALL_FILES" | xargs bun tsc-files --noEmit
+  echo "🔎 Type checking entire project..."
+  bun run typecheck
   TYPE_EXIT_CODE=$?
 
   # Run tests related to changed files
   echo "🧪 Running tests..."
-  
+
   # First check if we have any changes in test files
   TEST_FILES=$(echo "$ALL_FILES" | grep "\.test\.ts$" || true)
-  
+
   if [ -n "$TEST_FILES" ]; then
     echo "Running changed test files..."
     echo "$TEST_FILES" | xargs bun test
     TEST_SPECIFIC_EXIT_CODE=$?
   fi
-  
+
   # Also run a general test suite to ensure nothing is broken
   echo "Running general test suite..."
   bun test
   TEST_EXIT_CODE=$?
-  
+
   # Check if any of the commands failed
   if [ $LINT_EXIT_CODE -ne 0 ] || [ $TYPE_EXIT_CODE -ne 0 ] || [ $TEST_EXIT_CODE -ne 0 ] || [ "${TEST_SPECIFIC_EXIT_CODE:-0}" -ne 0 ]; then
     echo "❌ Pre-push checks failed. Please fix the issues before pushing."
     exit 1
   fi
-  
+
   echo "✅ All pre-push checks passed!"
 else
-  echo "ℹ️ No TypeScript files changed, running minimal checks."
-  
-  # Even if no TS files changed, we should still run tests
+  echo "ℹ️ No TypeScript files changed, but still running all checks."
+
+  # Run linting on all TypeScript files
+  echo "📝 Linting all TypeScript files..."
+  bun run lint
+  LINT_EXIT_CODE=$?
+
+  # Run type checking on the entire project
+  echo "🔎 Type checking entire project..."
+  bun run typecheck
+  TYPE_EXIT_CODE=$?
+
+  # Run tests
   echo "🧪 Running tests..."
   bun test
   TEST_EXIT_CODE=$?
-  
-  if [ $TEST_EXIT_CODE -ne 0 ]; then
-    echo "❌ Tests failed. Please fix the issues before pushing."
+
+  # Check if any of the commands failed
+  if [ $LINT_EXIT_CODE -ne 0 ] || [ $TYPE_EXIT_CODE -ne 0 ] || [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo "❌ Pre-push checks failed. Please fix the issues before pushing."
     exit 1
   fi
-  
+
   echo "✅ All pre-push checks passed!"
 fi
