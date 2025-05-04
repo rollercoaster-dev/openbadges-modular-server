@@ -66,9 +66,10 @@ export class PostgresAssertionRepository implements AssertionRepository {
   }
 
   async findByRecipient(recipientId: string): Promise<Assertion[]> {
-    // A more robust implementation would need to handle different recipient identity formats
+    // Handle different recipient identity formats
+    // The recipient field is a JSON object with either 'id' or 'identity' field
     const result = await this.db.select().from(assertions)
-      .where(eq(sql`${assertions.recipient}->>'id'`, recipientId));
+      .where(sql`(${assertions.recipient}->>'identity' = ${recipientId}) OR (${assertions.recipient}->>'id' = ${recipientId})`);
 
     // Convert database records to domain entities
     return result.map(record => this.mapper.toDomain(record));

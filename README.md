@@ -3,6 +3,9 @@
 A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3.0 specifications.
 
 [![CI/CD Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml)
+[![Core Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=core-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
+[![SQLite Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=sqlite-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
+[![PostgreSQL Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=postgres-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
 
 ## Features
 
@@ -17,7 +20,10 @@ A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3
 
 - **Runtime**: [Bun](https://bun.sh/)
 - **Web Framework**: [Elysia](https://elysiajs.com/)
-- **Database**: PostgreSQL (using [Drizzle ORM](https://orm.drizzle.team/))
+- **Database**: Multiple database support
+  - SQLite (using [Drizzle ORM](https://orm.drizzle.team/))
+  - PostgreSQL (using [Drizzle ORM](https://orm.drizzle.team/))
+  - Extensible architecture for adding more database backends
 - **Types**: [openbadges-types](https://github.com/rollercoaster-dev/openbadges-types)
 
 ## Getting Started
@@ -25,7 +31,9 @@ A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (v1.0.0 or higher)
-- [PostgreSQL](https://www.postgresql.org/) (v12 or higher)
+- One of the following databases:
+  - [SQLite](https://www.sqlite.org/) (included with Bun)
+  - [PostgreSQL](https://www.postgresql.org/) (v12 or higher)
 
 ### Installation
 
@@ -52,7 +60,11 @@ cp .env.example .env
 4. Run database migrations:
 
 ```bash
+# For SQLite (default)
 bun run db:migrate
+
+# For PostgreSQL
+bun run db:migrate:pg
 ```
 
 5. Start the server:
@@ -123,7 +135,7 @@ The API provides interactive documentation through Swagger UI:
 ### Additional Documentation
 
 - [API Documentation](./docs/api-documentation.md) - Detailed documentation of all API endpoints
-- [Database Module Guide](./docs/database-module-guide.md) - Guide for adding support for additional database systems
+- [Database Integration Guide](./docs/database-integration-guide.md) - Comprehensive guide for adding support for additional database systems
 - [Logging System](./docs/logging.md) - Documentation for the neuro-friendly structured logging system
 
 ## Architecture
@@ -152,24 +164,39 @@ src/
 
 ## Adding Database Support
 
-The API is designed to be database-agnostic, with a modular architecture that allows for easy integration with different database systems. The initial implementation uses PostgreSQL with Drizzle ORM, but additional database modules can be added by implementing the required interfaces.
+The API is designed to be database-agnostic, with a modular architecture that allows for easy integration with different database systems. The current implementation supports both SQLite and PostgreSQL with Drizzle ORM, but additional database modules can be added by implementing the required interfaces.
 
-See the [Database Module Guide](./docs/database-module-guide.md) for more information on adding support for additional database systems.
+We welcome contributions for additional database backends! See the [Database Integration Guide](./docs/database-integration-guide.md) for comprehensive instructions on adding support for additional database systems.
+
+The parallel CI setup makes it easy to test your database implementation alongside the existing ones, ensuring compatibility and reliability.
 
 ## Integration with Your Own Data Structures
 
 If you want to integrate the Open Badges API with your own data structures, you can create a custom database module that connects to your existing data store. This allows you to use the Open Badges domain logic while storing the data in your own format.
 
-See the [Database Module Guide](./docs/database-module-guide.md) for detailed instructions on how to integrate with your own data structures.
+See the [Database Integration Guide](./docs/database-integration-guide.md) for detailed instructions on how to integrate with your own data structures.
 
 ## Development
 
 ### Testing
 
-Run the test suite:
+Run the full test suite (will skip tests for unavailable databases):
 
 ```bash
 bun test
+```
+
+Run database-specific tests:
+
+```bash
+# SQLite tests
+bun run test:sqlite
+
+# PostgreSQL tests (requires PostgreSQL running)
+bun run test:pg
+
+# PostgreSQL tests with Docker (starts and stops a PostgreSQL container)
+bun run test:pg:with-docker
 ```
 
 Run tests with coverage:
@@ -181,7 +208,7 @@ bun test:coverage
 The test suite includes:
 
 - Unit tests for domain entities
-- Integration tests for repositories
+- Integration tests for repositories (for each supported database)
 - Validation tests for Open Badges compliance
 
 ### Linting and Type Checking
@@ -220,7 +247,12 @@ The project uses GitHub Actions for continuous integration and deployment:
    - **Lint and Type Check**: Ensures code quality and type safety
    - **Tests**: Runs the test suite with coverage reporting
 
-2. **CI/CD Pipeline**: Runs only on release tags (v*)
+2. **Database Tests Pipeline**: Runs database-specific tests in parallel
+   - **Core Tests**: Tests that don't depend on specific databases
+   - **SQLite Tests**: Tests specific to SQLite
+   - **PostgreSQL Tests**: Tests specific to PostgreSQL
+
+3. **CI/CD Pipeline**: Runs only on release tags (v*)
    - **Lint and Type Check**: Ensures code quality and type safety
    - **Tests**: Runs the test suite with coverage reporting
    - **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
