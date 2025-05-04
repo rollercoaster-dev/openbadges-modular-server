@@ -62,6 +62,21 @@ describe('Database Type Conversion Utilities', () => {
     it('should handle invalid JSON strings', () => {
       expect(convertJson('not valid json', 'sqlite', 'from')).toBeNull();
     });
+
+    it('should handle non-string values when direction is "from" for SQLite', () => {
+      const nonStringValue = { test: 'object' };
+      // When a non-string value is passed to convertJson with direction 'from',
+      // it should return the value as is
+      expect(convertJson(nonStringValue, 'sqlite', 'from')).toBe(nonStringValue);
+
+      // Test with array
+      const arrayValue = [1, 2, 3];
+      expect(convertJson(arrayValue, 'sqlite', 'from')).toBe(arrayValue);
+
+      // Test with number
+      const numberValue = 123;
+      expect(convertJson(numberValue, 'sqlite', 'from')).toBe(numberValue);
+    });
   });
 
   describe('convertTimestamp', () => {
