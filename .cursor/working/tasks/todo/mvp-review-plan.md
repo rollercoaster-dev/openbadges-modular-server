@@ -167,9 +167,15 @@
 1.  **PR 1: Stabilize Database Schema & Migrations (Critical)** – ✅ (branch `fix/db-migrations`, PR opened)
     *   **Goal:** Ensure reliable and consistent database setup across both dialects.
     *   **Tasks Completed:** Fixed `sqlite/schema.ts` `onDelete: 'cascade'`, regenerated PostgreSQL & SQLite migrations, verified SQL, ensured `PRAGMA foreign_keys = ON`, and replaced temporary console logging in `drizzle.config.ts` with an isolated `RdLogger` instance to satisfy lint hooks. All tests and pre-push checks pass. **Learning:** `drizzle-kit` config must avoid importing the full application logger; instantiating a minimal logger resolves module-resolution issues.
-2.  **PR 2: Implement Robust Input Validation (Critical/High)**
+2.  **PR 2: Implement Robust Input Validation (Critical/High)** – ✅ (branch `feat/input-validation`, PR #19 opened)
     *   **Goal:** Secure API endpoints by validating incoming data structures.
-    *   **Tasks:** Add Zod, define schemas for DTOs (`CreateAssertionDto`, etc.), refactor controllers (`AssertionController`) to use Zod parsing, standardize date error handling. (Addresses #74, #75, #76).
+    *   **Tasks Completed:** Added Zod, defined schemas for DTOs (`CreateAssertionDto`, etc.), refactored controllers (`AssertionController`, `BadgeClassController`, `IssuerController`) to use Zod parsing, standardized date error handling. (Addresses #74, #75, #76).
+    *   **Additional Improvements Needed:**
+        * Refine the Evidence schema handling in `assertion.controller.ts` to avoid double casting (`as unknown as`) and improve type safety.
+        * Create dedicated transformation functions for mapping validated data to internal entities in all controllers.
+        * Add comprehensive tests for the validation logic.
+        * Document the validation approach in the codebase.
+        * Consider adding a validation middleware to further simplify controllers.
 3.  **PR 3: Enhance Core Entity Type Safety (High)**
     *   **Goal:** Improve internal type safety and reduce reliance on assertions.
     *   **Tasks:** Refactor `toObject()` methods in core entities (`Assertion`, `BadgeClass`, `Issuer`, `UserAssertion`) to return specific OB types, remove downstream `as` assertions. (Addresses #7, #16, #26, #48, #51).
