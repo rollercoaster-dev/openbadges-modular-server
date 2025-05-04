@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit --skipLibCheck",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
+    "test:core": "bun test --pattern \"!tests/infrastructure/database/**\"",
+    "test:sqlite": "bun test tests/infrastructure/database/modules/sqlite",
     "test:pg": "bun test tests/infrastructure/database/modules/postgresql",
     "test:pg:coverage": "bun test --coverage tests/infrastructure/database/modules/postgresql",
     "test:pg:setup": "docker-compose -f docker-compose.test.yml up -d",
