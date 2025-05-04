@@ -82,18 +82,23 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         updateData.metadata = extendedRecord.metadata as string;
       }
 
-      // Use type assertion with a more specific type
-      type UpdateSetType = {
-        status?: string;
-        metadata?: string;
-      };
+      // Create a properly typed update object for Drizzle
+      const drizzleUpdateSet: Record<string, unknown> = {};
+
+      if (updateData.status) {
+        drizzleUpdateSet[userAssertions.status.name] = updateData.status;
+      }
+
+      if (updateData.metadata) {
+        drizzleUpdateSet[userAssertions.metadata.name] = updateData.metadata;
+      }
 
       await this.db
         .insert(userAssertions)
         .values(record)
         .onConflictDoUpdate({
           target: [userAssertions.userId, userAssertions.assertionId],
-          set: updateData as UpdateSetType
+          set: drizzleUpdateSet
         })
         .returning();
 
@@ -137,18 +142,13 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
       // Update status in database using Drizzle ORM
-      // Use a properly typed update object
-      type StatusUpdateType = {
-        status: string;
-      };
-
-      const updateData: StatusUpdateType = {
-        status: String(status)
-      };
+      // Create a properly typed update object for Drizzle
+      const drizzleUpdateSet: Record<string, unknown> = {};
+      drizzleUpdateSet[userAssertions.status.name] = String(status);
 
       const result = await this.db
         .update(userAssertions)
-        .set(updateData)
+        .set(drizzleUpdateSet)
         .where(
           and(
             eq(userAssertions.userId, userId as string),
