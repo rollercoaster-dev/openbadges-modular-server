@@ -21,6 +21,7 @@ describe('Assertion Entity', () => {
     },
     issuedOn: '2023-01-01T00:00:00Z',
     expires: '2024-01-01T00:00:00Z',
+    issuer: 'https://example.edu/issuer/1' as Shared.IRI,
     evidence: [
       {
         type: 'Evidence',
@@ -60,7 +61,8 @@ describe('Assertion Entity', () => {
         identity: 'student@example.edu',
         hashed: false
       },
-      issuedOn: '2023-01-01T00:00:00Z'
+      issuedOn: '2023-01-01T00:00:00Z',
+      issuer: 'https://example.edu/issuer/1' as Shared.IRI
     };
 
     const assertion = Assertion.create(minimalAssertionData);
@@ -99,6 +101,7 @@ describe('Assertion Entity', () => {
     expect(obj.issuedOn).toBe(validAssertionData.issuedOn);
     expect(obj.expires).toBe(validAssertionData.expires);
     expect(obj.evidence).toEqual(validAssertionData.evidence);
+    expect(obj.issuer).toBe(validAssertionData.issuer);
 
     // In OB2, badge is the IRI of the BadgeClass
     expect(obj.badge).toBe(validAssertionData.badgeClass);
@@ -131,6 +134,7 @@ describe('Assertion Entity', () => {
     expect(assertion.getProperty('recipient')).toEqual(validAssertionData.recipient);
     expect(assertion.getProperty('issuedOn')).toBe(validAssertionData.issuedOn);
     expect(assertion.getProperty('expires')).toBe(validAssertionData.expires);
+    expect(assertion.getProperty('issuer')).toBe(validAssertionData.issuer);
     expect(assertion.getProperty('evidence')).toEqual(validAssertionData.evidence);
     expect(assertion.getProperty('verification')).toEqual(validAssertionData.verification);
     expect(assertion.getProperty('nonExistentProperty')).toBeUndefined();
