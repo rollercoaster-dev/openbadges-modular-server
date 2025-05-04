@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, like } from 'drizzle-orm';
+import { eq, like, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Platform } from '@domains/backpack/platform.entity';
@@ -29,18 +29,14 @@ export class PostgresPlatformRepository implements PlatformRepository {
       const obj = newPlatform.toObject();
 
       // Insert into database
-      const values: Record<string, unknown> = {
+      const result = await this.db.insert(platforms).values({
         name: obj.name as string,
         clientId: obj.clientId as string,
         publicKey: obj.publicKey as string,
-        status: obj.status as string
-      };
-
-      // Add optional fields if they exist
-      if (obj.description) values.description = obj.description as string;
-      if (obj.webhookUrl) values.webhookUrl = obj.webhookUrl as string;
-
-      const result = await this.db.insert(platforms).values(values).returning();
+        status: obj.status as string,
+        ...(obj.description ? { description: obj.description as string } : {}),
+        ...(obj.webhookUrl ? { webhookUrl: obj.webhookUrl as string } : {})
+      }).returning();
 
       // Convert database record back to domain entity
       return this.rowToDomain(result[0]);
@@ -55,32 +51,36 @@ export class PostgresPlatformRepository implements PlatformRepository {
 
   async findAll(params?: PlatformQueryParams): Promise<Platform[]> {
     try {
+      // Build query conditions
+      const conditions = [];
+
+      if (params?.status) {
+        conditions.push(eq(platforms.status, params.status));
+      }
+
+      if (params?.name) {
+        conditions.push(like(platforms.name, `%${params.name}%`));
+      }
+
       // Start with a base query
-      let query = this.db.select().from(platforms);
+      let baseQuery = this.db.select().from(platforms);
 
-      // Add filters if provided
-      if (params) {
-        // Build where conditions
-        if (params.status) {
-          query = query.where(eq(platforms.status, params.status));
-        }
+      // Apply conditions if any
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(and(...conditions));
+      }
 
-        if (params.name) {
-          query = query.where(like(platforms.name, `%${params.name}%`));
-        }
+      // Apply pagination if provided
+      if (params?.limit !== undefined) {
+        baseQuery = baseQuery.limit(params.limit);
+      }
 
-        // Add limit and offset if provided
-        if (params.limit) {
-          query = query.limit(params.limit);
-
-          if (params.offset) {
-            query = query.offset(params.offset);
-          }
-        }
+      if (params?.offset !== undefined && params.offset > 0) {
+        baseQuery = baseQuery.offset(params.offset);
       }
 
       // Execute the query
-      const result = await query;
+      const result = await baseQuery;
 
       // Convert database records to domain entities
       return result.map(row => this.rowToDomain(row));
@@ -150,22 +150,17 @@ export class PostgresPlatformRepository implements PlatformRepository {
       });
       const obj = mergedPlatform.toObject();
 
-      // Prepare update values
-      const updateValues: Record<string, unknown> = {
-        name: obj.name as string,
-        clientId: obj.clientId as string,
-        publicKey: obj.publicKey as string,
-        status: obj.status as string,
-        updatedAt: new Date()
-      };
-
-      // Add optional fields if they exist
-      if (obj.description !== undefined) updateValues.description = obj.description as string;
-      if (obj.webhookUrl !== undefined) updateValues.webhookUrl = obj.webhookUrl as string;
-
       // Update in database
       const result = await this.db.update(platforms)
-        .set(updateValues)
+        .set({
+          name: obj.name as string,
+          clientId: obj.clientId as string,
+          publicKey: obj.publicKey as string,
+          status: obj.status as string,
+          updatedAt: new Date(),
+          ...(obj.description !== undefined ? { description: obj.description as string } : {}),
+          ...(obj.webhookUrl !== undefined ? { webhookUrl: obj.webhookUrl as string } : {})
+        })
         .where(eq(platforms.id, id as string))
         .returning();
 

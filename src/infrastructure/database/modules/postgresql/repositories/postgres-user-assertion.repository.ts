@@ -59,28 +59,21 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
     });
     const obj = userAssertion.toObject();
 
-    // Prepare insert values
-    const insertValues: Record<string, unknown> = {
-      userId: obj.userId as string,
-      assertionId: obj.assertionId as string,
-      addedAt: obj.addedAt as Date
-    };
-
-    // Add optional fields if they exist
-    if (obj.status) insertValues.status = obj.status as string;
-    if (obj.metadata) insertValues.metadata = obj.metadata;
-
-    // Prepare update values for conflict case
-    const updateValues: Record<string, unknown> = {};
-    if (obj.status) updateValues.status = obj.status as string;
-    if (obj.metadata) updateValues.metadata = obj.metadata;
-
     // Insert into database with ON CONFLICT DO UPDATE
     const result = await this.db.insert(userAssertions)
-      .values(insertValues)
+      .values({
+        userId: obj.userId as string,
+        assertionId: obj.assertionId as string,
+        addedAt: obj.addedAt as Date,
+        ...(obj.status ? { status: obj.status as string } : {}),
+        ...(obj.metadata ? { metadata: obj.metadata } : {})
+      })
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
-        set: updateValues
+        set: {
+          ...(obj.status ? { status: obj.status as string } : {}),
+          ...(obj.metadata ? { metadata: obj.metadata } : {})
+        }
       })
       .returning();
 
@@ -114,14 +107,9 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
-      // Prepare update values
-      const updateValues: Record<string, unknown> = {
-        status: status as string
-      };
-
       // Update status in database
       const result = await this.db.update(userAssertions)
-        .set(updateValues)
+        .set({ status: status as string })
         .where(
           and(
             eq(userAssertions.userId, userId as string),
@@ -154,19 +142,14 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
       );
 
       // Build the query with the condition
-      let query = this.db.select().from(userAssertions).where(whereCondition);
+      const baseQuery = this.db.select().from(userAssertions).where(whereCondition);
 
-      // Add limit and offset if provided
-      if (params?.limit !== undefined) {
-        query = query.limit(params.limit);
-      }
-
-      if (params?.offset !== undefined) {
-        query = query.offset(params.offset);
-      }
-
-      // Execute the query
-      const result = await query;
+      // Execute the query with pagination if provided
+      const result = await (params?.limit !== undefined
+        ? (params?.offset !== undefined
+            ? baseQuery.limit(params.limit).offset(params.offset)
+            : baseQuery.limit(params.limit))
+        : baseQuery);
 
       // Convert database records to domain entities
       return result.map(row => this.rowToDomain(row));
