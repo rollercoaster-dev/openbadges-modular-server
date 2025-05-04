@@ -176,9 +176,33 @@
         * Add comprehensive tests for the validation logic.
         * Document the validation approach in the codebase.
         * Consider adding a validation middleware to further simplify controllers.
-3.  **PR 3: Enhance Core Entity Type Safety (High)**
+3.  **PR 3: Enhance Core Entity Type Safety (High)** – ✅ (branch `feat/entity-type-safety`, PR #21 merged)
     *   **Goal:** Improve internal type safety and reduce reliance on assertions.
-    *   **Tasks:** Refactor `toObject()` methods in core entities (`Assertion`, `BadgeClass`, `Issuer`, `UserAssertion`) to return specific OB types, remove downstream `as` assertions. (Addresses #7, #16, #26, #48, #51).
+    *   **Tasks Completed:**
+        * Fixed the `Assertion` entity to handle the `type` property correctly as `string | string[]` to match the OpenBadges specification
+        * Fixed the assertion controller to handle the type property correctly by using destructuring to get a plain object with the properties
+        * Fixed the PostgreSQL and SQLite assertion repositories to handle the type property correctly
+        * Added proper OB3 VerifiableCredential support with correct types
+        * Used the `createDateTime` helper function from openbadges-types for proper DateTime handling
+        * Improved the pre-push hook to always run the same comprehensive checks regardless of whether TypeScript files have changed or not
+        * Added documentation for the `type` property in the Assertion class
+        * Added validation for OB3.VerifiableCredential type
+        * Preserved prototype information when merging objects in repositories
+        * Added parentheses around type assertions before using the nullish coalescing operator
+        * Used nullish coalescing operator (`??`) instead of logical OR (`||`) for default values
+        * Removed double type casting and used proper type definitions
+        * Explicitly selected fields when copying objects to avoid unintended properties
+    *   **Learning:**
+        * The OpenBadges 3.0 specification requires more strict typing than OpenBadges 2.0
+        * The `createDateTime` helper function from openbadges-types is essential for proper DateTime handling in OB3
+        * Preserving prototype information when merging objects is important for maintaining type information and method access
+        * Parenthesizing type assertions before using the nullish coalescing operator ensures proper evaluation order
+        * The pre-push hook should run the same checks as the CI workflow to catch errors early
+        * Copilot's review suggestions provided valuable insights for improving code quality
+    *   **Remaining Work:**
+        * Continue improving type safety in other entities (BadgeClass, Issuer, UserAssertion)
+        * Further refactor `toObject()` methods in all entities to return specific OB types
+        * Remove remaining downstream `as` assertions throughout the codebase
 4.  **PR 4: Unify SQLite Repository Implementation (Medium)**
     *   **Goal:** Ensure consistent data access patterns using Drizzle ORM.
     *   **Tasks:** Refactor SQLite repositories (`SqliteUserAssertionRepository`, etc.) to use Drizzle, remove manual SQL/table creation, ensure use of type conversion utilities. (Addresses #52).
