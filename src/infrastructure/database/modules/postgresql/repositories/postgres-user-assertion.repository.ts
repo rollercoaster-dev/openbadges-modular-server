@@ -100,7 +100,7 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
       .values(insertValues)
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
-        set: updateValues
+        set: updateValues as any
       })
       .returning();
 
@@ -141,7 +141,7 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
       // Update status in database
       const result = await this.db.update(userAssertions)
-        .set(updateValues)
+        .set(updateValues as any)
         .where(
           and(
             eq(userAssertions.userId, userId as string),

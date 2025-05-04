@@ -93,18 +93,18 @@ export class PostgresPlatformRepository implements PlatformRepository {
 
       // Apply where conditions if any
       if (whereConditions.length > 0) {
-        query = query.where(whereConditions.length === 1
+        query = (query.where(whereConditions.length === 1
           ? whereConditions[0]
-          : and(...whereConditions));
+          : and(...whereConditions)) as typeof query);
       }
 
       // Apply pagination
       if (params?.limit !== undefined) {
-        query = query.limit(params.limit);
+        query = (query.limit(params.limit) as typeof query);
       }
 
       if (params?.offset !== undefined && params.offset > 0) {
-        query = query.offset(params.offset);
+        query = (query.offset(params.offset) as typeof query);
       }
 
       // Execute the query
