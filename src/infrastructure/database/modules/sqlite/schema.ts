@@ -43,7 +43,7 @@ export const badgeClasses = sqliteTable(
   'badge_classes',
   {
     id: text('id').primaryKey(),
-    issuerId: text('issuer_id').notNull().references(() => issuers.id),
+    issuerId: text('issuer_id').notNull().references(() => issuers.id, { onDelete: 'cascade' }),
     // Add index on issuerId for faster lookups by issuer
     name: text('name').notNull(),
     description: text('description').notNull(),
@@ -72,7 +72,7 @@ export const assertions = sqliteTable(
   'assertions',
   {
     id: text('id').primaryKey(),
-    badgeClassId: text('badge_class_id').notNull().references(() => badgeClasses.id),
+    badgeClassId: text('badge_class_id').notNull().references(() => badgeClasses.id, { onDelete: 'cascade' }),
     // Add index on badgeClassId for faster lookups by badge class
     recipient: text('recipient').notNull(), // JSON stored as text
     issuedOn: integer('issued_on').notNull(),
@@ -152,7 +152,7 @@ export const userRoles = sqliteTable(
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
-    roleId: text('role_id').notNull().references(() => roles.id),
+    roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at').notNull(),
   },
   (table) => {
@@ -194,7 +194,7 @@ export const platformUsers = sqliteTable(
   'platform_users',
   {
     id: text('id').primaryKey(),
-    platformId: text('platform_id').notNull().references(() => platforms.id),
+    platformId: text('platform_id').notNull().references(() => platforms.id, { onDelete: 'cascade' }),
     externalUserId: text('external_user_id').notNull(), // User ID in the external platform
     displayName: text('display_name'),
     email: text('email'),
@@ -215,8 +215,8 @@ export const userAssertions = sqliteTable(
   'user_assertions',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => platformUsers.id),
-    assertionId: text('assertion_id').notNull().references(() => assertions.id),
+    userId: text('user_id').notNull().references(() => platformUsers.id, { onDelete: 'cascade' }),
+    assertionId: text('assertion_id').notNull().references(() => assertions.id, { onDelete: 'cascade' }),
     addedAt: integer('added_at').notNull(),
     status: text('status').notNull().default('active'), // active, hidden, etc.
     metadata: text('metadata'), // JSON stored as text
