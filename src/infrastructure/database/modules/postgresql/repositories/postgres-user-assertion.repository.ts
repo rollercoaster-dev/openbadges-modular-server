@@ -62,18 +62,17 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
     // Insert into database with ON CONFLICT DO UPDATE
     const result = await this.db.insert(userAssertions)
       .values({
-        id: obj.id as string,
         userId: obj.userId as string,
         assertionId: obj.assertionId as string,
         addedAt: obj.addedAt as Date,
-        status: obj.status as string,
-        metadata: obj.metadata || null
+        ...(obj.status ? { status: obj.status as string } : {}),
+        ...(obj.metadata ? { metadata: obj.metadata } : {})
       })
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
         set: {
-          status: obj.status as string,
-          metadata: obj.metadata || null
+          ...(obj.status ? { status: obj.status as string } : {}),
+          ...(obj.metadata ? { metadata: obj.metadata } : {})
         }
       })
       .returning();
@@ -134,17 +133,19 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
   async getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
     try {
-      // Start with a base query
-      let query = this.db.select().from(userAssertions)
-        .where(eq(userAssertions.userId, userId as string));
+      // Build the where conditions
+      const conditions = [eq(userAssertions.userId, userId as string)];
 
       // Add status filter
       if (params?.status) {
-        query = query.where(eq(userAssertions.status, params.status as string));
+        conditions.push(eq(userAssertions.status, params.status as string));
       } else {
         // By default, exclude deleted assertions
-        query = query.where(ne(userAssertions.status, UserAssertionStatus.DELETED as string));
+        conditions.push(ne(userAssertions.status, UserAssertionStatus.DELETED as string));
       }
+
+      // Build the query with all conditions
+      let query = this.db.select().from(userAssertions).where(and(...conditions));
 
       // Add limit and offset if provided
       if (params?.limit) {

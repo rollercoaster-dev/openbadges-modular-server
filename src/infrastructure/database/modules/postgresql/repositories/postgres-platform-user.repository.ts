@@ -30,13 +30,13 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
 
       // Insert into database
       const result = await this.db.insert(platformUsers).values({
-        id: obj.id as string,
         platformId: obj.platformId as string,
         externalUserId: obj.externalUserId as string,
-        displayName: obj.displayName as string | undefined,
-        email: obj.email as string | undefined,
-        metadata: obj.metadata || null,
-        // createdAt and updatedAt will be set by default values in the schema
+        // Optional fields
+        ...(obj.displayName ? { displayName: obj.displayName as string } : {}),
+        ...(obj.email ? { email: obj.email as string } : {}),
+        ...(obj.metadata ? { metadata: obj.metadata } : {}),
+        // id, createdAt and updatedAt will be set by default values in the schema
       }).returning();
 
       // Convert database record back to domain entity
@@ -119,11 +119,12 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
         .set({
           platformId: obj.platformId as string,
           externalUserId: obj.externalUserId as string,
-          displayName: obj.displayName as string | undefined,
-          email: obj.email as string | undefined,
-          metadata: obj.metadata || null,
           updatedAt: new Date()
         })
+        // Set optional fields only if they exist
+        .set(obj.displayName !== undefined ? { displayName: obj.displayName as string } : {})
+        .set(obj.email !== undefined ? { email: obj.email as string } : {})
+        .set(obj.metadata !== undefined ? { metadata: obj.metadata } : {})
         .where(eq(platformUsers.id, id as string))
         .returning();
 

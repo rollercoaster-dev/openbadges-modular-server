@@ -30,14 +30,13 @@ export class PostgresPlatformRepository implements PlatformRepository {
 
       // Insert into database
       const result = await this.db.insert(platforms).values({
-        id: obj.id as string,
         name: obj.name as string,
         description: obj.description as string | undefined,
         clientId: obj.clientId as string,
         publicKey: obj.publicKey as string,
         webhookUrl: obj.webhookUrl as string | undefined,
         status: obj.status as string,
-        // createdAt and updatedAt will be set by default values in the schema
+        // id, createdAt and updatedAt will be set by default values in the schema
       }).returning();
 
       // Convert database record back to domain entity
@@ -55,15 +54,24 @@ export class PostgresPlatformRepository implements PlatformRepository {
     try {
       // Start with a base query
       let query = this.db.select().from(platforms);
+      let conditions = [];
 
       // Add filters if provided
       if (params) {
         if (params.status) {
-          query = query.where(eq(platforms.status, params.status));
+          conditions.push(eq(platforms.status, params.status));
         }
 
         if (params.name) {
-          query = query.where(like(platforms.name, `%${params.name}%`));
+          conditions.push(like(platforms.name, `%${params.name}%`));
+        }
+
+        // Apply all conditions
+        if (conditions.length > 0) {
+          query = query.where(conditions[0]);
+          for (let i = 1; i < conditions.length; i++) {
+            query = query.where(conditions[i]);
+          }
         }
 
         // Add limit and offset if provided
@@ -151,13 +159,14 @@ export class PostgresPlatformRepository implements PlatformRepository {
       const result = await this.db.update(platforms)
         .set({
           name: obj.name as string,
-          description: obj.description as string | undefined,
           clientId: obj.clientId as string,
           publicKey: obj.publicKey as string,
-          webhookUrl: obj.webhookUrl as string | undefined,
           status: obj.status as string,
           updatedAt: new Date()
         })
+        // Set optional fields only if they exist
+        .set(obj.description ? { description: obj.description as string } : {})
+        .set(obj.webhookUrl ? { webhookUrl: obj.webhookUrl as string } : {})
         .where(eq(platforms.id, id as string))
         .returning();
 
