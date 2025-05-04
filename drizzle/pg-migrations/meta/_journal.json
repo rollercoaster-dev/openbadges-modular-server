@@ -1,19 +1,12 @@
 {
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": "2024-10-01T00:00:00.000Z",
-      "tag": "0000_initial_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
       "version": "7",
-      "when": 1745570424423,
-      "tag": "0001_worried_zzzax",
+      "when": 1746355671322,
+      "tag": "0000_known_tigra",
       "breakpoints": true
     }
   ]
