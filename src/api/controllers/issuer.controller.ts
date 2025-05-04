@@ -11,6 +11,7 @@ import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared } from 'openbadges-types';
 import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
+import { CreateIssuerSchema, UpdateIssuerSchema } from '../validation/issuer.schemas';
 import { logger } from '../../utils/logging/logger.service';
 
 /**
@@ -31,13 +32,11 @@ export class IssuerController {
    */
   async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto> {
     try {
-      // Validate required fields
-      if (!data.name || !data.url) {
-        throw new Error('Missing required fields: name and url are required');
-      }
+      // Validate incoming data using Zod schema first!
+      const validatedData = CreateIssuerSchema.parse(data);
 
       // Create issuer entity
-      const issuer = Issuer.create(data as Partial<Issuer>);
+      const issuer = Issuer.create(validatedData as Partial<Issuer>);
       const createdIssuer = await this.issuerRepository.create(issuer);
       
       // Return formatted response
@@ -84,7 +83,11 @@ export class IssuerController {
    */
   async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
     try {
-      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, data as Partial<Issuer>);
+      // Validate incoming data using Zod schema first!
+      const validatedData = UpdateIssuerSchema.parse(data);
+
+      // Use validated data. Casting might still be needed depending on alignment with internal entity types.
+      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, validatedData as Partial<Issuer>);
       if (!updatedIssuer) {
         return null;
       }

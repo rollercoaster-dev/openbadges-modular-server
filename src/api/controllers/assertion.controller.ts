@@ -18,84 +18,42 @@ import { VerificationService } from '../../core/verification.service';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
 import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
-import { InvalidDateFormatError } from '../../utils/errors/validation.errors';
+import { CreateAssertionSchema, UpdateAssertionSchema } from '../validation/assertion.schemas';
+import { z } from 'zod';
+
+// Define types inferred from Zod schemas
+type ValidatedCreateAssertionData = z.infer<typeof CreateAssertionSchema>;
+type ValidatedUpdateAssertionData = z.infer<typeof UpdateAssertionSchema>;
 
 /**
- * Maps incoming partial OB2/OB3 data to the internal Partial<Assertion> format.
+ * Maps incoming validated Zod data to the internal Partial<Assertion> format.
  * Only copies properties defined in the internal Assertion entity.
- * @param data Input data (CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>)
+ * Assumes basic type/format validation (like date strings) is done by Zod.
+ * @param data Input data (ValidatedCreateAssertionData | ValidatedUpdateAssertionData)
  * @returns Mapped data (Partial<Assertion>)
  */
 const mapToPartialAssertion = (
-  data: CreateAssertionDto | UpdateAssertionDto | Partial<OB2.Assertion | OB3.VerifiableCredential>
+  data: ValidatedCreateAssertionData | ValidatedUpdateAssertionData
 ): Partial<Assertion> => {
   const mappedData: Partial<Assertion> = {};
 
-  // Helper to format dates as ISO strings for the Assertion entity
-  const formatAssertionDateString = (dateInput: unknown): string | undefined => {
-    if (dateInput instanceof Date) {
-      return dateInput.toISOString();
-    }
-    // Pass through strings/numbers assuming they are valid ISO/epoch representations
-    // Downstream validation should catch invalid formats if necessary
-    if (typeof dateInput === 'string') {
-      // Basic check: return string directly
-      return dateInput;
-    }
-     if (typeof dateInput === 'number') {
-        // Convert epoch ms to ISO string
-        try {
-          return new Date(dateInput).toISOString();
-        } catch {
-          logger.warn('Could not convert numeric date to ISO string', { value: dateInput });
-          throw new InvalidDateFormatError('Could not convert numeric date to ISO string', dateInput);
-        }
-    }
-    logger.warn('Unsupported date format received in mapToPartialAssertion', { value: dateInput });
-    throw new InvalidDateFormatError('Unsupported date format', dateInput);
-  };
+  // Map properties directly from validated data
+  // Zod ensures presence/type for required fields and format for dates
+  // Casting might be needed if internal types differ significantly (e.g., branded types)
 
   // Map properties using safe assertions based on Assertion entity types
-  if (data.id !== undefined) mappedData.id = data.id as Shared.IRI;
-  if (data.badgeClass !== undefined) mappedData.badgeClass = data.badgeClass as Shared.IRI;
-  if (data.recipient !== undefined) mappedData.recipient = data.recipient as OB2.IdentityObject | OB3.CredentialSubject;
-  if (data.verification !== undefined) mappedData.verification = data.verification as OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
-  if (data.evidence !== undefined) mappedData.evidence = data.evidence as OB2.Evidence[] | OB3.Evidence[];
+  if ('id' in data && data.id !== undefined) mappedData.id = data.id as Shared.IRI; // OB3 allows optional ID
+  if (data.badge !== undefined) mappedData.badgeClass = data.badge as Shared.IRI; // Renamed: badge -> badgeClass
+  if (data.recipient !== undefined) mappedData.recipient = data.recipient as OB2.IdentityObject | OB3.CredentialSubject; // Assume Zod structure matches
+  if (data.verification !== undefined) mappedData.verification = data.verification as OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus; // Assume Zod structure matches
+  if (data.evidence !== undefined) mappedData.evidence = data.evidence as unknown as OB2.Evidence[] | OB3.Evidence[]; // Cast needed due to string vs IRI in Evidence.id potentially
   if (data.revoked !== undefined) mappedData.revoked = data.revoked as boolean;
   if (data.revocationReason !== undefined) mappedData.revocationReason = data.revocationReason as string;
-
-  // Map date properties, ensuring they are strings
-  if (data.issuedOn) {
-    try {
-      // Needs robust date parsing/validation
-      const formattedDate = formatAssertionDateString(data.issuedOn);
-      mappedData.issuedOn = formattedDate;
-    } catch (error) {
-      // Re-throw InvalidDateFormatError, or wrap other errors
-      if (error instanceof InvalidDateFormatError) {
-        logger.error('Invalid issuedOn date format received', { value: data.issuedOn });
-        throw error;
-      }
-      throw new InvalidDateFormatError('Invalid date format for issuedOn', data.issuedOn);
-    }
-  }
-  if (data.expires !== undefined) {
-    try {
-      const expiresDate = formatAssertionDateString(data.expires);
-      mappedData.expires = expiresDate;
-    } catch (error) {
-      // For expires, we'll log a warning but not fail the request
-      // This is a design decision - expires is optional so we can continue
-      logger.warn('Invalid expires date format received, skipping assignment', { 
-        value: data.expires,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      // Note: We're intentionally not re-throwing the error for expires
-    }
-  }
+  if (data.issuedOn !== undefined) mappedData.issuedOn = data.issuedOn; // Zod validated format
+  if (data.expires !== undefined) mappedData.expires = data.expires; // Zod validated format
 
   // Properties not part of internal Assertion entity are intentionally ignored:
-  // issuer, narrative, image, etc.
+  // narrative, image, type, credentialSubject etc. are handled by Assertion entity itself or are not stored directly.
 
   return mappedData;
 };
@@ -149,20 +107,21 @@ export class AssertionController {
     sign: boolean = true
   ): Promise<AssertionResponseDto> {
     try {
+      // Validate incoming data using Zod schema first!
+      const validatedData = CreateAssertionSchema.parse(data);
+
       // Initialize the key service
       await KeyService.initialize();
 
       // Map incoming data to internal format
       let mappedData: Partial<Assertion>;
       try {
-        mappedData = mapToPartialAssertion(data);
+        // Pass validatedData instead of raw data
+        mappedData = mapToPartialAssertion(validatedData);
       } catch (error) {
-        if (error instanceof InvalidDateFormatError) {
-          // We can directly use the error since it has the value and proper message
-          logger.error('Date validation error in createAssertion', { error });
-          throw error;
-        }
-        throw error;
+        // Handle potential mapping errors if any (though simplified map should be safer)
+        logger.error('Error mapping validated assertion data', { error });
+        throw error; // Re-throw other mapping errors
       }
 
       // Create the assertion using the mapped data
@@ -278,7 +237,20 @@ export class AssertionController {
     version: BadgeVersion = BadgeVersion.V3
   ): Promise<AssertionResponseDto | null> {
     try {
-      const mappedData = mapToPartialAssertion(data);
+      // Validate incoming data using Zod schema first!
+      const validatedData = UpdateAssertionSchema.parse(data);
+
+      // Map incoming data to internal format using validated data
+      let mappedData: Partial<Assertion>;
+      try {
+        // Pass validatedData instead of raw data
+        mappedData = mapToPartialAssertion(validatedData);
+      } catch (error) {
+        // Handle potential mapping errors
+        logger.error('Error mapping validated assertion data for update', { error });
+        throw error; // Re-throw other mapping errors
+      }
+
       const updatedAssertion = await this.assertionRepository.update(toIRI(id) as Shared.IRI, mappedData);
       if (!updatedAssertion) {
         return null;
@@ -294,11 +266,6 @@ export class AssertionController {
 
       return convertAssertionToJsonLd(updatedAssertion, version);
     } catch (error) {
-      if (error instanceof InvalidDateFormatError) {
-        // We can directly use the error since it has the value and proper message
-        logger.error('Date validation error in updateAssertion', { error });
-        throw error;
-      }
       throw error;
     }
   }

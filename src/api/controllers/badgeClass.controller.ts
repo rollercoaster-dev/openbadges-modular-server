@@ -11,6 +11,7 @@ import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared } from 'openbadges-types';
 import { CreateBadgeClassDto, BadgeClassResponseDto, UpdateBadgeClassDto } from '../dtos';
+import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../validation/badgeClass.schemas';
 import { logger } from '../../utils/logging/logger.service';
 
 /**
@@ -31,13 +32,11 @@ export class BadgeClassController {
    */
   async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto> {
     try {
-      // Validate required fields
-      if (!data.name || !data.description || !data.image || !data.issuer) {
-        throw new Error('Missing required fields: name, description, image, and issuer are required');
-      }
+      // Validate incoming data using Zod schema first!
+      const validatedData = CreateBadgeClassSchema.parse(data);
 
       // Create badge class entity
-      const badgeClass = BadgeClass.create(data as Partial<BadgeClass>);
+      const badgeClass = BadgeClass.create(validatedData as Partial<BadgeClass>);
       const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
       
       // Return formatted response
@@ -95,7 +94,11 @@ export class BadgeClassController {
    */
   async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
     try {
-      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, data as Partial<BadgeClass>);
+      // Validate incoming data using Zod schema first!
+      const validatedData = UpdateBadgeClassSchema.parse(data);
+
+      // Use validated data. Casting might still be needed depending on alignment with internal entity types.
+      const updatedBadgeClass = await this.badgeClassRepository.update(toIRI(id) as Shared.IRI, validatedData as Partial<BadgeClass>);
       if (!updatedBadgeClass) {
         return null;
       }
