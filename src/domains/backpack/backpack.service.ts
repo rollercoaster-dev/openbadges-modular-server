@@ -11,7 +11,7 @@ import { UserAssertionRepository } from './user-assertion.repository';
 import { AssertionRepository } from '../assertion/assertion.repository';
 import { Platform } from './platform.entity';
 import { PlatformUser } from './platform-user.entity';
-import { UserAssertion } from './user-assertion.entity';
+import { UserAssertion, UserAssertionData } from './user-assertion.entity';
 import { logger } from '../../utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus } from './backpack.types';

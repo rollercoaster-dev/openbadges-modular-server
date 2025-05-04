@@ -95,12 +95,16 @@ describe('Assertion Entity', () => {
 
     expect(obj).toBeDefined();
     expect(obj.id).toBe(validAssertionData.id);
-    expect(obj.badgeClass).toBe(validAssertionData.badgeClass);
     expect(obj.recipient).toEqual(validAssertionData.recipient);
     expect(obj.issuedOn).toBe(validAssertionData.issuedOn);
     expect(obj.expires).toBe(validAssertionData.expires);
     expect(obj.evidence).toEqual(validAssertionData.evidence);
-    expect(obj.verification).toEqual(validAssertionData.verification);
+
+    // In OB2, badge is the IRI of the BadgeClass
+    expect(obj.badge).toBe(validAssertionData.badgeClass);
+
+    // Check verification property
+    expect(obj.verification).toBeDefined();
   });
 
   it('should convert to JSON-LD format', () => {

@@ -7,6 +7,7 @@
 
 import { BackpackService } from './backpack.service';
 import { PlatformUser } from './platform-user.entity';
+import { UserAssertionData } from './user-assertion.entity';
 import { logger } from '../../utils/logging/logger.service';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { Shared } from 'openbadges-types';

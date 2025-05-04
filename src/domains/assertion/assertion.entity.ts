@@ -68,12 +68,39 @@ export class Assertion {
 
   /**
    * Converts the assertion to a plain object
-   * @returns A plain object representation of the assertion, compatible with OB2.Assertion and OB3.VerifiableCredential
+   * @param version The badge version to use (defaults to 3.0)
+   * @returns A plain object representation of the assertion, properly typed as OB2.Assertion or OB3.VerifiableCredential
    */
-  toObject(): Record<string, unknown> {
-    // Note: This returns a direct shallow copy. Minor discrepancies might exist
-    // with strict OB2/OB3 types, but this is generally compatible for serialization.
-    return { ...this };
+  toObject(version: BadgeVersion = BadgeVersion.V3): OB2.Assertion | OB3.VerifiableCredential {
+    // Create a base object with common properties
+    const baseObject = {
+      id: this.id,
+      recipient: this.recipient,
+      issuedOn: this.issuedOn,
+      expires: this.expires,
+      evidence: this.evidence,
+      revoked: this.revoked,
+      revocationReason: this.revocationReason,
+    };
+
+    // Add version-specific properties
+    if (version === BadgeVersion.V2) {
+      // OB2 Assertion
+      return {
+        ...baseObject,
+        type: 'Assertion',
+        badge: this.badgeClass, // In OB2, badge is the IRI of the BadgeClass
+        verification: this.verification as OB2.VerificationObject,
+      } as OB2.Assertion;
+    } else {
+      // OB3 VerifiableCredential
+      return {
+        ...baseObject,
+        type: 'VerifiableCredential',
+        badge: this.badgeClass, // In OB3, badge is the IRI of the Achievement
+        verification: this.verification as OB3.Proof,
+      } as OB3.VerifiableCredential;
+    }
   }
 
   /**
@@ -89,10 +116,19 @@ export class Assertion {
     issuer?: Issuer
   ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    
-    // Get partial data for the assertion itself
-    const assertionData = this.toObject() as AssertionData;
-    
+
+    // Get properly typed data for the assertion itself
+    const typedData = this.toObject(version);
+
+    // Convert to AssertionData format expected by serializer
+    const assertionData: AssertionData = {
+      ...typedData,
+      id: typedData.id,
+      badgeClass: version === BadgeVersion.V2 ? (typedData as OB2.Assertion).badge : (typedData as OB3.VerifiableCredential).badge,
+      recipient: typedData.recipient,
+      issuedOn: typedData.issuedOn,
+    };
+
     // Get JSON-LD representation from passed entities if they exist
     const typedBadgeClass = badgeClass
       ? badgeClass.toJsonLd(version) as BadgeClassData
@@ -100,7 +136,7 @@ export class Assertion {
     const typedIssuer = issuer
       ? issuer.toJsonLd(version) as IssuerData
       : undefined;
-    
+
     // Then serialize with the appropriate serializer
     const output = serializer.serializeAssertion(
       assertionData,

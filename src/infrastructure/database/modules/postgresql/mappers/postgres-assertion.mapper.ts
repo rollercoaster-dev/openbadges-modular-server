@@ -77,8 +77,9 @@ export class PostgresAssertionMapper {
    */
   toPersistence(entity: Partial<Assertion>): AssertionInsertModel {
     // Validate required fields for insertion
-    if (!entity.badgeClass) {
-      throw new Error('Assertion entity must have a badgeClass (IRI) for persistence.');
+    // Check for badgeClass property or badge property (from toObject)
+    if (!entity.badgeClass && !('badge' in entity)) {
+      throw new Error('Assertion entity must have a badgeClass or badge property (IRI) for persistence.');
     }
     if (!entity.recipient) {
       throw new Error('Assertion entity must have a recipient for persistence.');
@@ -89,7 +90,8 @@ export class PostgresAssertionMapper {
     const recordToInsert = {
       // Include ID if provided in the entity
       ...(entity.id && { id: entity.id as string }),
-      badgeClassId: entity.badgeClass as string, // Map from entity.badgeClass (IRI) and cast to string
+      // Use badgeClass if available, otherwise use badge (from toObject)
+      badgeClassId: (entity.badgeClass || (entity as any).badge) as string, // Map from entity.badgeClass (IRI) and cast to string
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
       // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
       ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),
