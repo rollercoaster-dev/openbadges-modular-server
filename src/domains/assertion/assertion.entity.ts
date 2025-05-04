@@ -5,7 +5,7 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { Shared, OB2, OB3 } from 'openbadges-types';
+import { Shared, OB2, OB3, createDateTime } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
@@ -108,8 +108,8 @@ export class Assertion {
         // Cast to proper types for OB3
         issuer: this.issuer as Shared.IRI,
         // OB3 uses string for dates but with a specific format
-        // We need to cast to unknown first and then to DateTime
-        issuanceDate: this.issuedOn as unknown as OB3.DateTime,
+        // We need to use createDateTime to create a properly typed DateTime
+        issuanceDate: createDateTime(this.issuedOn),
         // Create a proper CredentialSubject with required achievement property
         // First cast to unknown to avoid type errors
         credentialSubject: {
