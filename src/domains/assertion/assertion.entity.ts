@@ -22,7 +22,7 @@ export class Assertion {
   // Note: We're not implementing the interfaces directly due to type conflicts
   // between OB2 and OB3 specifications
   id: Shared.IRI;
-  type: string = 'Assertion';
+  type: string | string[] = 'Assertion';
   badgeClass: Shared.IRI;
   recipient: OB2.IdentityObject | OB3.CredentialSubject;
   issuedOn: string;

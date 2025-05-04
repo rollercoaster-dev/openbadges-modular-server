@@ -138,10 +138,14 @@ export class SqliteAssertionRepository implements AssertionRepository {
       }
 
       // Create a merged entity
+      // Get the existing assertion as a plain object
+      const existingData = { ...existingAssertion };
+
+      // Create a merged assertion
       const mergedAssertion = Assertion.create({
-        ...existingAssertion.toObject(),
-        ...assertion as Partial<Assertion>
-      });
+        ...existingData,
+        ...assertion
+      } as Partial<Assertion>);
 
       // Convert to database record
       const record = this.mapper.toPersistence(mergedAssertion);
