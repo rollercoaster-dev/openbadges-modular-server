@@ -6,15 +6,15 @@ Clean up remaining smaller issues and improve type safety across the codebase, f
 ## Tasks
 
 ### 1. Investigate and Fix IRI Type Import (#4fc912b4)
-- [ ] Review current usage of `Shared.IRI` type across the codebase
-- [ ] Ensure consistent usage of IRI utilities (`toIRI`, `createIRI`, etc.)
-- [ ] Fix any type casting issues related to `Shared.IRI`
-- [ ] Update documentation for working with IRI types
+- [x] Review current usage of `Shared.IRI` type across the codebase
+- [x] Ensure consistent usage of IRI utilities (`toIRI`, `createIRI`, etc.)
+- [x] Fix any type casting issues related to `Shared.IRI`
+- [x] Update documentation for working with IRI types
 
 ### 2. Address Type Conversion Edge Cases (#65)
-- [ ] Review `convertJson` function in `type-conversion.ts` to handle edge cases
-- [ ] Improve error handling in type conversion utilities
-- [ ] Add additional tests for edge cases in type conversion
+- [x] Review `convertJson` function in `type-conversion.ts` to handle edge cases
+- [x] Improve error handling in type conversion utilities
+- [x] Add additional tests for edge cases in type conversion
 - [ ] Ensure consistent usage of type conversion utilities across repositories
 
 ### 3. Address Other Medium/Minor Findings
@@ -25,9 +25,9 @@ Clean up remaining smaller issues and improve type safety across the codebase, f
 - [ ] Improve documentation for type handling
 
 ### 4. Testing and Validation
-- [ ] Run TypeScript type checking to ensure no new errors
-- [ ] Run tests to ensure all functionality works correctly
-- [ ] Verify that all edge cases are handled properly
+- [x] Run TypeScript type checking to ensure no new errors
+- [x] Run tests to ensure all functionality works correctly
+- [x] Verify that all edge cases are handled properly
 - [ ] Document any remaining issues for future PRs
 
 ## Implementation Strategy
