@@ -19,6 +19,7 @@ Clean up remaining smaller issues and improve type safety across the codebase, f
 
 ### 3. Address Other Medium/Minor Findings
 - [ ] Review and address issues from PR #4 (Neuro-friendly logging system)
+  - [x] Implemented and verified integration tests for SqliteAssertionRepository query logging
 - [ ] Review and address issues from PR #17 (PostgreSQL CI testing)
 - [ ] Fix any remaining TypeScript errors or warnings
 - [ ] Remove unnecessary type assertions (`as`) where possible

@@ -13,6 +13,8 @@ import type { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { issuers } from '../schema';
 import { PostgresIssuerMapper } from '../mappers/postgres-issuer.mapper';
 import { Shared } from 'openbadges-types';
+import { queryLogger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 export class PostgresIssuerRepository implements IssuerRepository {
   private db: ReturnType<typeof drizzle>;
@@ -28,25 +30,41 @@ export class PostgresIssuerRepository implements IssuerRepository {
     // The mapper now returns the correct shape for insertion (IssuerInsertModel)
     // and handles required field validation internally.
     const record = this.mapper.toPersistence(issuer);
-
-    // Insert into database
+    const startTime = Date.now();
     const result = await this.db.insert(issuers).values(record).returning();
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery(
+      'INSERT Issuer (PG)',
+      [SensitiveValue.from(record)],
+      duration,
+      'postgresql'
+    );
 
     // Convert database record back to domain entity
     return this.mapper.toDomain(result[0]);
   }
 
   async findAll(): Promise<Issuer[]> {
-    // Query database to get all issuers
+    const startTime = Date.now();
     const result = await this.db.select().from(issuers);
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery('SELECT All Issuers (PG)', undefined, duration, 'postgresql');
 
     // Convert database records to domain entities
     return result.map(record => this.mapper.toDomain(record));
   }
 
   async findById(id: Shared.IRI): Promise<Issuer | null> {
-    // Query database
+    const startTime = Date.now();
     const result = await this.db.select().from(issuers).where(eq(issuers.id, id as string));
+    const duration = Date.now() - startTime;
+
+    // Log query (assuming id is not sensitive)
+    queryLogger.logQuery('SELECT Issuer by ID (PG)', [id], duration, 'postgresql');
 
     // Return null if not found
     if (!result.length) {
@@ -76,10 +94,20 @@ export class PostgresIssuerRepository implements IssuerRepository {
     const record = this.mapper.toPersistence(mergedProps);
 
     // Update in database
+    const startTime = Date.now();
     const result = await this.db.update(issuers)
       .set(record)
       .where(eq(issuers.id, id as string))
       .returning();
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery(
+      'UPDATE Issuer (PG)',
+      [id, SensitiveValue.from(record)],
+      duration,
+      'postgresql'
+    );
 
     // Convert database record back to domain entity
     return this.mapper.toDomain(result[0]);
@@ -87,7 +115,12 @@ export class PostgresIssuerRepository implements IssuerRepository {
 
   async delete(id: Shared.IRI): Promise<boolean> {
     // Delete from database
+    const startTime = Date.now();
     const result = await this.db.delete(issuers).where(eq(issuers.id, id as string)).returning();
+    const duration = Date.now() - startTime;
+
+    // Log query (assuming id is not sensitive)
+    queryLogger.logQuery('DELETE Issuer (PG)', [id], duration, 'postgresql');
 
     // Return true if something was deleted
     return result.length > 0;

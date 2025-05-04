@@ -13,7 +13,8 @@ import type { AssertionRepository } from '@domains/assertion/assertion.repositor
 import { assertions } from '../schema';
 import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
 import { Shared } from 'openbadges-types';
-import { logger } from '@utils/logging/logger.service';
+import { logger, queryLogger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { createId } from '@paralleldrive/cuid2';
 
 export class SqliteAssertionRepository implements AssertionRepository {
@@ -32,11 +33,20 @@ export class SqliteAssertionRepository implements AssertionRepository {
       const fullAssertion = Assertion.create({ ...assertion, id });
 
       // Convert domain entity to database record
-      const record: InferInsertModel<typeof assertions> =
-        this.mapper.toPersistence(fullAssertion);
+      const record: InferInsertModel<typeof assertions> = this.mapper.toPersistence(fullAssertion);
 
       // Insert into database
+      const startTime = Date.now();
       const result = await this.db.insert(assertions).values(record).returning();
+      const duration = Date.now() - startTime;
+
+      // Log query (wrap the whole record as potentially sensitive)
+      queryLogger.logQuery(
+        'INSERT Assertion',
+        [SensitiveValue.from(record)],
+        duration,
+        'sqlite'
+      );
 
       // Convert database record back to domain entity
       // Ensure the returned result from 'returning()' matches the expected input for toDomain
@@ -54,6 +64,7 @@ export class SqliteAssertionRepository implements AssertionRepository {
       logger.error('Error creating assertion in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         assertion
+        // Log sensitive assertion data separately if needed for debugging, but avoid in query logs
       });
       throw error;
     }
@@ -62,7 +73,12 @@ export class SqliteAssertionRepository implements AssertionRepository {
   async findAll(): Promise<Assertion[]> {
     try {
       // Query database to get all assertions
+      const startTime = Date.now();
       const result = await this.db.select().from(assertions);
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery('SELECT All Assertions', undefined, duration, 'sqlite');
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
@@ -76,8 +92,13 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async findById(id: Shared.IRI): Promise<Assertion | null> {
     try {
+      const startTime = Date.now();
       // Query database
       const result = await this.db.select().from(assertions).where(eq(assertions.id, id as string));
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming id is not sensitive)
+      queryLogger.logQuery('SELECT Assertion by ID', [id], duration, 'sqlite');
 
       // Return null if not found
       if (!result.length) {
@@ -97,8 +118,13 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async findByBadgeClass(badgeClassId: Shared.IRI): Promise<Assertion[]> {
     try {
+      const startTime = Date.now();
       // Query database
       const result = await this.db.select().from(assertions).where(eq(assertions.badgeClassId, badgeClassId as string));
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming badgeClassId is not sensitive)
+      queryLogger.logQuery('SELECT Assertions by BadgeClass', [badgeClassId], duration, 'sqlite');
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
@@ -113,9 +139,19 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async findByRecipient(recipientId: string): Promise<Assertion[]> {
     try {
+      const startTime = Date.now();
       // Query database using JSON extraction
       const result = await this.db.select().from(assertions).where(
         sql`json_extract(${assertions.recipient}, '$.identity') = ${recipientId}`
+      );
+      const duration = Date.now() - startTime;
+
+      // Log query (wrap recipientId as potentially sensitive)
+      queryLogger.logQuery(
+        'SELECT Assertions by Recipient',
+        [SensitiveValue.from(recipientId)],
+        duration,
+        'sqlite'
       );
 
       // Convert database records to domain entities
@@ -156,10 +192,20 @@ export class SqliteAssertionRepository implements AssertionRepository {
       const record = this.mapper.toPersistence(mergedAssertion);
 
       // Update in database
+      const startTime = Date.now();
       const result = await this.db.update(assertions)
         .set(record)
         .where(eq(assertions.id, id as string))
         .returning();
+      const duration = Date.now() - startTime;
+
+      // Log query (wrap the whole record as potentially sensitive)
+      queryLogger.logQuery(
+        'UPDATE Assertion',
+        [id, SensitiveValue.from(record)], // Log ID and the updated data
+        duration,
+        'sqlite'
+      );
 
       // Convert database record back to domain entity
       return this.mapper.toDomain(result[0]);
@@ -167,7 +213,7 @@ export class SqliteAssertionRepository implements AssertionRepository {
       logger.error('Error updating assertion in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         id,
-        assertion
+        assertion // Log sensitive assertion data separately if needed for debugging
       });
       throw error;
     }
@@ -176,7 +222,12 @@ export class SqliteAssertionRepository implements AssertionRepository {
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
       // Delete from database
+      const startTime = Date.now();
       const result = await this.db.delete(assertions).where(eq(assertions.id, id as string)).returning();
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming id is not sensitive)
+      queryLogger.logQuery('DELETE Assertion', [id], duration, 'sqlite');
 
       // Return true if something was deleted
       return result.length > 0;
@@ -191,6 +242,9 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async revoke(id: Shared.IRI, reason?: string): Promise<Assertion | null> {
     try {
+      // Note: Query logging for the underlying update operation
+      // happens within the 'update' method called below.
+
       // Check if assertion exists
       const existingAssertion = await this.findById(id);
       if (!existingAssertion) {

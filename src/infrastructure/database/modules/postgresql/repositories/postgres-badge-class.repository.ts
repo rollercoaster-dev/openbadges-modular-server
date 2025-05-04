@@ -13,6 +13,8 @@ import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.reposi
 import { badgeClasses } from '../schema';
 import { PostgresBadgeClassMapper } from '../mappers/postgres-badge-class.mapper';
 import { Shared } from 'openbadges-types';
+import { queryLogger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 export class PostgresBadgeClassRepository implements BadgeClassRepository {
   private db: ReturnType<typeof drizzle>;
@@ -23,31 +25,49 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
     this.mapper = new PostgresBadgeClassMapper();
   }
 
-  async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
+  async create(badgeClass: Omit<BadgeClass, 'id'>): Promise<BadgeClass> {
     // Use BadgeClass.create to ensure defaults and ID
-    const newBadgeClass = BadgeClass.create(badgeClass);
+    const newEntity = BadgeClass.create(badgeClass);
     
     // Convert domain entity to database record
-    const record = this.mapper.toPersistence(newBadgeClass);
-
-    // Insert into database
+    const record = this.mapper.toPersistence(newEntity);
+    const startTime = Date.now();
     const result = await this.db.insert(badgeClasses).values(record).returning();
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery(
+      'INSERT BadgeClass (PG)',
+      [SensitiveValue.from(record)],
+      duration,
+      'postgresql'
+    );
 
     // Convert database record back to domain entity
     return this.mapper.toDomain(result[0]);
   }
 
   async findAll(): Promise<BadgeClass[]> {
+    const startTime = Date.now();
     // Query database to get all badge classes
     const result = await this.db.select().from(badgeClasses);
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery('SELECT All BadgeClasses (PG)', undefined, duration, 'postgresql');
 
     // Convert database records to domain entities
     return result.map(record => this.mapper.toDomain(record));
   }
 
   async findById(id: Shared.IRI): Promise<BadgeClass | null> {
+    const startTime = Date.now();
     // Query database
     const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id as string));
+    const duration = Date.now() - startTime;
+
+    // Log query (assuming id is not sensitive)
+    queryLogger.logQuery('SELECT BadgeClass by ID (PG)', [id], duration, 'postgresql');
 
     // Return null if not found
     if (!result.length) {
@@ -59,8 +79,13 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
   }
 
   async findByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
+    const startTime = Date.now();
     // Query database
     const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.issuerId, issuerId as string));
+    const duration = Date.now() - startTime;
+
+    // Log query (assuming issuerId is not sensitive)
+    queryLogger.logQuery('SELECT BadgeClasses by Issuer (PG)', [issuerId], duration, 'postgresql');
 
     // Convert database records to domain entities
     return result.map(record => this.mapper.toDomain(record));
@@ -85,10 +110,20 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
     const record = this.mapper.toPersistence(mergedBadgeClass);
 
     // Update in database
+    const startTime = Date.now();
     const result = await this.db.update(badgeClasses)
       .set(record)
       .where(eq(badgeClasses.id, id as string))
       .returning();
+    const duration = Date.now() - startTime;
+
+    // Log query
+    queryLogger.logQuery(
+      'UPDATE BadgeClass (PG)',
+      [id, SensitiveValue.from(record)],
+      duration,
+      'postgresql'
+    );
 
     // Convert database record back to domain entity
     return this.mapper.toDomain(result[0]);
@@ -96,7 +131,12 @@ export class PostgresBadgeClassRepository implements BadgeClassRepository {
 
   async delete(id: Shared.IRI): Promise<boolean> {
     // Delete from database
+    const startTime = Date.now();
     const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id as string)).returning();
+    const duration = Date.now() - startTime;
+
+    // Log query (assuming id is not sensitive)
+    queryLogger.logQuery('DELETE BadgeClass (PG)', [id], duration, 'postgresql');
 
     // Return true if something was deleted
     return result.length > 0;
