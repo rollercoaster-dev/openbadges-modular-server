@@ -28,14 +28,14 @@ export class SqlitePlatformUserMapper {
 
     // Return database record
     return {
-      id: convertUuid(data.id, 'sqlite', 'to') as string,
-      platformId: convertUuid(data.platformId, 'sqlite', 'to') as string,
-      externalUserId: data.externalUserId,
-      displayName: data.displayName || null,
-      email: data.email || null,
+      id: convertUuid(data.id as string, 'sqlite', 'to') as string,
+      platformId: convertUuid(data.platformId as string, 'sqlite', 'to') as string,
+      externalUserId: String(data.externalUserId),
+      displayName: data.displayName ? String(data.displayName) : null,
+      email: data.email ? String(data.email) : null,
       metadata: convertJson(data.metadata, 'sqlite', 'to') as string | null,
-      createdAt: convertTimestamp(data.createdAt, 'sqlite', 'to') as number,
-      updatedAt: convertTimestamp(data.updatedAt, 'sqlite', 'to') as number
+      createdAt: convertTimestamp(data.createdAt as Date, 'sqlite', 'to') as number,
+      updatedAt: convertTimestamp(data.updatedAt as Date, 'sqlite', 'to') as number
     };
   }
 
@@ -46,7 +46,8 @@ export class SqlitePlatformUserMapper {
    */
   toDomain(record: InferSelectModel<typeof platformUsers>): PlatformUser {
     // Parse metadata
-    const metadata = convertJson(record.metadata, 'sqlite', 'from') as Record<string, unknown> | undefined;
+    const parsedMetadata = convertJson(record.metadata, 'sqlite', 'from');
+    const metadata = typeof parsedMetadata === 'object' ? parsedMetadata as Record<string, unknown> : undefined;
 
     // Create and return domain entity
     return PlatformUser.create({

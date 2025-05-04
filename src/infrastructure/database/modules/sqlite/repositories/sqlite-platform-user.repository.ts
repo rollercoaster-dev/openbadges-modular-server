@@ -129,9 +129,10 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
         .set({
           platformId: record.platformId,
           externalUserId: record.externalUserId,
-          displayName: record.displayName,
-          email: record.email,
-          metadata: record.metadata,
+          // Only include optional fields if they exist in the record
+          ...(record.displayName !== undefined ? { displayName: record.displayName } : {}),
+          ...(record.email !== undefined ? { email: record.email } : {}),
+          ...(record.metadata !== undefined ? { metadata: record.metadata } : {}),
           updatedAt: record.updatedAt
         })
         .where(eq(platformUsers.id, id as string))

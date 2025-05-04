@@ -75,8 +75,9 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         .onConflictDoUpdate({
           target: [userAssertions.userId, userAssertions.assertionId],
           set: {
-            status: record.status,
-            metadata: record.metadata
+            // Use type-safe approach for optional fields
+            ...(record.status !== undefined ? { status: record.status } : {}),
+            ...(record.metadata !== undefined ? { metadata: record.metadata } : {})
           }
         })
         .returning();
@@ -123,7 +124,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Update status in database using Drizzle ORM
       const result = await this.db
         .update(userAssertions)
-        .set({ status: status as string })
+        .set({ status: String(status) })
         .where(
           and(
             eq(userAssertions.userId, userId as string),
@@ -162,15 +163,16 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       let query = this.db.select().from(userAssertions).where(whereCondition);
 
       // Apply pagination if provided
+      let finalQuery = query;
       if (params?.limit !== undefined) {
-        query = query.limit(params.limit);
+        finalQuery = finalQuery.limit(params.limit);
         if (params.offset !== undefined) {
-          query = query.offset(params.offset);
+          finalQuery = finalQuery.offset(params.offset);
         }
       }
 
       // Execute the query
-      const result = await query;
+      const result = await finalQuery;
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));

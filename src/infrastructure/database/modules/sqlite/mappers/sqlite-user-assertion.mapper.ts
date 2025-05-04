@@ -27,15 +27,17 @@ export class SqliteUserAssertionMapper {
     // Get entity data
     const data = entity.toObject();
 
-    // Return database record
-    return {
-      id: convertUuid(data.id, 'sqlite', 'to') as string,
-      userId: convertUuid(data.userId, 'sqlite', 'to') as string,
-      assertionId: convertUuid(data.assertionId, 'sqlite', 'to') as string,
-      addedAt: convertTimestamp(data.addedAt, 'sqlite', 'to') as number,
-      status: data.status,
+    // Create the base record with required fields
+    const record: InferInsertModel<typeof userAssertions> = {
+      id: convertUuid(data.id as string, 'sqlite', 'to') as string,
+      userId: convertUuid(data.userId as string, 'sqlite', 'to') as string,
+      assertionId: convertUuid(data.assertionId as string, 'sqlite', 'to') as string,
+      addedAt: convertTimestamp(data.addedAt as Date, 'sqlite', 'to') as number,
+      status: String(data.status),
       metadata: convertJson(data.metadata, 'sqlite', 'to') as string | null
     };
+
+    return record;
   }
 
   /**
@@ -45,7 +47,8 @@ export class SqliteUserAssertionMapper {
    */
   toDomain(record: InferSelectModel<typeof userAssertions>): UserAssertion {
     // Parse metadata
-    const metadata = convertJson(record.metadata, 'sqlite', 'from') as Record<string, unknown> | undefined;
+    const parsedMetadata = convertJson(record.metadata, 'sqlite', 'from');
+    const metadata = typeof parsedMetadata === 'object' ? parsedMetadata as Record<string, unknown> : undefined;
 
     // Create and return domain entity
     return UserAssertion.create({
