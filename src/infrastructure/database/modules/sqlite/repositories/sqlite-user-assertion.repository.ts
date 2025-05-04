@@ -205,18 +205,24 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Execute the query with pagination if provided
       let result;
 
-      // Apply limit if provided
+      // Apply pagination if provided
       if (params?.limit !== undefined) {
-        query = query.limit(params.limit);
-      }
+        // Create a new query with limit
+        const limitQuery = query.limit(params.limit);
 
-      // Apply offset if provided (even if limit is not provided)
-      if (params?.offset !== undefined) {
-        query = query.offset(params.offset);
+        // Add offset if provided
+        if (params?.offset !== undefined) {
+          result = await limitQuery.offset(params.offset);
+        } else {
+          result = await limitQuery;
+        }
+      } else if (params?.offset !== undefined) {
+        // If only offset is provided (unusual but supported)
+        result = await query.offset(params.offset);
+      } else {
+        // Execute without pagination
+        result = await query;
       }
-
-      // Execute the query
-      result = await query;
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
