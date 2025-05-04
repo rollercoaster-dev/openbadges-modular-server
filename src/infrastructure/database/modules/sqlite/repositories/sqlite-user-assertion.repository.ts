@@ -5,7 +5,7 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, and, ne, sql, InferInsertModel } from 'drizzle-orm';
+import { eq, and, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { UserAssertion } from '@domains/backpack/user-assertion.entity';
@@ -69,7 +69,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       const record = this.mapper.toPersistence(userAssertion);
 
       // Insert into database with ON CONFLICT DO UPDATE
-      const result = await this.db
+      await this.db
         .insert(userAssertions)
         .values(record)
         .onConflictDoUpdate({

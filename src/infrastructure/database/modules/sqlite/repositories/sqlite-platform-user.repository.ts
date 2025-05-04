@@ -5,7 +5,7 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, and, InferInsertModel } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { PlatformUser } from '@domains/backpack/platform-user.entity';
@@ -35,7 +35,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       const record = this.mapper.toPersistence(newUser);
 
       // Insert into database
-      const result = await this.db
+      await this.db
         .insert(platformUsers)
         .values(record)
         .returning();
@@ -124,7 +124,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       const record = this.mapper.toPersistence(mergedUser);
 
       // Update in database using Drizzle ORM
-      const result = await this.db
+      await this.db
         .update(platformUsers)
         .set({
           platformId: record.platformId,

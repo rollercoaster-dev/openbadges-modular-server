@@ -10,7 +10,8 @@ import { Shared } from 'openbadges-types';
 import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { platformUsers } from '../schema';
-import { logger } from '@utils/logging/logger.service';
+// Import logger if needed for error handling
+// import { logger } from '@utils/logging/logger.service';
 
 /**
  * SQLite mapper for the PlatformUser domain entity
