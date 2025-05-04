@@ -29,15 +29,18 @@ export class PostgresPlatformRepository implements PlatformRepository {
       const obj = newPlatform.toObject();
 
       // Insert into database
-      const result = await this.db.insert(platforms).values({
+      const values: Record<string, unknown> = {
         name: obj.name as string,
-        description: obj.description as string | undefined,
         clientId: obj.clientId as string,
         publicKey: obj.publicKey as string,
-        webhookUrl: obj.webhookUrl as string | undefined,
-        status: obj.status as string,
-        // id, createdAt and updatedAt will be set by default values in the schema
-      }).returning();
+        status: obj.status as string
+      };
+
+      // Add optional fields if they exist
+      if (obj.description) values.description = obj.description as string;
+      if (obj.webhookUrl) values.webhookUrl = obj.webhookUrl as string;
+
+      const result = await this.db.insert(platforms).values(values).returning();
 
       // Convert database record back to domain entity
       return this.rowToDomain(result[0]);
@@ -54,24 +57,16 @@ export class PostgresPlatformRepository implements PlatformRepository {
     try {
       // Start with a base query
       let query = this.db.select().from(platforms);
-      let conditions = [];
 
       // Add filters if provided
       if (params) {
+        // Build where conditions
         if (params.status) {
-          conditions.push(eq(platforms.status, params.status));
+          query = query.where(eq(platforms.status, params.status));
         }
 
         if (params.name) {
-          conditions.push(like(platforms.name, `%${params.name}%`));
-        }
-
-        // Apply all conditions
-        if (conditions.length > 0) {
-          query = query.where(conditions[0]);
-          for (let i = 1; i < conditions.length; i++) {
-            query = query.where(conditions[i]);
-          }
+          query = query.where(like(platforms.name, `%${params.name}%`));
         }
 
         // Add limit and offset if provided
@@ -155,18 +150,22 @@ export class PostgresPlatformRepository implements PlatformRepository {
       });
       const obj = mergedPlatform.toObject();
 
+      // Prepare update values
+      const updateValues: Record<string, unknown> = {
+        name: obj.name as string,
+        clientId: obj.clientId as string,
+        publicKey: obj.publicKey as string,
+        status: obj.status as string,
+        updatedAt: new Date()
+      };
+
+      // Add optional fields if they exist
+      if (obj.description !== undefined) updateValues.description = obj.description as string;
+      if (obj.webhookUrl !== undefined) updateValues.webhookUrl = obj.webhookUrl as string;
+
       // Update in database
       const result = await this.db.update(platforms)
-        .set({
-          name: obj.name as string,
-          clientId: obj.clientId as string,
-          publicKey: obj.publicKey as string,
-          status: obj.status as string,
-          updatedAt: new Date()
-        })
-        // Set optional fields only if they exist
-        .set(obj.description ? { description: obj.description as string } : {})
-        .set(obj.webhookUrl ? { webhookUrl: obj.webhookUrl as string } : {})
+        .set(updateValues)
         .where(eq(platforms.id, id as string))
         .returning();
 

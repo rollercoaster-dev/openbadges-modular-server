@@ -114,17 +114,21 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
       });
       const obj = mergedUser.toObject();
 
+      // Prepare update values
+      const updateValues: Record<string, unknown> = {
+        platformId: obj.platformId as string,
+        externalUserId: obj.externalUserId as string,
+        updatedAt: new Date()
+      };
+
+      // Add optional fields if they exist
+      if (obj.displayName !== undefined) updateValues.displayName = obj.displayName as string;
+      if (obj.email !== undefined) updateValues.email = obj.email as string;
+      if (obj.metadata !== undefined) updateValues.metadata = obj.metadata;
+
       // Update in database
       const result = await this.db.update(platformUsers)
-        .set({
-          platformId: obj.platformId as string,
-          externalUserId: obj.externalUserId as string,
-          updatedAt: new Date()
-        })
-        // Set optional fields only if they exist
-        .set(obj.displayName !== undefined ? { displayName: obj.displayName as string } : {})
-        .set(obj.email !== undefined ? { email: obj.email as string } : {})
-        .set(obj.metadata !== undefined ? { metadata: obj.metadata } : {})
+        .set(updateValues)
         .where(eq(platformUsers.id, id as string))
         .returning();
 
