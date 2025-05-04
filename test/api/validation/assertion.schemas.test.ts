@@ -51,7 +51,7 @@ describe('Assertion Schemas', () => {
           type: 'email',
           identity: 'test@example.com',
           hashed: false
-        }
+        },
         // Missing badge and issuedOn
       };
 
