@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, and, ne, sql, SQL } from 'drizzle-orm';
+import { eq, and, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { UserAssertion } from '@domains/backpack/user-assertion.entity';
@@ -100,7 +100,7 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
       .values(insertValues)
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
-        set: updateValues as any
+        set: updateValues as Record<string, unknown>
       })
       .returning();
 
@@ -141,7 +141,7 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
       // Update status in database
       const result = await this.db.update(userAssertions)
-        .set(updateValues as any)
+        .set(updateValues as Record<string, unknown>)
         .where(
           and(
             eq(userAssertions.userId, userId as string),

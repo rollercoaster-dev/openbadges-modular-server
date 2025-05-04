@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, like, and, SQL } from 'drizzle-orm';
+import { eq, like, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Platform } from '@domains/backpack/platform.entity';
