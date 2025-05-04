@@ -96,18 +96,25 @@ export class Assertion {
     } else {
       // OB3 VerifiableCredential
       // Create a properly typed OB3 VerifiableCredential
-      const ob3Data: OB3.VerifiableCredential = {
+      // We need to cast to unknown first because the OB3 types are more strict
+      const ob3Data = {
         ...baseObject,
         type: 'VerifiableCredential',
         badge: this.badgeClass, // In OB3, badge is the IRI of the Achievement
         verification: this.verification as OB3.Proof,
         // Add required OB3 properties
         '@context': 'https://www.w3.org/2018/credentials/v1',
-        issuer: this.issuer || '',
-        issuanceDate: this.issuedOn,
-        credentialSubject: this.recipient,
+        // Cast to proper types for OB3
+        issuer: this.issuer as Shared.IRI,
+        issuanceDate: this.issuedOn as unknown as OB3.DateTime,
+        // Create a proper CredentialSubject with required achievement property
+        credentialSubject: {
+          id: (this.recipient as OB2.IdentityObject).identity || '',
+          type: 'AchievementSubject',
+          achievement: this.badgeClass,
+        } as OB3.CredentialSubject,
       };
-      return ob3Data;
+      return ob3Data as OB3.VerifiableCredential;
     }
   }
 
