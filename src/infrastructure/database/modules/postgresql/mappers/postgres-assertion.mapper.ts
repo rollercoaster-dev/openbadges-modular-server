@@ -85,21 +85,24 @@ export class PostgresAssertionMapper {
     }
 
     // Create and return the database record suitable for insertion
-    // Construct the object based on schema requirements for insert, excluding DB defaults.
+    // Construct the object based on schema requirements for insert, including ID if provided.
     const recordToInsert = {
+      // Include ID if provided in the entity
+      ...(entity.id && { id: entity.id as string }),
       badgeClassId: entity.badgeClass as string, // Map from entity.badgeClass (IRI) and cast to string
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
-      // issuedOn has defaultNow() in schema, let DB handle it on insert
+      // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
+      ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),
       expires: safeConvertToDate(entity.expires), // Use safe conversion
       evidence: convertJson(entity.evidence, 'postgresql', 'to'),
       verification: convertJson(entity.verification, 'postgresql', 'to'),
       revoked: convertJson(entity.revoked ? { status: true } : null, 'postgresql', 'to'),
       revocationReason: entity.revocationReason,
       additionalFields: convertJson(entity.additionalFields, 'postgresql', 'to'),
-      // DO NOT include id, issuedOn, createdAt, updatedAt - let the database handle these
+      // DO NOT include createdAt, updatedAt - let the database handle these
     };
     // Cast the fully constructed object to the expected insert model type before returning.
-    // This assumes the constructed object matches the actual requirements, 
+    // This assumes the constructed object matches the actual requirements,
     // even if TS struggles to statically verify AssertionInsertModel during construction.
     return recordToInsert as AssertionInsertModel;
   }

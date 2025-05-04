@@ -23,7 +23,7 @@ export class PostgresBadgeClassMapper {
     const safeParseJson = <T>(json: unknown, defaultValue: T): T => {
       if (typeof json === 'string') {
         try { return JSON.parse(json); } catch (_error) { return defaultValue; }
-      } 
+      }
       // If it's already an object (less common from DB but possible), return it
       if (typeof json === 'object' && json !== null) {
         return json as T;
@@ -66,7 +66,7 @@ export class PostgresBadgeClassMapper {
 
     // Convert complex types to JSON strings for storage
     // Provide default '{}' for criteria as it's notNull in schema
-    const criteriaJson = entity.criteria ? JSON.stringify(entity.criteria) : '{}'; 
+    const criteriaJson = entity.criteria ? JSON.stringify(entity.criteria) : '{}';
     const alignmentJson = entity.alignment ? JSON.stringify(entity.alignment) : null;
     const tagsJson = entity.tags ? JSON.stringify(entity.tags) : null;
 
@@ -81,8 +81,9 @@ export class PostgresBadgeClassMapper {
     const additionalFieldsJson = Object.keys(additionalFields).length > 0 ? JSON.stringify(additionalFields) : null;
 
     // Prepare the record for persistence, matching the schema
-    // Exclude 'id' as it's auto-generated
-    const record: { 
+    // Include ID if provided in the entity
+    const record: {
+      id?: string;
       issuerId: string;
       name: string;
       description: string;
@@ -92,14 +93,15 @@ export class PostgresBadgeClassMapper {
       tags: string | null;
       additionalFields: string | null;
     } = {
-      issuerId: entity.issuer as string, 
+      ...(entity.id && { id: entity.id as string }),
+      issuerId: entity.issuer as string,
       name: entity.name,
       description: entity.description,
       // Handle image type, provide default empty string for notNull schema field
-      image: typeof entity.image === 'string' 
-        ? entity.image 
-        : typeof entity.image === 'object' && entity.image !== null && 'id' in entity.image 
-        ? entity.image.id 
+      image: typeof entity.image === 'string'
+        ? entity.image
+        : typeof entity.image === 'object' && entity.image !== null && 'id' in entity.image
+        ? entity.image.id
         : '', // Default empty string for notNull image field
       criteria: criteriaJson, // Already stringified, defaults to '{}' for notNull
       alignment: alignmentJson, // Stringified or null

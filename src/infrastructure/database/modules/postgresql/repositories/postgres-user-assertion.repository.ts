@@ -2,51 +2,258 @@
  * PostgreSQL implementation of the UserAssertion repository
  *
  * This class implements the UserAssertionRepository interface using PostgreSQL
+ * and the Data Mapper pattern.
  */
 
+import { eq, and, ne, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { UserAssertion } from '@domains/backpack/user-assertion.entity';
 import type { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
+import { userAssertions } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { UserAssertionStatus } from '@domains/backpack/backpack.types';
 import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/backpack/repository.types';
 
-/**
- * PostgreSQL implementation of the UserAssertion repository
- *
- * @todo Implement this class
- */
 export class PostgresUserAssertionRepository implements UserAssertionRepository {
-  constructor(private client: postgres.Sql) {
-    logger.info('PostgresUserAssertionRepository initialized');
+  private db: ReturnType<typeof drizzle>;
+
+  constructor(client: postgres.Sql) {
+    this.db = drizzle(client);
   }
 
-  async addAssertion(_userIdOrParams: Shared.IRI | UserAssertionCreateParams, _assertionId?: Shared.IRI, _metadata?: Record<string, unknown>): Promise<UserAssertion> {
-    throw new Error('Method not implemented.');
+  async addAssertion(userIdOrParams: Shared.IRI | UserAssertionCreateParams, assertionId?: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+    try {
+      // Handle params object
+      if (typeof userIdOrParams !== 'string') {
+        const params = userIdOrParams;
+        return this.createUserAssertion(params.userId, params.assertionId, params.metadata);
+      }
+
+      // Handle individual parameters
+      if (!assertionId) {
+        throw new Error('Assertion ID is required when userId is provided');
+      }
+
+      return this.createUserAssertion(userIdOrParams, assertionId, metadata);
+    } catch (error) {
+      logger.error('Error adding assertion to user in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userIdOrParams,
+        assertionId
+      });
+      throw error;
+    }
   }
 
-  async removeAssertion(_userId: Shared.IRI, _assertionId: Shared.IRI): Promise<boolean> {
-    throw new Error('Method not implemented.');
+  /**
+   * Internal method to create a user assertion
+   */
+  private async createUserAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+    // Create a new user assertion entity
+    const userAssertion = UserAssertion.create({
+      userId,
+      assertionId,
+      metadata
+    });
+    const obj = userAssertion.toObject();
+
+    // Insert into database with ON CONFLICT DO UPDATE
+    const result = await this.db.insert(userAssertions)
+      .values({
+        id: obj.id as string,
+        userId: obj.userId as string,
+        assertionId: obj.assertionId as string,
+        addedAt: obj.addedAt as Date,
+        status: obj.status as string,
+        metadata: obj.metadata || null
+      })
+      .onConflictDoUpdate({
+        target: [userAssertions.userId, userAssertions.assertionId],
+        set: {
+          status: obj.status as string,
+          metadata: obj.metadata || null
+        }
+      })
+      .returning();
+
+    // Convert database record back to domain entity
+    return this.rowToDomain(result[0]);
   }
 
-  async updateStatus(_userId: Shared.IRI, _assertionId: Shared.IRI, _status: UserAssertionStatus): Promise<boolean> {
-    throw new Error('Method not implemented.');
+  async removeAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+    try {
+      // Delete from database
+      const result = await this.db.delete(userAssertions)
+        .where(
+          and(
+            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.assertionId, assertionId as string)
+          )
+        )
+        .returning();
+
+      // Return true if something was deleted
+      return result.length > 0;
+    } catch (error) {
+      logger.error('Error removing assertion from user in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
   }
 
-  async getUserAssertions(_userId: Shared.IRI, _params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
-    throw new Error('Method not implemented.');
+  async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
+    try {
+      // Update status in database
+      const result = await this.db.update(userAssertions)
+        .set({ status: status as string })
+        .where(
+          and(
+            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.assertionId, assertionId as string)
+          )
+        )
+        .returning();
+
+      // Return true if something was updated
+      return result.length > 0;
+    } catch (error) {
+      logger.error('Error updating assertion status in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId,
+        status
+      });
+      throw error;
+    }
   }
 
-  async getAssertionUsers(_assertionId: Shared.IRI): Promise<UserAssertion[]> {
-    throw new Error('Method not implemented.');
+  async getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
+    try {
+      // Start with a base query
+      let query = this.db.select().from(userAssertions)
+        .where(eq(userAssertions.userId, userId as string));
+
+      // Add status filter
+      if (params?.status) {
+        query = query.where(eq(userAssertions.status, params.status as string));
+      } else {
+        // By default, exclude deleted assertions
+        query = query.where(ne(userAssertions.status, UserAssertionStatus.DELETED as string));
+      }
+
+      // Add limit and offset if provided
+      if (params?.limit) {
+        query = query.limit(params.limit);
+
+        if (params.offset) {
+          query = query.offset(params.offset);
+        }
+      }
+
+      // Execute the query
+      const result = await query;
+
+      // Convert database records to domain entities
+      return result.map(row => this.rowToDomain(row));
+    } catch (error) {
+      logger.error('Error getting user assertions in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId
+      });
+      throw error;
+    }
   }
 
-  async hasAssertion(_userId: Shared.IRI, _assertionId: Shared.IRI): Promise<boolean> {
-    throw new Error('Method not implemented.');
+  async getAssertionUsers(assertionId: Shared.IRI): Promise<UserAssertion[]> {
+    try {
+      // Query database
+      const result = await this.db.select().from(userAssertions)
+        .where(eq(userAssertions.assertionId, assertionId as string));
+
+      // Convert database records to domain entities
+      return result.map(row => this.rowToDomain(row));
+    } catch (error) {
+      logger.error('Error getting assertion users in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        assertionId
+      });
+      throw error;
+    }
   }
 
-  async findByUserAndAssertion(_userId: Shared.IRI, _assertionId: Shared.IRI): Promise<UserAssertion | null> {
-    throw new Error('Method not implemented.');
+  async hasAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+    try {
+      // Query database
+      const result = await this.db.select({ exists: sql`1` }).from(userAssertions)
+        .where(
+          and(
+            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.assertionId, assertionId as string),
+            ne(userAssertions.status, UserAssertionStatus.DELETED as string)
+          )
+        );
+
+      // Return true if found
+      return result.length > 0;
+    } catch (error) {
+      logger.error('Error checking if user has assertion in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  async findByUserAndAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<UserAssertion | null> {
+    try {
+      // Query database
+      const result = await this.db.select().from(userAssertions)
+        .where(
+          and(
+            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.assertionId, assertionId as string)
+          )
+        );
+
+      // Return null if not found
+      if (!result.length) {
+        return null;
+      }
+
+      // Convert database record to domain entity
+      return this.rowToDomain(result[0]);
+    } catch (error) {
+      logger.error('Error finding user assertion by user and assertion ID in PostgreSQL repository', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        assertionId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Converts a database row to a domain entity
+   * @param row The database row
+   * @returns A UserAssertion domain entity
+   */
+  private rowToDomain(row: unknown): UserAssertion {
+    // Cast row to the expected type
+    const typedRow = row as Record<string, string | number | null | Date | Record<string, unknown>>;
+
+    return UserAssertion.create({
+      id: String(typedRow.id) as Shared.IRI,
+      userId: String(typedRow.userId) as Shared.IRI,
+      assertionId: String(typedRow.assertionId) as Shared.IRI,
+      addedAt: typedRow.addedAt instanceof Date ? typedRow.addedAt : new Date(String(typedRow.addedAt)),
+      status: String(typedRow.status) as UserAssertionStatus,
+      metadata: typedRow.metadata as Record<string, unknown> | undefined
+    });
   }
 }

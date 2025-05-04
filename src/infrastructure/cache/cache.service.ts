@@ -53,13 +53,14 @@ export class CacheService implements CacheInterface {
     const { max = 1000, ttl = 3600, updateAgeOnGet = true } = options;
 
     // Create a new LRU cache instance
+    // LRU.min exports a function, not a class constructor
     // @ts-ignore - LRU.min doesn't have proper TypeScript definitions
     const LRU = LRUModule.default || LRUModule;
-    // @ts-ignore - Using any type to bypass TypeScript errors
-    this.cache = new LRU({
+    // Call the function directly instead of using 'new'
+    this.cache = LRU({
       max,
       updateAgeOnGet
-    });
+    }) as LRUType;
 
     this.defaultTtl = ttl;
   }

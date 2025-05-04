@@ -41,12 +41,12 @@ export class PostgresIssuerMapper {
     // Ensure additionalFields is a spreadable object
     // Note: Issuer.create expects additionalFields to be Record<string, unknown> potentially.
     // Ensure the object structure is valid for spreading.
-    const safeAdditionalFields = 
+    const safeAdditionalFields =
       additionalFields && typeof additionalFields === 'object' && !Array.isArray(additionalFields)
         ? additionalFields as Record<string, unknown> // Assert after check
         : undefined; // Pass undefined if not a valid object
 
-    // --- Type Validation and Conversion --- 
+    // --- Type Validation and Conversion ---
     // ID (Assuming ID from DB is always present and stringifiable)
     const domainId = id?.toString() as Shared.IRI;
     if (!domainId) {
@@ -102,7 +102,7 @@ export class PostgresIssuerMapper {
 
   /**
    * Converts a domain entity to a database record suitable for insertion.
-   * Excludes DB-generated fields.
+   * Includes ID if provided in the entity.
    * @param entity The Issuer entity (or partial) to convert.
    * @returns The database record object for insertion.
    * @throws Error if required fields (name, url) are missing.
@@ -117,6 +117,8 @@ export class PostgresIssuerMapper {
     }
 
     const recordToInsert = {
+      // Include ID if provided in the entity
+      ...(entity.id && { id: entity.id as string }),
       name: entity.name,
       url: entity.url as string, // Assuming url is IRI, cast to string
       email: entity.email,
@@ -124,7 +126,7 @@ export class PostgresIssuerMapper {
       image: entity.image as string, // Assuming image is IRI, cast to string
       publicKey: convertJson(entity.publicKey, 'postgresql', 'to'),
       additionalFields: convertJson(entity.additionalFields, 'postgresql', 'to'),
-      // Exclude id, createdAt, updatedAt (DB defaults)
+      // Exclude createdAt, updatedAt (DB defaults)
     };
     return recordToInsert as IssuerInsertModel; // Use type assertion if TS struggles
   }
