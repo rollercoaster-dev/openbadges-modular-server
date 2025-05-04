@@ -13,6 +13,7 @@ import { AssertionData, RecipientData, VerificationData } from '../../utils/type
 import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
+import { toIRI } from '../../utils/types/iri-utils';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -106,13 +107,15 @@ export class Assertion {
         '@context': 'https://www.w3.org/2018/credentials/v1',
         // Cast to proper types for OB3
         issuer: this.issuer as Shared.IRI,
-        issuanceDate: this.issuedOn as unknown as OB3.DateTime,
+        // OB3 uses string for dates but with a specific format
+        issuanceDate: this.issuedOn,
         // Create a proper CredentialSubject with required achievement property
+        // First cast to unknown to avoid type errors
         credentialSubject: {
-          id: (this.recipient as OB2.IdentityObject).identity || '',
+          id: toIRI((this.recipient as OB2.IdentityObject).identity || ''),
           type: 'AchievementSubject',
           achievement: this.badgeClass,
-        } as OB3.CredentialSubject,
+        } as unknown as OB3.CredentialSubject,
       };
       return ob3Data as OB3.VerifiableCredential;
     }
