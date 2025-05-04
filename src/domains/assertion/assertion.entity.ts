@@ -126,6 +126,8 @@ export class Assertion {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
     // Get properly typed data for the assertion itself
+    // We don't use typedData directly anymore, but keeping this for reference
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const typedData = this.toObject(version);
 
     // Convert to AssertionData format expected by serializer
