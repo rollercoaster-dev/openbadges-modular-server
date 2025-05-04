@@ -138,7 +138,12 @@ export class SqliteAssertionRepository implements AssertionRepository {
       }
 
       // Create a merged entity
-      // Get the existing assertion as a plain object while preserving prototype information
+      // Get the existing assertion as a plain object while preserving prototype information.
+      // Preserving the prototype ensures that the merged entity retains the behavior and methods
+      // of the original Assertion class. This is critical for maintaining the integrity of the domain model.
+      // The merge order is also important: properties from the `assertion` object will overwrite those
+      // in `existingData`. This allows updates to take precedence while retaining any unchanged properties
+      // from the existing assertion.
       const existingData = Object.assign(Object.create(Object.getPrototypeOf(existingAssertion)), existingAssertion);
 
       // Create a merged assertion
