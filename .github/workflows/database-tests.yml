@@ -60,11 +60,11 @@ jobs:
       - name: Run PostgreSQL tests
         run: bun test tests/infrastructure/database/modules/postgresql
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          TEST_DATABASE_URL: ${{ vars.TEST_DATABASE_URL }}
 
   # Template for future database implementations (e.g., MongoDB)
   # Uncomment and modify this section when adding a new database
-  # 
+  #
   # mongodb-tests:
   #   runs-on: ubuntu-latest
   #   services:
