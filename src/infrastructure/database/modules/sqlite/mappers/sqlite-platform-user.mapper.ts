@@ -39,15 +39,15 @@ export class SqlitePlatformUserMapper {
     // Use type assertion with Record<string, unknown> to add optional fields
     const extendedRecord = record as Record<string, unknown>;
 
-    if (data.displayName) {
+    if (data.displayName !== undefined) {
       extendedRecord.displayName = String(data.displayName);
     }
 
-    if (data.email) {
+    if (data.email !== undefined) {
       extendedRecord.email = String(data.email);
     }
 
-    if (data.metadata) {
+    if (data.metadata !== undefined) {
       extendedRecord.metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
     }
 

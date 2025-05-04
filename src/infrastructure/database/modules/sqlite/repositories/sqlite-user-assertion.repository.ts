@@ -74,22 +74,22 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Add fields to update if they exist
       const extendedRecord = record as Record<string, unknown>;
 
-      if ('status' in extendedRecord || extendedRecord.status) {
+      if ('status' in extendedRecord && extendedRecord.status !== undefined) {
         updateData.status = extendedRecord.status as string;
       }
 
-      if ('metadata' in extendedRecord || extendedRecord.metadata) {
+      if ('metadata' in extendedRecord && extendedRecord.metadata !== undefined) {
         updateData.metadata = extendedRecord.metadata as string;
       }
 
       // Create a properly typed update object for Drizzle
       const drizzleUpdateSet: Record<string, unknown> = {};
 
-      if (updateData.status) {
+      if (updateData.status !== undefined) {
         drizzleUpdateSet[userAssertions.status.name] = updateData.status;
       }
 
-      if (updateData.metadata) {
+      if (updateData.metadata !== undefined) {
         drizzleUpdateSet[userAssertions.metadata.name] = updateData.metadata;
       }
 
