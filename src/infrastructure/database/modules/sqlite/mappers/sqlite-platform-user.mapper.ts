@@ -76,4 +76,34 @@ export class SqlitePlatformUserMapper {
       updatedAt: convertTimestamp(record.updatedAt, 'sqlite', 'from') as Date
     });
   }
+
+  /**
+   * Creates an update object for the database from a persistence record
+   * @param record The persistence record to create an update object from
+   * @returns An object suitable for updating the database
+   */
+  toUpdateObject(record: InferInsertModel<typeof platformUsers>): Record<string, unknown> {
+    // Create the update object with required fields
+    const updateData: Record<string, unknown> = {
+      platformId: record.platformId,
+      externalUserId: record.externalUserId,
+      updatedAt: record.updatedAt
+    };
+
+    // Add optional fields with null handling
+    const extendedRecord = record as Record<string, unknown>;
+    if ('displayName' in extendedRecord) {
+      updateData.displayName = extendedRecord.displayName ?? null;
+    }
+
+    if ('email' in extendedRecord) {
+      updateData.email = extendedRecord.email ?? null;
+    }
+
+    if ('metadata' in extendedRecord) {
+      updateData.metadata = extendedRecord.metadata ?? null;
+    }
+
+    return updateData;
+  }
 }

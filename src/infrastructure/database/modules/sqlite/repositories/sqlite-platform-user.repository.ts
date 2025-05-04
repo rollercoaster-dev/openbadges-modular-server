@@ -120,29 +120,9 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
         updatedAt: new Date()
       });
 
-      // Convert domain entity to database record
+      // Convert domain entity to database record and create update object
       const record = this.mapper.toPersistence(mergedUser);
-
-      // Prepare update data with required fields
-      const updateData: Record<string, unknown> = {
-        platformId: record.platformId,
-        externalUserId: record.externalUserId,
-        updatedAt: record.updatedAt
-      };
-
-      // Add optional fields with null handling
-      const extendedRecord = record as Record<string, unknown>;
-      if ('displayName' in extendedRecord) {
-        updateData.displayName = extendedRecord.displayName ?? null;
-      }
-
-      if ('email' in extendedRecord) {
-        updateData.email = extendedRecord.email ?? null;
-      }
-
-      if ('metadata' in extendedRecord) {
-        updateData.metadata = extendedRecord.metadata ?? null;
-      }
+      const updateData = this.mapper.toUpdateObject(record);
 
       // Update in database using Drizzle ORM
       await this.db
