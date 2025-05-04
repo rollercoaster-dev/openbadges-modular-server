@@ -78,35 +78,37 @@ export class PostgresPlatformRepository implements PlatformRepository {
   async findAll(params?: PlatformQueryParams): Promise<Platform[]> {
     try {
       // Build query conditions
-      const conditions = [];
+      const whereConditions = [];
 
       if (params?.status) {
-        conditions.push(eq(platforms.status, params.status));
+        whereConditions.push(eq(platforms.status, params.status));
       }
 
       if (params?.name) {
-        conditions.push(like(platforms.name, `%${params.name}%`));
+        whereConditions.push(like(platforms.name, `%${params.name}%`));
       }
 
-      // Start with a base query
-      let baseQuery = this.db.select().from(platforms);
+      // Build the query
+      let query = this.db.select().from(platforms);
 
-      // Apply conditions if any
-      if (conditions.length > 0) {
-        baseQuery = baseQuery.where(and(...conditions));
+      // Apply where conditions if any
+      if (whereConditions.length > 0) {
+        query = query.where(whereConditions.length === 1
+          ? whereConditions[0]
+          : and(...whereConditions));
       }
 
-      // Apply pagination if provided
+      // Apply pagination
       if (params?.limit !== undefined) {
-        baseQuery = baseQuery.limit(params.limit);
+        query = query.limit(params.limit);
       }
 
       if (params?.offset !== undefined && params.offset > 0) {
-        baseQuery = baseQuery.offset(params.offset);
+        query = query.offset(params.offset);
       }
 
       // Execute the query
-      const result = await baseQuery;
+      const result = await query;
 
       // Convert database records to domain entities
       return result.map(row => this.rowToDomain(row));

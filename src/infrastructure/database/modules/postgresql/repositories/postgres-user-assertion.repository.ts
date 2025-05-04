@@ -22,12 +22,18 @@ type UserAssertionInsertValues = {
   assertionId: string;
   addedAt: Date;
   status?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
 };
 
 // Define the type for user assertion update values
 type UserAssertionUpdateValues = {
   status: string;
+};
+
+// Define the type for user assertion conflict update values
+type UserAssertionConflictUpdateValues = {
+  status?: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 export class PostgresUserAssertionRepository implements UserAssertionRepository {
@@ -82,17 +88,19 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
     // Add optional fields if they exist
     if (obj.status) insertValues.status = obj.status as string;
-    if (obj.metadata) insertValues.metadata = obj.metadata;
+    if (obj.metadata) insertValues.metadata = obj.metadata as Record<string, unknown> | null;
+
+    // Prepare update values for conflict case
+    const updateValues: UserAssertionConflictUpdateValues = {};
+    if (obj.status) updateValues.status = obj.status as string;
+    if (obj.metadata) updateValues.metadata = obj.metadata as Record<string, unknown> | null;
 
     // Insert into database
     const result = await this.db.insert(userAssertions)
       .values(insertValues)
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
-        set: {
-          ...(obj.status ? { status: obj.status as string } : {}),
-          ...(obj.metadata ? { metadata: obj.metadata } : {})
-        }
+        set: updateValues
       })
       .returning();
 
