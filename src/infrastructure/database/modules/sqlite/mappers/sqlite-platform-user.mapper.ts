@@ -26,17 +26,29 @@ export class SqlitePlatformUserMapper {
     // Get entity data
     const data = entity.toObject();
 
-    // Return database record
-    return {
+    // Create the record with required fields
+    const record: InferInsertModel<typeof platformUsers> = {
       id: convertUuid(data.id as string, 'sqlite', 'to') as string,
       platformId: convertUuid(data.platformId as string, 'sqlite', 'to') as string,
       externalUserId: String(data.externalUserId),
-      displayName: data.displayName ? String(data.displayName) : null,
-      email: data.email ? String(data.email) : null,
-      metadata: convertJson(data.metadata, 'sqlite', 'to') as string | null,
       createdAt: convertTimestamp(data.createdAt as Date, 'sqlite', 'to') as number,
       updatedAt: convertTimestamp(data.updatedAt as Date, 'sqlite', 'to') as number
     };
+
+    // Add optional fields if they exist
+    if (data.displayName) {
+      record.displayName = String(data.displayName);
+    }
+
+    if (data.email) {
+      record.email = String(data.email);
+    }
+
+    if (data.metadata) {
+      record.metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
+    }
+
+    return record;
   }
 
   /**

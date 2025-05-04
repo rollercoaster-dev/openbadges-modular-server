@@ -33,9 +33,13 @@ export class SqliteUserAssertionMapper {
       userId: convertUuid(data.userId as string, 'sqlite', 'to') as string,
       assertionId: convertUuid(data.assertionId as string, 'sqlite', 'to') as string,
       addedAt: convertTimestamp(data.addedAt as Date, 'sqlite', 'to') as number,
-      status: String(data.status),
-      metadata: convertJson(data.metadata, 'sqlite', 'to') as string | null
+      status: String(data.status)
     };
+
+    // Add optional fields if they exist
+    if (data.metadata) {
+      record.metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
+    }
 
     return record;
   }
