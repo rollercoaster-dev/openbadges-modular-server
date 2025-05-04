@@ -111,9 +111,9 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       id: this.id,
       issuer: this.issuer as Shared.IRI,
       name: this.name as string,
-      description: this.description as string ?? '', // Ensure description is never undefined
-      image: this.image as Shared.IRI ?? '', // Ensure image is never undefined
-      criteria: this.criteria as Shared.IRI ?? '',
+      description: (this.description as string) ?? '', // Ensure description is never undefined
+      image: (this.image as Shared.IRI) ?? '', // Ensure image is never undefined
+      criteria: (this.criteria as Shared.IRI) ?? '',
       // Add other required fields
       alignment: this.alignment,
       tags: this.tags,
