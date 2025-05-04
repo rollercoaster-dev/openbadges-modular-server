@@ -29,6 +29,12 @@ export class Assertion {
    * - For Open Badges 3.0, this can be an array of strings to represent multiple types.
    * The default value is 'Assertion'.
    */
+  /**
+   * The type of the assertion, which can be a single string or an array of strings.
+   * - For Open Badges 2.0, this is typically a single string, e.g., 'Assertion'.
+   * - For Open Badges 3.0, this can be an array of strings to represent multiple types.
+   * The default value is 'Assertion'.
+   */
   type: string | string[] = 'Assertion';
   badgeClass: Shared.IRI;
   recipient: OB2.IdentityObject | OB3.CredentialSubject;
