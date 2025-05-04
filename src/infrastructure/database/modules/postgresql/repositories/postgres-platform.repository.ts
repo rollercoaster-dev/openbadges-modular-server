@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, like, and } from 'drizzle-orm';
+import { eq, like, and, SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Platform } from '@domains/backpack/platform.entity';
@@ -14,6 +14,27 @@ import { platforms } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams, PlatformStatus } from '@domains/backpack/repository.types';
+
+// Define the type for platform insert values
+type PlatformInsertValues = {
+  name: string;
+  clientId: string;
+  publicKey: string;
+  status: string;
+  description?: string;
+  webhookUrl?: string;
+};
+
+// Define the type for platform update values
+type PlatformUpdateValues = {
+  name: string;
+  clientId: string;
+  publicKey: string;
+  status: string;
+  updatedAt: Date;
+  description?: string;
+  webhookUrl?: string;
+};
 
 export class PostgresPlatformRepository implements PlatformRepository {
   private db: ReturnType<typeof drizzle>;
@@ -28,15 +49,20 @@ export class PostgresPlatformRepository implements PlatformRepository {
       const newPlatform = Platform.create(params as Platform);
       const obj = newPlatform.toObject();
 
-      // Insert into database
-      const result = await this.db.insert(platforms).values({
+      // Prepare insert values
+      const insertValues: PlatformInsertValues = {
         name: obj.name as string,
         clientId: obj.clientId as string,
         publicKey: obj.publicKey as string,
-        status: obj.status as string,
-        ...(obj.description ? { description: obj.description as string } : {}),
-        ...(obj.webhookUrl ? { webhookUrl: obj.webhookUrl as string } : {})
-      }).returning();
+        status: obj.status as string
+      };
+
+      // Add optional fields if they exist
+      if (obj.description) insertValues.description = obj.description as string;
+      if (obj.webhookUrl) insertValues.webhookUrl = obj.webhookUrl as string;
+
+      // Insert into database
+      const result = await this.db.insert(platforms).values(insertValues).returning();
 
       // Convert database record back to domain entity
       return this.rowToDomain(result[0]);
@@ -150,17 +176,22 @@ export class PostgresPlatformRepository implements PlatformRepository {
       });
       const obj = mergedPlatform.toObject();
 
+      // Prepare update values
+      const updateValues: PlatformUpdateValues = {
+        name: obj.name as string,
+        clientId: obj.clientId as string,
+        publicKey: obj.publicKey as string,
+        status: obj.status as string,
+        updatedAt: new Date()
+      };
+
+      // Add optional fields if they exist
+      if (obj.description !== undefined) updateValues.description = obj.description as string;
+      if (obj.webhookUrl !== undefined) updateValues.webhookUrl = obj.webhookUrl as string;
+
       // Update in database
       const result = await this.db.update(platforms)
-        .set({
-          name: obj.name as string,
-          clientId: obj.clientId as string,
-          publicKey: obj.publicKey as string,
-          status: obj.status as string,
-          updatedAt: new Date(),
-          ...(obj.description !== undefined ? { description: obj.description as string } : {}),
-          ...(obj.webhookUrl !== undefined ? { webhookUrl: obj.webhookUrl as string } : {})
-        })
+        .set(updateValues)
         .where(eq(platforms.id, id as string))
         .returning();
 

@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, and, ne, sql } from 'drizzle-orm';
+import { eq, and, ne, sql, SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { UserAssertion } from '@domains/backpack/user-assertion.entity';
@@ -15,6 +15,20 @@ import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { UserAssertionStatus } from '@domains/backpack/backpack.types';
 import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/backpack/repository.types';
+
+// Define the type for user assertion insert values
+type UserAssertionInsertValues = {
+  userId: string;
+  assertionId: string;
+  addedAt: Date;
+  status?: string;
+  metadata?: Record<string, unknown>;
+};
+
+// Define the type for user assertion update values
+type UserAssertionUpdateValues = {
+  status: string;
+};
 
 export class PostgresUserAssertionRepository implements UserAssertionRepository {
   private db: ReturnType<typeof drizzle>;
@@ -59,15 +73,20 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
     });
     const obj = userAssertion.toObject();
 
-    // Insert into database with ON CONFLICT DO UPDATE
+    // Prepare insert values
+    const insertValues: UserAssertionInsertValues = {
+      userId: obj.userId as string,
+      assertionId: obj.assertionId as string,
+      addedAt: obj.addedAt as Date
+    };
+
+    // Add optional fields if they exist
+    if (obj.status) insertValues.status = obj.status as string;
+    if (obj.metadata) insertValues.metadata = obj.metadata;
+
+    // Insert into database
     const result = await this.db.insert(userAssertions)
-      .values({
-        userId: obj.userId as string,
-        assertionId: obj.assertionId as string,
-        addedAt: obj.addedAt as Date,
-        ...(obj.status ? { status: obj.status as string } : {}),
-        ...(obj.metadata ? { metadata: obj.metadata } : {})
-      })
+      .values(insertValues)
       .onConflictDoUpdate({
         target: [userAssertions.userId, userAssertions.assertionId],
         set: {
@@ -107,9 +126,14 @@ export class PostgresUserAssertionRepository implements UserAssertionRepository 
 
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
+      // Prepare update values
+      const updateValues: UserAssertionUpdateValues = {
+        status: status as string
+      };
+
       // Update status in database
       const result = await this.db.update(userAssertions)
-        .set({ status: status as string })
+        .set(updateValues)
         .where(
           and(
             eq(userAssertions.userId, userId as string),
