@@ -27,15 +27,24 @@ export class SqliteUserAssertionMapper {
     // Get entity data
     const data = entity.toObject();
 
-    // Create the record with all fields
-    return {
+    // Create the record with required fields
+    const record: InferInsertModel<typeof userAssertions> = {
       id: convertUuid(data.id as string, 'sqlite', 'to') as string,
       userId: convertUuid(data.userId as string, 'sqlite', 'to') as string,
       assertionId: convertUuid(data.assertionId as string, 'sqlite', 'to') as string,
-      addedAt: convertTimestamp(data.addedAt as Date, 'sqlite', 'to') as number,
-      status: String(data.status),
-      metadata: data.metadata ? convertJson(data.metadata, 'sqlite', 'to') as string : null
+      addedAt: convertTimestamp(data.addedAt as Date, 'sqlite', 'to') as number
     };
+
+    // Add optional fields if they exist
+    if (data.status) {
+      (record as any).status = String(data.status);
+    }
+
+    if (data.metadata) {
+      (record as any).metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
+    }
+
+    return record;
   }
 
   /**

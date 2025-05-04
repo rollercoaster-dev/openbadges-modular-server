@@ -69,15 +69,23 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       const record = this.mapper.toPersistence(userAssertion);
 
       // Insert into database with ON CONFLICT DO UPDATE
+      const updateData: Record<string, unknown> = {};
+
+      // Add fields to update if they exist
+      if ('status' in record || (record as any).status) {
+        updateData.status = (record as any).status;
+      }
+
+      if ('metadata' in record || (record as any).metadata) {
+        updateData.metadata = (record as any).metadata;
+      }
+
       await this.db
         .insert(userAssertions)
         .values(record)
         .onConflictDoUpdate({
           target: [userAssertions.userId, userAssertions.assertionId],
-          set: {
-            status: record.status,
-            metadata: record.metadata
-          }
+          set: updateData as any
         })
         .returning();
 
@@ -121,9 +129,13 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
       // Update status in database using Drizzle ORM
+      const updateData: Record<string, unknown> = {
+        status: String(status)
+      };
+
       const result = await this.db
         .update(userAssertions)
-        .set({ status: String(status) })
+        .set(updateData as any)
         .where(
           and(
             eq(userAssertions.userId, userId as string),
