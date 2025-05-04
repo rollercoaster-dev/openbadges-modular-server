@@ -36,12 +36,15 @@ export class SqliteUserAssertionMapper {
     };
 
     // Add optional fields if they exist
+    // Use type assertion with Record<string, unknown> to add optional fields
+    const extendedRecord = record as Record<string, unknown>;
+
     if (data.status) {
-      (record as any).status = String(data.status);
+      extendedRecord.status = String(data.status);
     }
 
     if (data.metadata) {
-      (record as any).metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
+      extendedRecord.metadata = convertJson(data.metadata, 'sqlite', 'to') as string;
     }
 
     return record;
