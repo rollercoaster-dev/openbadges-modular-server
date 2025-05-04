@@ -55,13 +55,37 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
 
   /**
    * Converts the badge class to a plain object
-   * @returns A plain object representation of the badge class, compatible with OB2.BadgeClass and OB3.Achievement
+   * @param version The badge version to use (defaults to 3.0)
+   * @returns A plain object representation of the badge class, properly typed as OB2.BadgeClass or OB3.Achievement
    */
-  toObject(): OB2.BadgeClass | OB3.Achievement {
-    // Note: Returning a direct shallow copy. Minor discrepancies might exist 
-    // with strict OB2/OB3 types (e.g., 'type' property), 
-    // but this is generally compatible for serialization.
-    return { ...this } as OB2.BadgeClass | OB3.Achievement;
+  toObject(version: BadgeVersion = BadgeVersion.V3): OB2.BadgeClass | OB3.Achievement {
+    // Create a base object with common properties
+    const baseObject = {
+      id: this.id,
+      name: this.name,
+      description: this.description || '',
+      image: this.image,
+      criteria: this.criteria,
+      alignment: this.alignment,
+      tags: this.tags,
+    };
+
+    // Add version-specific properties
+    if (version === BadgeVersion.V2) {
+      // OB2 BadgeClass
+      return {
+        ...baseObject,
+        type: 'BadgeClass',
+        issuer: this.issuer,
+      } as OB2.BadgeClass;
+    } else {
+      // OB3 Achievement
+      return {
+        ...baseObject,
+        type: 'Achievement',
+        issuer: this.issuer,
+      } as OB3.Achievement;
+    }
   }
 
   /**
@@ -81,21 +105,22 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
    */
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    // Use toPartial() to get the internal state.
-    const partialData = this.toPartial();
-    // Ensure the data passed to the serializer has all required fields (like description).
-    // We need to assert the type more specifically for the serializer
-    const dataForSerializer = {
-      ...partialData,
-      id: partialData.id as Shared.IRI, // Assert required id
-      issuer: partialData.issuer as Shared.IRI, // Assert required issuer
-      name: partialData.name as string, // Assert required name
-      description: partialData.description ?? '', // Provide default empty string for required description
-      // Include other potentially required fields if BadgeClassData mandates them, or cast
+
+    // Use direct properties instead of typedData to avoid type issues
+    const dataForSerializer: BadgeClassData = {
+      id: this.id,
+      issuer: this.issuer as Shared.IRI,
+      name: this.name as string,
+      description: (this.description as string) ?? '', // Ensure description is never undefined
+      image: (this.image as Shared.IRI) ?? '', // Ensure image is never undefined
+      criteria: (this.criteria as Shared.IRI) ?? '',
+      // Add other required fields
+      alignment: this.alignment,
+      tags: this.tags,
     };
-    // Pass the guaranteed-complete data, casting as the specific data type the serializer expects
-    // Let's assume the serializer's expected type aligns with the structure we built
-    return serializer.serializeBadgeClass(dataForSerializer as BadgeClassData);
+
+    // Pass the properly typed data to the serializer
+    return serializer.serializeBadgeClass(dataForSerializer);
   }
 
   /**

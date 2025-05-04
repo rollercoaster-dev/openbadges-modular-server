@@ -377,7 +377,10 @@ export class AssertionController {
       const signedAssertion = await VerificationService.createVerificationForAssertion(assertion, keyId);
 
       // Update the assertion in the repository
-      const updatedAssertion = await this.assertionRepository.update(assertion.id, signedAssertion.toObject());
+      // Convert the signed assertion to a partial assertion for the repository
+      // Use destructuring to get a plain object with the properties
+      const signedData = { ...signedAssertion };
+      const updatedAssertion = await this.assertionRepository.update(assertion.id, signedData as Partial<Assertion>);
       if (!updatedAssertion) {
         return null;
       }

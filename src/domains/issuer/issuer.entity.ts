@@ -1,6 +1,6 @@
 /**
  * Version-agnostic Issuer entity for Open Badges API
- * 
+ *
  * This file defines the Issuer domain entity that can represent both
  * Open Badges 2.0 and 3.0 specifications.
  */
@@ -54,13 +54,34 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
 
   /**
    * Converts the issuer to a plain object
-   * @returns A plain object representation of the issuer, compatible with OB2.Profile and OB3.Issuer
+   * @param version The badge version to use (defaults to 3.0)
+   * @returns A plain object representation of the issuer, properly typed as OB2.Profile or OB3.Issuer
    */
-  toObject(): OB2.Profile | OB3.Issuer {
-    // Note: Returning a direct shallow copy. Minor discrepancies might exist 
-    // with strict OB2/OB3 types (e.g., 'type' property, 'publicKey' structure), 
-    // but this is generally compatible for serialization.
-    return { ...this } as OB2.Profile | OB3.Issuer;
+  toObject(version: BadgeVersion = BadgeVersion.V3): OB2.Profile | OB3.Issuer {
+    // Create a base object with common properties
+    const baseObject = {
+      id: this.id,
+      name: this.name,
+      url: this.url,
+      email: this.email,
+      description: this.description,
+      image: this.image,
+    };
+
+    // Add version-specific properties
+    if (version === BadgeVersion.V2) {
+      // OB2 Profile
+      return {
+        ...baseObject,
+        type: 'Issuer',
+      } as OB2.Profile;
+    } else {
+      // OB3 Issuer
+      return {
+        ...baseObject,
+        type: 'Profile',
+      } as OB3.Issuer;
+    }
   }
 
   /**
@@ -80,9 +101,20 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
    */
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    // Use toPartial() for serialization to ensure correct types are passed
-    // The serializer expects IssuerData, which aligns with Partial<Issuer>
-    return serializer.serializeIssuer(this.toPartial() as IssuerData);
+
+    // Use direct properties instead of typedData to avoid type issues
+    const dataForSerializer: IssuerData = {
+      id: this.id,
+      name: this.name as string,
+      url: this.url as Shared.IRI,
+      // Add other fields
+      email: this.email,
+      description: this.description,
+      image: this.image as Shared.IRI,
+    };
+
+    // Pass the properly typed data to the serializer
+    return serializer.serializeIssuer(dataForSerializer);
   }
 
   /**

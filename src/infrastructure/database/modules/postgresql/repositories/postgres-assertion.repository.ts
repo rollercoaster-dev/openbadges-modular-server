@@ -83,10 +83,14 @@ export class PostgresAssertionRepository implements AssertionRepository {
     }
 
     // Create a merged entity
+    // Get the existing assertion as a plain object while preserving prototype information
+    const existingData = Object.assign(Object.create(Object.getPrototypeOf(existingAssertion)), existingAssertion);
+
+    // Create a merged assertion
     const mergedAssertion = Assertion.create({
-      ...existingAssertion.toObject(),
-      ...assertion as Partial<Assertion>
-    });
+      ...existingData,
+      ...assertion
+    } as Partial<Assertion>);
 
     // Convert to database record
     const record = this.mapper.toPersistence(mergedAssertion);

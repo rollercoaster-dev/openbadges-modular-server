@@ -5,6 +5,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus, UserAssertionMetadata } from './backpack.types';
 
+/**
+ * Interface for the data returned by UserAssertion.toObject()
+ */
+export interface UserAssertionData {
+  id: Shared.IRI;
+  userId: Shared.IRI;
+  assertionId: Shared.IRI;
+  addedAt: Date;
+  status: UserAssertionStatus;
+  metadata?: UserAssertionMetadata;
+}
+
 export class UserAssertion {
   id: Shared.IRI;
   userId: Shared.IRI;
@@ -46,9 +58,9 @@ export class UserAssertion {
 
   /**
    * Converts the user assertion to a plain object
-   * @returns A plain object representation of the user assertion
+   * @returns A properly typed representation of the user assertion
    */
-  toObject(): Record<string, unknown> {
+  toObject(): UserAssertionData {
     return {
       id: this.id,
       userId: this.userId,

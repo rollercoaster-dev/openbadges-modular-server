@@ -51,9 +51,25 @@ export class VerificationService {
       // Add key ID to the verification object
       verification.creator = toIRI(`${config.openBadges.baseUrl}/public-keys/${keyId}`);
 
+      // Get the assertion data as a plain object
+      // Explicitly select the required fields from the assertion object
+      const assertionData = {
+        id: assertion.id,
+        type: assertion.type,
+        badgeClass: assertion.badgeClass,
+        recipient: assertion.recipient,
+        issuedOn: assertion.issuedOn,
+        expires: assertion.expires,
+        evidence: assertion.evidence,
+        verification: assertion.verification,
+        revoked: assertion.revoked,
+        revocationReason: assertion.revocationReason,
+        issuer: assertion.issuer,
+      };
+
       // Create a new assertion with the verification
       return Assertion.create({
-        ...assertion.toObject(),
+        ...assertionData,
         // Explicitly cast to the OB2 type, which SignedBadgeVerification is compatible with
         verification: verification as OB2.VerificationObject
       });
@@ -76,6 +92,7 @@ export class VerificationService {
     const essentialData = {
       id: assertion.id,
       type: assertion.type,
+      // Use badgeClass property (internal) rather than badge (from toObject)
       badgeClass: assertion.badgeClass,
       recipient: assertion.recipient,
       issuedOn: assertion.issuedOn,
@@ -97,7 +114,7 @@ export class VerificationService {
       await KeyService.initialize();
 
       // Type guard to check if verification is likely an OB3.Proof object
-      if (!assertion.verification || typeof assertion.verification !== 'object' || 
+      if (!assertion.verification || typeof assertion.verification !== 'object' ||
           !('signatureValue' in assertion.verification) || !assertion.verification.signatureValue) {
         logger.warn(`Assertion ${assertion.id} has no verification or signature suitable for checking.`);
         return false;

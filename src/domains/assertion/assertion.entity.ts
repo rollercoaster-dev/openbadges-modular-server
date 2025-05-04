@@ -5,14 +5,15 @@
  * Open Badges 2.0 and 3.0 specifications.
  */
 
-import { Shared, OB2, OB3 } from 'openbadges-types';
+import { Shared, OB2, OB3, createDateTime } from 'openbadges-types';
 import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
-import { AssertionData } from '../../utils/types/badge-data.types';
+import { AssertionData, RecipientData, VerificationData } from '../../utils/types/badge-data.types';
 import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
+import { toIRI } from '../../utils/types/iri-utils';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -22,7 +23,19 @@ export class Assertion {
   // Note: We're not implementing the interfaces directly due to type conflicts
   // between OB2 and OB3 specifications
   id: Shared.IRI;
-  type: string = 'Assertion';
+  /**
+   * The type of the assertion, which can be a single string or an array of strings.
+   * - For Open Badges 2.0, this is typically a single string, e.g., 'Assertion'.
+   * - For Open Badges 3.0, this can be an array of strings to represent multiple types.
+   * The default value is 'Assertion'.
+   */
+  /**
+   * The type of the assertion, which can be a single string or an array of strings.
+   * - For Open Badges 2.0, this is typically a single string, e.g., 'Assertion'.
+   * - For Open Badges 3.0, this can be an array of strings to represent multiple types.
+   * The default value is 'Assertion'.
+   */
+  type: string | string[] = 'Assertion';
   badgeClass: Shared.IRI;
   recipient: OB2.IdentityObject | OB3.CredentialSubject;
   issuedOn: string;
@@ -31,6 +44,7 @@ export class Assertion {
   verification?: OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
+  issuer?: Shared.IRI;
   [key: string]: unknown;
 
   /**
@@ -68,12 +82,57 @@ export class Assertion {
 
   /**
    * Converts the assertion to a plain object
-   * @returns A plain object representation of the assertion, compatible with OB2.Assertion and OB3.VerifiableCredential
+   * @param version The badge version to use (defaults to 3.0)
+   * @returns A plain object representation of the assertion, properly typed as OB2.Assertion or OB3.VerifiableCredential
    */
-  toObject(): Record<string, unknown> {
-    // Note: This returns a direct shallow copy. Minor discrepancies might exist
-    // with strict OB2/OB3 types, but this is generally compatible for serialization.
-    return { ...this };
+  toObject(version: BadgeVersion = BadgeVersion.V3): OB2.Assertion | OB3.VerifiableCredential {
+    // Create a base object with common properties
+    const baseObject = {
+      id: this.id,
+      recipient: this.recipient,
+      issuedOn: this.issuedOn,
+      expires: this.expires,
+      evidence: this.evidence,
+      revoked: this.revoked,
+      revocationReason: this.revocationReason,
+    };
+
+    // Add version-specific properties
+    if (version === BadgeVersion.V2) {
+      // OB2 Assertion
+      return {
+        ...baseObject,
+        type: 'Assertion',
+        badge: this.badgeClass, // In OB2, badge is the IRI of the BadgeClass
+        verification: this.verification as OB2.VerificationObject,
+      } as OB2.Assertion;
+    } else {
+      // OB3 VerifiableCredential
+      // Create a properly typed OB3 VerifiableCredential
+      // We need to cast to unknown first because the OB3 types are more strict
+      const ob3Data = {
+        ...baseObject,
+        type: 'VerifiableCredential',
+        badge: this.badgeClass, // In OB3, badge is the IRI of the Achievement
+        verification: this.verification as OB3.Proof,
+        // Add required OB3 properties
+        '@context': 'https://www.w3.org/2018/credentials/v1',
+        // Cast to proper types for OB3
+        issuer: this.issuer as Shared.IRI,
+        // OB3 uses string for dates but with a specific format
+        // We need to use createDateTime to create a properly typed DateTime
+        issuanceDate: createDateTime(this.issuedOn),
+        // Create a proper CredentialSubject with required achievement property
+        // First cast to unknown to avoid type errors
+        credentialSubject: {
+          id: toIRI((this.recipient as OB2.IdentityObject).identity || ''),
+          type: 'AchievementSubject',
+          achievement: this.badgeClass,
+        } as unknown as OB3.CredentialSubject,
+      };
+      // Validate and type-check ob3Data as OB3.VerifiableCredential
+      return this.validateAsVerifiableCredential(ob3Data);
+    }
   }
 
   /**
@@ -89,10 +148,19 @@ export class Assertion {
     issuer?: Issuer
   ): OB2.Assertion | OB3.VerifiableCredential {
     const serializer = BadgeSerializerFactory.createSerializer(version);
-    
-    // Get partial data for the assertion itself
-    const assertionData = this.toObject() as AssertionData;
-    
+
+    // Convert directly to AssertionData format expected by serializer
+    const assertionData: AssertionData = {
+      id: this.id,
+      badgeClass: this.badgeClass,
+      recipient: this.recipient as RecipientData,
+      issuedOn: this.issuedOn,
+      // Add other properties as needed
+      expires: this.expires,
+      evidence: this.evidence,
+      verification: this.verification as VerificationData,
+    };
+
     // Get JSON-LD representation from passed entities if they exist
     const typedBadgeClass = badgeClass
       ? badgeClass.toJsonLd(version) as BadgeClassData
@@ -100,7 +168,7 @@ export class Assertion {
     const typedIssuer = issuer
       ? issuer.toJsonLd(version) as IssuerData
       : undefined;
-    
+
     // Then serialize with the appropriate serializer
     const output = serializer.serializeAssertion(
       assertionData,
@@ -152,5 +220,27 @@ export class Assertion {
     }
 
     return true;
+  }
+
+  /**
+   * Validates that an object conforms to the OB3.VerifiableCredential interface
+   * @param data The object to validate
+   * @returns The validated object as OB3.VerifiableCredential
+   * @throws Error if the object does not conform to the OB3.VerifiableCredential interface
+   */
+  private validateAsVerifiableCredential(data: unknown): OB3.VerifiableCredential {
+    // Check for required fields in OB3.VerifiableCredential
+    const vcData = data as Record<string, unknown>;
+
+    // Validate required fields
+    if (!vcData.id) throw new Error('VerifiableCredential must have an id');
+    if (!vcData.type) throw new Error('VerifiableCredential must have a type');
+    if (!vcData.issuer) throw new Error('VerifiableCredential must have an issuer');
+    if (!vcData.issuanceDate) throw new Error('VerifiableCredential must have an issuanceDate');
+    if (!vcData.credentialSubject) throw new Error('VerifiableCredential must have a credentialSubject');
+    if (!vcData['@context']) throw new Error('VerifiableCredential must have a @context');
+
+    // If all validations pass, cast to the proper type
+    return vcData as unknown as OB3.VerifiableCredential;
   }
 }
