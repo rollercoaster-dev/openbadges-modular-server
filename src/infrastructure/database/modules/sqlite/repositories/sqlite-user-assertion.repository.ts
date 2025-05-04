@@ -17,6 +17,7 @@ import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/ba
 import { userAssertions } from '../schema';
 import { SqliteUserAssertionMapper } from '../mappers/sqlite-user-assertion.mapper';
 import { createId } from '@paralleldrive/cuid2';
+import { InferInsertModel } from 'drizzle-orm';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
   private db: ReturnType<typeof drizzle>;
@@ -25,6 +26,32 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   constructor(client: Database) {
     this.db = drizzle(client);
     this.mapper = new SqliteUserAssertionMapper();
+  }
+
+  /**
+   * Helper method to construct a properly typed Drizzle update set from a record
+   * @param record The record containing fields to update
+   * @returns A properly typed update object for Drizzle ORM
+   */
+  private constructDrizzleUpdateSet(record: Record<string, unknown>): {
+    [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
+  } {
+    // Define a properly typed update object for Drizzle
+    type DrizzleUpdateSet = {
+      [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
+    };
+
+    const updateSet: DrizzleUpdateSet = {};
+
+    if (record.status !== undefined) {
+      updateSet[userAssertions.status.name] = String(record.status);
+    }
+
+    if (record.metadata !== undefined) {
+      updateSet[userAssertions.metadata.name] = String(record.metadata);
+    }
+
+    return updateSet;
   }
 
   async addAssertion(userIdOrParams: Shared.IRI | UserAssertionCreateParams, assertionId?: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
@@ -69,32 +96,20 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       const record = this.mapper.toPersistence(userAssertion);
 
       // Insert into database with ON CONFLICT DO UPDATE
+      // Extract fields to update from the record
+      const extendedRecord = record as Record<string, unknown>;
       const updateData: Record<string, unknown> = {};
 
-      // Add fields to update if they exist
-      const extendedRecord = record as Record<string, unknown>;
-
       if ('status' in extendedRecord && extendedRecord.status !== undefined) {
-        updateData.status = String(extendedRecord.status);
+        updateData.status = extendedRecord.status;
       }
 
       if ('metadata' in extendedRecord && extendedRecord.metadata !== undefined) {
-        updateData.metadata = String(extendedRecord.metadata);
+        updateData.metadata = extendedRecord.metadata;
       }
 
-      // Define a properly typed update object for Drizzle
-      type DrizzleUpdateSet = {
-        [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
-      };
-      const drizzleUpdateSet: DrizzleUpdateSet = {};
-
-      if (updateData.status !== undefined) {
-        drizzleUpdateSet[userAssertions.status.name] = String(updateData.status);
-      }
-
-      if (updateData.metadata !== undefined) {
-        drizzleUpdateSet[userAssertions.metadata.name] = String(updateData.metadata);
-      }
+      // Use the helper method to construct the Drizzle update set
+      const drizzleUpdateSet = this.constructDrizzleUpdateSet(updateData);
 
       await this.db
         .insert(userAssertions)
@@ -145,12 +160,8 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
       // Update status in database using Drizzle ORM
-      // Define a properly typed update object for Drizzle
-      type DrizzleUpdateSet = {
-        [key in typeof userAssertions.status.name]?: string;
-      };
-      const drizzleUpdateSet: DrizzleUpdateSet = {};
-      drizzleUpdateSet[userAssertions.status.name] = String(status);
+      // Use the helper method to construct the Drizzle update set
+      const drizzleUpdateSet = this.constructDrizzleUpdateSet({ status });
 
       const result = await this.db
         .update(userAssertions)
@@ -194,20 +205,19 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
       // Execute the query with pagination if provided
       let result;
-      if (params?.limit !== undefined) {
-        // Create a new query with limit
-        const limitQuery = query.limit(params.limit);
 
-        // Add offset if provided
-        if (params.offset !== undefined) {
-          result = await limitQuery.offset(params.offset);
-        } else {
-          result = await limitQuery;
-        }
-      } else {
-        // Execute without pagination
-        result = await query;
+      // Apply limit if provided
+      if (params?.limit !== undefined) {
+        query = query.limit(params.limit);
       }
+
+      // Apply offset if provided (even if limit is not provided)
+      if (params?.offset !== undefined) {
+        query = query.offset(params.offset);
+      }
+
+      // Execute the query
+      result = await query;
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
