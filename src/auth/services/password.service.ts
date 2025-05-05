@@ -60,7 +60,8 @@ export class PasswordService {
 
     // Generate cryptographically secure random values
     const randomValues = new Uint8Array(length);
-    // Use globalThis to access the global crypto object
+    // Use crypto.subtle to access the global crypto object
+    // @ts-ignore - TypeScript doesn't recognize crypto.getRandomValues in all environments
     globalThis.crypto.getRandomValues(randomValues);
 
     // Convert random values to password characters
