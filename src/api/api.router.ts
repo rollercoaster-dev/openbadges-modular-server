@@ -29,7 +29,6 @@ import { AuthController } from '../auth/auth.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
 import { requireAuth, requirePermissions } from '../auth/middleware/rbac.middleware';
 import { UserPermission } from '../domains/user/user.entity';
-import { applyMiddleware } from '../utils/middleware/apply-middleware';
 
 /**
  * Creates the API router
@@ -165,49 +164,49 @@ function createVersionedRouter(
   // Issuer routes
   router.post('/issuers',
     ({ body }) => issuerController.createIssuer(body as CreateIssuerDto, version),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.CREATE_ISSUER])), validateIssuerMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_ISSUER]), validateIssuerMiddleware] }
   );
   router.get('/issuers',
     () => issuerController.getAllIssuers(version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/issuers/:id',
     ({ params }) => issuerController.getIssuerById(params.id, version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.put('/issuers/:id',
     ({ params, body }) => issuerController.updateIssuer(params.id, body as UpdateIssuerDto, version),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.UPDATE_ISSUER])), validateIssuerMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_ISSUER]), validateIssuerMiddleware] }
   );
   router.delete('/issuers/:id',
     ({ params }) => issuerController.deleteIssuer(params.id),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.DELETE_ISSUER]))] }
+    { beforeHandle: [requirePermissions([UserPermission.DELETE_ISSUER])] }
   );
 
   // Badge class routes
   router.post('/badge-classes',
     ({ body }) => badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.CREATE_BADGE_CLASS])), validateBadgeClassMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
   router.get('/badge-classes',
     () => badgeClassController.getAllBadgeClasses(version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id',
     ({ params }) => badgeClassController.getBadgeClassById(params.id, version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/issuers/:id/badge-classes',
     ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.put('/badge-classes/:id',
     ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as UpdateBadgeClassDto, version),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.UPDATE_BADGE_CLASS])), validateBadgeClassMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
   router.delete('/badge-classes/:id',
     ({ params }) => badgeClassController.deleteBadgeClass(params.id),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.DELETE_BADGE_CLASS]))] }
+    { beforeHandle: [requirePermissions([UserPermission.DELETE_BADGE_CLASS])] }
   );
 
   // Assertion routes
@@ -216,53 +215,53 @@ function createVersionedRouter(
       const sign = query.sign !== 'false'; // Default to true if not specified
       return assertionController.createAssertion(body as CreateAssertionDto, version, sign);
     },
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.CREATE_ASSERTION])), validateAssertionMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_ASSERTION]), validateAssertionMiddleware] }
   );
   router.get('/assertions',
     () => assertionController.getAllAssertions(version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/assertions/:id',
     ({ params }) => assertionController.getAssertionById(params.id, version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id/assertions',
     ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.put('/assertions/:id',
     ({ params, body }) => assertionController.updateAssertion(params.id, body as UpdateAssertionDto, version),
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.UPDATE_ASSERTION])), validateAssertionMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_ASSERTION]), validateAssertionMiddleware] }
   );
   router.post('/assertions/:id/revoke',
     ({ params, body }) => {
       const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
       return assertionController.revokeAssertion(params.id, reason);
     },
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.REVOKE_ASSERTION]))] }
+    { beforeHandle: [requirePermissions([UserPermission.REVOKE_ASSERTION])] }
   );
 
   // Verification routes
   router.get('/assertions/:id/verify',
     ({ params }) => assertionController.verifyAssertion(params.id),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.post('/assertions/:id/sign',
     ({ params, query }) => {
       const keyId = query.keyId || 'default';
       return assertionController.signAssertion(params.id, keyId as string, version);
     },
-    { beforeHandle: [applyMiddleware(requirePermissions([UserPermission.SIGN_ASSERTION]))] }
+    { beforeHandle: [requirePermissions([UserPermission.SIGN_ASSERTION])] }
   );
 
   // Public key routes
   router.get('/public-keys',
     () => assertionController.getPublicKeys(),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
   router.get('/public-keys/:id',
     ({ params }) => assertionController.getPublicKey(params.id),
-    { beforeHandle: [applyMiddleware(requireAuth())] }
+    { beforeHandle: [requireAuth()] }
   );
 
   return router;
