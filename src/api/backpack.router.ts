@@ -14,6 +14,8 @@ import {
   AddAssertionRequest,
   UpdateAssertionStatusRequest
 } from '../domains/backpack/api.types';
+import { requirePermissions } from '../auth/middleware/rbac.middleware';
+import { UserPermission } from '../domains/user/user.entity';
 
 /**
  * Create a router for backpack endpoints
@@ -37,6 +39,7 @@ export function createBackpackRouter(
   // Platform management endpoints (admin only)
   router.group('/platforms', (app) => {
     return app
+      .use(requirePermissions([UserPermission.MANAGE_PLATFORMS]))
       .get('/', async () => {
         return {
           status: 200,
