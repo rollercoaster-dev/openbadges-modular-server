@@ -12,7 +12,8 @@ import { setupApp } from '../../src/index';
 
 describe('Authentication Integration Tests', () => {
   let app: Elysia;
-  let request: supertest.SuperTest<supertest.Test>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let request: any;
 
   beforeAll(async () => {
     // Initialize the Elysia app using the setup function
@@ -24,7 +25,7 @@ describe('Authentication Integration Tests', () => {
 
   afterAll(async () => {
     // Stop the server if it's running
-    if (app && app.server?.listening) {
+    if (app) {
        await app.stop();
     }
     // Add database cleanup logic here if needed for test isolation
