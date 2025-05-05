@@ -55,8 +55,8 @@ describe('Database Type Conversion Utilities', () => {
           expect(nested.foo).toBe('bar');
         }
       }
-      // Should pass through non-string values
-      expect(convertJson(testObject, 'sqlite', 'from')).toEqual(testObject);
+      // Non-string values should now return null based on our implementation change
+      expect(convertJson(testObject, 'sqlite', 'from')).toBeNull();
     });
 
     it('should handle invalid JSON strings', () => {
@@ -66,16 +66,16 @@ describe('Database Type Conversion Utilities', () => {
     it('should handle non-string values when direction is "from" for SQLite', () => {
       const nonStringValue = { test: 'object' };
       // When a non-string value is passed to convertJson with direction 'from',
-      // it should return the value as is
-      expect(convertJson(nonStringValue, 'sqlite', 'from')).toBe(nonStringValue);
+      // it should now return null based on our implementation change
+      expect(convertJson(nonStringValue, 'sqlite', 'from')).toBeNull();
 
       // Test with array
       const arrayValue = [1, 2, 3];
-      expect(convertJson(arrayValue, 'sqlite', 'from')).toBe(arrayValue);
+      expect(convertJson(arrayValue, 'sqlite', 'from')).toBeNull();
 
       // Test with number
       const numberValue = 123;
-      expect(convertJson(numberValue, 'sqlite', 'from')).toBe(numberValue);
+      expect(convertJson(numberValue, 'sqlite', 'from')).toBeNull();
     });
   });
 

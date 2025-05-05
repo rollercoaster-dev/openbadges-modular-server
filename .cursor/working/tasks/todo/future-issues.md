@@ -1,5 +1,28 @@
 # Future Issues to Address
 
+## Current Status (Updated 2025-05-05)
+
+This document serves as a collection of future improvements that have been identified but not yet scheduled for implementation. These items represent technical debt and enhancement opportunities that should be addressed in future development cycles.
+
+### Priority Assessment:
+
+**High Priority:**
+- Fix the PostgreSQL test issues, particularly the "should find all issuers" test
+- Improve error handling in database repositories
+
+**Medium Priority:**
+- Further reduce type assertions across the codebase
+- Implement a more robust approach to handling duplicate IDs in tests
+
+**Lower Priority:**
+- Enhance PostgreSQL CI testing infrastructure
+- Improve documentation for working with types
+
+### Next Steps:
+1. Schedule the high-priority items for the next development sprint
+2. Create specific GitHub issues for each high-priority item
+3. Assign owners to each issue based on expertise and availability
+
 ## PostgreSQL Testing
 
 1. **Fix the "should find all issuers" test in PostgreSQL repositories.test.ts**
