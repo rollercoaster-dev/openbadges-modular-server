@@ -12,7 +12,7 @@ import { logger } from '../../utils/logging/logger.service';
 /**
  * Context for RBAC middleware
  */
- 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface RBACContext {
   user?: {
     id: string;
