@@ -187,25 +187,11 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
  */
 export const authDebugMiddleware = new Elysia({ name: 'auth-debug-middleware' })
   .derive(async ctx => {
-    const { isAuthenticated, user, request } = ctx;
+    // Cast to any to avoid TypeScript errors with the derived context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { isAuthenticated, user, request } = ctx as any;
     const authHeader = request.headers.get('authorization');
     logger.debug(`Auth status: ${isAuthenticated ? 'authenticated' : 'not authenticated'}, User: ${user ? user.id : 'none'}, Auth header: ${authHeader || 'none'}`);
     return {};
   });
 
-/**
- * Determines whether a path is public (no authentication required)
- * @param path The request path
- */
-function isPublicPath(path: string): boolean {
-  const publicPaths = [
-    '/docs',
-    '/swagger',
-    '/health',
-    '/public',
-    '/v1/public',
-    // Add other public paths as needed
-  ];
-
-  return publicPaths.some(publicPath => path.startsWith(publicPath));
-}

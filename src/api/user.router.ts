@@ -194,7 +194,9 @@ export function createUserRouter(userController: UserController, authController:
 
       // Get current user
       .use(requireAuth())
-      .get('/me', async ({ user }) => {
+      .get('/me', async (ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { user } = ctx as any;
         if (!user || !user.id) {
           return {
             status: 401,

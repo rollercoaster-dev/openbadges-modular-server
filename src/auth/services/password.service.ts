@@ -1,6 +1,6 @@
 /**
  * Password Service
- * 
+ *
  * This service handles password hashing and verification using bcrypt.
  * It provides methods for securely handling user passwords.
  */
@@ -57,16 +57,17 @@ export class PasswordService {
   static generateRandomPassword(length = 12): string {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
     let password = '';
-    
+
     // Generate cryptographically secure random values
     const randomValues = new Uint8Array(length);
-    crypto.getRandomValues(randomValues);
-    
+    // Use globalThis to access the global crypto object
+    globalThis.crypto.getRandomValues(randomValues);
+
     // Convert random values to password characters
     for (let i = 0; i < length; i++) {
       password += charset[randomValues[i] % charset.length];
     }
-    
+
     return password;
   }
 
@@ -80,27 +81,27 @@ export class PasswordService {
     if (password.length < 8) {
       return false;
     }
-    
+
     // Password must contain at least one lowercase letter
     if (!/[a-z]/.test(password)) {
       return false;
     }
-    
+
     // Password must contain at least one uppercase letter
     if (!/[A-Z]/.test(password)) {
       return false;
     }
-    
+
     // Password must contain at least one digit
     if (!/[0-9]/.test(password)) {
       return false;
     }
-    
+
     // Password must contain at least one special character
     if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       return false;
     }
-    
+
     return true;
   }
 }

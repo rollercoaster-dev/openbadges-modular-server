@@ -12,6 +12,7 @@ import { logger } from '../../utils/logging/logger.service';
 /**
  * Context for RBAC middleware
  */
+ 
 interface RBACContext {
   user?: {
     id: string;
@@ -20,6 +21,8 @@ interface RBACContext {
   };
   isAuthenticated: boolean;
   set: { status?: number | string };
+  request: Request;
+  params: Record<string, string>;
 }
 
 /**
@@ -29,7 +32,8 @@ interface RBACContext {
 export function requireAuth(): Elysia {
   return new Elysia()
     .derive((context) => {
-      const { isAuthenticated, set, user } = context as RBACContext;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { isAuthenticated, set, user } = context as any;
 
       if (!isAuthenticated || !user) {
         set.status = 401;
@@ -52,7 +56,8 @@ export function requireAuth(): Elysia {
 export function requireRoles(roles: UserRole[]): Elysia {
   return new Elysia()
     .derive((context) => {
-      const { isAuthenticated, user, set } = context as RBACContext;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { isAuthenticated, user, set } = context as any;
 
       if (!isAuthenticated || !user) {
         set.status = 401;
@@ -93,7 +98,8 @@ export function requireRoles(roles: UserRole[]): Elysia {
 export function requirePermissions(permissions: UserPermission[], requireAll = false): Elysia {
   return new Elysia()
     .derive((context) => {
-      const { isAuthenticated, user, set } = context as RBACContext;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { isAuthenticated, user, set } = context as any;
 
       if (!isAuthenticated || !user) {
         set.status = 401;
@@ -162,7 +168,8 @@ export function requireIssuer(): Elysia {
 export function requireSelfOrAdmin(): Elysia {
   return new Elysia()
     .derive((context) => {
-      const { isAuthenticated, user, set, params } = context as RBACContext & { params: { id?: string } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { isAuthenticated, user, set, params } = context as any;
 
       if (!isAuthenticated || !user) {
         set.status = 401;

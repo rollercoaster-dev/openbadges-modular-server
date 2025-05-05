@@ -1,6 +1,6 @@
 /**
  * Authentication Controller
- * 
+ *
  * This controller handles authentication-related HTTP requests.
  */
 
@@ -38,7 +38,7 @@ export class AuthController {
 
       // Authenticate user
       const user = await this.userService.authenticateUser(data.usernameOrEmail, data.password);
-      
+
       if (!user) {
         logger.debug(`Failed login attempt for ${data.usernameOrEmail}`);
         return {
@@ -63,7 +63,7 @@ export class AuthController {
       });
 
       logger.info(`User ${user.username} logged in successfully`);
-      
+
       return {
         status: 200,
         body: {
@@ -74,7 +74,7 @@ export class AuthController {
       };
     } catch (error) {
       logger.logError('Login error', error as Error);
-      
+
       return {
         status: 500,
         body: {
@@ -141,7 +141,7 @@ export class AuthController {
       });
 
       logger.info(`User ${user.username} registered successfully`);
-      
+
       return {
         status: 201,
         body: {
@@ -152,7 +152,7 @@ export class AuthController {
       };
     } catch (error) {
       logger.logError('Registration error', error as Error);
-      
+
       // Handle specific errors
       if ((error as Error).message.includes('already exists')) {
         return {
@@ -163,7 +163,7 @@ export class AuthController {
           }
         };
       }
-      
+
       return {
         status: 500,
         body: {
@@ -181,8 +181,10 @@ export class AuthController {
    */
   async getProfile(userId: string): Promise<{ status: number; body: Record<string, unknown> }> {
     try {
-      const user = await this.userService.getUserById(userId);
-      
+      // Convert string to IRI type
+      const userIdIri = userId as Shared.IRI;
+      const user = await this.userService.getUserById(userIdIri);
+
       if (!user) {
         return {
           status: 404,
@@ -192,7 +194,7 @@ export class AuthController {
           }
         };
       }
-      
+
       return {
         status: 200,
         body: {
@@ -202,7 +204,7 @@ export class AuthController {
       };
     } catch (error) {
       logger.logError('Get profile error', error as Error);
-      
+
       return {
         status: 500,
         body: {
