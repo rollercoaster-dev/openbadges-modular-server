@@ -17,16 +17,14 @@ describe('Authentication Integration Tests', () => {
   beforeAll(async () => {
     // Initialize the Elysia app using the setup function
     app = await setupApp();
-    // Wrap the app's fetch handler with supertest
-    // This is often the compatible way for Elysia/Bun
-    request = supertest(app.fetch);
+    // Pass the Elysia app instance directly to supertest
+    request = supertest(app as any); // Use 'as any' temporarily if direct pass causes type errors, to investigate further
   });
 
   afterAll(async () => {
-    // Perform any cleanup if necessary
-    // Check if app.stop exists and call it if setupApp starts a server
-    if (app && typeof app.stop === 'function') {
-      await app.stop();
+    // Stop the server if it's running
+    if (app && app.server?.listening) {
+       await app.stop();
     }
     // Add database cleanup logic here if needed for test isolation
   });
