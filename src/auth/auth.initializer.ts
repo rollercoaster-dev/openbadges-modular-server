@@ -102,6 +102,9 @@ async function createAdminUserIfNeeded(): Promise<void> {
       return;
     }
 
+    // Hash the admin password
+    const passwordHash = await PasswordService.hashPassword(adminPassword);
+
     // Create user repository
     const userRepository = await RepositoryFactory.createUserRepository();
     const userService = new UserService(userRepository);
