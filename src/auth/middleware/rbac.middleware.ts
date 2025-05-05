@@ -5,9 +5,9 @@
  * It works with the authentication middleware to enforce authorization rules.
  */
 
-import { Elysia } from 'elysia';
 import { UserRole, UserPermission } from '../../domains/user/user.entity';
 import { logger } from '../../utils/logging/logger.service';
+import { Context } from 'elysia';
 
 /**
  * Context for RBAC middleware
@@ -29,9 +29,10 @@ interface RBACContext {
  * Create middleware that requires authentication
  * @returns Middleware function
  */
-export function requireAuth() {
-  return (context: any) => {
-    const { isAuthenticated, set, user } = context;
+export function requireAuth(): (context: Context) => void | Record<string, unknown> {
+  return (context: Context): void | Record<string, unknown> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { isAuthenticated, set, user } = context as any;
 
     if (!isAuthenticated || !user) {
       set.status = 401;
@@ -50,9 +51,10 @@ export function requireAuth() {
  * @param roles Required roles (any of these roles is sufficient)
  * @returns Middleware function
  */
-export function requireRoles(roles: UserRole[]) {
-  return (context: any) => {
-    const { isAuthenticated, user, set } = context;
+export function requireRoles(roles: UserRole[]): (context: Context) => void | Record<string, unknown> {
+  return (context: Context): void | Record<string, unknown> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { isAuthenticated, user, set } = context as any;
 
     if (!isAuthenticated || !user) {
       set.status = 401;
@@ -88,9 +90,10 @@ export function requireRoles(roles: UserRole[]) {
  * @param requireAll If true, all permissions are required instead of any
  * @returns Middleware function
  */
-export function requirePermissions(permissions: UserPermission[], requireAll = false) {
-  return (context: any) => {
-    const { isAuthenticated, user, set } = context;
+export function requirePermissions(permissions: UserPermission[], requireAll = false): (context: Context) => void | Record<string, unknown> {
+  return (context: Context): void | Record<string, unknown> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { isAuthenticated, user, set } = context as any;
 
     if (!isAuthenticated || !user) {
       set.status = 401;
@@ -137,7 +140,7 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
  * Create middleware that requires admin role
  * @returns Middleware function
  */
-export function requireAdmin() {
+export function requireAdmin(): (context: Context) => void | Record<string, unknown> {
   return requireRoles([UserRole.ADMIN]);
 }
 
@@ -145,7 +148,7 @@ export function requireAdmin() {
  * Create middleware that requires issuer role
  * @returns Middleware function
  */
-export function requireIssuer() {
+export function requireIssuer(): (context: Context) => void | Record<string, unknown> {
   return requireRoles([UserRole.ADMIN, UserRole.ISSUER]);
 }
 
@@ -154,9 +157,10 @@ export function requireIssuer() {
  * or has admin privileges
  * @returns Middleware function
  */
-export function requireSelfOrAdmin() {
-  return (context: any) => {
-    const { isAuthenticated, user, set, params } = context;
+export function requireSelfOrAdmin(): (context: Context) => void | Record<string, unknown> {
+  return (context: Context): void | Record<string, unknown> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { isAuthenticated, user, set, params } = context as any;
 
     if (!isAuthenticated || !user) {
       set.status = 401;
