@@ -27,7 +27,7 @@ import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
 import { AuthController } from '../auth/auth.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
-import { requireAuth, requirePermissions, requireAdmin, requireIssuer } from '../auth/middleware/rbac.middleware';
+import { requireAuth, requirePermissions } from '../auth/middleware/rbac.middleware';
 import { UserPermission } from '../domains/user/user.entity';
 
 /**
