@@ -91,9 +91,15 @@ export class BadgeClassController {
    * Creates a new badge class
    * @param data The badge class data
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The created badge class
    */
-  async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto> {
+  async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<BadgeClassResponseDto> {
+    // Check if user has permission to create badge classes
+    if (user && !this.hasPermission(user, UserPermission.CREATE_BADGE_CLASS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create a badge class without permission`);
+      throw new Error('Insufficient permissions to create badge class');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateBadgeClassSchema.parse(data);
@@ -153,9 +159,15 @@ export class BadgeClassController {
    * @param id The badge class ID
    * @param data The updated badge class data
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The updated badge class
    */
-  async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3): Promise<BadgeClassResponseDto | null> {
+  async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<BadgeClassResponseDto | null> {
+    // Check if user has permission to update badge classes
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update badge class ${id} without permission`);
+      throw new Error('Insufficient permissions to update badge class');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateBadgeClassSchema.parse(data);
@@ -179,9 +191,16 @@ export class BadgeClassController {
   /**
    * Deletes a badge class
    * @param id The badge class ID
+   * @param user The authenticated user
    * @returns True if the badge class was deleted, false otherwise
    */
-  async deleteBadgeClass(id: string): Promise<boolean> {
+  async deleteBadgeClass(id: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
+    // Check if user has permission to delete badge classes
+    if (user && !this.hasPermission(user, UserPermission.DELETE_BADGE_CLASS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete badge class ${id} without permission`);
+      throw new Error('Insufficient permissions to delete badge class');
+    }
+
     return await this.badgeClassRepository.delete(toIRI(id) as Shared.IRI);
   }
 }
