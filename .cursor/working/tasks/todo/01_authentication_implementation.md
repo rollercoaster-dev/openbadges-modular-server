@@ -64,7 +64,7 @@ The authentication system needs to be completed by integrating the existing auth
    - [x] Apply RBAC middleware to backpack endpoints
 
 2. **Permission Enforcement**
-   - [ ] Add permission checks to badge class controller operations
+   - [x] Add permission checks to badge class controller operations
    - [ ] Add permission checks to issuer controller operations
    - [ ] Add permission checks to assertion controller operations
    - [ ] Add permission checks to backpack controller operations
