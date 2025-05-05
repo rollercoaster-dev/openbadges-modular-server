@@ -72,6 +72,29 @@ export class SqliteBadgeClassMapper {
       return null as unknown as SqliteBadgeClassRecord; 
     }
 
+    // Define standard BadgeClass properties to exclude from additionalFields
+    const standardProperties = new Set([
+      'id',
+      'type',
+      'issuer',
+      'name',
+      'description',
+      'image',
+      'criteria',
+      'alignment',
+      'tags',
+      'createdAt',
+      'updatedAt',
+    ]);
+
+    // Extract additional fields
+    const additionalFieldsData: Record<string, unknown> = {};
+    for (const key in entity) {
+      if (Object.prototype.hasOwnProperty.call(entity, key) && !standardProperties.has(key)) {
+        additionalFieldsData[key] = entity[key];
+      }
+    }
+
     const now = new Date();
     const createdAtTimestamp = convertTimestamp(entity.createdAt instanceof Date ? entity.createdAt : now, 'sqlite', 'to') as number;
     const updatedAtTimestamp = convertTimestamp(now, 'sqlite', 'to') as number;
@@ -90,9 +113,9 @@ export class SqliteBadgeClassMapper {
       criteria: (convertJson(entity.criteria ?? {}, 'sqlite', 'to') ?? '{}') as string, 
       alignment: convertJson(entity.alignment, 'sqlite', 'to') as string | null, 
       tags: convertJson(entity.tags, 'sqlite', 'to') as string | null, 
-      // Call getAdditionalFields directly
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Workaround for TS incorrectly inferring getAdditionalFields type/existence
-      additionalFields: convertJson((entity as any).getAdditionalFields(), 'sqlite', 'to') as string | null, 
+      additionalFields: Object.keys(additionalFieldsData).length > 0
+        ? convertJson(additionalFieldsData, 'sqlite', 'to') as string
+        : null,
       // Use pre-calculated timestamps
       createdAt: isNew ? createdAtTimestamp : convertTimestamp((entity.createdAt ?? now) as Date, 'sqlite', 'to') as number, 
       updatedAt: updatedAtTimestamp as number,

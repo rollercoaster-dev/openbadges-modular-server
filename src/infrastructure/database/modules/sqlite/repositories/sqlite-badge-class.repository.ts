@@ -78,11 +78,11 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async findById(id: Shared.IRI): Promise<BadgeClass | null> {
+  async findById(id: string): Promise<BadgeClass | null> {
     try {
       const startTime = Date.now();
       // Query database
-      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id as string));
+      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id));
       const duration = Date.now() - startTime;
 
       // Log query (assuming id is not sensitive)
@@ -125,7 +125,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async update(id: Shared.IRI, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
+  async update(id: string, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
     try {
       // Check if badge class exists
       const existingBadgeClass = await this.findById(id);
@@ -152,7 +152,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       const startTime = Date.now();
       const result = await this.db.update(badgeClasses)
         .set(record)
-        .where(eq(badgeClasses.id, id as string))
+        .where(eq(badgeClasses.id, id))
         .returning();
       const duration = Date.now() - startTime;
 
@@ -176,11 +176,11 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async delete(id: Shared.IRI): Promise<boolean> {
+  async delete(id: string): Promise<boolean> {
     try {
       // Delete from database
       const startTime = Date.now();
-      const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id as string)).returning();
+      const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id)).returning();
       const duration = Date.now() - startTime;
 
       // Log query (assuming id is not sensitive)

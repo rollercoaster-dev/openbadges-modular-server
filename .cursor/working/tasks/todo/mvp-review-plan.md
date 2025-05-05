@@ -206,6 +206,12 @@
 4.  **PR 4: Unify SQLite Repository Implementation (Medium)**
     *   **Goal:** Ensure consistent data access patterns using Drizzle ORM.
     *   **Tasks:** Refactor SQLite repositories (`SqliteUserAssertionRepository`, etc.) to use Drizzle, remove manual SQL/table creation, ensure use of type conversion utilities. (Addresses #52).
-5.  **PR 5: Address Minor Issues & Investigate Types (Medium/Low)**
+5.  **PR 5: Address Minor Issues & Investigate Types (Medium/Low)** – ✅ (branch `fix/minor-issues-and-types`, PR opened)
     *   **Goal:** Clean up remaining smaller issues.
-    *   **Tasks:** Review type conversion edge cases (#65), investigate `IRI` type import (#4fc912b4), address other Medium/Minor findings (#4, #17, #69, #73, etc.).
+    *   **Tasks Completed:** Fixed PostgreSQL CI testing issues (#17), addressed neuro-friendly logging system issues (#4), fixed type conversion edge cases (#65), investigated `IRI` type import (#4fc912b4), improved error handling for database connections, and enhanced test helper functions. All tests now pass in both local and CI environments.
+    *   **Additional Improvements:**
+        * Fixed schema issues in PostgreSQL test files to match actual database schema
+        * Improved test skipping logic for PostgreSQL tests
+        * Enhanced error handling and reporting for database connection issues
+        * Fixed unused variable warnings in PostgreSQL test files
+        * Added documentation for remaining issues to be addressed in future PRs
