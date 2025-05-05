@@ -13,8 +13,8 @@ import { BasicAuthAdapter } from './adapters/basic-auth.adapter';
 import { OAuth2Adapter } from './adapters/oauth2.adapter';
 import { UserService } from '../domains/user/user.service';
 import { RepositoryFactory } from '../infrastructure/repository.factory';
-import { PasswordService } from './services/password.service';
 import { UserRole } from '../domains/user/user.entity';
+import { PasswordService } from './services/password.service';
 
 /**
  * Initialize the authentication system

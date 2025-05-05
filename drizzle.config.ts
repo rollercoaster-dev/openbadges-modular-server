@@ -12,9 +12,18 @@ import { dirname } from 'path';
 
 // Simple console logging function
 const configLogger = {
-  info: (message: string, ...args: any[]) => console.log(`[INFO] ${message}`, ...args),
-  warn: (message: string, ...args: any[]) => console.warn(`[WARN] ${message}`, ...args),
-  error: (message: string, ...args: any[]) => console.error(`[ERROR] ${message}`, ...args)
+  info: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.log(`[INFO] ${message}`, ...args);
+  },
+  warn: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.warn(`[WARN] ${message}`, ...args);
+  },
+  error: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.error(`[ERROR] ${message}`, ...args);
+  }
 };
 
 // Determine database type from environment variable or config

@@ -5,7 +5,7 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, and, or, like, sql } from 'drizzle-orm';
+import { eq, or, like, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';

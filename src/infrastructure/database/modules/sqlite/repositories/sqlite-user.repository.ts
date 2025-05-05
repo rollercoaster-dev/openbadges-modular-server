@@ -5,7 +5,7 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, and, or, like, sql } from 'drizzle-orm';
+import { eq, or, like, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';
