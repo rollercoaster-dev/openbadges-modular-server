@@ -16,7 +16,6 @@ import {
 } from '../domains/backpack/api.types';
 import { requirePermissions } from '../auth/middleware/rbac.middleware';
 import { UserPermission } from '../domains/user/user.entity';
-import { applyMiddleware } from '../utils/middleware/apply-middleware';
 
 /**
  * Create a router for backpack endpoints
@@ -40,7 +39,7 @@ export function createBackpackRouter(
   // Platform management endpoints (admin only)
   router.group('/platforms', (app) => {
     return app
-      .use(applyMiddleware(requirePermissions([UserPermission.MANAGE_PLATFORMS])))
+      .use(requirePermissions([UserPermission.MANAGE_PLATFORMS]))
       .get('/', async () => {
         return {
           status: 200,
