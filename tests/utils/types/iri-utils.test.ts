@@ -36,6 +36,16 @@ describe('IRI Utilities', () => {
       const iri = 'https://example.com/badge' as Shared.IRI;
       expect(toIRI(iri)).toBe(iri);
     });
+
+    it('should return null for invalid IRIs', () => {
+      expect(toIRI('not-a-url')).toBe(null);
+      expect(toIRI('123')).toBe(null);
+    });
+
+    it('should handle UUID strings correctly', () => {
+      const uuid = '123e4567-e89b-12d3-a456-426614174000';
+      expect(toIRI(uuid)).toBe(uuid as Shared.IRI);
+    });
   });
 
   describe('toString', () => {
@@ -190,6 +200,33 @@ describe('IRI Utilities', () => {
         image: undefined,
         name: 'Test Badge'
       });
+    });
+
+    it('should throw an error for invalid IRIs', () => {
+      const obj = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        url: 'not-a-valid-url',
+        name: 'Test Badge'
+      };
+      expect(() => objectWithStringToIRI(obj, ['id', 'url'])).toThrow();
+    });
+
+    it('should throw an error with the names of invalid properties', () => {
+      const obj = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        url: 'not-a-valid-url',
+        image: 'also-not-valid',
+        name: 'Test Badge'
+      };
+      try {
+        objectWithStringToIRI(obj, ['id', 'url', 'image']);
+        // If we get here, the test should fail
+        expect(true).toBe(false);
+      } catch (error) {
+        expect(error.message).toContain('url');
+        expect(error.message).toContain('image');
+        expect(error.message).not.toContain('id');
+      }
     });
   });
 });

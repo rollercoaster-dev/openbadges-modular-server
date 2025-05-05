@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq } from 'drizzle-orm';
+import { eq, InferInsertModel } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
@@ -13,7 +13,8 @@ import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.reposi
 import { badgeClasses } from '../schema';
 import { SqliteBadgeClassMapper } from '../mappers/sqlite-badge-class.mapper';
 import { Shared } from 'openbadges-types';
-import { logger } from '@utils/logging/logger.service';
+import { logger, queryLogger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 export class SqliteBadgeClassRepository implements BadgeClassRepository {
   private db: ReturnType<typeof drizzle>;
@@ -30,17 +31,28 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       const newEntity = BadgeClass.create(badgeClass);
       
       // Convert domain entity to database record, indicating it's new
-      const record = this.mapper.toPersistence(newEntity, true);
+      const record: InferInsertModel<typeof badgeClasses> = this.mapper.toPersistence(newEntity, true);
 
       // Insert into database
+      const startTime = Date.now();
       const result = await this.db.insert(badgeClasses).values(record).returning();
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'INSERT BadgeClass',
+        [SensitiveValue.from(record)],
+        duration,
+        'sqlite'
+      );
 
       // Convert database record back to domain entity
       return this.mapper.toDomain(result[0]);
     } catch (error) {
       logger.error('Error creating badge class in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
-        badgeClass
+        badgeClass,
+        // Log sensitive data separately if needed for debugging
       });
       throw error;
     }
@@ -49,7 +61,12 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
   async findAll(): Promise<BadgeClass[]> {
     try {
       // Query database to get all badge classes
+      const startTime = Date.now();
       const result = await this.db.select().from(badgeClasses);
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery('SELECT All BadgeClasses', undefined, duration, 'sqlite');
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
@@ -61,10 +78,15 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async findById(id: Shared.IRI): Promise<BadgeClass | null> {
+  async findById(id: string): Promise<BadgeClass | null> {
     try {
+      const startTime = Date.now();
       // Query database
-      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id as string));
+      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id));
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming id is not sensitive)
+      queryLogger.logQuery('SELECT BadgeClass by ID', [id], duration, 'sqlite');
 
       // Return null if not found
       if (!result.length) {
@@ -84,8 +106,13 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
 
   async findByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
     try {
+      const startTime = Date.now();
       // Query database
       const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.issuerId, issuerId as string));
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming issuerId is not sensitive)
+      queryLogger.logQuery('SELECT BadgeClasses by Issuer', [issuerId], duration, 'sqlite');
 
       // Convert database records to domain entities
       return result.map(record => this.mapper.toDomain(record));
@@ -98,7 +125,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async update(id: Shared.IRI, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
+  async update(id: string, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
     try {
       // Check if badge class exists
       const existingBadgeClass = await this.findById(id);
@@ -122,10 +149,20 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       const record = this.mapper.toPersistence(mergedBadgeClass);
 
       // Update in database
+      const startTime = Date.now();
       const result = await this.db.update(badgeClasses)
         .set(record)
-        .where(eq(badgeClasses.id, id as string))
+        .where(eq(badgeClasses.id, id))
         .returning();
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'UPDATE BadgeClass',
+        [id, SensitiveValue.from(record)],
+        duration,
+        'sqlite'
+      );
 
       // Convert database record back to domain entity
       return this.mapper.toDomain(result[0]);
@@ -133,16 +170,21 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       logger.error('Error updating badge class in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         id,
-        badgeClass
+        badgeClass, // Log sensitive data separately if needed for debugging
       });
       throw error;
     }
   }
 
-  async delete(id: Shared.IRI): Promise<boolean> {
+  async delete(id: string): Promise<boolean> {
     try {
       // Delete from database
-      const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id as string)).returning();
+      const startTime = Date.now();
+      const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id)).returning();
+      const duration = Date.now() - startTime;
+
+      // Log query (assuming id is not sensitive)
+      queryLogger.logQuery('DELETE BadgeClass', [id], duration, 'sqlite');
 
       // Return true if something was deleted
       return result.length > 0;

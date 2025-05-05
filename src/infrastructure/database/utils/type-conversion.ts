@@ -41,7 +41,10 @@ export function convertJson<T>(
     } else {
       // Convert from DB string to app object
       if (typeof value !== 'string') {
-        return value;
+        // If the value is not a string, log a warning and return null
+        // This handles the edge case where a non-string value is passed
+        logger.warn('Expected string for JSON parsing from SQLite, got', { type: typeof value, value });
+        return null;
       }
 
       try {

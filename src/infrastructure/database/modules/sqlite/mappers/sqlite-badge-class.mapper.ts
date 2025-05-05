@@ -9,6 +9,24 @@ import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import { Shared, OB2 } from 'openbadges-types';
 import { convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
 
+/**
+ * Standard properties of a BadgeClass entity that should be excluded from additionalFields
+ * This is externalized as a constant to facilitate future maintenance if new fields are added
+ */
+const BADGE_CLASS_STANDARD_PROPERTIES = new Set([
+  'id',
+  'type',
+  'issuer',
+  'name',
+  'description',
+  'image',
+  'criteria',
+  'alignment',
+  'tags',
+  'createdAt',
+  'updatedAt',
+]);
+
 // Explicitly define the record type matching SQLite schema
 type SqliteBadgeClassRecord = {
   id: string; // text
@@ -40,7 +58,7 @@ export class SqliteBadgeClassMapper {
     const description = record.description as string ?? '';
     const image = record.image; // Let BadgeClass.create handle IRI | OB3ImageObject
     // Convert JSON text, providing defaults for notNull (criteria)
-    const criteria = convertJson(record.criteria, 'sqlite', 'from') ?? {}; 
+    const criteria = convertJson(record.criteria, 'sqlite', 'from') ?? {};
     const alignment = convertJson(record.alignment, 'sqlite', 'from');
     const tags = convertJson(record.tags, 'sqlite', 'from');
     const additionalFields = convertJson(record.additionalFields, 'sqlite', 'from') ?? {};
@@ -51,10 +69,10 @@ export class SqliteBadgeClassMapper {
       issuer: issuerId as Shared.IRI,
       name: name,
       description: description,
-      image: typeof image === 'string' ? image as Shared.IRI : image as Shared.OB3ImageObject, 
+      image: typeof image === 'string' ? image as Shared.IRI : image as Shared.OB3ImageObject,
       criteria: criteria,
-      alignment: alignment as OB2.AlignmentObject[] | undefined, 
-      tags: tags as string[] | undefined, 
+      alignment: alignment as OB2.AlignmentObject[] | undefined,
+      tags: tags as string[] | undefined,
       ...additionalFields as Record<string, unknown> ?? {}
     });
   }
@@ -69,7 +87,17 @@ export class SqliteBadgeClassMapper {
     if (!entity) {
       // Optionally throw an error or return a default/null record based on requirements
       // For now, returning null assertion to satisfy TS, but this path needs consideration
-      return null as unknown as SqliteBadgeClassRecord; 
+      return null as unknown as SqliteBadgeClassRecord;
+    }
+
+    // Use the externalized standard properties set for consistency
+
+    // Extract additional fields
+    const additionalFieldsData: Record<string, unknown> = {};
+    for (const key in entity) {
+      if (Object.prototype.hasOwnProperty.call(entity, key) && !BADGE_CLASS_STANDARD_PROPERTIES.has(key)) {
+        additionalFieldsData[key] = entity[key];
+      }
     }
 
     const now = new Date();
@@ -82,19 +110,19 @@ export class SqliteBadgeClassMapper {
       issuerId: convertUuid(entity.issuer as string, 'sqlite', 'to') as string,
       name: entity.name,
       description: entity.description,
-      image: typeof entity.image === 'string' 
-        ? entity.image 
-        : typeof entity.image === 'object' && entity.image !== null && 'id' in entity.image 
-        ? entity.image.id 
+      image: typeof entity.image === 'string'
+        ? entity.image
+        : typeof entity.image === 'object' && entity.image !== null && 'id' in entity.image
+        ? entity.image.id
         : '', // Default empty string for notNull image field
-      criteria: (convertJson(entity.criteria ?? {}, 'sqlite', 'to') ?? '{}') as string, 
-      alignment: convertJson(entity.alignment, 'sqlite', 'to') as string | null, 
-      tags: convertJson(entity.tags, 'sqlite', 'to') as string | null, 
-      // Call getAdditionalFields directly
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Workaround for TS incorrectly inferring getAdditionalFields type/existence
-      additionalFields: convertJson((entity as any).getAdditionalFields(), 'sqlite', 'to') as string | null, 
+      criteria: (convertJson(entity.criteria ?? {}, 'sqlite', 'to') ?? '{}') as string,
+      alignment: convertJson(entity.alignment, 'sqlite', 'to') as string | null,
+      tags: convertJson(entity.tags, 'sqlite', 'to') as string | null,
+      additionalFields: Object.keys(additionalFieldsData).length > 0
+        ? convertJson(additionalFieldsData, 'sqlite', 'to') as string
+        : null,
       // Use pre-calculated timestamps
-      createdAt: isNew ? createdAtTimestamp : convertTimestamp((entity.createdAt ?? now) as Date, 'sqlite', 'to') as number, 
+      createdAt: isNew ? createdAtTimestamp : convertTimestamp((entity.createdAt ?? now) as Date, 'sqlite', 'to') as number,
       updatedAt: updatedAtTimestamp as number,
     };
 

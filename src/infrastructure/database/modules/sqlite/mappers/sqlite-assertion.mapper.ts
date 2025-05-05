@@ -142,29 +142,12 @@ export class SqliteAssertionMapper {
       throw new Error('Cannot persist null Assertion entity.');
     }
 
-    // Convert the entity to a plain object
-    const obj = entity.toObject();
-
-    // Extract the standard fields, ignoring unused ones for persistence model
-    const {
-      id,
-      badgeClass,
-      recipient,
-      issuedOn,
-      _expires,
-      _evidence,
-      _verification,
-      _revoked,
-      _revocationReason,
-      ..._additionalFields // Use spread syntax for any other unused fields
-    } = obj;
-
     // Return only the fields required by InferInsertModel for insert
     const persistenceRecord: InferInsertModel<typeof assertions> = {
-      id: convertUuid(id as string, 'sqlite', 'to'),
-      badgeClassId: convertUuid(badgeClass as string, 'sqlite', 'to'),
-      recipient: convertJson(recipient as object, 'sqlite', 'to') as string,
-      issuedOn: convertTimestamp(issuedOn as string | Date, 'sqlite', 'to') as number,
+      id: convertUuid(entity.id as string, 'sqlite', 'to'),
+      badgeClassId: convertUuid(entity.badgeClass as string, 'sqlite', 'to'),
+      recipient: convertJson(entity.recipient as object, 'sqlite', 'to') as string,
+      issuedOn: convertTimestamp(entity.issuedOn as string | Date, 'sqlite', 'to') as number,
       createdAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
       updatedAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
     };

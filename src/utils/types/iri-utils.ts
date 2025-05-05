@@ -7,17 +7,32 @@
 
 import { Shared } from 'openbadges-types';
 import { IRICompatible, ObjectWithIRIs, ObjectWithStrings } from './iri.types';
+import { logger } from '../logging/logger.service';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Converts a string to a Shared.IRI
  * @param value The string to convert
- * @returns The converted Shared.IRI
+ * @returns The converted Shared.IRI or null if the value is invalid
  */
 export function toIRI(value: IRICompatible): Shared.IRI | null {
   if (value === null || value === undefined || value === '') {
     return null;
   }
-  return value as Shared.IRI;
+
+  // If it's already a Shared.IRI, return it directly
+  if (typeof value === 'object' && value !== null) {
+    return value;
+  }
+
+  // Validate the string before converting to Shared.IRI
+  if (isValidIRI(value)) {
+    return value as Shared.IRI;
+  }
+
+  // Log a warning for invalid IRIs
+  logger.warn('Invalid IRI value', { value });
+  return null;
 }
 
 /**
@@ -59,8 +74,9 @@ export function isValidIRI(value: unknown): boolean {
  * @returns The value as a Shared.IRI if valid, null otherwise
  */
 export function ensureValidIRI(value: unknown): Shared.IRI | null {
-  if (isValidIRI(value)) {
-    return value as Shared.IRI;
+  // If it's already a valid IRI type, use toIRI to validate and convert
+  if (typeof value === 'string' || (typeof value === 'object' && value !== null)) {
+    return toIRI(value as IRICompatible);
   }
   return null;
 }
@@ -115,18 +131,58 @@ export function objectWithIRIToString<T extends Record<string, unknown>>(
  * @param obj The object to convert
  * @param iriProperties The properties to convert
  * @returns The converted object
+ * @throws Error if any of the properties cannot be converted to a valid IRI
  */
 export function objectWithStringToIRI<T extends Record<string, unknown>>(
   obj: T,
   iriProperties: string[]
 ): ObjectWithIRIs<T> {
   const result: Record<string, unknown> = { ...obj };
+  const invalidProps: string[] = [];
 
   for (const prop of iriProperties) {
     if (result[prop] !== undefined && result[prop] !== null) {
-      result[prop] = toIRI(result[prop] as string);
+      const iri = toIRI(result[prop] as string);
+      if (iri === null) {
+        // Track invalid properties
+        invalidProps.push(prop);
+      } else {
+        result[prop] = iri;
+      }
     }
   }
 
+  // If any properties couldn't be converted, throw an error
+  if (invalidProps.length > 0) {
+    throw new Error(`Failed to convert properties to IRI: ${invalidProps.join(', ')}`);
+  }
+
   return result as ObjectWithIRIs<T>;
+}
+
+/**
+ * The `createOrGenerateIRI` function serves two purposes:
+ * 1. It validates an existing IRI string and converts it into an IRI object.
+ *    If the string is invalid, an error is thrown.
+ * 2. If no argument is provided, it generates a new random UUID and returns it as an IRI.
+ *
+ * This utility ensures that all IRIs used in the API are valid and conform to expected standards.
+ *
+ * @param value Optional IRI string to validate and convert
+ * @returns A valid Shared.IRI object
+ * @throws Error if the provided value is not a valid IRI
+ */
+export function createOrGenerateIRI(value?: string): Shared.IRI {
+  if (!value) {
+    // Generate a new UUID-based IRI if no value is provided
+    return `urn:uuid:${uuidv4()}` as Shared.IRI;
+  }
+
+  // Validate and convert the provided value
+  const iri = toIRI(value);
+  if (iri === null) {
+    throw new Error(`Invalid IRI value: ${value}`);
+  }
+
+  return iri;
 }

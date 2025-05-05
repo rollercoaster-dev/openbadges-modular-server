@@ -91,7 +91,7 @@ export const config = {
         // Example: AUTH_API_KEY_SYSTEM=abc123:system-user:System integration
         keys: (() => {
           const apiKeyConfig: Record<string, { userId: string; description?: string; claims?: Record<string, unknown> }> = {};
-          
+
           // Parse environment variables for API keys
           Object.keys(process.env).forEach(key => {
             if (key.startsWith('AUTH_API_KEY_')) {
@@ -109,7 +109,7 @@ export const config = {
               }
             }
           });
-          
+
           return apiKeyConfig;
         })()
       },
@@ -120,7 +120,7 @@ export const config = {
         // Example: AUTH_BASIC_AUTH_ADMIN=securepass:admin-user:admin
         credentials: (() => {
           const basicAuthConfig: Record<string, { password: string; userId: string; claims?: Record<string, unknown> }> = {};
-          
+
           // Parse environment variables for basic auth credentials
           Object.keys(process.env).forEach(key => {
             if (key.startsWith('AUTH_BASIC_AUTH_')) {
@@ -138,7 +138,7 @@ export const config = {
               }
             }
           });
-          
+
           return basicAuthConfig;
         })()
       },
@@ -168,8 +168,12 @@ export const config = {
     level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
     // Whether to include timestamps in logs
     includeTimestamp: process.env.LOG_INCLUDE_TIMESTAMP !== 'false',
-    // Whether to colorize logs
-    colorize: process.env.LOG_COLORIZE !== 'false',
+    // Whether to enable pretty printing (useful for development)
+    // Logs will be pretty-printed by default in non-production environments unless
+    // explicitly disabled via the LOG_PRETTY_PRINT environment variable.
+    prettyPrint: process.env.LOG_PRETTY_PRINT === 'true' || process.env.NODE_ENV !== 'production',
+    // Whether to log database queries at debug level (in addition to slow queries)
+    logDebugQueries: process.env.LOG_DEBUG_QUERIES === 'true',
     // Whether to include request IDs in logs
     includeRequestId: process.env.LOG_INCLUDE_REQUEST_ID !== 'false',
     // Whether to include stack traces in error logs
@@ -178,11 +182,11 @@ export const config = {
     logToFile: process.env.LOG_TO_FILE === 'true',
     // Log file path
     logFilePath: process.env.LOG_FILE_PATH || './logs/app.log',
-    // Whether to pretty-print logs
-    prettyPrint: process.env.NODE_ENV !== 'production',
     // Whether to use 24-hour time format (vs 12-hour with AM/PM)
     use24HourFormat: process.env.LOG_USE_24_HOUR_FORMAT !== 'false',
     // Whether to use relative time for recent events (e.g., "just now", "2 minutes ago")
-    useRelativeTime: process.env.LOG_USE_RELATIVE_TIME !== 'false'
+    useRelativeTime: process.env.LOG_USE_RELATIVE_TIME !== 'false',
+    // Whether to colorize logs
+    colorize: process.env.LOG_COLORIZE !== 'false',
   }
 };

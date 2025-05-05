@@ -275,11 +275,20 @@ The API provides utility functions for working with `Shared.IRI` types. These fu
 ```typescript
 import { toIRI, toString } from '../utils/types/iri-utils';
 
-// Convert a string to an IRI
+// Convert a string to an IRI (returns null if the string is not a valid IRI)
 const id = toIRI('123e4567-e89b-12d3-a456-426614174000');
 
 // Convert an IRI to a string
 const idString = toString(id);
+
+// Creating an IRI with validation
+import { createOrGenerateIRI } from '../utils/types/type-utils';
+
+// Create an IRI from a string (throws an error if invalid)
+const validIRI = createOrGenerateIRI('https://example.org/badges/1');
+
+// Generate a new random UUID as an IRI
+const newIRI = createOrGenerateIRI();
 ```
 
 ### Validating IRIs
@@ -294,6 +303,10 @@ if (isValidIRI('https://example.org/badges/1')) {
 
 // Ensure a value is a valid IRI, or return null
 const validIRI = ensureValidIRI(possibleIRI);
+
+// Create a URL IRI (returns undefined if not a valid URL)
+import { toUrlIRI } from '../utils/types/type-utils';
+const urlIRI = toUrlIRI('https://example.org/badges/1');
 ```
 
 ### Working with Arrays and Objects
@@ -301,7 +314,7 @@ const validIRI = ensureValidIRI(possibleIRI);
 ```typescript
 import { toIRIArray, toStringArray, objectWithIRIToString, objectWithStringToIRI } from '../utils/types/iri-utils';
 
-// Convert an array of strings to an array of IRIs
+// Convert an array of strings to an array of IRIs (filters out invalid IRIs)
 const iriArray = toIRIArray(['https://example.org/badges/1', 'https://example.org/badges/2']);
 
 // Convert an array of IRIs to an array of strings
@@ -311,8 +324,21 @@ const stringArray = toStringArray(iriArray);
 const stringObject = objectWithIRIToString(iriObject, ['id', 'url']);
 
 // Convert string properties in an object to IRI properties
-const iriObject = objectWithStringToIRI(stringObject, ['id', 'url']);
+// This will throw an error if any of the properties are not valid IRIs
+try {
+  const iriObject = objectWithStringToIRI(stringObject, ['id', 'url']);
+} catch (error) {
+  console.error('Failed to convert properties to IRIs:', error.message);
+}
 ```
+
+### Best Practices for Working with IRIs
+
+1. **Always validate IRIs**: Use `isValidIRI` or `ensureValidIRI` to check if a value is a valid IRI before using it.
+2. **Use utility functions**: Instead of manual type assertions (`as Shared.IRI`), use the provided utility functions.
+3. **Handle errors**: Functions like `objectWithStringToIRI` will throw errors for invalid IRIs, so make sure to handle these errors appropriately.
+4. **Be consistent**: Use `Shared.IRI` for all identifiers and URLs throughout your application.
+5. **Use proper creation**: When creating new IRIs, use `createOrGenerateIRI` to ensure they are valid.
 
 ## Version Conversion
 

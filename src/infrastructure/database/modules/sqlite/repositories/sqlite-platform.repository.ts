@@ -10,6 +10,8 @@ import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams, PlatformStatus } from '@domains/backpack/repository.types';
+import { convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
+import { toIRI } from '@utils/types/iri-utils';
 
 export class SqlitePlatformRepository implements PlatformRepository {
   private db: Database;
@@ -39,21 +41,25 @@ export class SqlitePlatformRepository implements PlatformRepository {
       const newPlatform = Platform.create(params as Platform);
       const obj = newPlatform.toObject();
 
+      // Convert timestamps to SQLite format
+      const createdAtTimestamp = convertTimestamp(obj.createdAt as Date, 'sqlite', 'to') as number;
+      const updatedAtTimestamp = convertTimestamp(obj.updatedAt as Date, 'sqlite', 'to') as number;
+
       // Insert into database
       this.db.prepare(`
         INSERT INTO platforms (
           id, name, description, clientId, publicKey, webhookUrl, status, createdAt, updatedAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        String(obj.id),
+        convertUuid(String(obj.id), 'sqlite', 'to') as string,
         String(obj.name),
         obj.description ? String(obj.description) : null,
         String(obj.clientId),
         String(obj.publicKey),
         obj.webhookUrl ? String(obj.webhookUrl) : null,
         String(obj.status),
-        (obj.createdAt instanceof Date) ? obj.createdAt.toISOString() : String(obj.createdAt),
-        (obj.updatedAt instanceof Date) ? obj.updatedAt.toISOString() : String(obj.updatedAt)
+        createdAtTimestamp,
+        updatedAtTimestamp
       );
 
       return newPlatform;
@@ -118,7 +124,9 @@ export class SqlitePlatformRepository implements PlatformRepository {
   async findById(id: Shared.IRI): Promise<Platform | null> {
     try {
       // Query database
-      const row = this.db.prepare(`SELECT * FROM platforms WHERE id = ?`).get(id);
+      const row = this.db.prepare(`SELECT * FROM platforms WHERE id = ?`).get(
+        convertUuid(String(id), 'sqlite', 'to')
+      );
 
       // Return null if not found
       if (!row) {
@@ -173,6 +181,10 @@ export class SqlitePlatformRepository implements PlatformRepository {
       });
       const obj = mergedPlatform.toObject();
 
+      // Convert timestamp to SQLite format
+      const updatedAtTimestamp = convertTimestamp(obj.updatedAt as Date, 'sqlite', 'to') as number;
+      const idString = convertUuid(String(id), 'sqlite', 'to') as string;
+
       // Update in database
       this.db.prepare(`
         UPDATE platforms SET
@@ -191,8 +203,8 @@ export class SqlitePlatformRepository implements PlatformRepository {
         String(obj.publicKey),
         obj.webhookUrl ? String(obj.webhookUrl) : null,
         String(obj.status),
-        (obj.updatedAt instanceof Date) ? obj.updatedAt.toISOString() : String(obj.updatedAt),
-        String(id)
+        updatedAtTimestamp,
+        idString
       );
 
       return mergedPlatform;
@@ -209,7 +221,9 @@ export class SqlitePlatformRepository implements PlatformRepository {
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
       // Delete from database
-      const result = this.db.prepare(`DELETE FROM platforms WHERE id = ?`).run(id);
+      const result = this.db.prepare(`DELETE FROM platforms WHERE id = ?`).run(
+        convertUuid(String(id), 'sqlite', 'to')
+      );
 
       // Return true if something was deleted
       return result.changes > 0;
@@ -231,15 +245,15 @@ export class SqlitePlatformRepository implements PlatformRepository {
     // Cast row to the expected type
     const typedRow = row as Record<string, string | number | null>;
     return Platform.create({
-      id: String(typedRow.id) as Shared.IRI,
+      id: toIRI(convertUuid(String(typedRow.id), 'sqlite', 'from')),
       name: String(typedRow.name),
       description: typedRow.description ? String(typedRow.description) : undefined,
       clientId: String(typedRow.clientId),
       publicKey: String(typedRow.publicKey),
       webhookUrl: typedRow.webhookUrl ? String(typedRow.webhookUrl) : undefined,
       status: String(typedRow.status) as PlatformStatus,
-      createdAt: new Date(String(typedRow.createdAt)),
-      updatedAt: new Date(String(typedRow.updatedAt))
+      createdAt: convertTimestamp(typedRow.createdAt, 'sqlite', 'from') as Date,
+      updatedAt: convertTimestamp(typedRow.updatedAt, 'sqlite', 'from') as Date
     });
   }
 }

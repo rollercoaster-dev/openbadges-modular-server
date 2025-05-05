@@ -14,6 +14,8 @@ import { platforms } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { PlatformCreateParams, PlatformUpdateParams, PlatformQueryParams, PlatformStatus } from '@domains/backpack/repository.types';
+import { convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
+import { toIRI } from '@utils/types/iri-utils';
 
 // Define the type for platform insert values
 type PlatformInsertValues = {
@@ -234,15 +236,15 @@ export class PostgresPlatformRepository implements PlatformRepository {
     // Cast row to the expected type
     const typedRow = row as Record<string, string | number | null | Date>;
     return Platform.create({
-      id: String(typedRow.id) as Shared.IRI,
+      id: toIRI(convertUuid(String(typedRow.id), 'postgresql', 'from')),
       name: String(typedRow.name),
       description: typedRow.description ? String(typedRow.description) : undefined,
       clientId: String(typedRow.clientId),
       publicKey: String(typedRow.publicKey),
       webhookUrl: typedRow.webhookUrl ? String(typedRow.webhookUrl) : undefined,
       status: String(typedRow.status) as PlatformStatus,
-      createdAt: typedRow.createdAt instanceof Date ? typedRow.createdAt : new Date(String(typedRow.createdAt)),
-      updatedAt: typedRow.updatedAt instanceof Date ? typedRow.updatedAt : new Date(String(typedRow.updatedAt))
+      createdAt: convertTimestamp(typedRow.createdAt, 'postgresql', 'from') as Date,
+      updatedAt: convertTimestamp(typedRow.updatedAt, 'postgresql', 'from') as Date
     });
   }
 }

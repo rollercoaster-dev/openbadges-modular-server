@@ -9,8 +9,15 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { logger } from '@utils/logging/logger.service';
 
-// Default connection string for tests
-const DEFAULT_TEST_CONNECTION_STRING = 'postgres://postgres:postgres@localhost:5433/openbadges_test';
+// Default connection strings for tests
+const DEFAULT_LOCAL_TEST_CONNECTION_STRING = 'postgres://postgres:postgres@localhost:5433/openbadges_test';
+const DEFAULT_CI_TEST_CONNECTION_STRING = 'postgres://postgres:postgres@localhost:5432/openbadges_test';
+
+// Determine if running in CI environment
+const isCI = process.env.CI === 'true';
+
+// Default connection string based on environment
+export const DEFAULT_TEST_CONNECTION_STRING = isCI ? DEFAULT_CI_TEST_CONNECTION_STRING : DEFAULT_LOCAL_TEST_CONNECTION_STRING;
 
 // Add debug logging for connection attempts
 const DEBUG_CONNECTION = true;
@@ -25,6 +32,13 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
   const connString = connectionString ||
     process.env.TEST_DATABASE_URL ||
     DEFAULT_TEST_CONNECTION_STRING;
+
+  if (DEBUG_CONNECTION) {
+    logger.info('Creating PostgreSQL client', {
+      connectionString: connString,
+      isCI: isCI
+    });
+  }
 
   // Create and return the client
   return postgres(connString, {
@@ -164,12 +178,47 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
 
     if (DEBUG_CONNECTION) {
       logger.info('Attempting to connect to PostgreSQL', {
-        connectionString: connString
+        connectionString: connString,
+        isCI: isCI
       });
     }
 
-    client = createPostgresClient(connectionString);
-    await client`SELECT 1;`;
+    client = createPostgresClient(connString);
+
+    // First try to connect to the server
+    try {
+      await client`SELECT 1;`;
+    } catch (connectError) {
+      // If the database doesn't exist, try to create it
+      if (String(connectError).includes('does not exist')) {
+        try {
+          // Extract database name from connection string using URL parser for robustness
+          let dbName: string | undefined;
+          try {
+            dbName = new URL(connString).pathname.split('/').pop();
+          } catch (urlError) {
+            // Fallback to simple splitting if URL parsing fails
+            logger.warn('Failed to parse connection string as URL, using fallback method', { error: String(urlError) });
+            dbName = connString.split('/').pop();
+          }
+
+          // Connect to default postgres database to create the test database
+          const pgClient = postgres(connString.replace(dbName || '', 'postgres'));
+
+          logger.info(`Attempting to create database ${dbName}`);
+          await pgClient`CREATE DATABASE ${pgClient(dbName || 'openbadges_test')};`;
+          await pgClient.end();
+
+          // Try connecting again
+          await client`SELECT 1;`;
+          logger.info(`Successfully created and connected to database ${dbName}`);
+        } catch (createError) {
+          throw new Error(`Failed to create database: ${createError}`);
+        }
+      } else {
+        throw connectError;
+      }
+    }
 
     if (DEBUG_CONNECTION) {
       logger.info('Successfully connected to PostgreSQL');
@@ -180,6 +229,7 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
     // Provide more detailed error message based on the error type
     let errorMessage = error instanceof Error ? error.message : String(error);
     let detailedMessage = '';
+    let helpMessage = 'Run "bun run test:pg:setup" to start a PostgreSQL container for testing';
 
     if (errorMessage.includes('ECONNREFUSED')) {
       detailedMessage = 'PostgreSQL server is not running. Please start the PostgreSQL server using "bun run test:pg:setup" or Docker directly.';
@@ -187,12 +237,20 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
       detailedMessage = 'PostgreSQL database does not exist. Please create the database using "bun run test:pg:setup".';
     } else if (errorMessage.includes('password authentication failed')) {
       detailedMessage = 'PostgreSQL authentication failed. Please check your credentials in TEST_DATABASE_URL environment variable.';
+    } else if (errorMessage.includes('Failed to create database')) {
+      detailedMessage = 'Failed to automatically create the test database. You may need to create it manually or use "bun run test:pg:setup".';
+    }
+
+    // Add CI-specific help message
+    if (isCI) {
+      helpMessage = 'Check the GitHub Actions workflow configuration for PostgreSQL service setup.';
     }
 
     logger.warn('PostgreSQL database is not available for testing', {
       error: errorMessage,
       details: detailedMessage || 'See error message for details',
-      help: 'Run "bun run test:pg:setup" to start a PostgreSQL container for testing'
+      help: helpMessage,
+      environment: isCI ? 'CI' : 'local'
     });
     return false;
   } finally {
