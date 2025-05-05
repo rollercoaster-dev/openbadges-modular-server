@@ -14,7 +14,6 @@ import { OAuth2Adapter } from './adapters/oauth2.adapter';
 import { UserService } from '../domains/user/user.service';
 import { RepositoryFactory } from '../infrastructure/repository.factory';
 import { UserRole } from '../domains/user/user.entity';
-import { PasswordService } from './services/password.service';
 
 /**
  * Initialize the authentication system
