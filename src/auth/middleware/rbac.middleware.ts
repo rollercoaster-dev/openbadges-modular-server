@@ -27,178 +27,163 @@ interface RBACContext {
 
 /**
  * Create middleware that requires authentication
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requireAuth(): Elysia {
-  return new Elysia()
-    .derive((context) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { isAuthenticated, set, user } = context as any;
+export function requireAuth() {
+  return (context: any) => {
+    const { isAuthenticated, set, user } = context;
 
-      if (!isAuthenticated || !user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: 'Authentication required'
-        };
-      }
+    if (!isAuthenticated || !user) {
+      set.status = 401;
+      return {
+        success: false,
+        error: 'Authentication required'
+      };
+    }
 
-      logger.debug(`User authenticated: ${user.id}`);
-      return {};
-    });
+    logger.debug(`User authenticated: ${user.id}`);
+  };
 }
 
 /**
  * Create middleware that requires specific roles
  * @param roles Required roles (any of these roles is sufficient)
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requireRoles(roles: UserRole[]): Elysia {
-  return new Elysia()
-    .derive((context) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { isAuthenticated, user, set } = context as any;
+export function requireRoles(roles: UserRole[]) {
+  return (context: any) => {
+    const { isAuthenticated, user, set } = context;
 
-      if (!isAuthenticated || !user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: 'Authentication required'
-        };
-      }
+    if (!isAuthenticated || !user) {
+      set.status = 401;
+      return {
+        success: false,
+        error: 'Authentication required'
+      };
+    }
 
-      // Check if user has any of the required roles
-      const userRoles = user.claims.roles as UserRole[] || [];
-      const hasRequiredRole = roles.some(role => userRoles.includes(role));
+    // Check if user has any of the required roles
+    const userRoles = user.claims.roles as UserRole[] || [];
+    const hasRequiredRole = roles.some(role => userRoles.includes(role));
 
-      if (!hasRequiredRole) {
-        logger.warn(`Access denied: User ${user.id} does not have required roles`, {
-          userId: user.id,
-          requiredRoles: roles,
-          userRoles
-        });
+    if (!hasRequiredRole) {
+      logger.warn(`Access denied: User ${user.id} does not have required roles`, {
+        userId: user.id,
+        requiredRoles: roles,
+        userRoles
+      });
 
-        set.status = 403;
-        return {
-          success: false,
-          error: 'Insufficient permissions'
-        };
-      }
-
-      return {};
-    });
+      set.status = 403;
+      return {
+        success: false,
+        error: 'Insufficient permissions'
+      };
+    }
+  };
 }
 
 /**
  * Create middleware that requires specific permissions
  * @param permissions Required permissions (any of these permissions is sufficient)
  * @param requireAll If true, all permissions are required instead of any
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requirePermissions(permissions: UserPermission[], requireAll = false): Elysia {
-  return new Elysia()
-    .derive((context) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { isAuthenticated, user, set } = context as any;
+export function requirePermissions(permissions: UserPermission[], requireAll = false) {
+  return (context: any) => {
+    const { isAuthenticated, user, set } = context;
 
-      if (!isAuthenticated || !user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: 'Authentication required'
-        };
-      }
+    if (!isAuthenticated || !user) {
+      set.status = 401;
+      return {
+        success: false,
+        error: 'Authentication required'
+      };
+    }
 
-      // Check if user has required permissions
-      const userPermissions = user.claims.permissions as UserPermission[] || [];
+    // Check if user has required permissions
+    const userPermissions = user.claims.permissions as UserPermission[] || [];
 
-      let hasRequiredPermissions: boolean;
-      if (requireAll) {
-        // User must have all specified permissions
-        hasRequiredPermissions = permissions.every(permission =>
-          userPermissions.includes(permission)
-        );
-      } else {
-        // User must have at least one of the specified permissions
-        hasRequiredPermissions = permissions.some(permission =>
-          userPermissions.includes(permission)
-        );
-      }
+    let hasRequiredPermissions: boolean;
+    if (requireAll) {
+      // User must have all specified permissions
+      hasRequiredPermissions = permissions.every(permission =>
+        userPermissions.includes(permission)
+      );
+    } else {
+      // User must have at least one of the specified permissions
+      hasRequiredPermissions = permissions.some(permission =>
+        userPermissions.includes(permission)
+      );
+    }
 
-      if (!hasRequiredPermissions) {
-        logger.warn(`Access denied: User ${user.id} does not have required permissions`, {
-          userId: user.id,
-          requiredPermissions: permissions,
-          userPermissions,
-          requireAll
-        });
+    if (!hasRequiredPermissions) {
+      logger.warn(`Access denied: User ${user.id} does not have required permissions`, {
+        userId: user.id,
+        requiredPermissions: permissions,
+        userPermissions,
+        requireAll
+      });
 
-        set.status = 403;
-        return {
-          success: false,
-          error: 'Insufficient permissions'
-        };
-      }
-
-      return {};
-    });
+      set.status = 403;
+      return {
+        success: false,
+        error: 'Insufficient permissions'
+      };
+    }
+  };
 }
 
 /**
  * Create middleware that requires admin role
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requireAdmin(): Elysia {
+export function requireAdmin() {
   return requireRoles([UserRole.ADMIN]);
 }
 
 /**
  * Create middleware that requires issuer role
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requireIssuer(): Elysia {
+export function requireIssuer() {
   return requireRoles([UserRole.ADMIN, UserRole.ISSUER]);
 }
 
 /**
  * Create middleware that checks if the authenticated user is the requested user
  * or has admin privileges
- * @returns Elysia middleware
+ * @returns Middleware function
  */
-export function requireSelfOrAdmin(): Elysia {
-  return new Elysia()
-    .derive((context) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { isAuthenticated, user, set, params } = context as any;
+export function requireSelfOrAdmin() {
+  return (context: any) => {
+    const { isAuthenticated, user, set, params } = context;
 
-      if (!isAuthenticated || !user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: 'Authentication required'
-        };
-      }
+    if (!isAuthenticated || !user) {
+      set.status = 401;
+      return {
+        success: false,
+        error: 'Authentication required'
+      };
+    }
 
-      // Check if user is admin
-      const userRoles = user.claims.roles as UserRole[] || [];
-      const isAdmin = userRoles.includes(UserRole.ADMIN);
+    // Check if user is admin
+    const userRoles = user.claims.roles as UserRole[] || [];
+    const isAdmin = userRoles.includes(UserRole.ADMIN);
 
-      // Check if user is accessing their own resource
-      const isSelf = params.id === user.id;
+    // Check if user is accessing their own resource
+    const isSelf = params.id === user.id;
 
-      if (!isAdmin && !isSelf) {
-        logger.warn(`Access denied: User ${user.id} attempted to access resource for user ${params.id}`, {
-          userId: user.id,
-          resourceUserId: params.id
-        });
+    if (!isAdmin && !isSelf) {
+      logger.warn(`Access denied: User ${user.id} attempted to access resource for user ${params.id}`, {
+        userId: user.id,
+        resourceUserId: params.id
+      });
 
-        set.status = 403;
-        return {
-          success: false,
-          error: 'Insufficient permissions'
-        };
-      }
-
-      return {};
-    });
+      set.status = 403;
+      return {
+        success: false,
+        error: 'Insufficient permissions'
+      };
+    }
+  };
 }
