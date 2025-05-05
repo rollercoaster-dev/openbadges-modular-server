@@ -8,6 +8,7 @@
 import { Shared } from 'openbadges-types';
 import { IRICompatible, ObjectWithIRIs, ObjectWithStrings } from './iri.types';
 import { logger } from '../logging/logger.service';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Converts a string to a Shared.IRI
@@ -157,4 +158,31 @@ export function objectWithStringToIRI<T extends Record<string, unknown>>(
   }
 
   return result as ObjectWithIRIs<T>;
+}
+
+/**
+ * The `createOrGenerateIRI` function serves two purposes:
+ * 1. It validates an existing IRI string and converts it into an IRI object.
+ *    If the string is invalid, an error is thrown.
+ * 2. If no argument is provided, it generates a new random UUID and returns it as an IRI.
+ *
+ * This utility ensures that all IRIs used in the API are valid and conform to expected standards.
+ *
+ * @param value Optional IRI string to validate and convert
+ * @returns A valid Shared.IRI object
+ * @throws Error if the provided value is not a valid IRI
+ */
+export function createOrGenerateIRI(value?: string): Shared.IRI {
+  if (!value) {
+    // Generate a new UUID-based IRI if no value is provided
+    return `urn:uuid:${uuidv4()}` as Shared.IRI;
+  }
+
+  // Validate and convert the provided value
+  const iri = toIRI(value);
+  if (iri === null) {
+    throw new Error(`Invalid IRI value: ${value}`);
+  }
+
+  return iri;
 }

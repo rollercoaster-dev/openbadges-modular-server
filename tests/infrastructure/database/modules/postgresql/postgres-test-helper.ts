@@ -192,8 +192,15 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
       // If the database doesn't exist, try to create it
       if (String(connectError).includes('does not exist')) {
         try {
-          // Extract database name from connection string
-          const dbName = connString.split('/').pop();
+          // Extract database name from connection string using URL parser for robustness
+          let dbName: string | undefined;
+          try {
+            dbName = new URL(connString).pathname.split('/').pop();
+          } catch (urlError) {
+            // Fallback to simple splitting if URL parsing fails
+            logger.warn('Failed to parse connection string as URL, using fallback method', { error: String(urlError) });
+            dbName = connString.split('/').pop();
+          }
 
           // Connect to default postgres database to create the test database
           const pgClient = postgres(connString.replace(dbName || '', 'postgres'));

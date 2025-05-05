@@ -91,7 +91,7 @@ export const config = {
         // Example: AUTH_API_KEY_SYSTEM=abc123:system-user:System integration
         keys: (() => {
           const apiKeyConfig: Record<string, { userId: string; description?: string; claims?: Record<string, unknown> }> = {};
-          
+
           // Parse environment variables for API keys
           Object.keys(process.env).forEach(key => {
             if (key.startsWith('AUTH_API_KEY_')) {
@@ -109,7 +109,7 @@ export const config = {
               }
             }
           });
-          
+
           return apiKeyConfig;
         })()
       },
@@ -120,7 +120,7 @@ export const config = {
         // Example: AUTH_BASIC_AUTH_ADMIN=securepass:admin-user:admin
         credentials: (() => {
           const basicAuthConfig: Record<string, { password: string; userId: string; claims?: Record<string, unknown> }> = {};
-          
+
           // Parse environment variables for basic auth credentials
           Object.keys(process.env).forEach(key => {
             if (key.startsWith('AUTH_BASIC_AUTH_')) {
@@ -138,7 +138,7 @@ export const config = {
               }
             }
           });
-          
+
           return basicAuthConfig;
         })()
       },
@@ -169,6 +169,8 @@ export const config = {
     // Whether to include timestamps in logs
     includeTimestamp: process.env.LOG_INCLUDE_TIMESTAMP !== 'false',
     // Whether to enable pretty printing (useful for development)
+    // Logs will be pretty-printed by default in non-production environments unless
+    // explicitly disabled via the LOG_PRETTY_PRINT environment variable.
     prettyPrint: process.env.LOG_PRETTY_PRINT === 'true' || process.env.NODE_ENV !== 'production',
     // Whether to log database queries at debug level (in addition to slow queries)
     logDebugQueries: process.env.LOG_DEBUG_QUERIES === 'true',
