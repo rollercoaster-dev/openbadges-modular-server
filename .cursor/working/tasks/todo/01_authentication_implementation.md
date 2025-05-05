@@ -67,7 +67,7 @@ The authentication system needs to be completed by integrating the existing auth
    - [x] Add permission checks to badge class controller operations
    - [x] Add permission checks to issuer controller operations
    - [x] Add permission checks to assertion controller operations
-   - [ ] Add permission checks to backpack controller operations
+   - [x] Add permission checks to backpack controller operations
 
 3. **Testing & Documentation**
    - [ ] Create authentication integration tests
