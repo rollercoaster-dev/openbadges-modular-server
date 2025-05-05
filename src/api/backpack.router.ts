@@ -155,132 +155,132 @@ export function createBackpackRouter(
   router.group('/assertions', (app) => {
     return app
       .use(platformAuth)
-      .post('/', async ({ body, platformUser }: { body: AddAssertionRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
-        if (!platformUser) {
-          return {
-            status: 401,
-            body: {
-              success: false,
-              error: 'Authentication required'
-            }
-          };
-        }
+       .post('/', async ({ body, platformUser }: { body: AddAssertionRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
+         if (!platformUser) {
+           return {
+             status: 401,
+             body: {
+               success: false,
+               error: 'Authentication required'
+             }
+           };
+         }
 
-        const { assertionId, metadata } = body;
+         const { assertionId, metadata } = body;
 
-        const result = await backpackController.addAssertion(
-          platformUser,
-          assertionId as Shared.IRI,
-          metadata
-        );
-        const userAssertion = result.body;
+         const result = await backpackController.addAssertion(
+           platformUser,
+           assertionId as Shared.IRI,
+           metadata
+         );
+         const userAssertion = result.body;
 
-        return {
-          status: 201,
-          body: {
-            success: true,
-            userAssertion
-          }
-        };
-      })
-      .get('/', async ({ platformUser, query }: { platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>, query: Record<string, string> }) => {
-        if (!platformUser) {
-          return {
-            status: 401,
-            body: {
-              success: false,
-              error: 'Authentication required'
-            }
-          };
-        }
+         return {
+           status: 201,
+           body: {
+             success: true,
+             userAssertion
+           }
+         };
+       })
+       .get('/', async ({ platformUser, query }: { platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>, query: Record<string, string> }) => {
+         if (!platformUser) {
+           return {
+             status: 401,
+             body: {
+               success: false,
+               error: 'Authentication required'
+             }
+           };
+         }
 
-        const version = query.version || 'v3';
+         const version = query.version || 'v3';
 
-        const result = await backpackController.getUserAssertions(
-          platformUser,
-          version === 'v2' ? BadgeVersion.V2 : BadgeVersion.V3
-        );
-        const assertions = result.body;
+         const result = await backpackController.getUserAssertions(
+           platformUser,
+           version === 'v2' ? BadgeVersion.V2 : BadgeVersion.V3
+         );
+         const assertions = result.body;
 
-        return {
-          status: 200,
-          body: {
-            success: true,
-            assertions
-          }
-        };
-      })
-      .delete('/:assertionId', async ({ params: { assertionId }, platformUser }: { params: { assertionId: string }, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
-        if (!platformUser) {
-          return {
-            status: 401,
-            body: {
-              success: false,
-              error: 'Authentication required'
-            }
-          };
-        }
+         return {
+           status: 200,
+           body: {
+             success: true,
+             assertions
+           }
+         };
+       })
+       .delete('/:assertionId', async ({ params: { assertionId }, platformUser }: { params: { assertionId: string }, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
+         if (!platformUser) {
+           return {
+             status: 401,
+             body: {
+               success: false,
+               error: 'Authentication required'
+             }
+           };
+         }
 
-        const result = await backpackController.removeAssertion(
-          platformUser,
-          assertionId as Shared.IRI
-        );
-        const success = result.body.success;
+         const result = await backpackController.removeAssertion(
+           platformUser,
+           assertionId as Shared.IRI
+         );
+         const success = result.body.success;
 
-        if (!success) {
-          return {
-            status: 404,
-            body: {
-              success: false,
-              error: 'Assertion not found'
-            }
-          };
-        }
+         if (!success) {
+           return {
+             status: 404,
+             body: {
+               success: false,
+               error: 'Assertion not found'
+             }
+           };
+         }
 
-        return {
-          status: 200,
-          body: {
-            success: true
-          }
-        };
-      })
-      .patch('/:assertionId/status', async ({ params: { assertionId }, body, platformUser }: { params: { assertionId: string }, body: UpdateAssertionStatusRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
-        if (!platformUser) {
-          return {
-            status: 401,
-            body: {
-              success: false,
-              error: 'Authentication required'
-            }
-          };
-        }
+         return {
+           status: 200,
+           body: {
+             success: true
+           }
+         };
+       })
+       .patch('/:assertionId/status', async ({ params: { assertionId }, body, platformUser }: { params: { assertionId: string }, body: UpdateAssertionStatusRequest, platformUser: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'> }) => {
+         if (!platformUser) {
+           return {
+             status: 401,
+             body: {
+               success: false,
+               error: 'Authentication required'
+             }
+           };
+         }
 
-        const { status } = body;
+         const { status } = body;
 
-        const result = await backpackController.updateAssertionStatus(
-          platformUser,
-          assertionId as Shared.IRI,
-          status
-        );
-        const success = result.body.success;
+         const result = await backpackController.updateAssertionStatus(
+           platformUser,
+           assertionId as Shared.IRI,
+           status
+         );
+         const success = result.body.success;
 
-        if (!success) {
-          return {
-            status: 404,
-            body: {
-              success: false,
-              error: 'Assertion not found'
-            }
-          };
-        }
+         if (!success) {
+           return {
+             status: 404,
+             body: {
+               success: false,
+               error: 'Assertion not found'
+             }
+           };
+         }
 
-        return {
-          status: 200,
-          body: {
-            success: true
-          }
-        };
-      });
+         return {
+           status: 200,
+           body: {
+             success: true
+           }
+         };
+       });
   });
 
   return router;
