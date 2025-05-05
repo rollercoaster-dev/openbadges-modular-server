@@ -18,6 +18,7 @@ describe('Authentication Integration Tests', () => {
     // Initialize the Elysia app using the setup function
     app = await setupApp();
     // Pass the Elysia app instance directly to supertest
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     request = supertest(app as any); // Use 'as any' temporarily if direct pass causes type errors, to investigate further
   });
 
