@@ -43,7 +43,9 @@ export function createBackpackRouter(
         {
           beforeHandle: requirePermissions([UserPermission.MANAGE_PLATFORMS])
         },
-        app => app.get('/', async () => {
+        app => app
+      )
+      .get('/', async () => {
         return {
           status: 200,
           body: {
