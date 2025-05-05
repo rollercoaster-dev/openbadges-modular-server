@@ -10,6 +10,7 @@ import { AuthController } from '../auth/auth.controller';
 import { requireAuth, requireAdmin, requireSelfOrAdmin } from '../auth/middleware/rbac.middleware';
 import { UserRole, UserPermission } from '../domains/user/user.entity';
 import { Shared } from 'openbadges-types';
+import { applyMiddleware } from '../utils/middleware/apply-middleware';
 
 /**
  * Create a router for user management endpoints
@@ -24,7 +25,7 @@ export function createUserRouter(userController: UserController, authController:
   router.group('/users', app => {
     return app
       // Get users (admin only)
-      .use(requireAdmin())
+      .use(applyMiddleware(requireAdmin()))
       .get('/', async ({ query }) => {
         const { username, email, role, isActive, page, limit } = query;
 
@@ -72,7 +73,7 @@ export function createUserRouter(userController: UserController, authController:
   router.group('/users/:id', app => {
     return app
       // Get user by ID (self or admin)
-      .use(requireSelfOrAdmin())
+      .use(applyMiddleware(requireSelfOrAdmin()))
       .get('/', async ({ params }) => {
         return userController.getUserById(params.id as Shared.IRI);
       })
@@ -103,7 +104,7 @@ export function createUserRouter(userController: UserController, authController:
       // Delete user (admin only)
       .delete('/', async ({ params }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use(requireAdmin());
+        app.use(applyMiddleware(requireAdmin()));
         return userController.deleteUser(params.id as Shared.IRI);
       })
 
@@ -123,7 +124,7 @@ export function createUserRouter(userController: UserController, authController:
       // Add roles (admin only)
       .post('/roles', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use(requireAdmin());
+        app.use(applyMiddleware(requireAdmin()));
 
         const { roles } = body as { roles: UserRole[] };
         return userController.addRoles(params.id as Shared.IRI, roles);
@@ -132,7 +133,7 @@ export function createUserRouter(userController: UserController, authController:
       // Remove roles (admin only)
       .delete('/roles', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use(requireAdmin());
+        app.use(applyMiddleware(requireAdmin()));
 
         const { roles } = body as { roles: UserRole[] };
         return userController.removeRoles(params.id as Shared.IRI, roles);
@@ -141,7 +142,7 @@ export function createUserRouter(userController: UserController, authController:
       // Add permissions (admin only)
       .post('/permissions', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use(requireAdmin());
+        app.use(applyMiddleware(requireAdmin()));
 
         const { permissions } = body as { permissions: UserPermission[] };
         return userController.addPermissions(params.id as Shared.IRI, permissions);
@@ -150,7 +151,7 @@ export function createUserRouter(userController: UserController, authController:
       // Remove permissions (admin only)
       .delete('/permissions', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use(requireAdmin());
+        app.use(applyMiddleware(requireAdmin()));
 
         const { permissions } = body as { permissions: UserPermission[] };
         return userController.removePermissions(params.id as Shared.IRI, permissions);
@@ -193,7 +194,7 @@ export function createUserRouter(userController: UserController, authController:
       })
 
       // Get current user
-      .use(requireAuth())
+      .use(applyMiddleware(requireAuth()))
       .get('/me', async (ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { user } = ctx as any;
