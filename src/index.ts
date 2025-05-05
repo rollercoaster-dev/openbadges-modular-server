@@ -16,13 +16,16 @@ import { AssertionController } from './api/controllers/assertion.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
 import { BackpackController } from './domains/backpack/backpack.controller';
+import { UserController } from './domains/user/user.controller';
+import { UserService } from './domains/user/user.service';
 import { BackpackService } from './domains/backpack/backpack.service';
 import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
 
 import { requestContextMiddleware } from './utils/logging/request-context.middleware';
 import { initializeAuthentication } from './auth/auth.initializer';
-import { authMiddleware } from './auth/middleware/auth.middleware';
+import { authMiddleware, authDebugMiddleware } from './auth/middleware/auth.middleware';
+import { AuthController } from './auth/auth.controller';
 
 // Create the main application
 const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
@@ -32,6 +35,8 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
   .use(securityMiddleware)
   // Add authentication middleware
   .use(authMiddleware)
+  // Add authentication debug middleware
+  .use(authDebugMiddleware)
   .get('/', () => ({
     name: 'Open Badges API',
     version: '1.0.0',
@@ -80,6 +85,7 @@ async function setupApp() {
     const issuerRepository = await RepositoryFactory.createIssuerRepository();
     const badgeClassRepository = await RepositoryFactory.createBadgeClassRepository();
     const assertionRepository = await RepositoryFactory.createAssertionRepository();
+    const userRepository = await RepositoryFactory.createUserRepository();
 
     // Initialize backpack repositories
     const platformRepository = await RepositoryFactory.createPlatformRepository();
@@ -104,13 +110,22 @@ async function setupApp() {
     );
     const backpackController = new BackpackController(backpackService);
 
+    // Initialize user service and controller
+    const userService = new UserService(userRepository);
+    const userController = new UserController(userService);
+
+    // Initialize auth controller
+    const authController = new AuthController(userService);
+
     // Create API router with controllers
     const apiRouter = createApiRouter(
       issuerController,
       badgeClassController,
       assertionController,
       backpackController,
-      platformRepository
+      platformRepository,
+      userController,
+      authController
     );
 
     // Add API routes

@@ -1,6 +1,6 @@
 /**
  * Authentication Initializer
- * 
+ *
  * This module initializes the authentication system by configuring and registering
  * the appropriate authentication adapters based on the application configuration.
  */
@@ -11,6 +11,10 @@ import { registerAuthAdapter } from './middleware/auth.middleware';
 import { ApiKeyAdapter } from './adapters/api-key.adapter';
 import { BasicAuthAdapter } from './adapters/basic-auth.adapter';
 import { OAuth2Adapter } from './adapters/oauth2.adapter';
+import { UserService } from '../domains/user/user.service';
+import { RepositoryFactory } from '../infrastructure/repository.factory';
+import { PasswordService } from './services/password.service';
+import { UserRole } from '../domains/user/user.entity';
 
 /**
  * Initialize the authentication system
@@ -21,6 +25,9 @@ export async function initializeAuthentication(): Promise<void> {
     logger.info('Authentication is disabled');
     return;
   }
+
+  // Create admin user if it doesn't exist
+  await createAdminUserIfNeeded();
 
   logger.info('Initializing authentication system');
 
@@ -71,5 +78,51 @@ export async function initializeAuthentication(): Promise<void> {
   } catch (error) {
     logger.logError('Failed to initialize authentication system', error as Error);
     throw error;
+  }
+}
+
+/**
+ * Create an admin user if it doesn't exist
+ */
+async function createAdminUserIfNeeded(): Promise<void> {
+  try {
+    // Check if admin user creation is enabled
+    if (!config.auth?.adminUser?.enabled) {
+      return;
+    }
+
+    // Get admin user configuration
+    const adminUsername = config.auth.adminUser.username || 'admin';
+    const adminEmail = config.auth.adminUser.email || 'admin@example.com';
+    const adminPassword = config.auth.adminUser.password;
+
+    // If no password is provided, don't create admin user
+    if (!adminPassword) {
+      logger.warn('Admin user creation is enabled but no password is provided');
+      return;
+    }
+
+    // Create user repository
+    const userRepository = await RepositoryFactory.createUserRepository();
+    const userService = new UserService(userRepository);
+
+    // Check if admin user already exists
+    const existingUser = await userService.getUserByUsername(adminUsername);
+    if (existingUser) {
+      logger.info(`Admin user '${adminUsername}' already exists`);
+      return;
+    }
+
+    // Create admin user
+    await userService.createUser({
+      username: adminUsername,
+      email: adminEmail,
+      roles: [UserRole.ADMIN],
+      isActive: true
+    }, adminPassword);
+
+    logger.info(`Created admin user '${adminUsername}'`);
+  } catch (error) {
+    logger.logError('Failed to create admin user', error as Error);
   }
 }

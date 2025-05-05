@@ -2,7 +2,7 @@
  * SQLite schema definitions for Open Badges API
  *
  * This file defines the database schema for the SQLite module using Drizzle ORM.
- * It includes tables for Issuers, BadgeClasses, Assertions, API Keys, and Roles following the Open Badges 3.0 specification.
+ * It includes tables for Issuers, BadgeClasses, Assertions, API Keys, Users, and Roles following the Open Badges 3.0 specification.
  *
  * Note: SQLite stores JSON as text and timestamps as integers (epoch milliseconds).
  */
@@ -106,7 +106,7 @@ export const apiKeys = sqliteTable(
     id: text('id').primaryKey(),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     description: text('description'),
     permissions: text('permissions').notNull(), // JSON stored as text
     revoked: integer('revoked').notNull().default(0),
@@ -146,12 +146,40 @@ export const roles = sqliteTable(
   }
 );
 
+// Users table
+export const users = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    username: text('username').notNull().unique(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash'),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    roles: text('roles').notNull().default('[]'), // JSON stored as text
+    permissions: text('permissions').notNull().default('[]'), // JSON stored as text
+    isActive: integer('is_active').notNull().default(1),
+    lastLogin: integer('last_login'),
+    metadata: text('metadata'), // JSON stored as text
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on username for faster lookups
+      usernameIdx: index('user_username_idx').on(table.username),
+      // Add index on email for faster lookups
+      emailIdx: index('user_email_idx').on(table.email),
+    };
+  }
+);
+
 // User Roles table (many-to-many relationship)
 export const userRoles = sqliteTable(
   'user_roles',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at').notNull(),
   },

@@ -21,8 +21,11 @@ import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/securit
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { AssetsController } from './controllers/assets.controller';
 import { createBackpackRouter } from './backpack.router';
+import { createUserRouter } from './user.router';
 import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { BackpackController } from '../domains/backpack/backpack.controller';
+import { UserController } from '../domains/user/user.controller';
+import { AuthController } from '../auth/auth.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
 
 /**
@@ -37,7 +40,9 @@ export function createApiRouter(
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
   backpackController?: BackpackController,
-  platformRepository?: PlatformRepository
+  platformRepository?: PlatformRepository,
+  userController?: UserController,
+  authController?: AuthController
 ): Elysia {
   // Create the router
   const router = new Elysia();
@@ -127,6 +132,12 @@ export function createApiRouter(
   if (backpackController && platformRepository) {
     const backpackRouter = createBackpackRouter(backpackController, platformRepository);
     router.group('/api/v1', app => app.use(backpackRouter));
+  }
+
+  // User management routes (if controller is provided)
+  if (userController && authController) {
+    const userRouter = createUserRouter(userController, authController);
+    router.group('/api/v1', app => app.use(userRouter));
   }
 
   return router;

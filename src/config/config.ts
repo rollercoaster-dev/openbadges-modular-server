@@ -82,6 +82,13 @@ export const config = {
     issuer: process.env.JWT_ISSUER || process.env.BASE_URL || 'http://localhost:3000',
     // Public paths (no authentication required)
     publicPaths: (process.env.AUTH_PUBLIC_PATHS || '/docs,/swagger,/health,/public').split(','),
+    // Admin user configuration
+    adminUser: {
+      enabled: process.env.AUTH_ADMIN_USER_ENABLED === 'true',
+      username: process.env.AUTH_ADMIN_USERNAME || 'admin',
+      email: process.env.AUTH_ADMIN_EMAIL || 'admin@example.com',
+      password: process.env.AUTH_ADMIN_PASSWORD
+    },
     // Authentication adapters configuration
     adapters: {
       apiKey: {

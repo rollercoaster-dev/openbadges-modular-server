@@ -2,7 +2,6 @@ import type { Config } from 'drizzle-kit';
 import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
-import { Logger as RdLogger, LogLevel } from '@rollercoaster-dev/rd-logger';
 
 /**
  * Drizzle Kit configuration
@@ -11,12 +10,12 @@ import { Logger as RdLogger, LogLevel } from '@rollercoaster-dev/rd-logger';
  * It supports both SQLite and PostgreSQL databases based on the DB_TYPE environment variable.
  */
 
-// Create a minimal logger instance specifically for this config file
-// Configure minimally, avoiding the main app config import
-const configLogger = new RdLogger({
-  level: (process.env.LOG_LEVEL as LogLevel) || 'info',
-  prettyPrint: process.env.NODE_ENV !== 'production',
-});
+// Simple console logging function
+const configLogger = {
+  info: (message: string, ...args: any[]) => console.log(`[INFO] ${message}`, ...args),
+  warn: (message: string, ...args: any[]) => console.warn(`[WARN] ${message}`, ...args),
+  error: (message: string, ...args: any[]) => console.error(`[ERROR] ${message}`, ...args)
+};
 
 // Determine database type from environment variable or config
 const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
