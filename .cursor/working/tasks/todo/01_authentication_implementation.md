@@ -50,7 +50,7 @@ The authentication system needs to be completed by integrating the existing auth
 - [x] Extend auth middleware to support role-based access control
 - [x] Create user entity and repository
 - [x] Implement user management controller and routes
-- [ ] Integrate auth middleware with all badge operation API routes
+- [x] Integrate auth middleware with all badge operation API routes
 - [x] Add basic logging for authentication events
 - [ ] Enhance logging for comprehensive authentication event tracking
 - [ ] Write comprehensive unit and integration tests for authentication
@@ -58,10 +58,10 @@ The authentication system needs to be completed by integrating the existing auth
 
 ### Revised Tasks Based on Assessment
 1. **Route Protection**
-   - [ ] Apply RBAC middleware to badge class endpoints
-   - [ ] Apply RBAC middleware to issuer endpoints
-   - [ ] Apply RBAC middleware to assertion endpoints
-   - [ ] Apply RBAC middleware to backpack endpoints
+   - [x] Apply RBAC middleware to badge class endpoints
+   - [x] Apply RBAC middleware to issuer endpoints
+   - [x] Apply RBAC middleware to assertion endpoints
+   - [x] Apply RBAC middleware to backpack endpoints
 
 2. **Permission Enforcement**
    - [ ] Add permission checks to badge class controller operations

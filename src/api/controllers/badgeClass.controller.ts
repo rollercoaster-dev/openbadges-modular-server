@@ -14,6 +14,7 @@ import { CreateBadgeClassDto, BadgeClassResponseDto, UpdateBadgeClassDto } from 
 import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../validation/badgeClass.schemas';
 import { logger } from '../../utils/logging/logger.service';
 import { z } from 'zod';
+import { UserPermission } from '../../domains/user/user.entity';
 
 // Define types inferred from Zod schemas
 type ValidatedCreateBadgeClassData = z.infer<typeof CreateBadgeClassSchema>;
@@ -70,6 +71,21 @@ export class BadgeClassController {
    * @param badgeClassRepository The badge class repository
    */
   constructor(private badgeClassRepository: BadgeClassRepository) {}
+
+  /**
+   * Check if the user has the required permission
+   * @param user The authenticated user
+   * @param permission The required permission
+   * @returns True if the user has the permission, false otherwise
+   */
+  private hasPermission(user: { claims?: Record<string, unknown> } | null, permission: UserPermission): boolean {
+    if (!user || !user.claims) {
+      return false;
+    }
+
+    const permissions = user.claims.permissions as UserPermission[] || [];
+    return permissions.includes(permission);
+  }
 
   /**
    * Creates a new badge class
