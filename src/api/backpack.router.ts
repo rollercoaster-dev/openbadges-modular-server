@@ -39,8 +39,11 @@ export function createBackpackRouter(
   // Platform management endpoints (admin only)
   router.group('/platforms', (app) => {
     return app
-      .use({ beforeHandle: [requirePermissions([UserPermission.MANAGE_PLATFORMS])] })
-      .get('/', async () => {
+      .guard(
+        {
+          beforeHandle: requirePermissions([UserPermission.MANAGE_PLATFORMS])
+        },
+        app => app.get('/', async () => {
         return {
           status: 200,
           body: {
