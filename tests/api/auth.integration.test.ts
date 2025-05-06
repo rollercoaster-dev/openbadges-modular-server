@@ -25,10 +25,7 @@ describe('Authentication Integration Tests', () => {
   });
 
   afterAll(async () => {
-    // Stop the server if it's running
-    if (app) {
-       await app.stop();
-    }
+    // No need to stop the server since we're not starting it
     // Add database cleanup logic here if needed for test isolation
   });
 
