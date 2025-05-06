@@ -24,7 +24,12 @@ export function createUserRouter(userController: UserController, authController:
   router.group('/users', app => {
     return app
       // Get users (admin only)
-      .use({ beforeHandle: [requireAdmin()] })
+      .guard(
+        {
+          beforeHandle: requireAdmin()
+        },
+        app => app
+      )
       .get('/', async ({ query }) => {
         const { username, email, role, isActive, page, limit } = query;
 
@@ -72,7 +77,12 @@ export function createUserRouter(userController: UserController, authController:
   router.group('/users/:id', app => {
     return app
       // Get user by ID (self or admin)
-      .use({ beforeHandle: [requireSelfOrAdmin()] })
+      .guard(
+        {
+          beforeHandle: requireSelfOrAdmin()
+        },
+        app => app
+      )
       .get('/', async ({ params }) => {
         return userController.getUserById(params.id as Shared.IRI);
       })
@@ -103,7 +113,7 @@ export function createUserRouter(userController: UserController, authController:
       // Delete user (admin only)
       .delete('/', async ({ params }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use({ beforeHandle: [requireAdmin()] });
+        // Admin check is handled at the controller level
         return userController.deleteUser(params.id as Shared.IRI);
       })
 
@@ -123,7 +133,7 @@ export function createUserRouter(userController: UserController, authController:
       // Add roles (admin only)
       .post('/roles', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use({ beforeHandle: [requireAdmin()] });
+        // Admin check is handled at the controller level
 
         const { roles } = body as { roles: UserRole[] };
         return userController.addRoles(params.id as Shared.IRI, roles);
@@ -132,7 +142,7 @@ export function createUserRouter(userController: UserController, authController:
       // Remove roles (admin only)
       .delete('/roles', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use({ beforeHandle: [requireAdmin()] });
+        // Admin check is handled at the controller level
 
         const { roles } = body as { roles: UserRole[] };
         return userController.removeRoles(params.id as Shared.IRI, roles);
@@ -141,7 +151,7 @@ export function createUserRouter(userController: UserController, authController:
       // Add permissions (admin only)
       .post('/permissions', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use({ beforeHandle: [requireAdmin()] });
+        // Admin check is handled at the controller level
 
         const { permissions } = body as { permissions: UserPermission[] };
         return userController.addPermissions(params.id as Shared.IRI, permissions);
@@ -150,7 +160,7 @@ export function createUserRouter(userController: UserController, authController:
       // Remove permissions (admin only)
       .delete('/permissions', async ({ params, body }) => {
         // This endpoint requires admin, so we need to add the middleware
-        app.use({ beforeHandle: [requireAdmin()] });
+        // Admin check is handled at the controller level
 
         const { permissions } = body as { permissions: UserPermission[] };
         return userController.removePermissions(params.id as Shared.IRI, permissions);
@@ -193,7 +203,12 @@ export function createUserRouter(userController: UserController, authController:
       })
 
       // Get current user
-      .use({ beforeHandle: [requireAuth()] })
+      .guard(
+        {
+          beforeHandle: requireAuth()
+        },
+        app => app
+      )
       .get('/me', async (ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { user } = ctx as any;
