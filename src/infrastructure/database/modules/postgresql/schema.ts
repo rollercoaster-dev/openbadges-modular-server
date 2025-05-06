@@ -2,12 +2,12 @@
  * PostgreSQL schema definitions for Open Badges API
  *
  * This file defines the database schema for the PostgreSQL module using Drizzle ORM.
- * It includes tables for Issuers, BadgeClasses, Assertions, API Keys, and Roles following the Open Badges 3.0 specification.
+ * It includes tables for Issuers, BadgeClasses, Assertions, API Keys, Users, and Roles following the Open Badges 3.0 specification.
  *
  * Note: PostgreSQL natively supports UUID, JSONB, and timestamp types.
  */
 
-import { pgTable, text, timestamp, uuid, jsonb, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, jsonb, index, boolean, varchar } from 'drizzle-orm/pg-core';
 
 // Issuer table
 export const issuers = pgTable(
@@ -107,7 +107,7 @@ export const apiKeys = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    userId: text('user_id').notNull(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     description: text('description'),
     permissions: jsonb('permissions').notNull(),
     revoked: boolean('revoked').default(false).notNull(),
@@ -147,12 +147,40 @@ export const roles = pgTable(
   }
 );
 
+// Users table
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    username: varchar('username', { length: 50 }).notNull().unique(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    passwordHash: text('password_hash'),
+    firstName: varchar('first_name', { length: 50 }),
+    lastName: varchar('last_name', { length: 50 }),
+    roles: jsonb('roles').notNull().default('[]'),
+    permissions: jsonb('permissions').notNull().default('[]'),
+    isActive: boolean('is_active').notNull().default(true),
+    lastLogin: timestamp('last_login'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on username for faster lookups
+      usernameIdx: index('user_username_idx').on(table.username),
+      // Add index on email for faster lookups
+      emailIdx: index('user_email_idx').on(table.email),
+    };
+  }
+);
+
 // User Roles table (many-to-many relationship)
 export const userRoles = pgTable(
   'user_roles',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id').notNull(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

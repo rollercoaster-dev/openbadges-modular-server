@@ -11,6 +11,7 @@ import { logger } from '../../utils/logging/logger.service';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus, UserAssertionMetadata, PlatformStatus } from './backpack.types';
+import { UserPermission } from '../user/user.entity';
 import {
   CreatePlatformRequest,
   UpdatePlatformRequest,
@@ -26,11 +27,38 @@ export class BackpackController {
   constructor(private backpackService: BackpackService) {}
 
   /**
+   * Check if the user has the required permission
+   * @param user The authenticated user
+   * @param permission The required permission
+   * @returns True if the user has the permission, false otherwise
+   */
+  private hasPermission(user: { claims?: Record<string, unknown> } | null, permission: UserPermission): boolean {
+    if (!user || !user.claims) {
+      return false;
+    }
+
+    const permissions = user.claims.permissions as UserPermission[] || [];
+    return permissions.includes(permission);
+  }
+
+  /**
    * Creates a new platform
    * @param data The platform data
+   * @param user The authenticated user
    * @returns The created platform
    */
-  async createPlatform(data: CreatePlatformRequest): Promise<{ status: number; body: PlatformApiResponse }> {
+  async createPlatform(data: CreatePlatformRequest, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse }> {
+    // Check if user has permission to manage platforms
+    if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create a platform without permission`);
+      return {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Insufficient permissions to create platform'
+        }
+      };
+    }
     try {
       const platformParams: PlatformCreateParams = {
         name: data.name,
@@ -62,9 +90,22 @@ export class BackpackController {
 
   /**
    * Gets all platforms
+   * @param user The authenticated user
    * @returns All platforms
    */
-  async getAllPlatforms(): Promise<{ status: number; body: PlatformListApiResponse }> {
+  async getAllPlatforms(user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformListApiResponse }> {
+    // Check if user has permission to manage platforms
+    if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to get all platforms without permission`);
+      return {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Insufficient permissions to view platforms',
+          platforms: []
+        }
+      };
+    }
     try {
       const platforms = await this.backpackService.getAllPlatforms();
       return {
@@ -89,9 +130,21 @@ export class BackpackController {
   /**
    * Gets a platform by ID
    * @param id The platform ID
+   * @param user The authenticated user
    * @returns The platform if found
    */
-  async getPlatformById(id: Shared.IRI): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
+  async getPlatformById(id: Shared.IRI, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
+    // Check if user has permission to manage platforms
+    if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to get platform ${id} without permission`);
+      return {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Insufficient permissions to view platform'
+        }
+      };
+    }
     try {
       const platform = await this.backpackService.getPlatformById(id);
       if (!platform) {
@@ -126,9 +179,21 @@ export class BackpackController {
    * Updates a platform
    * @param id The platform ID
    * @param data The updated platform data
+   * @param user The authenticated user
    * @returns The updated platform if found
    */
-  async updatePlatform(id: Shared.IRI, data: UpdatePlatformRequest): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
+  async updatePlatform(id: Shared.IRI, data: UpdatePlatformRequest, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
+    // Check if user has permission to manage platforms
+    if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update platform ${id} without permission`);
+      return {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Insufficient permissions to update platform'
+        }
+      };
+    }
     try {
       const platformParams: PlatformUpdateParams = {
         name: data.name,
@@ -170,9 +235,21 @@ export class BackpackController {
   /**
    * Deletes a platform
    * @param id The platform ID
+   * @param user The authenticated user
    * @returns Success status
    */
-  async deletePlatform(id: Shared.IRI): Promise<{ status: number; body: SuccessApiResponse | ErrorApiResponse }> {
+  async deletePlatform(id: Shared.IRI, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: SuccessApiResponse | ErrorApiResponse }> {
+    // Check if user has permission to manage platforms
+    if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete platform ${id} without permission`);
+      return {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Insufficient permissions to delete platform'
+        }
+      };
+    }
     try {
       const success = await this.backpackService.deletePlatform(id);
       if (!success) {

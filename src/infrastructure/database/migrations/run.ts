@@ -12,8 +12,10 @@ import { drizzle as pgDrizzle } from 'drizzle-orm/postgres-js';
 import { Database } from 'bun:sqlite';
 import postgres from 'postgres';
 import { config } from '../../../config/config';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import fs from 'fs';
 import { logger } from '../../../utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
  * Runs database migrations
@@ -51,6 +53,13 @@ async function runSqliteMigrations() {
   logger.info(`SQLite file: ${sqliteFile}`);
 
   try {
+    // Ensure the directory for the SQLite file exists
+    const dir = dirname(sqliteFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      logger.info(`Created directory for SQLite file: ${dir}`);
+    }
+
     // Create SQLite database connection
     const sqlite = new Database(sqliteFile);
 
@@ -98,7 +107,8 @@ async function runPostgresMigrations() {
 
   // Get PostgreSQL connection string
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
-  logger.info(`PostgreSQL connection: ${connectionString.replace(/:[^:]*@/, ':***@')}`); // Hide password
+  // Log connection string with SensitiveValue to automatically mask the password
+  logger.info('PostgreSQL connection', { connectionString: SensitiveValue.from(connectionString) });
 
   try {
     // Create PostgreSQL connection

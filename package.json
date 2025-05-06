@@ -28,7 +28,17 @@
     "db:studio:pg": "DB_TYPE=postgresql drizzle-kit studio",
     "db:studio:sqlite": "DB_TYPE=sqlite drizzle-kit studio",
     "build": "bun build src/index.ts --target bun --outdir dist",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:test:pg:start": "docker compose -f docker-compose.test.yml up -d --wait",
+    "db:test:pg:stop": "docker compose -f docker-compose.test.yml down --volumes",
+    "db:test:pg:migrate": "NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg && NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg",
+    "test:e2e:pg:setup": "bun run db:test:pg:start && bun run db:test:pg:migrate",
+    "test:e2e:pg:run": "NODE_ENV=test DB_TYPE=postgresql bun test test/e2e/**/*.test.ts",
+    "test:e2e:pg": "bun run test:e2e:pg:setup && bun run test:e2e:pg:run ; bun run db:test:pg:stop",
+    "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun run db:migrate:sqlite",
+    "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun test test/e2e/**/*.test.ts",
+    "test:e2e:sqlite": "bun run db:test:sqlite:migrate && bun run test:e2e:sqlite:run",
+    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg"
   },
   "lint-staged": {
     "*.ts": [
@@ -53,7 +63,9 @@
     "@neondatabase/serverless": "^1.0.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@rollercoaster-dev/rd-logger": "0.2.1",
+    "@types/bcrypt": "^5.0.2",
     "@types/uuid": "^10.0.0",
+    "bcrypt": "^5.1.1",
     "better-sqlite3": "^11.9.1",
     "chalk": "^5.4.1",
     "drizzle-orm": "^0.41.0",
@@ -65,6 +77,7 @@
     "openapi3-ts": "^4.4.0",
     "openbadges-types": "^3.2.3",
     "postgres": "^3.4.5",
+    "supertest": "^7.1.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"
   }

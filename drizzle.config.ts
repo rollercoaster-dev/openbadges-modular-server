@@ -2,7 +2,8 @@ import type { Config } from 'drizzle-kit';
 import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
-import { Logger as RdLogger, LogLevel } from '@rollercoaster-dev/rd-logger';
+import { logger } from './src/utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
  * Drizzle Kit configuration
@@ -11,12 +12,7 @@ import { Logger as RdLogger, LogLevel } from '@rollercoaster-dev/rd-logger';
  * It supports both SQLite and PostgreSQL databases based on the DB_TYPE environment variable.
  */
 
-// Create a minimal logger instance specifically for this config file
-// Configure minimally, avoiding the main app config import
-const configLogger = new RdLogger({
-  level: (process.env.LOG_LEVEL as LogLevel) || 'info',
-  prettyPrint: process.env.NODE_ENV !== 'production',
-});
+// Use the main application logger
 
 // Determine database type from environment variable or config
 const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
@@ -24,7 +20,7 @@ const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
 if (!supportedDbTypes.includes(dbType)) {
-  configLogger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
+  logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
   process.exit(1);
 }
 
@@ -38,7 +34,8 @@ if (dbType === 'postgresql') {
   try {
     url = new URL(connectionString);
   } catch (error) {
-    configLogger.error('Invalid connection string', { connectionString, error });
+    // Use SensitiveValue to automatically mask the password in logs
+    logger.error('Invalid connection string', { connectionString: SensitiveValue.from(connectionString), error });
     throw new Error('Failed to parse the database connection string. Please check your configuration.');
   }
 
@@ -61,7 +58,7 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: config.database.sqliteFile || 'sqlite.db',
+      url: process.env.SQLITE_DB_PATH || config.database.sqliteFile || 'sqlite.db',
     },
   };
 }
@@ -84,7 +81,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   // Check if schema file exists
   const schemaPath = Array.isArray(config.schema) ? config.schema[0] : config.schema;
   if (schemaPath && !existsSync(schemaPath)) {
-    configLogger.error("Schema file not found:", { schemaPath });
+    logger.error("Schema file not found:", { schemaPath });
     process.exit(1);
   }
 
@@ -92,7 +89,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (config.out) {
     const migrationsDir = dirname(config.out);
     if (!existsSync(migrationsDir)) {
-      configLogger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
+      logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
     }
   }
 
@@ -114,7 +111,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (dbType === 'postgresql' && dbCredentials) {
     const { host, port, user, database } = dbCredentials;
     if (!host || !port || !user || !database) {
-      configLogger.error("Missing PostgreSQL connection details:", {
+      logger.error("Missing PostgreSQL connection details:", {
         missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
       });
       process.exit(1);
@@ -122,11 +119,11 @@ function verifyConfiguration(config: Config, dbType: string) {
   } else if (dbType === 'sqlite' && dbCredentials) {
     const { url } = dbCredentials;
     if (!url) {
-      configLogger.error("Missing SQLite connection URL");
+      logger.error("Missing SQLite connection URL");
       process.exit(1);
     }
     if (url && url !== ':memory:' && !existsSync(url) && !url.includes(':memory:')) {
-      configLogger.warn(`SQLite database file not found: ${url}. It will be created.`);
+      logger.warn(`SQLite database file not found: ${url}. It will be created.`);
     }
   }
 }

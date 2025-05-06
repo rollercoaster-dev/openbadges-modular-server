@@ -8,10 +8,11 @@
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { logger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
-// Default connection strings for tests
-const DEFAULT_LOCAL_TEST_CONNECTION_STRING = 'postgres://postgres:postgres@localhost:5433/openbadges_test';
-const DEFAULT_CI_TEST_CONNECTION_STRING = 'postgres://postgres:postgres@localhost:5432/openbadges_test';
+// Default connection strings for tests with passwords wrapped in SensitiveValue
+const DEFAULT_LOCAL_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5433/openbadges_test`;
+const DEFAULT_CI_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges_test`;
 
 // Determine if running in CI environment
 const isCI = process.env.CI === 'true';
@@ -35,7 +36,7 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
 
   if (DEBUG_CONNECTION) {
     logger.info('Creating PostgreSQL client', {
-      connectionString: connString,
+      connectionString: SensitiveValue.from(connString),
       isCI: isCI
     });
   }
@@ -178,7 +179,7 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
 
     if (DEBUG_CONNECTION) {
       logger.info('Attempting to connect to PostgreSQL', {
-        connectionString: connString,
+        connectionString: SensitiveValue.from(connString),
         isCI: isCI
       });
     }

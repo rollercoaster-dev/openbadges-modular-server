@@ -21,9 +21,14 @@ import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/securit
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { AssetsController } from './controllers/assets.controller';
 import { createBackpackRouter } from './backpack.router';
+import { createUserRouter } from './user.router';
 import type { PlatformRepository } from '@domains/backpack/platform.repository';
 import { BackpackController } from '../domains/backpack/backpack.controller';
+import { UserController } from '../domains/user/user.controller';
+import { AuthController } from '../auth/auth.controller';
 import { staticAssetsMiddleware } from './static-assets.middleware';
+import { requireAuth, requirePermissions } from '../auth/middleware/rbac.middleware';
+import { UserPermission } from '../domains/user/user.entity';
 
 /**
  * Creates the API router
@@ -37,7 +42,9 @@ export function createApiRouter(
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
   backpackController?: BackpackController,
-  platformRepository?: PlatformRepository
+  platformRepository?: PlatformRepository,
+  userController?: UserController,
+  authController?: AuthController
 ): Elysia {
   // Create the router
   const router = new Elysia();
@@ -129,6 +136,12 @@ export function createApiRouter(
     router.group('/api/v1', app => app.use(backpackRouter));
   }
 
+  // User management routes (if controller is provided)
+  if (userController && authController) {
+    const userRouter = createUserRouter(userController, authController);
+    router.group('/api/v1', app => app.use(userRouter));
+  }
+
   return router;
 }
 
@@ -151,29 +164,50 @@ function createVersionedRouter(
   // Issuer routes
   router.post('/issuers',
     ({ body }) => issuerController.createIssuer(body as CreateIssuerDto, version),
-    { beforeHandle: [validateIssuerMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_ISSUER]), validateIssuerMiddleware] }
   );
-  router.get('/issuers', () => issuerController.getAllIssuers(version));
-  router.get('/issuers/:id', ({ params }) => issuerController.getIssuerById(params.id, version));
+  router.get('/issuers',
+    () => issuerController.getAllIssuers(version),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/issuers/:id',
+    ({ params }) => issuerController.getIssuerById(params.id, version),
+    { beforeHandle: [requireAuth()] }
+  );
   router.put('/issuers/:id',
     ({ params, body }) => issuerController.updateIssuer(params.id, body as UpdateIssuerDto, version),
-    { beforeHandle: [validateIssuerMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_ISSUER]), validateIssuerMiddleware] }
   );
-  router.delete('/issuers/:id', ({ params }) => issuerController.deleteIssuer(params.id));
+  router.delete('/issuers/:id',
+    ({ params }) => issuerController.deleteIssuer(params.id),
+    { beforeHandle: [requirePermissions([UserPermission.DELETE_ISSUER])] }
+  );
 
   // Badge class routes
   router.post('/badge-classes',
     ({ body }) => badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version),
-    { beforeHandle: [validateBadgeClassMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
-  router.get('/badge-classes', () => badgeClassController.getAllBadgeClasses(version));
-  router.get('/badge-classes/:id', ({ params }) => badgeClassController.getBadgeClassById(params.id, version));
-  router.get('/issuers/:id/badge-classes', ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version));
+  router.get('/badge-classes',
+    () => badgeClassController.getAllBadgeClasses(version),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/badge-classes/:id',
+    ({ params }) => badgeClassController.getBadgeClassById(params.id, version),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/issuers/:id/badge-classes',
+    ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version),
+    { beforeHandle: [requireAuth()] }
+  );
   router.put('/badge-classes/:id',
     ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as UpdateBadgeClassDto, version),
-    { beforeHandle: [validateBadgeClassMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
-  router.delete('/badge-classes/:id', ({ params }) => badgeClassController.deleteBadgeClass(params.id));
+  router.delete('/badge-classes/:id',
+    ({ params }) => badgeClassController.deleteBadgeClass(params.id),
+    { beforeHandle: [requirePermissions([UserPermission.DELETE_BADGE_CLASS])] }
+  );
 
   // Assertion routes
   router.post('/assertions',
@@ -181,30 +215,54 @@ function createVersionedRouter(
       const sign = query.sign !== 'false'; // Default to true if not specified
       return assertionController.createAssertion(body as CreateAssertionDto, version, sign);
     },
-    { beforeHandle: [validateAssertionMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.CREATE_ASSERTION]), validateAssertionMiddleware] }
   );
-  router.get('/assertions', () => assertionController.getAllAssertions(version));
-  router.get('/assertions/:id', ({ params }) => assertionController.getAssertionById(params.id, version));
-  router.get('/badge-classes/:id/assertions', ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version));
+  router.get('/assertions',
+    () => assertionController.getAllAssertions(version),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/assertions/:id',
+    ({ params }) => assertionController.getAssertionById(params.id, version),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/badge-classes/:id/assertions',
+    ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version),
+    { beforeHandle: [requireAuth()] }
+  );
   router.put('/assertions/:id',
     ({ params, body }) => assertionController.updateAssertion(params.id, body as UpdateAssertionDto, version),
-    { beforeHandle: [validateAssertionMiddleware] }
+    { beforeHandle: [requirePermissions([UserPermission.UPDATE_ASSERTION]), validateAssertionMiddleware] }
   );
-  router.post('/assertions/:id/revoke', ({ params, body }) => {
-    const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
-    return assertionController.revokeAssertion(params.id, reason);
-  });
+  router.post('/assertions/:id/revoke',
+    ({ params, body }) => {
+      const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
+      return assertionController.revokeAssertion(params.id, reason);
+    },
+    { beforeHandle: [requirePermissions([UserPermission.REVOKE_ASSERTION])] }
+  );
 
   // Verification routes
-  router.get('/assertions/:id/verify', ({ params }) => assertionController.verifyAssertion(params.id));
-  router.post('/assertions/:id/sign', ({ params, query }) => {
-    const keyId = query.keyId || 'default';
-    return assertionController.signAssertion(params.id, keyId as string, version);
-  });
+  router.get('/assertions/:id/verify',
+    ({ params }) => assertionController.verifyAssertion(params.id),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.post('/assertions/:id/sign',
+    ({ params, query }) => {
+      const keyId = query.keyId || 'default';
+      return assertionController.signAssertion(params.id, keyId as string, version);
+    },
+    { beforeHandle: [requirePermissions([UserPermission.SIGN_ASSERTION])] }
+  );
 
   // Public key routes
-  router.get('/public-keys', () => assertionController.getPublicKeys());
-  router.get('/public-keys/:id', ({ params }) => assertionController.getPublicKey(params.id));
+  router.get('/public-keys',
+    () => assertionController.getPublicKeys(),
+    { beforeHandle: [requireAuth()] }
+  );
+  router.get('/public-keys/:id',
+    ({ params }) => assertionController.getPublicKey(params.id),
+    { beforeHandle: [requireAuth()] }
+  );
 
   return router;
 }

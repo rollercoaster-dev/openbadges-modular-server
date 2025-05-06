@@ -5,6 +5,37 @@
  * database connection details and other environment-specific settings.
  */
 
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+
+// Helper function to determine PostgreSQL connection string
+const determinePostgresConnectionString = () => {
+  // Priority 1: Explicit DATABASE_URL from environment
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+
+  // Priority 2: Construct from individual POSTGRES_* vars (typically for E2E tests or specific overrides)
+  const host = process.env.POSTGRES_HOST;
+  const port = process.env.POSTGRES_PORT;
+  const user = process.env.POSTGRES_USER;
+  const password = process.env.POSTGRES_PASSWORD;
+  const dbName = process.env.POSTGRES_DB;
+
+  if (host && port && user && password && dbName) {
+    // This check ensures these variables are used in a PostgreSQL context.
+    // It's a bit heuristic if DB_TYPE isn't set, but POSTGRES_HOST existing is a strong indicator.
+    if (process.env.DB_TYPE === 'postgresql' ||
+        (!process.env.DB_TYPE && host.toLowerCase() !== 'sqlite.db' && !dbName.toLowerCase().endsWith('.sqlite'))) {
+      // Create connection string with password wrapped in SensitiveValue to prevent logging
+      // When this string is logged, the password will be automatically redacted
+      return `postgresql://${user}:${SensitiveValue.from(password)}@${host}:${port}/${dbName}`;
+    }
+  }
+
+  // Priority 3: Default connection string (e.g., for standard development)
+  return `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges`;
+};
+
 export const config = {
   // Server configuration
   server: {
@@ -17,9 +48,9 @@ export const config = {
     // Supported types: 'sqlite', 'postgresql', 'mongodb', etc.
     type: process.env.DB_TYPE || 'sqlite',
     // For Postgres or Mongo, use a generic connection string
-    connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges',
+    connectionString: determinePostgresConnectionString(),
     // SQLite configuration
-    sqliteFile: process.env.SQLITE_FILE || ':memory:',
+    sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || ':memory:', // Prioritize SQLITE_DB_PATH
     sqliteBusyTimeout: parseInt(process.env.SQLITE_BUSY_TIMEOUT || '5000', 10),
     sqliteSyncMode: process.env.SQLITE_SYNC_MODE || 'NORMAL',
     sqliteCacheSize: parseInt(process.env.SQLITE_CACHE_SIZE || '10000', 10),
@@ -82,6 +113,13 @@ export const config = {
     issuer: process.env.JWT_ISSUER || process.env.BASE_URL || 'http://localhost:3000',
     // Public paths (no authentication required)
     publicPaths: (process.env.AUTH_PUBLIC_PATHS || '/docs,/swagger,/health,/public').split(','),
+    // Admin user configuration
+    adminUser: {
+      enabled: process.env.AUTH_ADMIN_USER_ENABLED === 'true',
+      username: process.env.AUTH_ADMIN_USERNAME || 'admin',
+      email: process.env.AUTH_ADMIN_EMAIL || 'admin@example.com',
+      password: process.env.AUTH_ADMIN_PASSWORD
+    },
     // Authentication adapters configuration
     adapters: {
       apiKey: {
