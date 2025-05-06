@@ -12,7 +12,8 @@ import { drizzle as pgDrizzle } from 'drizzle-orm/postgres-js';
 import { Database } from 'bun:sqlite';
 import postgres from 'postgres';
 import { config } from '../../../config/config';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import fs from 'fs';
 import { logger } from '../../../utils/logging/logger.service';
 
 /**
@@ -51,6 +52,13 @@ async function runSqliteMigrations() {
   logger.info(`SQLite file: ${sqliteFile}`);
 
   try {
+    // Ensure the directory for the SQLite file exists
+    const dir = dirname(sqliteFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      logger.info(`Created directory for SQLite file: ${dir}`);
+    }
+
     // Create SQLite database connection
     const sqlite = new Database(sqliteFile);
 

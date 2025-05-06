@@ -69,7 +69,7 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: config.database.sqliteFile || 'sqlite.db',
+      url: process.env.SQLITE_DB_PATH || config.database.sqliteFile || 'sqlite.db',
     },
   };
 }

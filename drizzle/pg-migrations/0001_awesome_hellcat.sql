@@ -16,8 +16,8 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-ALTER TABLE "api_keys" ALTER COLUMN "user_id" SET DATA TYPE uuid;--> statement-breakpoint
-ALTER TABLE "user_roles" ALTER COLUMN "user_id" SET DATA TYPE uuid;--> statement-breakpoint
+ALTER TABLE "api_keys" ALTER COLUMN "user_id" SET DATA TYPE uuid USING "user_id"::uuid;--> statement-breakpoint
+ALTER TABLE "user_roles" ALTER COLUMN "user_id" SET DATA TYPE uuid USING "user_id"::uuid;--> statement-breakpoint
 CREATE INDEX "user_username_idx" ON "users" USING btree ("username");--> statement-breakpoint
 CREATE INDEX "user_email_idx" ON "users" USING btree ("email");--> statement-breakpoint
 ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
