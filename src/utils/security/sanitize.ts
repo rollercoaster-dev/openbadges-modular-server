@@ -40,14 +40,14 @@ export function sanitizeObject<T extends Record<string, unknown>>(
     )) {
       // Mask the value if it's a string
       if (typeof result[key] === 'string') {
-        result[key as keyof T] = '***' as any;
+        result[key as keyof T] = '***' as unknown as T[keyof T];
       }
     } else if (typeof result[key] === 'object' && result[key] !== null) {
       // Recursively sanitize nested objects
       result[key as keyof T] = sanitizeObject(
         result[key] as Record<string, unknown>,
         sensitiveKeys
-      ) as any;
+      ) as unknown as T[keyof T];
     }
   }
 
