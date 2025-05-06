@@ -52,7 +52,7 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
 let database: unknown = null;
 
 // Async function to setup repositories and controllers
-async function setupApp() {
+export async function setupApp(): Promise<Elysia> {
   try {
     // Initialize the repository factory
     await RepositoryFactory.initialize({
