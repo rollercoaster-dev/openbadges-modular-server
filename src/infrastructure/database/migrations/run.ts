@@ -15,6 +15,7 @@ import { config } from '../../../config/config';
 import { join, dirname } from 'path';
 import fs from 'fs';
 import { logger } from '../../../utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
  * Runs database migrations
@@ -106,7 +107,8 @@ async function runPostgresMigrations() {
 
   // Get PostgreSQL connection string
   const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
-  logger.info(`PostgreSQL connection: ${connectionString.replace(/:[^:]*@/, ':***@')}`); // Hide password
+  // Log connection string with SensitiveValue to automatically mask the password
+  logger.info('PostgreSQL connection', { connectionString: SensitiveValue.from(connectionString) });
 
   try {
     // Create PostgreSQL connection

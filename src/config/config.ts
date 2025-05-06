@@ -5,6 +5,8 @@
  * database connection details and other environment-specific settings.
  */
 
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+
 // Helper function to determine PostgreSQL connection string
 const determinePostgresConnectionString = () => {
   // Priority 1: Explicit DATABASE_URL from environment
@@ -22,14 +24,16 @@ const determinePostgresConnectionString = () => {
   if (host && port && user && password && dbName) {
     // This check ensures these variables are used in a PostgreSQL context.
     // It's a bit heuristic if DB_TYPE isn't set, but POSTGRES_HOST existing is a strong indicator.
-    if (process.env.DB_TYPE === 'postgresql' || 
+    if (process.env.DB_TYPE === 'postgresql' ||
         (!process.env.DB_TYPE && host.toLowerCase() !== 'sqlite.db' && !dbName.toLowerCase().endsWith('.sqlite'))) {
-      return `postgresql://${user}:${password}@${host}:${port}/${dbName}`;
+      // Create connection string with password wrapped in SensitiveValue to prevent logging
+      // When this string is logged, the password will be automatically redacted
+      return `postgresql://${user}:${SensitiveValue.from(password)}@${host}:${port}/${dbName}`;
     }
   }
-  
+
   // Priority 3: Default connection string (e.g., for standard development)
-  return 'postgres://postgres:postgres@localhost:5432/openbadges';
+  return `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges`;
 };
 
 export const config = {
