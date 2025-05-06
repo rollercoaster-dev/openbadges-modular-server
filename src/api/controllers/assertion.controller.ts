@@ -20,6 +20,7 @@ import { logger } from '../../utils/logging/logger.service';
 import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
 import { CreateAssertionSchema, UpdateAssertionSchema } from '../validation/assertion.schemas';
 import { z } from 'zod';
+import { UserPermission } from '../../domains/user/user.entity';
 
 // Define types inferred from Zod schemas
 type ValidatedCreateAssertionData = z.infer<typeof CreateAssertionSchema>;
@@ -99,17 +100,39 @@ export class AssertionController {
   ) {}
 
   /**
+   * Check if the user has the required permission
+   * @param user The authenticated user
+   * @param permission The required permission
+   * @returns True if the user has the permission, false otherwise
+   */
+  private hasPermission(user: { claims?: Record<string, unknown> } | null, permission: UserPermission): boolean {
+    if (!user || !user.claims) {
+      return false;
+    }
+
+    const permissions = user.claims.permissions as UserPermission[] || [];
+    return permissions.includes(permission);
+  }
+
+  /**
    * Creates a new assertion
    * @param data The assertion data
    * @param version The badge version to use for the response
    * @param sign Whether to sign the assertion (default: true)
+   * @param user The authenticated user
    * @returns The created assertion
    */
   async createAssertion(
     data: CreateAssertionDto,
     version: BadgeVersion = BadgeVersion.V3,
-    sign: boolean = true
+    sign: boolean = true,
+    user?: { claims?: Record<string, unknown> } | null
   ): Promise<AssertionResponseDto> {
+    // Check if user has permission to create assertions
+    if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create an assertion without permission`);
+      throw new Error('Insufficient permissions to create assertion');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateAssertionSchema.parse(data);
@@ -233,13 +256,20 @@ export class AssertionController {
    * @param id The assertion ID
    * @param data The updated assertion data
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The updated assertion
    */
   async updateAssertion(
     id: string,
     data: UpdateAssertionDto,
-    version: BadgeVersion = BadgeVersion.V3
+    version: BadgeVersion = BadgeVersion.V3,
+    user?: { claims?: Record<string, unknown> } | null
   ): Promise<AssertionResponseDto | null> {
+    // Check if user has permission to update assertions
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_ASSERTION)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update assertion ${id} without permission`);
+      throw new Error('Insufficient permissions to update assertion');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateAssertionSchema.parse(data);
@@ -278,9 +308,16 @@ export class AssertionController {
    * Revokes an assertion
    * @param id The assertion ID
    * @param reason The revocation reason
+   * @param user The authenticated user
    * @returns True if the assertion was revoked, false otherwise
    */
-  async revokeAssertion(id: string, reason: string): Promise<boolean> {
+  async revokeAssertion(id: string, reason: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
+    // Check if user has permission to revoke assertions
+    if (user && !this.hasPermission(user, UserPermission.REVOKE_ASSERTION)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to revoke assertion ${id} without permission`);
+      throw new Error('Insufficient permissions to revoke assertion');
+    }
+
     const result = await this.assertionRepository.revoke(toIRI(id) as Shared.IRI, reason);
     return result !== null;
   }
@@ -356,13 +393,20 @@ export class AssertionController {
    * @param id The assertion ID
    * @param keyId Optional key ID to use for signing (defaults to 'default')
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The signed assertion
    */
   async signAssertion(
     id: string,
     keyId: string = 'default',
-    version: BadgeVersion = BadgeVersion.V3
+    version: BadgeVersion = BadgeVersion.V3,
+    user?: { claims?: Record<string, unknown> } | null
   ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
+    // Check if user has permission to sign assertions
+    if (user && !this.hasPermission(user, UserPermission.SIGN_ASSERTION)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to sign assertion ${id} without permission`);
+      throw new Error('Insufficient permissions to sign assertion');
+    }
     try {
       // Initialize the key service
       await KeyService.initialize();

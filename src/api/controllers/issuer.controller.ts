@@ -14,6 +14,7 @@ import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
 import { CreateIssuerSchema, UpdateIssuerSchema } from '../validation/issuer.schemas';
 import { logger } from '../../utils/logging/logger.service';
 import { z } from 'zod';
+import { UserPermission } from '../../domains/user/user.entity';
 
 // Define types inferred from Zod schemas
 type ValidatedCreateIssuerData = z.infer<typeof CreateIssuerSchema>;
@@ -59,12 +60,33 @@ export class IssuerController {
   constructor(private issuerRepository: IssuerRepository) {}
 
   /**
+   * Check if the user has the required permission
+   * @param user The authenticated user
+   * @param permission The required permission
+   * @returns True if the user has the permission, false otherwise
+   */
+  private hasPermission(user: { claims?: Record<string, unknown> } | null, permission: UserPermission): boolean {
+    if (!user || !user.claims) {
+      return false;
+    }
+
+    const permissions = user.claims.permissions as UserPermission[] || [];
+    return permissions.includes(permission);
+  }
+
+  /**
    * Creates a new issuer
    * @param data The issuer data
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The created issuer
    */
-  async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto> {
+  async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<IssuerResponseDto> {
+    // Check if user has permission to create issuers
+    if (user && !this.hasPermission(user, UserPermission.CREATE_ISSUER)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create an issuer without permission`);
+      throw new Error('Insufficient permissions to create issuer');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateIssuerSchema.parse(data);
@@ -113,9 +135,15 @@ export class IssuerController {
    * @param id The issuer ID
    * @param data The updated issuer data
    * @param version The badge version to use for the response
+   * @param user The authenticated user
    * @returns The updated issuer
    */
-  async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
+  async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<IssuerResponseDto | null> {
+    // Check if user has permission to update issuers
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_ISSUER)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update issuer ${id} without permission`);
+      throw new Error('Insufficient permissions to update issuer');
+    }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateIssuerSchema.parse(data);
@@ -139,9 +167,16 @@ export class IssuerController {
   /**
    * Deletes an issuer
    * @param id The issuer ID
+   * @param user The authenticated user
    * @returns True if the issuer was deleted, false otherwise
    */
-  async deleteIssuer(id: string): Promise<boolean> {
+  async deleteIssuer(id: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
+    // Check if user has permission to delete issuers
+    if (user && !this.hasPermission(user, UserPermission.DELETE_ISSUER)) {
+      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete issuer ${id} without permission`);
+      throw new Error('Insufficient permissions to delete issuer');
+    }
+
     return await this.issuerRepository.delete(toIRI(id) as Shared.IRI);
   }
 }

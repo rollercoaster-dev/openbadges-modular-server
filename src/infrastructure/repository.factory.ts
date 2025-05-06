@@ -11,6 +11,7 @@ import { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { ApiKeyRepository } from '@domains/auth/apiKey.repository';
+import { UserRepository } from '@domains/user/user.repository';
 import { PlatformRepository } from '@domains/backpack/platform.repository';
 import { PlatformUserRepository } from '@domains/backpack/platform-user.repository';
 import { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
@@ -18,6 +19,7 @@ import { PostgresIssuerRepository } from './database/modules/postgresql/reposito
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
 import { PostgresApiKeyRepository } from './database/modules/postgresql/repositories/postgres-api-key.repository';
+import { PostgresUserRepository } from './database/modules/postgresql/repositories/postgres-user.repository';
 import { PostgresPlatformRepository } from './database/modules/postgresql/repositories/postgres-platform.repository';
 import { PostgresPlatformUserRepository } from './database/modules/postgresql/repositories/postgres-platform-user.repository';
 import { PostgresUserAssertionRepository } from './database/modules/postgresql/repositories/postgres-user-assertion.repository';
@@ -26,6 +28,7 @@ import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/s
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
 import { SqliteApiKeyRepository } from './database/modules/sqlite/repositories/sqlite-api-key.repository';
+import { SqliteUserRepository } from './database/modules/sqlite/repositories/sqlite-user.repository';
 import { SqlitePlatformRepository } from './database/modules/sqlite/repositories/sqlite-platform.repository';
 import { SqlitePlatformUserRepository } from './database/modules/sqlite/repositories/sqlite-platform-user.repository';
 import { SqliteUserAssertionRepository } from './database/modules/sqlite/repositories/sqlite-user-assertion.repository';
@@ -277,6 +280,31 @@ export class RepositoryFactory {
 
       // Create the repository
       return new SqliteUserAssertionRepository(client);
+    }
+
+    throw new Error(`Unsupported database type: ${this.dbType}`);
+  }
+
+  /**
+   * Creates a user repository
+   * @returns An implementation of UserRepository
+   */
+  static async createUserRepository(): Promise<UserRepository> {
+    if (this.dbType === 'postgresql') {
+      if (!this.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // Create the repository
+      return new PostgresUserRepository(this.client);
+    } else if (this.dbType === 'sqlite') {
+      // Get SQLite database client
+      const { Database } = await import('bun:sqlite');
+      const sqliteFile = config.database.sqliteFile || ':memory:';
+      const client = new Database(sqliteFile);
+
+      // Create the repository
+      return new SqliteUserRepository(client);
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);

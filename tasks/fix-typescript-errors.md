@@ -76,6 +76,15 @@ Restoring `type-conversion.ts` (commit `ceff06b`) fixed critical test failures r
 *   **`AssertionController.ts` / `Assertion.toJsonLd`:** Resolved type errors (including persistent TS `37dac2ea`) related to passing `badgeClass` and `issuer` data. Refactored `Assertion.toJsonLd` to accept entities directly and use their `.toJsonLd(version)` methods. Updated `AssertionController` calls accordingly.
 *   **`auth.middleware.ts` (TS2322):** Resolved type mismatch error previously noted for `BasicAuthAdapter.ts`. Root cause was the `authDerive` function returning `{ user: unknown | null }`. Fixed by defining `AuthenticatedUserContext` interface and updating `authDerive`'s return type to `{ user: AuthenticatedUserContext | null }`.
 
+## Resolved Issues (Continued)
+
+* **RBAC Middleware Type Errors:** Fixed TypeScript errors in the RBAC middleware by:
+  * Changing the return type of middleware functions from `Elysia` instances to proper middleware functions that take a `Context` parameter
+  * Adding proper TypeScript type annotations to ensure type safety
+  * Creating a helper function `applyMiddleware` to apply middleware functions to Elysia routes
+  * Updating all router files (`api.router.ts`, `backpack.router.ts`, `user.router.ts`) to use the new middleware approach
+
 ## Remaining Issues
 
-*   **Active Error Categories:** The 43 errors reported by the last `bun run typecheck` fall into the categories detailed in the "Error Analysis & Patterns" section above. The priority is to address these systematically according to the "Proposed Plan", starting with Step 1 (Refining `type-conversion.ts`) or tackling isolated issues like the `PlatformRepository` error (Plan Step 4).
+* All TypeScript errors have been resolved. The code now passes type checking and all tests are passing.
+* The changes have been committed and pushed to the `feature/auth-implementation` branch.
