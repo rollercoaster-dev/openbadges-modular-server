@@ -31,11 +31,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
 
     try {
       // Validate connection string before creating client
-      if (typeof this.config.connectionString !== 'string' || !this.config.connectionString) {
+      if (typeof this.config['connectionString'] !== 'string' || !this.config['connectionString']) {
         logger.error('Invalid or missing PostgreSQL connection string in configuration');
         throw new Error('Invalid or missing PostgreSQL connection string in configuration');
       }
-      this.client = postgres(this.config.connectionString);
+      this.client = postgres(this.config['connectionString']);
       this.db = drizzle(this.client);
       this.connected = true;
     } catch (error) {
@@ -137,12 +137,12 @@ export class PostgresqlDatabase implements DatabaseInterface {
 
     // Prepare update data
     const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (url !== undefined) updateData.url = url as string;
-    if (email !== undefined) updateData.email = email;
-    if (description !== undefined) updateData.description = description;
-    if (image !== undefined) updateData.image = typeof image === 'string' ? image : JSON.stringify(image);
-    if (publicKey !== undefined) updateData.publicKey = publicKey ? JSON.stringify(publicKey) : null;
+    if (name !== undefined) updateData['name'] = name;
+    if (url !== undefined) updateData['url'] = url as string;
+    if (email !== undefined) updateData['email'] = email;
+    if (description !== undefined) updateData['description'] = description;
+    if (image !== undefined) updateData['image'] = typeof image === 'string' ? image : JSON.stringify(image);
+    if (publicKey !== undefined) updateData['publicKey'] = publicKey ? JSON.stringify(publicKey) : null;
 
     // If there are additional fields, merge them with existing ones
     if (Object.keys(additionalFields).length > 0) {
@@ -153,11 +153,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
         .filter(([key]) => !['id', 'name', 'url', 'email', 'description', 'image', 'publicKey'].includes(key))
         .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, unknown>);
 
-      updateData.additionalFields = { ...existingAdditionalFields, ...additionalFields };
+      updateData['additionalFields'] = { ...existingAdditionalFields, ...additionalFields };
     }
 
     // Add updatedAt timestamp
-    updateData.updatedAt = new Date();
+    updateData['updatedAt'] = new Date();
 
     const result = await this.db!.update(issuers)
       .set(updateData)
@@ -287,12 +287,12 @@ export class PostgresqlDatabase implements DatabaseInterface {
 
     // Prepare update data
     const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (image !== undefined) updateData.image = typeof image === 'string' ? image : JSON.stringify(image);
-    if (criteria !== undefined) updateData.criteria = criteria ? JSON.stringify(criteria) : null;
-    if (alignment !== undefined) updateData.alignment = alignment ? JSON.stringify(alignment) : null;
-    if (tags !== undefined) updateData.tags = tags ? JSON.stringify(tags) : null;
+    if (name !== undefined) updateData['name'] = name;
+    if (description !== undefined) updateData['description'] = description;
+    if (image !== undefined) updateData['image'] = typeof image === 'string' ? image : JSON.stringify(image);
+    if (criteria !== undefined) updateData['criteria'] = criteria ? JSON.stringify(criteria) : null;
+    if (alignment !== undefined) updateData['alignment'] = alignment ? JSON.stringify(alignment) : null;
+    if (tags !== undefined) updateData['tags'] = tags ? JSON.stringify(tags) : null;
 
     // Update issuer if provided
     if (issuer !== undefined) {
@@ -301,7 +301,7 @@ export class PostgresqlDatabase implements DatabaseInterface {
       if (!issuerExists) {
         throw new Error(`Issuer with ID ${issuerId} does not exist`);
       }
-      updateData.issuerId = issuerId as string;
+      updateData['issuerId'] = issuerId as string;
     }
 
     // If there are additional fields, merge them with existing ones
@@ -313,11 +313,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
         .filter(([key]) => !['id', 'issuer', 'name', 'description', 'image', 'criteria', 'alignment', 'tags'].includes(key))
         .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, unknown>);
 
-      updateData.additionalFields = { ...existingAdditionalFields, ...additionalFields };
+      updateData['additionalFields'] = { ...existingAdditionalFields, ...additionalFields };
     }
 
     // Add updatedAt timestamp
-    updateData.updatedAt = new Date();
+    updateData['updatedAt'] = new Date();
 
     const result = await this.db!.update(badgeClasses)
       .set(updateData)
@@ -514,13 +514,13 @@ export class PostgresqlDatabase implements DatabaseInterface {
 
     // Prepare update data
     const updateData: Record<string, unknown> = {};
-    if (recipient !== undefined) updateData.recipient = JSON.stringify(recipient);
-    if (issuedOn !== undefined) updateData.issuedOn = new Date(issuedOn);
-    if (expires !== undefined) updateData.expires = expires ? new Date(expires) : null;
-    if (evidence !== undefined) updateData.evidence = evidence ? JSON.stringify(evidence) : null;
-    if (verification !== undefined) updateData.verification = verification ? JSON.stringify(verification) : null;
-    if (revoked !== undefined) updateData.revoked = revoked;
-    if (revocationReason !== undefined) updateData.revocationReason = revocationReason;
+    if (recipient !== undefined) updateData['recipient'] = JSON.stringify(recipient);
+    if (issuedOn !== undefined) updateData['issuedOn'] = new Date(issuedOn);
+    if (expires !== undefined) updateData['expires'] = expires ? new Date(expires) : null;
+    if (evidence !== undefined) updateData['evidence'] = evidence ? JSON.stringify(evidence) : null;
+    if (verification !== undefined) updateData['verification'] = verification ? JSON.stringify(verification) : null;
+    if (revoked !== undefined) updateData['revoked'] = revoked;
+    if (revocationReason !== undefined) updateData['revocationReason'] = revocationReason;
 
     // Update badge class if provided
     if (badgeClass !== undefined) {
@@ -529,7 +529,7 @@ export class PostgresqlDatabase implements DatabaseInterface {
       if (!badgeClassExists) {
         throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
       }
-      updateData.badgeClassId = badgeClassId as string;
+      updateData['badgeClassId'] = badgeClassId as string;
     }
 
     // If there are additional fields, merge them with existing ones
@@ -541,11 +541,11 @@ export class PostgresqlDatabase implements DatabaseInterface {
         .filter(([key]) => !['id', 'badgeClass', 'recipient', 'issuedOn', 'expires', 'evidence', 'verification', 'revoked', 'revocationReason'].includes(key))
         .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, unknown>);
 
-      updateData.additionalFields = { ...existingAdditionalFields, ...additionalFields };
+      updateData['additionalFields'] = { ...existingAdditionalFields, ...additionalFields };
     }
 
     // Add updatedAt timestamp
-    updateData.updatedAt = new Date();
+    updateData['updatedAt'] = new Date();
 
     const result = await this.db!.update(assertions)
       .set(updateData)

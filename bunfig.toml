@@ -1,0 +1,17 @@
+[test]
+# Specifies the global setup file for tests.
+# This script runs once before all test files.
+globalSetup = "./test/e2e/setup/globalSetup.ts"
+
+# Specifies the global teardown file for tests.
+# This script runs once after all test files have completed.
+globalTeardown = "./test/e2e/setup/globalTeardown.ts"
+
+# Optional: Define a root directory for tests if they are not in the default location.
+# root = "./tests"
+
+# Optional: Specify a timeout for tests in milliseconds.
+# timeout = 5000
+
+# Optional: Preload scripts or modules before running tests.
+# preload = ["./test/preload.ts"]

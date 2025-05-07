@@ -11,26 +11,13 @@ import { logger } from '../logging/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Converts a string to a Shared.IRI
- * @param value The string to convert
- * @returns The converted Shared.IRI or null if the value is invalid
+ * Converts a string to a Shared.IRI (strict: URL or UUID)
+ * Use for Open Badges and general IRI validation.
  */
 export function toIRI(value: IRICompatible): Shared.IRI | null {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-
-  // If it's already a Shared.IRI, return it directly
-  if (typeof value === 'object' && value !== null) {
-    return value;
-  }
-
-  // Validate the string before converting to Shared.IRI
-  if (isValidIRI(value)) {
-    return value as Shared.IRI;
-  }
-
-  // Log a warning for invalid IRIs
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'object' && value !== null) return value;
+  if (isValidIRI(value)) return value as Shared.IRI;
   logger.warn('Invalid IRI value', { value });
   return null;
 }
@@ -48,24 +35,33 @@ export function toString(value: IRICompatible): string | null {
 }
 
 /**
- * Checks if a value is a valid IRI
- * @param value The value to check
- * @returns True if the value is a valid IRI, false otherwise
+ * Checks if a value is a valid IRI (strict: URL or UUID)
  */
 export function isValidIRI(value: unknown): boolean {
-  if (value === null || value === undefined || value === '') {
-    return false;
-  }
-
+  if (value === null || value === undefined || value === '') return false;
   try {
-    // Try to create a URL from the value
     new URL(value.toString());
     return true;
   } catch {
-    // If it's not a URL, check if it's a UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(value.toString());
   }
+}
+
+
+/**
+ * Converts a string to an Issuer ID (relaxed: any non-empty string)
+ * Use ONLY for issuer resource lookups, not for Open Badges data validation.
+ * @param value The string to convert
+ * @returns The value as Shared.IRI if non-empty, null otherwise
+ */
+/**
+ * Converts a string to an Issuer ID (relaxed: any non-empty string)
+ * Use ONLY for issuer resource lookups, not for Open Badges data validation.
+ */
+export function toIssuerId(value: IRICompatible): Shared.IRI | null {
+  if (value === null || value === undefined || value === '') return null;
+  return value as Shared.IRI;
 }
 
 /**
@@ -73,8 +69,10 @@ export function isValidIRI(value: unknown): boolean {
  * @param value The value to check
  * @returns The value as a Shared.IRI if valid, null otherwise
  */
+/**
+ * Ensures a value is a valid IRI (strict)
+ */
 export function ensureValidIRI(value: unknown): Shared.IRI | null {
-  // If it's already a valid IRI type, use toIRI to validate and convert
   if (typeof value === 'string' || (typeof value === 'object' && value !== null)) {
     return toIRI(value as IRICompatible);
   }
@@ -86,11 +84,11 @@ export function ensureValidIRI(value: unknown): Shared.IRI | null {
  * @param values The array of strings to convert
  * @returns The converted array of Shared.IRIs
  */
+/**
+ * Converts an array of strings to an array of Shared.IRIs (strict)
+ */
 export function toIRIArray(values: IRICompatible[] | null | undefined): Shared.IRI[] {
-  if (values === null || values === undefined) {
-    return [];
-  }
-  return values.map(value => toIRI(value)).filter(Boolean) as Shared.IRI[];
+  return (values ?? []).map(toIRI).filter(Boolean) as Shared.IRI[];
 }
 
 /**

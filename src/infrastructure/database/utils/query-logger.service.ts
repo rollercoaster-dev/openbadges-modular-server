@@ -57,7 +57,7 @@ export class QueryLoggerService {
     }
 
     // Log all queries in development mode
-    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_QUERIES === 'true') {
+    if (process.env.NODE_ENV === 'development' && process.env['DEBUG_QUERIES'] === 'true') {
       logger.debug(`Database query executed`, {
         duration: `${duration}ms`,
         database,

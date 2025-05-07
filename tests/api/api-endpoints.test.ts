@@ -5,7 +5,7 @@
  * with the new Shared.IRI types.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 
 import { describe, expect, it, mock } from 'bun:test';
 import { Shared, OB2, OB3 } from 'openbadges-types';
@@ -27,7 +27,7 @@ const mockIssuerController = {
   updateIssuer: mock(async (id: string, data: Partial<OB2.Profile | OB3.Issuer>): Promise<OB2.Profile | OB3.Issuer> => {
     return { id: toIRI(id), ...data } as OB2.Profile | OB3.Issuer;
   }),
-  deleteIssuer: mock(async (id: string): Promise<boolean> => {
+  deleteIssuer: mock(async (_id: string): Promise<boolean> => {
     return true;
   })
 } as unknown as IssuerController;
@@ -49,7 +49,7 @@ const mockBadgeClassController = {
   updateBadgeClass: mock(async (id: string, data: Partial<OB2.BadgeClass | OB3.Achievement>): Promise<OB2.BadgeClass | OB3.Achievement> => {
     return { id: toIRI(id), ...data } as OB2.BadgeClass | OB3.Achievement;
   }),
-  deleteBadgeClass: mock(async (id: string): Promise<boolean> => {
+  deleteBadgeClass: mock(async (_id: string): Promise<boolean> => {
     return true;
   }),
   getBadgeClassesByIssuer: mock(async (issuerId: string): Promise<(OB2.BadgeClass | OB3.Achievement)[]> => {
@@ -105,7 +105,7 @@ const mockAssertionController = {
       }
     ];
   }) as unknown as () => Promise<(OB2.Assertion | OB3.VerifiableCredential)[]>,
-  revokeAssertion: mock(async (id: string, reason: string): Promise<boolean> => {
+  revokeAssertion: mock(async (_id: string, _reason: string): Promise<boolean> => {
     return true;
   })
 } as unknown as AssertionController;

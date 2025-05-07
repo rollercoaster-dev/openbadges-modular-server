@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { drizzle } from 'drizzle-orm/postgres-js';
+// import { drizzle } from 'drizzle-orm/postgres-js'; // Will be used in future implementation
 import postgres from 'postgres';
 import { ApiKey } from '@domains/auth/apiKey.entity';
 import type { ApiKeyRepository } from '@domains/auth/apiKey.repository';
@@ -16,10 +16,9 @@ import { logger } from '@utils/logging/logger.service';
 // import { apiKeys } from '../schema';
 
 export class PostgresApiKeyRepository implements ApiKeyRepository {
-  private db: ReturnType<typeof drizzle>;
-
-  constructor(client: postgres.Sql) {
-    this.db = drizzle(client);
+  // Database client will be used in future implementation
+  constructor(_client: postgres.Sql) {
+    // Store client for future use when implementation is added
   }
 
   async create(apiKey: ApiKey): Promise<ApiKey> {

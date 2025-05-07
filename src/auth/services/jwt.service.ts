@@ -97,14 +97,14 @@ export class JwtService {
       });
 
       // Ensure the payload has the required provider property
-      if (!payload.provider) {
+      if (!payload['provider']) {
         throw new Error('Token payload missing required provider property');
       }
 
       return {
         sub: payload.sub as string,
-        provider: payload.provider as string,
-        claims: payload.claims as Record<string, unknown> | undefined,
+        provider: payload['provider'] as string,
+        claims: payload['claims'] as Record<string, unknown> | undefined,
         iss: payload.iss,
         exp: payload.exp,
         iat: payload.iat,

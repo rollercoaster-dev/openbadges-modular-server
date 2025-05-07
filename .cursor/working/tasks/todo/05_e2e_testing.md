@@ -5,15 +5,15 @@
 ## 1. Goal & Context
 - **Objective:** Establish robust end-to-end (E2E) testing to validate the full API stack, including HTTP endpoints, database, and integration flows.
 - **Branch:** `feat/e2e-testing`
-- **Status:** [🔲 To Do]
+- **Status:** [ In Progress]
 
 ### Background
 Current testing is focused on unit and integration tests. E2E tests are needed to ensure the system works as expected from the perspective of a real client, catching issues that lower-level tests may miss.
 
 ## 2. Steps
-- [ ] Select an E2E testing tool (e.g., Playwright, Supertest, or curl scripts)
-- [ ] Set up a dedicated E2E test environment (SQLite and Docker/Postgres)
-- [ ] Write E2E tests for critical user flows (issuer, badge, assertion CRUD, verification, revocation)
+- [x] Select an E2E testing tool (e.g., Playwright, Supertest, or curl scripts)
+- [x] Set up a dedicated E2E test environment (SQLite and Docker/Postgres)
+- [ ] Write E2E tests for critical user flows (issuer, badge, assertion CRUD, verification, revocation) - *Partially completed*
 - [ ] Add E2E tests for error cases and edge conditions
 - [ ] Integrate E2E tests into CI pipeline
 - [ ] Document how to run E2E tests locally and in CI
@@ -23,34 +23,52 @@ Current testing is focused on unit and integration tests. E2E tests are needed t
 - [ ] E2E tests run successfully in CI
 - [ ] Documentation is updated
 
-## 4. Current Status (Updated 2025-05-05)
+## 4. Current Status (Updated 2025-05-07 by David)
 
-This task has not yet been started. Based on a review of the implementation plan and acceptance criteria, here's the current status:
+This task has been partially implemented. Based on a review of the codebase and test execution, here's the current status:
 
 ### Completed:
-- Initial task planning and requirements gathering
+- ✅ Selected E2E testing tools: Bun Test as the test runner and native fetch API for HTTP requests
+- ✅ Set up a dedicated E2E test environment with both SQLite and PostgreSQL support
+  - Created `test/e2e` directory structure with test files
+  - Created `docker-compose.test.yml` for PostgreSQL testing
+  - Added bun scripts (in `package.json`) for running E2E tests with both database types
+  - **Note:** The documented `.env.test` file was not found at the project root. Environment configuration for tests appears to be primarily managed via `NODE_ENV` and `DB_TYPE` variables in `package.json` scripts.
+- ✅ Implemented global setup/teardown for E2E tests in `bunfig.toml` (`test/e2e/setup/globalSetup.ts`, `test/e2e/setup/globalTeardown.ts`)
+- ✅ Created basic E2E tests for critical API endpoints (OpenBadges compliance, Issuer, Badge Class, Assertion, Authentication)
+- ✅ **RESOLVED:** PostgreSQL E2E test setup issue with `rd-logger` dependency. Both SQLite and PostgreSQL E2E tests (`bun run test:e2e:sqlite` and `bun run test:e2e:pg`) now complete successfully.
 
-### Remaining (Prioritized):
+### Partially Completed / Needs Enhancement:
+- 🟨 Current tests verify API endpoints exist and respond (and basic create/cleanup for some), but **do not yet fully test complete data persistence and retrieval flows (e.g., detailed Create -> Read -> Update -> Delete -> Verify lifecycle for all fields and relationships).** This was confirmed by reviewing `test/e2e/issuer.e2e.test.ts`.
+
+### Remaining (Prioritized - Updated):
 1. **High Priority:**
-   - Select an appropriate E2E testing tool compatible with the project stack
-   - Set up a dedicated E2E test environment with both SQLite and PostgreSQL support
-   - Implement core E2E tests for the most critical API flows (issuance, verification)
+   - **Enhance existing E2E tests to verify complete data flows:** Ensure tests for Issuer, BadgeClass, and Assertion APIs thoroughly validate creation, accurate retrieval (single and list), updates to various fields, and successful deletion with verification. This includes checking that all persisted data matches the input data and that relationships between entities are correctly handled.
+   - **Add more comprehensive verification tests:** Beyond CRUD, this includes testing specific OpenBadges compliance aspects through API interactions if not already covered.
 
 2. **Medium Priority:**
-   - Expand test coverage to include all CRUD operations
-   - Add tests for error cases and edge conditions
-   - Integrate E2E tests into CI pipeline
+   - Add tests for error cases and edge conditions (e.g., invalid input data, unauthorized access attempts, concurrency issues if applicable).
+   - Integrate E2E tests into CI pipeline.
+   - Improve test server startup/shutdown logic within the test files or global setup/teardown if further optimizations are needed (current per-file server start/stop in `issuer.e2e.test.ts` seems reasonable for now but could be centralized).
 
 3. **Lower Priority:**
-   - Document E2E testing procedures for developers
-   - Optimize test performance and reliability
+   - Document E2E testing procedures for developers (how to run, how to write new tests, common pitfalls).
+   - Optimize test performance and reliability further if they become slow or flaky.
 
-### Next Steps:
-1. **Confirm E2E Testing Toolset:**
-   - Utilize **Bun Test** as the primary test runner and assertion library (built-in `expect`).
-   - Employ native **`fetch` API** (available in Bun) or **`axios`** for making HTTP requests to the server's API endpoints.
-2. Create a basic E2E test setup with environment configuration (including considerations for test database setup for SQLite and PostgreSQL as per memory about `DB_TYPE`).
-3. Implement the first E2E test case for a core API flow (e.g., Issuer creation and retrieval, or a simple Badge Class creation).
+### Next Steps (Updated):
+1. **Enhance Existing E2E Tests for Full Data Lifecycle Coverage:**
+   - Systematically go through `issuer.e2e.test.ts`, `badgeClass.e2e.test.ts`, and `assertion.e2e.test.ts`.
+   - For each entity:
+     - **Create:** Verify 201/200 status, and that the response body matches the input data (including all relevant fields) and contains a valid ID.
+     - **Read (Specific):** Use the ID from creation to fetch the specific entity. Verify 200 status and that all data matches what was created.
+     - **Read (List):** Fetch all entities. Verify 200 status and that the newly created entity is present in the list with correct data.
+     - **Update:** Modify several fields of the created entity. Verify 200 status and that the response body reflects the changes. Fetch the entity again by ID and verify all updated fields are persisted correctly.
+     - **Delete:** Delete the entity by ID. Verify 200/204 status.
+     - **Verify Deletion:** Attempt to fetch the deleted entity by ID and expect a 404 status.
+   - Ensure proper test data cleanup between test runs or individual test cases if not already handled by global/local teardown or test structure.
+
+2. **Implement Error Case and Edge Condition Tests:**
+   - Once CRUD tests are robust, add tests for scenarios like submitting incomplete data, invalid data types, requests to non-existent resources, etc.
 
 ## 5. Parking Lot
 - Explore browser-based E2E tests for Swagger UI

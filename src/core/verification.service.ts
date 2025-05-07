@@ -115,7 +115,7 @@ export class VerificationService {
 
       // Type guard to check if verification is likely an OB3.Proof object
       if (!assertion.verification || typeof assertion.verification !== 'object' ||
-          !('signatureValue' in assertion.verification) || !assertion.verification.signatureValue) {
+          !('signatureValue' in assertion.verification) || !assertion.verification['signatureValue']) {
         logger.warn(`Assertion ${assertion.id} has no verification or signature suitable for checking.`);
         return false;
       }
@@ -127,8 +127,8 @@ export class VerificationService {
       let keyId = 'default';
       let validCreatorUrl = true;
 
-      if (verificationProof.creator) {
-        const creatorUrl = verificationProof.creator as string;
+      if (verificationProof['creator']) {
+        const creatorUrl = verificationProof['creator'] as string;
         try {
           // Try to parse as a valid URL
           const url = new URL(creatorUrl);
@@ -161,7 +161,7 @@ export class VerificationService {
 
       // If we couldn't extract a valid key ID from the creator URL, return false
       if (!validCreatorUrl) {
-        logger.warn(`Could not extract a valid key ID from creator URL: ${verificationProof.creator}`);
+        logger.warn(`Could not extract a valid key ID from creator URL: ${verificationProof['creator']}`);
         return false;
       }
 

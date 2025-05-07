@@ -53,15 +53,15 @@ export class PostgresPlatformRepository implements PlatformRepository {
 
       // Prepare insert values
       const insertValues: PlatformInsertValues = {
-        name: obj.name as string,
-        clientId: obj.clientId as string,
-        publicKey: obj.publicKey as string,
-        status: obj.status as string
+        name: obj['name'] as string,
+        clientId: obj['clientId'] as string,
+        publicKey: obj['publicKey'] as string,
+        status: obj['status'] as string
       };
 
       // Add optional fields if they exist
-      if (obj.description) insertValues.description = obj.description as string;
-      if (obj.webhookUrl) insertValues.webhookUrl = obj.webhookUrl as string;
+      if (obj['description']) insertValues['description'] = obj['description'] as string;
+      if (obj['webhookUrl']) insertValues['webhookUrl'] = obj['webhookUrl'] as string;
 
       // Insert into database
       const result = await this.db.insert(platforms).values(insertValues).returning();

@@ -110,7 +110,7 @@ export class AssertionController {
       return false;
     }
 
-    const permissions = user.claims.permissions as UserPermission[] || [];
+    const permissions = user.claims['permissions'] as UserPermission[] || [];
     return permissions.includes(permission);
   }
 
@@ -130,7 +130,7 @@ export class AssertionController {
   ): Promise<AssertionResponseDto> {
     // Check if user has permission to create assertions
     if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create an assertion without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an assertion without permission`);
       throw new Error('Insufficient permissions to create assertion');
     }
     try {
@@ -168,11 +168,13 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
+          // Workaround: force plain object serialization for Elysia
+          return JSON.parse(JSON.stringify(convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer)));
         }
       }
 
-      return convertAssertionToJsonLd(createdAssertion, version);
+      // Workaround: force plain object serialization for Elysia
+      return JSON.parse(JSON.stringify(convertAssertionToJsonLd(createdAssertion, version)));
     } catch (error) {
       logger.logError('Failed to create assertion', error as Error);
       throw error;
@@ -267,7 +269,7 @@ export class AssertionController {
   ): Promise<AssertionResponseDto | null> {
     // Check if user has permission to update assertions
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update assertion ${id} without permission`);
       throw new Error('Insufficient permissions to update assertion');
     }
     try {
@@ -314,7 +316,7 @@ export class AssertionController {
   async revokeAssertion(id: string, reason: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
     // Check if user has permission to revoke assertions
     if (user && !this.hasPermission(user, UserPermission.REVOKE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to revoke assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to revoke assertion ${id} without permission`);
       throw new Error('Insufficient permissions to revoke assertion');
     }
 
@@ -404,7 +406,7 @@ export class AssertionController {
   ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
     // Check if user has permission to sign assertions
     if (user && !this.hasPermission(user, UserPermission.SIGN_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to sign assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to sign assertion ${id} without permission`);
       throw new Error('Insufficient permissions to sign assertion');
     }
     try {

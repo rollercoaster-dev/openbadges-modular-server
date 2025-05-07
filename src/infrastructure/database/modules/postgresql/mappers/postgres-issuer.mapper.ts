@@ -125,7 +125,7 @@ export class PostgresIssuerMapper {
       description: entity.description,
       image: entity.image as string, // Assuming image is IRI, cast to string
       publicKey: convertJson(entity.publicKey, 'postgresql', 'to'),
-      additionalFields: convertJson(entity.additionalFields, 'postgresql', 'to'),
+      additionalFields: convertJson(entity['additionalFields'], 'postgresql', 'to'),
       // Exclude createdAt, updatedAt (DB defaults)
     };
     return recordToInsert as IssuerInsertModel; // Use type assertion if TS struggles

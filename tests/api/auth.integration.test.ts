@@ -3,25 +3,25 @@
  */
 
 import { describe, it, beforeAll, afterAll } from 'bun:test';
-import supertest from 'supertest';
-import { Elysia } from 'elysia';
+// import supertest from 'supertest';
+// import { Elysia } from 'elysia';
 
 // Assuming setupApp initializes and returns the configured Elysia app instance
 // Adjust the path if the export location is different
 // import { setupApp } from '../../src/index';
 
 describe('Authentication Integration Tests', () => {
-  let app: Elysia;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let _request: any;
+  // let app: Elysia;
+   
+  // let _request: any; // Uncomment when implementing tests
 
   beforeAll(async () => {
     // Initialize the Elysia app using the setup function
     // Skip tests for now
-    app = new Elysia();
+    // app = new Elysia();
     // Pass the Elysia app instance directly to supertest
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _request = supertest(app as any); // Use 'as any' temporarily if direct pass causes type errors, to investigate further
+     
+    // _request = supertest(app as any); // Use 'as any' temporarily if direct pass causes type errors, to investigate further
   });
 
   afterAll(async () => {
@@ -42,7 +42,7 @@ describe('Authentication Integration Tests', () => {
   });
 
   describe('Authenticated Access (JWT)', () => {
-    let _authToken: string; // Store the token obtained from login
+    // let _authToken: string; // Store the token obtained from login
 
     beforeAll(async () => {
       // TODO: Implement login logic here to get a valid token
@@ -58,8 +58,8 @@ describe('Authentication Integration Tests', () => {
 
   describe('Role-Based Access Control (RBAC)', () => {
     // Requires setting up users with different roles (e.g., admin, user)
-    let _adminToken: string;
-    let _userToken: string;
+    // let _adminToken: string;
+    // let _userToken: string;
 
     beforeAll(async () => {
       // TODO: Implement logic to obtain tokens for users with different roles

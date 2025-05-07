@@ -21,7 +21,7 @@ export class PostgresqlModule implements DatabaseModuleInterface {
     // Use SensitiveValue for the default connection string to prevent password logging
     const defaultConnectionString = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges`;
     const dbConfig = {
-      connectionString: config.connectionString || process.env.DATABASE_URL || defaultConnectionString,
+      connectionString: config['connectionString'] || process.env['DATABASE_URL'] || defaultConnectionString,
       ...config
     };
 

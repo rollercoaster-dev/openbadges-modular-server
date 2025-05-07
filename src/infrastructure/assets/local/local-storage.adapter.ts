@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../../utils/logging/logger.service';
 
-const UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
+const UPLOADS_DIR = process.env['ASSETS_LOCAL_DIR'] || path.resolve(process.cwd(), 'uploads');
 
 export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetResolver {
   /**

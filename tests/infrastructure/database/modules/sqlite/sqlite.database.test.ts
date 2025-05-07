@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+ 
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from '../../../../../src/infrastructure/database/modules/sqlite/sqlite.database';

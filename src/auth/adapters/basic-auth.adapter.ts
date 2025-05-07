@@ -29,8 +29,8 @@ function isBasicAuthConfig(config: unknown): config is BasicAuthConfig {
     typeof config !== 'object' ||
     config === null ||
     !('credentials' in config) || // Use 'in' operator for type safety
-    typeof (config as Record<string, unknown>).credentials !== 'object' ||
-    (config as Record<string, unknown>).credentials === null
+    typeof (config as Record<string, unknown>)['credentials'] !== 'object' ||
+    (config as Record<string, unknown>)['credentials'] === null
   ) {
     return false;
   }

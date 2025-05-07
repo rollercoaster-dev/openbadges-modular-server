@@ -62,7 +62,8 @@ describe('API Key Adapter', () => {
 
     // Authenticate the request
     // Call the authenticate method
-    const _result = await adapter.authenticate(request);
+    // const _result = await adapter.authenticate(request);
+    await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a successful authentication result
@@ -92,7 +93,8 @@ describe('API Key Adapter', () => {
 
     // Authenticate the request
     // Call the authenticate method
-    const _result = await adapter.authenticate(request);
+    // const _result = await adapter.authenticate(request);
+    await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a successful authentication result
@@ -126,7 +128,8 @@ describe('API Key Adapter', () => {
 
     // Authenticate the request
     // Call the authenticate method
-    const _result = await adapter.authenticate(request);
+    // const _result = await adapter.authenticate(request);
+    await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result
@@ -172,7 +175,8 @@ describe('API Key Adapter', () => {
 
     // Authenticate the request
     // Call the authenticate method
-    const _result = await adapter.authenticate(request);
+    // const _result = await adapter.authenticate(request);
+    await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result
@@ -192,7 +196,8 @@ describe('API Key Adapter', () => {
 
     // Authenticate the request
     // Call the authenticate method
-    const _result = await adapter.authenticate(request);
+    // const _result = await adapter.authenticate(request);
+    await adapter.authenticate(request);
 
     // Since we're mocking and the implementation is stubbed, we can't reliably test the result
     // In a real implementation, this would return a failed authentication result

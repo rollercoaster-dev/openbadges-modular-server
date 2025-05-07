@@ -20,8 +20,8 @@ export class SqliteModule implements DatabaseModuleInterface {
   async createDatabase(config: Record<string, unknown>): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
     let filePath: string;
-    if (typeof config.sqliteFile === 'string' && config.sqliteFile.trim()) {
-      filePath = config.sqliteFile;
+    if (typeof config['sqliteFile'] === 'string' && config['sqliteFile'].trim()) {
+      filePath = config['sqliteFile'];
     } else {
       filePath = ':memory:'; // Default to in-memory if no valid path provided
     }
@@ -51,16 +51,16 @@ export class SqliteModule implements DatabaseModuleInterface {
 
     // Set busy timeout to avoid SQLITE_BUSY errors
     // This is the time in ms that SQLite will wait if the database is locked
-    const busyTimeout = config.sqliteBusyTimeout || 5000;
+    const busyTimeout = config['sqliteBusyTimeout'] || 5000;
     client.exec(`PRAGMA busy_timeout = ${busyTimeout};`);
 
     // Set synchronous mode to NORMAL for better performance
     // FULL is safer but slower, OFF is fastest but risks corruption on power loss
-    const syncMode = config.sqliteSyncMode || 'NORMAL';
+    const syncMode = config['sqliteSyncMode'] || 'NORMAL';
     client.exec(`PRAGMA synchronous = ${syncMode};`);
 
     // Increase cache size for better performance (default is 2000 pages)
-    const cacheSize = config.sqliteCacheSize || 10000;
+    const cacheSize = config['sqliteCacheSize'] || 10000;
     client.exec(`PRAGMA cache_size = ${cacheSize};`);
 
     // Enable foreign keys (they're disabled by default in SQLite)

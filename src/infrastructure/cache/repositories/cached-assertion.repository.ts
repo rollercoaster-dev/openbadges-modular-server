@@ -178,8 +178,8 @@ export class CachedAssertionRepository extends CacheRepositoryWrapper<Assertion,
       // Also invalidate badge class-related caches
       if ('badgeClassId' in assertion) {
         this.cache.delete(`badgeClass:${(assertion as { badgeClassId?: Shared.IRI }).badgeClassId}`);
-      } else if (result.badgeClassId) {
-        this.cache.delete(`badgeClass:${result.badgeClassId}`);
+      } else if (result['badgeClassId']) {
+        this.cache.delete(`badgeClass:${result['badgeClassId']}`);
       }
 
       // Also invalidate recipient-related caches
@@ -208,8 +208,8 @@ export class CachedAssertionRepository extends CacheRepositoryWrapper<Assertion,
       this.invalidateCollections();
 
       // Also invalidate badge class-related caches
-      if (assertion && assertion.badgeClassId) {
-        this.cache.delete(`badgeClass:${assertion.badgeClassId}`);
+      if (assertion && assertion['badgeClassId']) {
+        this.cache.delete(`badgeClass:${assertion['badgeClassId']}`);
       }
 
       // Also invalidate recipient-related caches

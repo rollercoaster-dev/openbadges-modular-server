@@ -5,7 +5,7 @@ import * as path from 'path';
 import { logger } from '../utils/logging/logger.service';
 
 // Ensure UPLOADS_DIR has a trailing separator for secure path comparison
-let UPLOADS_DIR = process.env.ASSETS_LOCAL_DIR || path.resolve(process.cwd(), 'uploads');
+let UPLOADS_DIR = process.env['ASSETS_LOCAL_DIR'] || path.resolve(process.cwd(), 'uploads');
 // Normalize and ensure trailing separator
 UPLOADS_DIR = path.normalize(UPLOADS_DIR);
 if (!UPLOADS_DIR.endsWith(path.sep)) {
@@ -29,7 +29,7 @@ export function staticAssetsMiddleware(router: Elysia): Elysia {
     try {
       // Validate filename to prevent directory traversal attacks
       // First, sanitize the filename to remove any path traversal attempts
-      const sanitizedFilename = params.filename.replace(/\.\.\/|\\\.\.\\|\.\.|\\\.\./g, '');
+      const sanitizedFilename = params['filename'].replace(/\.\.\/|\\\.\.\\|\.\.|\\\.\./g, '');
 
       // Normalize the path and ensure it's within the uploads directory
       const normalizedPath = path.normalize(path.join(UPLOADS_DIR, sanitizedFilename));
@@ -49,20 +49,20 @@ export function staticAssetsMiddleware(router: Elysia): Elysia {
       const fileBuffer = await readFile(filePath);
 
       // Determine content type based on file extension
-      const ext = path.extname(params.filename).toLowerCase();
+      const ext = path.extname(params['filename']).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
       // Set response headers
       const headers = {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
-        'ETag': Buffer.from(params.filename).toString('base64').substring(0, 16) // Simple ETag
+        'ETag': Buffer.from(params['filename']).toString('base64').substring(0, 16) // Simple ETag
       };
 
       return new Response(fileBuffer, { headers });
     } catch (error) {
       logger.error('Error serving static asset', {
-        filename: params.filename,
+        filename: params['filename'],
         error: error instanceof Error ? error.message : String(error)
       });
       set.status = 500;

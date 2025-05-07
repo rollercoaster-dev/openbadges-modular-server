@@ -48,8 +48,7 @@ const app = new Elysia({ aot: false }) // Set aot: false to address potential El
   }));
 
 // Database instance for graceful shutdown
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-let database: unknown = null;
+// We create the database but don't need to store the reference
 
 // Async function to setup repositories and controllers
 export async function setupApp(): Promise<Elysia> {
@@ -64,8 +63,8 @@ export async function setupApp(): Promise<Elysia> {
       sqliteCacheSize: config.database.sqliteCacheSize
     });
 
-    // Store database instance for graceful shutdown
-    database = await DatabaseFactory.createDatabase(
+    // Create database instance for connection
+    await DatabaseFactory.createDatabase(
       config.database.type,
       {
         connectionString: config.database.connectionString,

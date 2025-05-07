@@ -70,7 +70,7 @@ export class DatabaseFactory {
 }
 
 // Get database type from environment/config
-let dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
+let dbType = process.env['DB_TYPE'] || config.database.type || 'sqlite';
 
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];

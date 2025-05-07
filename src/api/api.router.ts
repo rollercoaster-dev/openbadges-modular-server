@@ -6,6 +6,7 @@
  */
 
 import { Elysia } from 'elysia';
+import { logger } from '../utils/logging/logger.service';
 import { CreateIssuerDto, UpdateIssuerDto, CreateBadgeClassDto, UpdateBadgeClassDto, CreateAssertionDto, UpdateAssertionDto } from './dtos';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
@@ -162,26 +163,106 @@ function createVersionedRouter(
   const router = new Elysia();
 
   // Issuer routes
-  router.post('/issuers',
-    ({ body }) => issuerController.createIssuer(body as CreateIssuerDto, version),
-    { beforeHandle: [requirePermissions([UserPermission.CREATE_ISSUER]), validateIssuerMiddleware] }
-  );
-  router.get('/issuers',
-    () => issuerController.getAllIssuers(version),
-    { beforeHandle: [requireAuth()] }
-  );
-  router.get('/issuers/:id',
-    ({ params }) => issuerController.getIssuerById(params.id, version),
-    { beforeHandle: [requireAuth()] }
-  );
-  router.put('/issuers/:id',
-    ({ params, body }) => issuerController.updateIssuer(params.id, body as UpdateIssuerDto, version),
-    { beforeHandle: [requirePermissions([UserPermission.UPDATE_ISSUER]), validateIssuerMiddleware] }
-  );
-  router.delete('/issuers/:id',
-    ({ params }) => issuerController.deleteIssuer(params.id),
-    { beforeHandle: [requirePermissions([UserPermission.DELETE_ISSUER])] }
-  );
+  // Robust Issuer CRUD routes with error handling and logging
+  router.post('/issuers', async ({ body, set }) => {
+    try {
+      const result = await issuerController.createIssuer(body as CreateIssuerDto, version);
+      set.status = 201;
+      return result;
+    } catch (error) {
+      logger.error('POST /issuers failed', { error: error instanceof Error ? error.message : String(error), body });
+      if (error instanceof Error && error.message.includes('permission')) {
+        set.status = 403;
+        return { error: 'Forbidden', message: error.message };
+      }
+      set.status = 400;
+      return { error: 'Bad Request', message: error instanceof Error ? error.message : String(error) };
+    }
+  }, { beforeHandle: [requirePermissions([UserPermission.CREATE_ISSUER]), validateIssuerMiddleware] });
+
+  router.get('/issuers', async ({ set }) => {
+    try {
+      return await issuerController.getAllIssuers(version);
+    } catch (error) {
+      logger.error('GET /issuers failed', { error: error instanceof Error ? error.message : String(error) });
+      set.status = 500;
+      return { error: 'Internal Server Error' };
+    }
+  }, { beforeHandle: [requireAuth()] });
+
+  router.get('/issuers/:id', async ({ params, set }) => {
+    try {
+      const result = await issuerController.getIssuerById(params['id'], version);
+      if (!result) {
+        set.status = 404;
+        return { error: 'Not Found', message: 'Issuer not found' };
+      }
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        set.status = 400;
+        logger.error('GET /issuers/:id invalid IRI', { error: message, id: params['id'] });
+        return { error: 'Bad Request', message: 'Invalid issuer ID' };
+      }
+      logger.error('GET /issuers/:id failed', { error: message, id: params['id'] });
+      set.status = 500;
+      return { error: 'Internal Server Error', message };
+    }
+  }, { beforeHandle: [requireAuth()] });
+
+  router.put('/issuers/:id', async ({ params, body, set }) => {
+    try {
+      const result = await issuerController.updateIssuer(params['id'], body as UpdateIssuerDto, version);
+      if (!result) {
+        set.status = 404;
+        return { error: 'Not Found', message: 'Issuer not found' };
+      }
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        set.status = 400;
+        logger.error('PUT /issuers/:id invalid IRI', { error: message, id: params['id'], body });
+        return { error: 'Bad Request', message: 'Invalid issuer ID' };
+      }
+      if (message.includes('permission')) {
+        set.status = 403;
+        logger.error('PUT /issuers/:id forbidden', { error: message, id: params['id'], body });
+        return { error: 'Forbidden', message };
+      }
+      logger.error('PUT /issuers/:id failed', { error: message, id: params['id'], body });
+      set.status = 500;
+      return { error: 'Internal Server Error', message };
+    }
+  }, { beforeHandle: [requirePermissions([UserPermission.UPDATE_ISSUER]), validateIssuerMiddleware] });
+
+  router.delete('/issuers/:id', async ({ params, set }) => {
+    try {
+      const deleted = await issuerController.deleteIssuer(params['id']);
+      if (!deleted) {
+        set.status = 404;
+        return { error: 'Not Found', message: 'Issuer not found' };
+      }
+      set.status = 204;
+      return null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        set.status = 400;
+        logger.error('DELETE /issuers/:id invalid IRI', { error: message, id: params['id'] });
+        return { error: 'Bad Request', message: 'Invalid issuer ID' };
+      }
+      if (message.includes('permission')) {
+        set.status = 403;
+        logger.error('DELETE /issuers/:id forbidden', { error: message, id: params['id'] });
+        return { error: 'Forbidden', message };
+      }
+      logger.error('DELETE /issuers/:id failed', { error: message, id: params['id'] });
+      set.status = 500;
+      return { error: 'Internal Server Error', message };
+    }
+  }, { beforeHandle: [requirePermissions([UserPermission.DELETE_ISSUER])] });
 
   // Badge class routes
   router.post('/badge-classes',
@@ -193,26 +274,26 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id',
-    ({ params }) => badgeClassController.getBadgeClassById(params.id, version),
+    ({ params }) => badgeClassController.getBadgeClassById(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.get('/issuers/:id/badge-classes',
-    ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version),
+    ({ params }) => badgeClassController.getBadgeClassesByIssuer(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.put('/badge-classes/:id',
-    ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as UpdateBadgeClassDto, version),
+    ({ params, body }) => badgeClassController.updateBadgeClass(params['id'], body as UpdateBadgeClassDto, version),
     { beforeHandle: [requirePermissions([UserPermission.UPDATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
   router.delete('/badge-classes/:id',
-    ({ params }) => badgeClassController.deleteBadgeClass(params.id),
+    ({ params }) => badgeClassController.deleteBadgeClass(params['id']),
     { beforeHandle: [requirePermissions([UserPermission.DELETE_BADGE_CLASS])] }
   );
 
   // Assertion routes
   router.post('/assertions',
     ({ body, query }) => {
-      const sign = query.sign !== 'false'; // Default to true if not specified
+      const sign = query['sign'] !== 'false'; // Default to true if not specified
       return assertionController.createAssertion(body as CreateAssertionDto, version, sign);
     },
     { beforeHandle: [requirePermissions([UserPermission.CREATE_ASSERTION]), validateAssertionMiddleware] }
@@ -222,34 +303,44 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/assertions/:id',
-    ({ params }) => assertionController.getAssertionById(params.id, version),
+    ({ params }) => assertionController.getAssertionById(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id/assertions',
-    ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version),
+    ({ params }) => assertionController.getAssertionsByBadgeClass(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.put('/assertions/:id',
-    ({ params, body }) => assertionController.updateAssertion(params.id, body as UpdateAssertionDto, version),
+    ({ params, body }) => assertionController.updateAssertion(params['id'], body as UpdateAssertionDto, version),
     { beforeHandle: [requirePermissions([UserPermission.UPDATE_ASSERTION]), validateAssertionMiddleware] }
   );
   router.post('/assertions/:id/revoke',
     ({ params, body }) => {
       const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
-      return assertionController.revokeAssertion(params.id, reason);
+      return assertionController.revokeAssertion(params['id'], reason);
     },
     { beforeHandle: [requirePermissions([UserPermission.REVOKE_ASSERTION])] }
   );
 
   // Verification routes
-  router.get('/assertions/:id/verify',
-    ({ params }) => assertionController.verifyAssertion(params.id),
-    { beforeHandle: [requireAuth()] }
-  );
+  router.get('/assertions/:id/verify', async ({ params, set }) => {
+    const result = await assertionController.verifyAssertion(params['id']);
+    // If assertion not found, return 404
+    if (
+      result.isValid === false &&
+      result.hasValidSignature === false &&
+      typeof result.details === 'string' &&
+      result.details.toLowerCase().includes('not found')
+    ) {
+      set.status = 404;
+      return { error: 'Assertion not found', details: result.details };
+    }
+    return result;
+  }, { beforeHandle: [requireAuth()] });
   router.post('/assertions/:id/sign',
     ({ params, query }) => {
-      const keyId = query.keyId || 'default';
-      return assertionController.signAssertion(params.id, keyId as string, version);
+      const keyId = query['keyId'] || 'default';
+      return assertionController.signAssertion(params['id'], keyId as string, version);
     },
     { beforeHandle: [requirePermissions([UserPermission.SIGN_ASSERTION])] }
   );
@@ -260,7 +351,7 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/public-keys/:id',
-    ({ params }) => assertionController.getPublicKey(params.id),
+    ({ params }) => assertionController.getPublicKey(params['id']),
     { beforeHandle: [requireAuth()] }
   );
 
