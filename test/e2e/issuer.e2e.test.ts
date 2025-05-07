@@ -78,7 +78,7 @@ describe('Issuer API - E2E', () => {
     });
     const body = await res.json().catch(() => null);
     // Log for debugging
-    console.log('DEBUG POST /issuers response:', res.status, JSON.stringify(body));
+    logger.info(`POST /issuers response: ${res.status} ${JSON.stringify(body)}`);
     expect([200, 201]).toContain(res.status);
     // Try to extract id
     if (body && typeof body === 'object') {
