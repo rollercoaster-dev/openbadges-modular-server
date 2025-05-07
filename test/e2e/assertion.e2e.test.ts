@@ -31,7 +31,11 @@ describe('Assertion API - E2E', () => {
     }
 
     // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(assertionsResponse.status);
+    if (assertionsResponse.status !== 200) {
+  const body = await assertionsResponse.text();
+  logger.error(`GET /v3/assertions failed`, { status: assertionsResponse.status, body });
+}
+expect(assertionsResponse.status).toBe(200);
     logger.info(`Assertions endpoint responded with status ${assertionsResponse.status}`);
 
     // Test the assertion POST endpoint
@@ -62,7 +66,11 @@ describe('Assertion API - E2E', () => {
     }
 
     // Verify the response status code
-    expect([200, 201, 400, 401, 403, 500]).toContain(assertionPostResponse.status);
+    if (assertionPostResponse.status !== 400) {
+  const body = await assertionPostResponse.text();
+  logger.error(`POST /v3/assertions failed (should be 400)`, { status: assertionPostResponse.status, body });
+}
+expect(assertionPostResponse.status).toBe(400);
     logger.info(`Assertion POST endpoint responded with status ${assertionPostResponse.status}`);
 
     // Test the verification endpoint with a dummy assertion ID
@@ -81,7 +89,11 @@ describe('Assertion API - E2E', () => {
     }
 
     // Verify the response status code
-    expect([200, 400, 401, 403, 404, 500]).toContain(verifyResponse.status);
+    if (verifyResponse.status !== 404) {
+  const body = await verifyResponse.text();
+  logger.error(`GET /v3/assertions/:id/verify failed (should be 404)`, { status: verifyResponse.status, body });
+}
+expect(verifyResponse.status).toBe(404);
     logger.info(`Verification endpoint responded with status ${verifyResponse.status}`);
   });
 

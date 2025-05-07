@@ -30,7 +30,11 @@ describe('Badge Class API - E2E', () => {
     }
 
     // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(badgeClassesResponse.status);
+    if (badgeClassesResponse.status !== 200) {
+  const body = await badgeClassesResponse.text();
+  logger.error(`GET /v3/badge-classes failed`, { status: badgeClassesResponse.status, body });
+}
+expect(badgeClassesResponse.status).toBe(200);
     logger.info(`Badge classes endpoint responded with status ${badgeClassesResponse.status}`);
 
     // Test the badge class POST endpoint
@@ -59,7 +63,11 @@ describe('Badge Class API - E2E', () => {
     }
 
     // Verify the response status code
-    expect([200, 201, 400, 401, 403, 500]).toContain(badgeClassPostResponse.status);
+    if (badgeClassPostResponse.status !== 400) {
+  const body = await badgeClassPostResponse.text();
+  logger.error(`POST /v3/badge-classes failed (should be 400)`, { status: badgeClassPostResponse.status, body });
+}
+expect(badgeClassPostResponse.status).toBe(400);
     logger.info(`Badge class POST endpoint responded with status ${badgeClassPostResponse.status}`);
   });
 
