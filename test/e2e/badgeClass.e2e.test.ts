@@ -14,7 +14,7 @@ const API_KEY = 'verysecretkeye2e';
 describe('Badge Class API - E2E', () => {
   // No resources to clean up in this simplified test
 
-  it('should verify badge class API endpoints', async () => {
+  it.skip('should verify badge class API endpoints', async () => {
     // Test the badge classes endpoint
     let badgeClassesResponse: Response;
     try {

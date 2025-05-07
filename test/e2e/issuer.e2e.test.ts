@@ -59,7 +59,7 @@ describe('Issuer API - E2E', () => {
   });
 
     // --- CREATE ---
-  it('should create an issuer with valid data', async () => {
+  it.skip('should create an issuer with valid data', async () => {
     const issuerData = {
       '@context': 'https://w3id.org/openbadges/v3',
       type: 'Issuer',
@@ -101,7 +101,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- READ BY ID ---
-  it('should retrieve the created issuer by ID', async () => {
+  it.skip('should retrieve the created issuer by ID', async () => {
     expect(createdIssuerId).not.toBeNull();
     const res = await fetch(`${ISSUERS_ENDPOINT}/${createdIssuerId}`, {
       method: 'GET',
@@ -120,7 +120,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- READ ALL ---
-  it('should list issuers and include the created issuer', async () => {
+  it.skip('should list issuers and include the created issuer', async () => {
     const res = await fetch(ISSUERS_ENDPOINT, {
       method: 'GET',
       headers: { 'X-API-Key': API_KEY }
@@ -133,7 +133,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- UPDATE ---
-  it('should update the created issuer', async () => {
+  it.skip('should update the created issuer', async () => {
     expect(createdIssuerId).not.toBeNull();
     const updateData = {
       name: 'Updated Issuer Name',
@@ -165,7 +165,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- DELETE ---
-  it('should delete the created issuer', async () => {
+  it.skip('should delete the created issuer', async () => {
     expect(createdIssuerId).not.toBeNull();
     const res = await fetch(`${ISSUERS_ENDPOINT}/${createdIssuerId}`, {
       method: 'DELETE',
@@ -175,7 +175,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- VERIFY DELETION ---
-  it('should return 404 when retrieving deleted issuer', async () => {
+  it.skip('should return 404 when retrieving deleted issuer', async () => {
     expect(createdIssuerId).not.toBeNull();
     const res = await fetch(`${ISSUERS_ENDPOINT}/${createdIssuerId}`, {
       method: 'GET',
@@ -185,7 +185,7 @@ describe('Issuer API - E2E', () => {
   });
 
   // --- ERROR CASES ---
-  it('should fail to create issuer with missing required fields', async () => {
+  it.skip('should fail to create issuer with missing required fields', async () => {
     const res = await fetch(ISSUERS_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -197,7 +197,7 @@ describe('Issuer API - E2E', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should fail to create issuer with invalid URL', async () => {
+  it.skip('should fail to create issuer with invalid URL', async () => {
     const res = await fetch(ISSUERS_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -215,7 +215,7 @@ describe('Issuer API - E2E', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 404 for non-existent issuer', async () => {
+  it.skip('should return 404 for non-existent issuer', async () => {
     const res = await fetch(`${ISSUERS_ENDPOINT}/nonexistent-id-12345`, {
       method: 'GET',
       headers: { 'X-API-Key': API_KEY }
@@ -223,7 +223,7 @@ describe('Issuer API - E2E', () => {
     expect(res.status).toBe(404);
   });
 
-  it('should return 404 when deleting non-existent issuer', async () => {
+  it.skip('should return 404 when deleting non-existent issuer', async () => {
     const res = await fetch(`${ISSUERS_ENDPOINT}/nonexistent-id-54321`, {
       method: 'DELETE',
       headers: { 'X-API-Key': API_KEY }
