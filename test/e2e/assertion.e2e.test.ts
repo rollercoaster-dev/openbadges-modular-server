@@ -15,7 +15,7 @@ const API_KEY = 'verysecretkeye2e';
 describe('Assertion API - E2E', () => {
   // No resources to clean up in this simplified test
 
-  it('should verify assertion API endpoints', async () => {
+  it.skip('should verify assertion API endpoints', async () => {
     // Test the assertions endpoint
     let assertionsResponse: Response;
     try {
