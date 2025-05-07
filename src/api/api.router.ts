@@ -171,15 +171,15 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/issuers/:id',
-    ({ params }) => issuerController.getIssuerById(params.id, version),
+    ({ params }) => issuerController.getIssuerById(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.put('/issuers/:id',
-    ({ params, body }) => issuerController.updateIssuer(params.id, body as UpdateIssuerDto, version),
+    ({ params, body }) => issuerController.updateIssuer(params['id'], body as UpdateIssuerDto, version),
     { beforeHandle: [requirePermissions([UserPermission.UPDATE_ISSUER]), validateIssuerMiddleware] }
   );
   router.delete('/issuers/:id',
-    ({ params }) => issuerController.deleteIssuer(params.id),
+    ({ params }) => issuerController.deleteIssuer(params['id']),
     { beforeHandle: [requirePermissions([UserPermission.DELETE_ISSUER])] }
   );
 
@@ -193,26 +193,26 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id',
-    ({ params }) => badgeClassController.getBadgeClassById(params.id, version),
+    ({ params }) => badgeClassController.getBadgeClassById(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.get('/issuers/:id/badge-classes',
-    ({ params }) => badgeClassController.getBadgeClassesByIssuer(params.id, version),
+    ({ params }) => badgeClassController.getBadgeClassesByIssuer(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.put('/badge-classes/:id',
-    ({ params, body }) => badgeClassController.updateBadgeClass(params.id, body as UpdateBadgeClassDto, version),
+    ({ params, body }) => badgeClassController.updateBadgeClass(params['id'], body as UpdateBadgeClassDto, version),
     { beforeHandle: [requirePermissions([UserPermission.UPDATE_BADGE_CLASS]), validateBadgeClassMiddleware] }
   );
   router.delete('/badge-classes/:id',
-    ({ params }) => badgeClassController.deleteBadgeClass(params.id),
+    ({ params }) => badgeClassController.deleteBadgeClass(params['id']),
     { beforeHandle: [requirePermissions([UserPermission.DELETE_BADGE_CLASS])] }
   );
 
   // Assertion routes
   router.post('/assertions',
     ({ body, query }) => {
-      const sign = query.sign !== 'false'; // Default to true if not specified
+      const sign = query['sign'] !== 'false'; // Default to true if not specified
       return assertionController.createAssertion(body as CreateAssertionDto, version, sign);
     },
     { beforeHandle: [requirePermissions([UserPermission.CREATE_ASSERTION]), validateAssertionMiddleware] }
@@ -222,34 +222,34 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/assertions/:id',
-    ({ params }) => assertionController.getAssertionById(params.id, version),
+    ({ params }) => assertionController.getAssertionById(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.get('/badge-classes/:id/assertions',
-    ({ params }) => assertionController.getAssertionsByBadgeClass(params.id, version),
+    ({ params }) => assertionController.getAssertionsByBadgeClass(params['id'], version),
     { beforeHandle: [requireAuth()] }
   );
   router.put('/assertions/:id',
-    ({ params, body }) => assertionController.updateAssertion(params.id, body as UpdateAssertionDto, version),
+    ({ params, body }) => assertionController.updateAssertion(params['id'], body as UpdateAssertionDto, version),
     { beforeHandle: [requirePermissions([UserPermission.UPDATE_ASSERTION]), validateAssertionMiddleware] }
   );
   router.post('/assertions/:id/revoke',
     ({ params, body }) => {
       const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
-      return assertionController.revokeAssertion(params.id, reason);
+      return assertionController.revokeAssertion(params['id'], reason);
     },
     { beforeHandle: [requirePermissions([UserPermission.REVOKE_ASSERTION])] }
   );
 
   // Verification routes
   router.get('/assertions/:id/verify',
-    ({ params }) => assertionController.verifyAssertion(params.id),
+    ({ params }) => assertionController.verifyAssertion(params['id']),
     { beforeHandle: [requireAuth()] }
   );
   router.post('/assertions/:id/sign',
     ({ params, query }) => {
-      const keyId = query.keyId || 'default';
-      return assertionController.signAssertion(params.id, keyId as string, version);
+      const keyId = query['keyId'] || 'default';
+      return assertionController.signAssertion(params['id'], keyId as string, version);
     },
     { beforeHandle: [requirePermissions([UserPermission.SIGN_ASSERTION])] }
   );
@@ -260,7 +260,7 @@ function createVersionedRouter(
     { beforeHandle: [requireAuth()] }
   );
   router.get('/public-keys/:id',
-    ({ params }) => assertionController.getPublicKey(params.id),
+    ({ params }) => assertionController.getPublicKey(params['id']),
     { beforeHandle: [requireAuth()] }
   );
 

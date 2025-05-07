@@ -34,9 +34,9 @@
     "ignoreDeprecations": "5.0",
 
     // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true
   },
   "exclude": ["drizzle.config.ts", "node_modules"]
 }

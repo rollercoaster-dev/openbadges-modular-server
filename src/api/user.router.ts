@@ -35,14 +35,14 @@ export function createUserRouter(userController: UserController, authController:
 
         // Parse query parameters
         const parsedQuery: Record<string, unknown> = {};
-        if (username) parsedQuery.username = username;
-        if (email) parsedQuery.email = email;
+        if (username) parsedQuery['username'] = username;
+        if (email) parsedQuery['email'] = email;
         if (role && Object.values(UserRole).includes(role as UserRole)) {
-          parsedQuery.role = role as UserRole;
+          parsedQuery['role'] = role as UserRole;
         }
-        if (isActive !== undefined) parsedQuery.isActive = isActive === 'true';
-        if (page) parsedQuery.page = parseInt(page as string, 10);
-        if (limit) parsedQuery.limit = parseInt(limit as string, 10);
+        if (isActive !== undefined) parsedQuery['isActive'] = isActive === 'true';
+        if (page) parsedQuery['page'] = parseInt(page as string, 10);
+        if (limit) parsedQuery['limit'] = parseInt(limit as string, 10);
 
         return userController.getUsers(parsedQuery);
       })
@@ -84,7 +84,7 @@ export function createUserRouter(userController: UserController, authController:
         app => app
       )
       .get('/', async ({ params }) => {
-        return userController.getUserById(params.id as Shared.IRI);
+        return userController.getUserById(params['id'] as Shared.IRI);
       })
 
       // Update user (self or admin)
@@ -99,7 +99,7 @@ export function createUserRouter(userController: UserController, authController:
           metadata?: Record<string, unknown>;
         };
 
-        return userController.updateUser(params.id as Shared.IRI, {
+        return userController.updateUser(params['id'] as Shared.IRI, {
           username,
           email,
           firstName,
@@ -114,7 +114,7 @@ export function createUserRouter(userController: UserController, authController:
       .delete('/', async ({ params }) => {
         // This endpoint requires admin, so we need to add the middleware
         // Admin check is handled at the controller level
-        return userController.deleteUser(params.id as Shared.IRI);
+        return userController.deleteUser(params['id'] as Shared.IRI);
       })
 
       // Change password (self or admin)
@@ -124,7 +124,7 @@ export function createUserRouter(userController: UserController, authController:
           newPassword: string;
         };
 
-        return userController.changePassword(params.id as Shared.IRI, {
+        return userController.changePassword(params['id'] as Shared.IRI, {
           currentPassword,
           newPassword
         });
@@ -136,7 +136,7 @@ export function createUserRouter(userController: UserController, authController:
         // Admin check is handled at the controller level
 
         const { roles } = body as { roles: UserRole[] };
-        return userController.addRoles(params.id as Shared.IRI, roles);
+        return userController.addRoles(params['id'] as Shared.IRI, roles);
       })
 
       // Remove roles (admin only)
@@ -145,7 +145,7 @@ export function createUserRouter(userController: UserController, authController:
         // Admin check is handled at the controller level
 
         const { roles } = body as { roles: UserRole[] };
-        return userController.removeRoles(params.id as Shared.IRI, roles);
+        return userController.removeRoles(params['id'] as Shared.IRI, roles);
       })
 
       // Add permissions (admin only)
@@ -154,7 +154,7 @@ export function createUserRouter(userController: UserController, authController:
         // Admin check is handled at the controller level
 
         const { permissions } = body as { permissions: UserPermission[] };
-        return userController.addPermissions(params.id as Shared.IRI, permissions);
+        return userController.addPermissions(params['id'] as Shared.IRI, permissions);
       })
 
       // Remove permissions (admin only)
@@ -163,7 +163,7 @@ export function createUserRouter(userController: UserController, authController:
         // Admin check is handled at the controller level
 
         const { permissions } = body as { permissions: UserPermission[] };
-        return userController.removePermissions(params.id as Shared.IRI, permissions);
+        return userController.removePermissions(params['id'] as Shared.IRI, permissions);
       });
   });
 

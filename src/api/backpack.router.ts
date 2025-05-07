@@ -196,7 +196,7 @@ export function createBackpackRouter(
            };
          }
 
-         const version = query.version || 'v3';
+         const version = query['version'] || 'v3';
 
          const result = await backpackController.getUserAssertions(
            platformUser,

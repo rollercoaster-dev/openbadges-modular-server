@@ -6,7 +6,7 @@
       "dependencies": {
         "@neondatabase/serverless": "^1.0.0",
         "@paralleldrive/cuid2": "^2.2.2",
-        "@rollercoaster-dev/rd-logger": "0.2.1",
+        "@rollercoaster-dev/rd-logger": "^0.3.0",
         "@types/bcrypt": "^5.0.2",
         "@types/uuid": "^10.0.0",
         "bcrypt": "^5.1.1",
@@ -138,7 +138,7 @@
 
     "@petamoriken/float16": ["@petamoriken/float16@3.9.2", "", {}, "sha512-VgffxawQde93xKxT3qap3OH+meZf7VaSB5Sqd4Rqc+FP5alWbpOyan/7tRbOAvynjpG3GpdtAuGU/NdhQpmrog=="],
 
-    "@rollercoaster-dev/rd-logger": ["@rollercoaster-dev/rd-logger@0.2.1", "", { "dependencies": { "chalk": "^5.4.1", "on-finished": "^2.4.1" }, "peerDependencies": { "@sinclair/typebox": ">= 0.34.0", "elysia": ">= 1.0.0", "express": ">= 4.0.0", "hono": ">= 4.0.0" } }, "sha512-0DwvyQ71VIWRdjnspramGEGw4Epp1XhXf1uzJkpUu3iMrtOVcW2Z6cLCQTlLZiK1GngI7cjAB22zbJLLWjeh8Q=="],
+    "@rollercoaster-dev/rd-logger": ["@rollercoaster-dev/rd-logger@0.3.0", "", { "dependencies": { "chalk": "^5.4.1", "on-finished": "^2.4.1" }, "peerDependencies": { "@sinclair/typebox": ">= 0.34.0", "elysia": ">= 1.0.0", "express": ">= 4.0.0", "hono": ">= 4.0.0" } }, "sha512-bcYiw/sdN+I/ULAFjRZwQZY//N/kLLVYeR5BTO6Qev5XsIbV0IHgY9udk3/xEAmrzQt7aPFMMW9O4HrhQ3bALg=="],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.34.33", "", {}, "sha512-5HAV9exOMcXRUxo+9iYB5n09XxzCXnfy4VTNW4xnDv+FgjzAGY989C28BIdljKqmF+ZltUwujE3aossvcVtq6g=="],
 
@@ -436,7 +436,7 @@
 
     "hasown": ["hasown@2.0.2", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
 
-    "hono": ["hono@4.7.7", "", {}, "sha512-2PCpQRbN87Crty8/L/7akZN3UyZIAopSoRxCwRbJgUuV1+MHNFHzYFxZTg4v/03cXUm+jce/qa2VSBZpKBm3Qw=="],
+    "hono": ["hono@4.7.8", "", {}, "sha512-PCibtFdxa7/Ldud9yddl1G81GjYaeMYYTq4ywSaNsYbB1Lug4mwtOMJf2WXykL0pntYwmpRJeOI3NmoDgD+Jxw=="],
 
     "http-errors": ["http-errors@2.0.0", "", { "dependencies": { "depd": "2.0.0", "inherits": "2.0.4", "setprototypeof": "1.2.0", "statuses": "2.0.1", "toidentifier": "1.0.1" } }, "sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ=="],
 
