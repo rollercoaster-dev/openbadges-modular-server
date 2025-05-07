@@ -5,7 +5,7 @@
  * and starts the server.
  */
 
-import { Elysia } from 'elysia';
+import { Hono } from 'hono';
 import { RepositoryFactory } from './infrastructure/repository.factory';
 import { createApiRouter } from './api/api.router';
 import { config } from './config/config';
@@ -28,30 +28,33 @@ import { authMiddleware, authDebugMiddleware } from './auth/middleware/auth.midd
 import { AuthController } from './auth/auth.controller';
 
 // Create the main application
-const app = new Elysia({ aot: false }) // Set aot: false to address potential Elysia helmet issues
-  // Add request context middleware for logging and request tracking
-  .use(requestContextMiddleware)
-  // Add security middleware (rate limiting & security headers)
-  .use(securityMiddleware)
-  // Add authentication middleware
-  .use(authMiddleware)
-  // Add authentication debug middleware
-  .use(authDebugMiddleware)
-  .get('/', () => ({
+const app = new Hono();
+
+// Add middleware (to be refactored for Hono compatibility in their respective files)
+app.use(requestContextMiddleware);
+app.use(securityMiddleware);
+app.use(authMiddleware);
+app.use(authDebugMiddleware);
+
+// Root route
+app.get('/', (c) =>
+  c.json({
     name: 'Open Badges API',
     version: '1.0.0',
     specification: 'Open Badges 3.0',
     documentation: {
       swagger: '/swagger',
-      swaggerUI: '/docs'
-    }
-  }));
+      swaggerUI: '/docs',
+    },
+  })
+);
+
 
 // Database instance for graceful shutdown
 // We create the database but don't need to store the reference
 
 // Async function to setup repositories and controllers
-export async function setupApp(): Promise<Elysia> {
+export async function setupApp(): Promise<Hono> {
   try {
     // Initialize the repository factory
     await RepositoryFactory.initialize({
@@ -129,12 +132,17 @@ export async function setupApp(): Promise<Elysia> {
 
     // Add API routes
     app.use(apiRouter);
-    // Add 404 and error handling middleware
     app.use(notFoundHandlerMiddleware);
     app.use(errorHandlerMiddleware);
 
-    // Start the server
-    const server = app.listen({
+    // Start the server (Bun or Node)
+    const server = Bun ? Bun.serve({
+      fetch: app.fetch,
+      port: config.server.port,
+      hostname: config.server.host,
+      development: process.env.NODE_ENV !== 'production',
+      // Add more Bun options as needed
+    }) : app.listen({
       port: config.server.port,
       hostname: config.server.host
     }, () => {
@@ -151,10 +159,8 @@ export async function setupApp(): Promise<Elysia> {
       }
     });
 
-    // Setup graceful shutdown
     setupGracefulShutdown(server);
-
-    return app; // Return the configured app instance
+    return app;
 
   } catch (error) {
     if (error instanceof Error) {
@@ -167,7 +173,7 @@ export async function setupApp(): Promise<Elysia> {
 }
 
 // Keep track of setup promise to avoid multiple initializations
-let setupPromise: Promise<Elysia> | null = null;
+let setupPromise: Promise<Hono> | null = null;
 
 // Start the application
 async function bootstrap() {
