@@ -5,7 +5,7 @@ import { logger } from '../../utils/logging/logger.service';
 const assetStorage = createAssetProvider();
 
 // Maximum file size (5MB by default)
-const MAX_FILE_SIZE = parseInt(process.env.ASSETS_MAX_FILE_SIZE || '5242880', 10);
+const MAX_FILE_SIZE = parseInt(process.env['ASSETS_MAX_FILE_SIZE'] || '5242880', 10);
 
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = [

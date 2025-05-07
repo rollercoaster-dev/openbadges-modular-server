@@ -30,12 +30,12 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
 
       // Insert into database
       const result = await this.db.insert(platformUsers).values({
-        platformId: obj.platformId as string,
-        externalUserId: obj.externalUserId as string,
+        platformId: obj['platformId'] as string,
+        externalUserId: obj['externalUserId'] as string,
         // Optional fields
-        ...(obj.displayName ? { displayName: obj.displayName as string } : {}),
-        ...(obj.email ? { email: obj.email as string } : {}),
-        ...(obj.metadata ? { metadata: obj.metadata } : {}),
+        ...(obj['displayName'] ? { displayName: obj['displayName'] as string } : {}),
+        ...(obj['email'] ? { email: obj['email'] as string } : {}),
+        ...(obj['metadata'] ? { metadata: obj['metadata'] } : {}),
         // id, createdAt and updatedAt will be set by default values in the schema
       }).returning();
 
@@ -116,15 +116,15 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
 
       // Prepare update values
       const updateValues: Record<string, unknown> = {
-        platformId: obj.platformId as string,
-        externalUserId: obj.externalUserId as string,
+        platformId: obj['platformId'] as string,
+        externalUserId: obj['externalUserId'] as string,
         updatedAt: new Date()
       };
 
       // Add optional fields if they exist
-      if (obj.displayName !== undefined) updateValues.displayName = obj.displayName as string;
-      if (obj.email !== undefined) updateValues.email = obj.email as string;
-      if (obj.metadata !== undefined) updateValues.metadata = obj.metadata;
+      if (obj['displayName'] !== undefined) updateValues['displayName'] = obj['displayName'] as string;
+      if (obj['email'] !== undefined) updateValues['email'] = obj['email'] as string;
+      if (obj['metadata'] !== undefined) updateValues['metadata'] = obj['metadata'];
 
       // Update in database
       const result = await this.db.update(platformUsers)
@@ -170,14 +170,14 @@ export class PostgresPlatformUserRepository implements PlatformUserRepository {
     const typedRow = row as Record<string, string | number | null | Date | Record<string, unknown>>;
 
     return PlatformUser.create({
-      id: String(typedRow.id) as Shared.IRI,
-      platformId: String(typedRow.platformId) as Shared.IRI,
-      externalUserId: String(typedRow.externalUserId),
-      displayName: typedRow.displayName ? String(typedRow.displayName) : undefined,
-      email: typedRow.email ? String(typedRow.email) : undefined,
-      metadata: typedRow.metadata as Record<string, unknown> | undefined,
-      createdAt: typedRow.createdAt instanceof Date ? typedRow.createdAt : new Date(String(typedRow.createdAt)),
-      updatedAt: typedRow.updatedAt instanceof Date ? typedRow.updatedAt : new Date(String(typedRow.updatedAt))
+      id: String(typedRow['id']) as Shared.IRI,
+      platformId: String(typedRow['platformId']) as Shared.IRI,
+      externalUserId: String(typedRow['externalUserId']),
+      displayName: typedRow['displayName'] ? String(typedRow['displayName']) : undefined,
+      email: typedRow['email'] ? String(typedRow['email']) : undefined,
+      metadata: typedRow['metadata'] as Record<string, unknown> | undefined,
+      createdAt: typedRow['createdAt'] instanceof Date ? typedRow['createdAt'] : new Date(String(typedRow['createdAt'])),
+      updatedAt: typedRow['updatedAt'] instanceof Date ? typedRow['updatedAt'] : new Date(String(typedRow['updatedAt']))
     });
   }
 }

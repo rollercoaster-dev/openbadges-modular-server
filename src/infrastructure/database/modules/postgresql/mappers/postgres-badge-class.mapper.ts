@@ -32,15 +32,15 @@ export class PostgresBadgeClassMapper {
     };
 
     // Extract the standard fields from the record, asserting types
-    const id = record.id as string | undefined;
-    const issuerId = record.issuerId as string | undefined;
-    const name = record.name as string ?? ''; // Provide default for notNull
-    const description = record.description as string ?? ''; // Provide default for notNull
-    const image = record.image; // Keep as is, BadgeClass.create handles IRI | OB3ImageObject
-    const criteria = safeParseJson(record.criteria, {}); // Provide default for notNull
-    const alignment = safeParseJson(record.alignment, null);
-    const tags = safeParseJson(record.tags, null);
-    const additionalFieldsRecord = safeParseJson(record.additionalFields, {}); // Provide default
+    const id = record['id'] as string | undefined;
+    const issuerId = record['issuerId'] as string | undefined;
+    const name = record['name'] as string ?? ''; // Provide default for notNull
+    const description = record['description'] as string ?? ''; // Provide default for notNull
+    const image = record['image']; // Keep as is, BadgeClass.create handles IRI | OB3ImageObject
+    const criteria = safeParseJson(record['criteria'], {}); // Provide default for notNull
+    const alignment = safeParseJson(record['alignment'], null);
+    const tags = safeParseJson(record['tags'], null);
+    const additionalFieldsRecord = safeParseJson(record['additionalFields'], {}); // Provide default
 
     // Create and return the domain entity
     return BadgeClass.create({

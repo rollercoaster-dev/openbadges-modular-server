@@ -203,9 +203,9 @@ export class HealthCheckService {
 
     // Add placeholder for future potential metrics
     if (dbType === 'sqlite') {
-        metrics.notes = 'Detailed SQLite metrics (PRAGMAs) require direct DB access, not available via interface.';
+        metrics['notes'] = 'Detailed SQLite metrics (PRAGMAs) require direct DB access, not available via interface.';
     } else if (dbType === 'postgresql') {
-        metrics.notes = 'Detailed PostgreSQL metrics (pg_stat_activity, sizes) require direct DB access, not available via interface.';
+        metrics['notes'] = 'Detailed PostgreSQL metrics (pg_stat_activity, sizes) require direct DB access, not available via interface.';
     }
 
     return metrics;

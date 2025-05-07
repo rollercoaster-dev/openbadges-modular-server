@@ -16,7 +16,8 @@ interface PlatformInput {
 }
 
 class PostgresPlatformRepository {
-  constructor(private client: unknown) {}
+   
+  constructor(_client: unknown) {}
 
   async create(platform: PlatformInput): Promise<Platform> {
     return Platform.create({

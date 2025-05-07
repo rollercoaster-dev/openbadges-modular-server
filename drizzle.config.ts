@@ -15,7 +15,7 @@ import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 // Use the main application logger
 
 // Determine database type from environment variable or config
-const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
+const dbType = process.env['DB_TYPE'] || config.database.type || 'sqlite';
 
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
@@ -58,7 +58,7 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: process.env.SQLITE_DB_PATH || config.database.sqliteFile || 'sqlite.db',
+      url: process.env['SQLITE_DB_PATH'] || config.database.sqliteFile || 'sqlite.db',
     },
   };
 }

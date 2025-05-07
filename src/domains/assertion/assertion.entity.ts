@@ -233,11 +233,11 @@ export class Assertion {
     const vcData = data as Record<string, unknown>;
 
     // Validate required fields
-    if (!vcData.id) throw new Error('VerifiableCredential must have an id');
-    if (!vcData.type) throw new Error('VerifiableCredential must have a type');
-    if (!vcData.issuer) throw new Error('VerifiableCredential must have an issuer');
-    if (!vcData.issuanceDate) throw new Error('VerifiableCredential must have an issuanceDate');
-    if (!vcData.credentialSubject) throw new Error('VerifiableCredential must have a credentialSubject');
+    if (!vcData['id']) throw new Error('VerifiableCredential must have an id');
+    if (!vcData['type']) throw new Error('VerifiableCredential must have a type');
+    if (!vcData['issuer']) throw new Error('VerifiableCredential must have an issuer');
+    if (!vcData['issuanceDate']) throw new Error('VerifiableCredential must have an issuanceDate');
+    if (!vcData['credentialSubject']) throw new Error('VerifiableCredential must have a credentialSubject');
     if (!vcData['@context']) throw new Error('VerifiableCredential must have a @context');
 
     // If all validations pass, cast to the proper type

@@ -61,7 +61,7 @@ export class PostgresAssertionMapper {
     const revokedDomainValue = convertJson<Record<string, unknown> | null>(revokedDbValue as Record<string, unknown>, 'postgresql', 'from');
     // Basic check: if the JSONB value exists and has a truthy 'status' property, consider it revoked (boolean for now)
     if (typeof revokedDomainValue === 'object' && revokedDomainValue !== null && 'status' in revokedDomainValue) {
-      return !!revokedDomainValue.status;
+      return !!revokedDomainValue['status'];
     }
     return false; // Default to not revoked if structure doesn't match
   }
@@ -91,7 +91,7 @@ export class PostgresAssertionMapper {
       // Include ID if provided in the entity
       ...(entity.id && { id: entity.id as string }),
       // Use badgeClass if available, otherwise use badge (from toObject)
-      badgeClassId: (entity.badgeClass || entity.badge) as string, // Map from entity.badgeClass (IRI) and cast to string
+      badgeClassId: (entity.badgeClass || entity['badge']) as string, // Map from entity.badgeClass (IRI) and cast to string
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
       // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
       ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),
@@ -100,7 +100,7 @@ export class PostgresAssertionMapper {
       verification: convertJson(entity.verification, 'postgresql', 'to'),
       revoked: convertJson(entity.revoked ? { status: true } : null, 'postgresql', 'to'),
       revocationReason: entity.revocationReason,
-      additionalFields: convertJson(entity.additionalFields, 'postgresql', 'to'),
+      additionalFields: convertJson(entity['additionalFields'], 'postgresql', 'to'),
       // DO NOT include createdAt, updatedAt - let the database handle these
     };
     // Cast the fully constructed object to the expected insert model type before returning.

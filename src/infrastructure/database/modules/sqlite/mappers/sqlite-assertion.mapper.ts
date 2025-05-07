@@ -44,7 +44,7 @@ export class SqliteAssertionMapper {
       additionalFields,
     } = record;
 
-    // --- Validate required fields from DB --- 
+    // --- Validate required fields from DB ---
     if (id === null || id === undefined) {
       throw new Error('Assertion record is missing required field: id');
     }
@@ -122,7 +122,7 @@ export class SqliteAssertionMapper {
   private validateParsedJson<T>(value: T | string | null | undefined, fieldName: string, assertionId: string): T {
     if (value === null || value === undefined) {
       // Allow null/undefined for optional fields, handle specific checks elsewhere if needed
-      return value as T; 
+      return value as T;
     }
     if (typeof value === 'string') {
       throw new Error(`Parsed ${fieldName} JSON is unexpectedly a string for assertion ${assertionId}.`);
@@ -145,7 +145,7 @@ export class SqliteAssertionMapper {
     // Return only the fields required by InferInsertModel for insert
     const persistenceRecord: InferInsertModel<typeof assertions> = {
       id: convertUuid(entity.id as string, 'sqlite', 'to'),
-      badgeClassId: convertUuid(entity.badgeClass as string, 'sqlite', 'to'),
+      badgeClassId: convertUuid((entity.badgeClass || entity['badge']) as string, 'sqlite', 'to'),
       recipient: convertJson(entity.recipient as object, 'sqlite', 'to') as string,
       issuedOn: convertTimestamp(entity.issuedOn as string | Date, 'sqlite', 'to') as number,
       createdAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,

@@ -55,15 +55,15 @@ export const requestContextMiddleware = new Elysia()
   })
   .on('afterHandle', (context) => {
     // Skip logging for certain paths (like health checks) to reduce noise
-    const path = new URL(context.request.url).pathname;
+    const path = new URL(context['request'].url).pathname;
     if (path === '/health' || path === '/favicon.ico') {
       return;
     }
 
     // Calculate request duration
-    const duration = Date.now() - ((context.store as RequestContext['store']).requestStartTime || Date.now());
+    const duration = Date.now() - ((context['store'] as RequestContext['store']).requestStartTime || Date.now());
     const { request, set } = context;
-    const requestId = (context.store as RequestContext['store']).requestId;
+    const requestId = (context['store'] as RequestContext['store']).requestId;
 
     // Log completed request
     logger.info(`Request completed`, {
