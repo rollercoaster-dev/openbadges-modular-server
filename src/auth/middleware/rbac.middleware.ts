@@ -8,22 +8,7 @@
 import { UserRole, UserPermission } from '../../domains/user/user.entity';
 import { logger } from '../../utils/logging/logger.service';
 import { Context } from 'elysia';
-
-/**
- * Context for RBAC middleware
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface RBACContext {
-  user?: {
-    id: string;
-    provider: string;
-    claims: Record<string, unknown>;
-  };
-  isAuthenticated: boolean;
-  set: { status?: number | string };
-  request: Request;
-  params: Record<string, string>;
-}
+import { config } from '../../config/config';
 
 /**
  * Create middleware that requires authentication
@@ -31,6 +16,12 @@ interface RBACContext {
  */
 export function requireAuth(): (context: Context) => void | Record<string, unknown> {
   return (context: Context): void | Record<string, unknown> => {
+    // Check if RBAC is disabled for testing
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
+      logger.debug('RBAC is disabled for testing, skipping authentication check');
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { isAuthenticated, set, user } = context as any;
 
@@ -53,6 +44,12 @@ export function requireAuth(): (context: Context) => void | Record<string, unkno
  */
 export function requireRoles(roles: UserRole[]): (context: Context) => void | Record<string, unknown> {
   return (context: Context): void | Record<string, unknown> => {
+    // Check if RBAC is disabled for testing
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
+      logger.debug('RBAC is disabled for testing, skipping roles check', { roles });
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { isAuthenticated, user, set } = context as any;
 
@@ -92,6 +89,12 @@ export function requireRoles(roles: UserRole[]): (context: Context) => void | Re
  */
 export function requirePermissions(permissions: UserPermission[], requireAll = false): (context: Context) => void | Record<string, unknown> {
   return (context: Context): void | Record<string, unknown> => {
+    // Check if RBAC is disabled for testing
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
+      logger.debug('RBAC is disabled for testing, skipping permissions check', { permissions });
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { isAuthenticated, user, set } = context as any;
 
@@ -159,6 +162,12 @@ export function requireIssuer(): (context: Context) => void | Record<string, unk
  */
 export function requireSelfOrAdmin(): (context: Context) => void | Record<string, unknown> {
   return (context: Context): void | Record<string, unknown> => {
+    // Check if RBAC is disabled for testing
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
+      logger.debug('RBAC is disabled for testing, skipping self/admin check');
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { isAuthenticated, user, set, params } = context as any;
 
