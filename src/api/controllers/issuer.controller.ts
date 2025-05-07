@@ -96,9 +96,9 @@ export class IssuerController {
       const createdIssuer = await this.issuerRepository.create(issuer);
 
       // Return formatted response as a plain object with top-level 'id' property
-      const response = createdIssuer.toObject(version);
-      // Ensure 'id' is present at the top level for test compatibility
-      return { ...response, id: createdIssuer.id } as IssuerResponseDto;
+      const response = { ...createdIssuer.toObject(version), id: createdIssuer.id };
+      // Workaround: force plain object serialization for Elysia
+      return JSON.parse(JSON.stringify(response)) as IssuerResponseDto;
     } catch (error) {
       logger.error('Error creating issuer', {
         error: error instanceof Error ? error.message : String(error),
