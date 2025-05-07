@@ -6,6 +6,7 @@
  */
 
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import crypto from 'node:crypto';
 
 // Helper function to determine PostgreSQL connection string
 const determinePostgresConnectionString = () => {
@@ -110,7 +111,16 @@ export const config = {
     // Whether RBAC is disabled (useful for testing)
     disableRbac: process.env['AUTH_DISABLE_RBAC'] === 'true',
     // JWT configuration
-    jwtSecret: process.env['JWT_SECRET'] || 'temp_secret_replace_in_production',
+    jwtSecret: (() => {
+      const secret = process.env['JWT_SECRET'];
+      if (!secret && process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET environment variable must be set in production mode');
+      }
+      // In development/test, generate a random secret if none is provided
+      return secret || (process.env.NODE_ENV !== 'production' ?
+        crypto.randomBytes(32).toString('base64') :
+        undefined);
+    })(),
     tokenExpirySeconds: parseInt(process.env['JWT_TOKEN_EXPIRY_SECONDS'] || '3600', 10), // 1 hour default
     issuer: process.env['JWT_ISSUER'] || process.env['BASE_URL'] || 'http://localhost:3000',
     // Public paths (no authentication required)
