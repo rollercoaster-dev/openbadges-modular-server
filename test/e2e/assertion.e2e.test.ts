@@ -5,8 +5,8 @@ import { logger } from '../../src/utils/logging/logger.service';
 
 // Base URL for the API
 const API_URL = process.env['API_BASE_URL'] || `http://${config.server.host}:${config.server.port}`;
-const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+// const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
+// const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`; // Not used in this simplified test
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
 
 // API key for protected endpoints
