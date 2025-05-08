@@ -20,30 +20,36 @@ import { createRequestContextMiddleware } from '../../src/utils/logging/request-
 import { initializeAuthentication } from '../../src/auth/auth.initializer';
 import { createAuthMiddleware, createAuthDebugMiddleware } from '../../src/auth/middleware/auth.middleware';
 
-// Create the main application
-const app = new Hono();
+// Create a function to create a new Hono app instance
+function createApp() {
+  const app = new Hono();
 
-// Add middleware
-app.use(createRequestContextMiddleware());
-app.use(createSecurityMiddleware());
-app.use(createAuthMiddleware());
-app.use(createAuthDebugMiddleware());
+  // Add middleware
+  app.use(createRequestContextMiddleware());
+  app.use(createSecurityMiddleware());
+  app.use(createAuthMiddleware());
+  app.use(createAuthDebugMiddleware());
 
-// Root route
-app.get('/', (c) =>
-  c.json({
-    name: 'Open Badges API',
-    version: '1.0.0',
-    specification: 'Open Badges 3.0',
-    documentation: {
-      swagger: '/swagger',
-      swaggerUI: '/docs',
-    },
-  })
-);
+  // Root route
+  app.get('/', (c) =>
+    c.json({
+      name: 'Open Badges API',
+      version: '1.0.0',
+      specification: 'Open Badges 3.0',
+      documentation: {
+        swagger: '/swagger',
+        swaggerUI: '/docs',
+      },
+    })
+  );
+
+  return app;
+}
 
 // Async function to setup repositories and controllers
 export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
+  // Create a new app instance for each test
+  const app = createApp();
   try {
     // Initialize the repository factory
     await RepositoryFactory.initialize({
