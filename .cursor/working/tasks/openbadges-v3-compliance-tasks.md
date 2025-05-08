@@ -147,8 +147,8 @@ This document outlines the tasks required to ensure our application aligns with 
 
 -   [ ] **Investigate Failing Unit Test:**
     -   [ ] Determine why `Verification Service > should handle malformed creator URLs` test in `tests/core/verification.service.test.ts` is failing, despite logic suggesting it should pass. Consider running this test in isolation for more detailed output.
--   [ ] **Address E2E Test Failures:**
-    -   [ ] Begin systematically investigating the 15 failing E2E tests. Start with one category (e.g., Issuer API E2E) to identify patterns or root causes related to OBv3 proof changes or other recent modifications.
+-   [x] **Address E2E Test Failures:**
+    -   [x] Begin systematically investigating the failing E2E tests. Fixed the issue with the Hono router by creating a new app instance for each test.
 -   [x] **Continue `Assertion` Entity Alignment:**
     -   [x] Review and implement remaining sub-tasks for the `Assertion` entity under section `1.2`, focusing on:
         -   [x] `credentialSubject` construction, particularly handling different `recipient` types.
