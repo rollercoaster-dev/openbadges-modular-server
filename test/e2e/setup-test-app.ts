@@ -1,0 +1,137 @@
+/**
+ * Setup function for E2E tests
+ *
+ * This file provides a modified version of the setupApp function
+ * that doesn't automatically start the server.
+ */
+
+import { Hono } from 'hono';
+import { RepositoryFactory } from '../../src/infrastructure/repository.factory';
+import { createApiRouter } from '../../src/api/api.router';
+import { config } from '../../src/config/config';
+import { createSecurityMiddleware } from '../../src/utils/security/security.middleware';
+import { IssuerController } from '../../src/api/controllers/issuer.controller';
+import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
+import { AssertionController } from '../../src/api/controllers/assertion.controller';
+import { DatabaseFactory } from '../../src/infrastructure/database/database.factory';
+import { createErrorHandlerMiddleware, handleNotFound } from '../../src/utils/errors/error-handler.middleware';
+import { logger } from '../../src/utils/logging/logger.service';
+import { createRequestContextMiddleware } from '../../src/utils/logging/request-context.middleware';
+import { initializeAuthentication } from '../../src/auth/auth.initializer';
+import { createAuthMiddleware, createAuthDebugMiddleware } from '../../src/auth/middleware/auth.middleware';
+
+// Create the main application
+const app = new Hono();
+
+// Add middleware
+app.use(createRequestContextMiddleware());
+app.use(createSecurityMiddleware());
+app.use(createAuthMiddleware());
+app.use(createAuthDebugMiddleware());
+
+// Root route
+app.get('/', (c) =>
+  c.json({
+    name: 'Open Badges API',
+    version: '1.0.0',
+    specification: 'Open Badges 3.0',
+    documentation: {
+      swagger: '/swagger',
+      swaggerUI: '/docs',
+    },
+  })
+);
+
+// Async function to setup repositories and controllers
+export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
+  try {
+    // Initialize the repository factory
+    await RepositoryFactory.initialize({
+      type: config.database.type,
+      connectionString: config.database.connectionString,
+      sqliteFile: config.database.sqliteFile,
+      sqliteBusyTimeout: config.database.sqliteBusyTimeout,
+      sqliteSyncMode: config.database.sqliteSyncMode,
+      sqliteCacheSize: config.database.sqliteCacheSize
+    });
+
+    // Create database instance for connection
+    await DatabaseFactory.createDatabase(
+      config.database.type,
+      {
+        connectionString: config.database.connectionString,
+        sqliteFile: config.database.sqliteFile,
+        sqliteBusyTimeout: config.database.sqliteBusyTimeout,
+        sqliteSyncMode: config.database.sqliteSyncMode,
+        sqliteCacheSize: config.database.sqliteCacheSize
+      }
+    );
+
+    logger.info(`Connected to ${config.database.type} database`);
+
+    // Initialize authentication system
+    await initializeAuthentication();
+
+    // Initialize repositories
+    const issuerRepository = await RepositoryFactory.createIssuerRepository();
+    const badgeClassRepository = await RepositoryFactory.createBadgeClassRepository();
+    const assertionRepository = await RepositoryFactory.createAssertionRepository();
+
+    // Initialize controllers with repositories
+    const issuerController = new IssuerController(issuerRepository);
+    const badgeClassController = new BadgeClassController(badgeClassRepository);
+    const assertionController = new AssertionController(
+      assertionRepository,
+      badgeClassRepository,
+      issuerRepository
+    );
+
+    // Create API router with controllers
+    const apiRouter = createApiRouter(
+      issuerController,
+      badgeClassController,
+      assertionController
+    );
+
+    // Add API routes
+    app.route('', apiRouter);
+    app.notFound(handleNotFound);
+    app.use(createErrorHandlerMiddleware());
+
+    // Start the server with Bun
+    const testPort = parseInt(process.env.TEST_PORT || '3001');
+    const server = Bun.serve({
+      fetch: app.fetch,
+      port: testPort,
+      hostname: config.server.host,
+      development: true,
+    });
+
+    logger.info(`Test server started successfully`, {
+      server: `http://${config.server.host}:${testPort}`,
+    });
+
+    return { app, server };
+
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.logError('Failed to start test server', error);
+    } else {
+      logger.error('Failed to start test server', { message: String(error) });
+    }
+    throw error;
+  }
+}
+
+// Define a type for the server
+type BunServer = {
+  stop: () => void;
+};
+
+// Function to stop the test server
+export function stopTestServer(server: unknown): void {
+  if (server && typeof (server as BunServer).stop === 'function') {
+    (server as BunServer).stop();
+    logger.info('Test server stopped');
+  }
+}

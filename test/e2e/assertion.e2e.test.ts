@@ -1,10 +1,15 @@
 // test/e2e/assertion.e2e.test.ts
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
 import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
+import { setupTestApp, stopTestServer } from './setup-test-app';
+
+// Use a random port for testing to avoid conflicts
+const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
+process.env.TEST_PORT = TEST_PORT.toString();
 
 // Base URL for the API
-const API_URL = process.env['API_BASE_URL'] || `http://${config.server.host}:${config.server.port}`;
+const API_URL = `http://${config.server.host}:${TEST_PORT}`;
 // const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
 // const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`; // Not used in this simplified test
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
@@ -12,7 +17,47 @@ const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
 
+// Server instance for the test
+let server: unknown = null;
+
 describe('Assertion API - E2E', () => {
+  // Start the server before all tests
+  beforeAll(async () => {
+    // Set environment variables for the test server
+    process.env['NODE_ENV'] = 'test';
+
+    try {
+      logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
+      const result = await setupTestApp();
+      server = result.server;
+      logger.info('E2E Test: Server started successfully');
+      // Wait for the server to be fully ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      logger.error('E2E Test: Failed to start server', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
+  });
+
+  // Stop the server after all tests
+  afterAll(async () => {
+    if (server) {
+      try {
+        logger.info('E2E Test: Stopping server');
+        stopTestServer(server);
+        logger.info('E2E Test: Server stopped successfully');
+      } catch (error) {
+        logger.error('E2E Test: Error stopping server', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+      }
+    }
+  });
+
   // No resources to clean up in this simplified test
 
   it.skip('should verify assertion API endpoints', async () => {

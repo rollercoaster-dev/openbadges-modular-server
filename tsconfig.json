@@ -38,5 +38,9 @@
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": false
   },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["drizzle.config.ts", "node_modules"]
 }

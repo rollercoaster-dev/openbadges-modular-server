@@ -7,22 +7,22 @@
 
 import { Assertion } from '../domains/assertion/assertion.entity';
 import { KeyService } from './key.service';
-import { createVerification, verifyAssertion, SignedBadgeVerification } from '../utils/crypto/signature';
+import { createVerification, verifyAssertion, DataIntegrityProof } from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
-import { config } from '../config/config';
-import { Shared, OB3, OB2 } from 'openbadges-types';
-import { toIRI } from '../utils/types/iri-utils';
+import { Shared, OB3 } from 'openbadges-types';
 
-// Type guard to check if an object is our specific SignedBadgeVerification
-function isSignedBadgeVerification(proof: unknown): proof is SignedBadgeVerification {
+// Type guard to check if an object is our specific DataIntegrityProof
+function isDataIntegrityProof(proof: unknown): proof is DataIntegrityProof {
   return (
     typeof proof === 'object' &&
     proof !== null &&
     'type' in proof &&
-    proof.type === 'SignedBadge' &&
-    'creator' in proof &&
+    proof.type === 'DataIntegrityProof' &&
+    'cryptosuite' in proof &&
     'created' in proof &&
-    'signatureValue' in proof
+    'proofPurpose' in proof &&
+    'verificationMethod' in proof &&
+    'proofValue' in proof
   );
 }
 
@@ -42,14 +42,14 @@ export class VerificationService {
       // This ensures that the signature is based on the essential data
       const canonicalData = this.createCanonicalDataForSigning(assertion);
 
-      // Create verification object
-      const verification = createVerification(
+      // Create verification object (now DataIntegrityProof)
+      const proof = createVerification(
         canonicalData,
         KeyService.getPrivateKey(keyId)
       );
 
-      // Add key ID to the verification object
-      verification.creator = toIRI(`${config.openBadges.baseUrl}/public-keys/${keyId}`);
+      // The verificationMethod in DataIntegrityProof already contains the key's IRI.
+      // So, no need to manually set `proof.verificationMethod` like we did for `verification.creator`.
 
       // Get the assertion data as a plain object
       // Explicitly select the required fields from the assertion object
@@ -61,17 +61,19 @@ export class VerificationService {
         issuedOn: assertion.issuedOn,
         expires: assertion.expires,
         evidence: assertion.evidence,
-        verification: assertion.verification,
         revoked: assertion.revoked,
         revocationReason: assertion.revocationReason,
         issuer: assertion.issuer,
+        // Remove old verification property if it exists to avoid conflicts
+        verification: undefined,
       };
 
-      // Create a new assertion with the verification
+      // Create a new assertion with the proof
+      // The Assertion entity will need to be updated to accept a `proof` property.
+      // For now, we assume it can be added or will replace 'verification'.
       return Assertion.create({
         ...assertionData,
-        // Explicitly cast to the OB2 type, which SignedBadgeVerification is compatible with
-        verification: verification as OB2.VerificationObject
+        verification: proof as unknown as OB3.Proof, // Assign to existing 'verification' property
       });
     } catch (error) {
       logger.logError('Failed to create verification for assertion', error as Error);
@@ -113,94 +115,78 @@ export class VerificationService {
       // Ensure the key service is initialized
       await KeyService.initialize();
 
-      // Type guard to check if verification is likely an OB3.Proof object
-      if (!assertion.verification || typeof assertion.verification !== 'object' ||
-          !('signatureValue' in assertion.verification) || !assertion.verification['signatureValue']) {
-        logger.warn(`Assertion ${assertion.id} has no verification or signature suitable for checking.`);
+      // Check if assertion.verification exists and is a DataIntegrityProof object
+      if (!assertion.verification || !isDataIntegrityProof(assertion.verification)) {
+        logger.warn(`Assertion ${assertion.id} has no valid 'DataIntegrityProof' on its 'verification' property.`);
         return false;
       }
 
-      // At this point, assertion.verification is likely OB3.Proof, proceed with checks
-      const verificationProof = assertion.verification as OB3.Proof; // Safe assertion after guard
+      // At this point, assertion.verification is known to be DataIntegrityProof
+      const proofObject = assertion.verification as DataIntegrityProof; // assertion.verification is now our DataIntegrityProof
 
-      // Extract the key ID from the creator URL
+      // Extract the key ID from the verificationMethod URL
       let keyId = 'default';
-      let validCreatorUrl = true;
+      let validVerificationMethod = true;
 
-      if (verificationProof['creator']) {
-        const creatorUrl = verificationProof['creator'] as string;
+      if (proofObject.verificationMethod) {
+        const verificationMethodUrl = proofObject.verificationMethod as string;
         try {
-          // Try to parse as a valid URL
-          const url = new URL(creatorUrl);
+          const url = new URL(verificationMethodUrl);
           const match = url.pathname.match(/\/public-keys\/([^/]+)$/);
           if (match && match[1]) {
             keyId = match[1];
           } else {
-            logger.warn(`Creator URL does not match the expected pattern: ${creatorUrl}`);
-            // Fallback to simple regex for non-standard URLs
-            const simpleMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
+            logger.warn(`VerificationMethod URL does not match expected pattern: ${verificationMethodUrl}`);
+            const simpleMatch = verificationMethodUrl.match(/\/public-keys\/([^/]+)$/);
             if (simpleMatch && simpleMatch[1]) {
               keyId = simpleMatch[1];
-              logger.info(`Extracted key ID using fallback method: ${keyId}`);
+              logger.info(`Extracted key ID using fallback from verificationMethod: ${keyId}`);
             } else {
-              validCreatorUrl = false;
+              validVerificationMethod = false;
             }
           }
         } catch (error) {
-          // If URL parsing fails, fall back to simple regex
-          logger.warn(`Invalid creator URL format: ${creatorUrl}`, { error });
-          const fallbackMatch = creatorUrl.match(/\/public-keys\/([^/]+)$/);
+          logger.warn(`Invalid verificationMethod URL format: ${verificationMethodUrl}`, { error });
+          const fallbackMatch = verificationMethodUrl.match(/\/public-keys\/([^/]+)$/);
           if (fallbackMatch && fallbackMatch[1]) {
             keyId = fallbackMatch[1];
-            logger.info(`Extracted key ID using fallback method: ${keyId}`);
+            logger.info(`Extracted key ID using fallback from verificationMethod: ${keyId}`);
           } else {
-            validCreatorUrl = false;
+            validVerificationMethod = false;
           }
         }
       }
 
-      // If we couldn't extract a valid key ID from the creator URL, return false
-      if (!validCreatorUrl) {
-        logger.warn(`Could not extract a valid key ID from creator URL: ${verificationProof['creator']}`);
+      if (!validVerificationMethod) {
+        logger.warn(`Could not extract valid key ID from verificationMethod: ${proofObject.verificationMethod}`);
         return false;
       }
 
-      // Obtain public key, catch missing key errors
       let publicKey: string;
       try {
         publicKey = KeyService.getPublicKey(keyId);
       } catch (_err) {
-        logger.warn(`Key pair with ID ${keyId} not found, cannot verify signature`);
+        logger.warn(`Key pair with ID ${keyId} not found for verificationMethod ${proofObject.verificationMethod}, cannot verify signature`);
         return false;
       }
 
-      // Check if verificationProof is a SignedBadgeVerification object generated by our createVerification
-      if (isSignedBadgeVerification(verificationProof)) {
-        // At this point, verificationProof is known to be SignedBadgeVerification
+      // Create a canonical representation of the assertion for verification
+      const canonicalData = this.createCanonicalDataForSigning(assertion);
 
-        // Create a canonical representation of the assertion for verification
-        const canonicalData = this.createCanonicalDataForSigning(assertion);
+      // Verify the signature using the DataIntegrityProof
+      const isValid = verifyAssertion(
+        canonicalData,
+        proofObject, // This is now DataIntegrityProof
+        publicKey
+      );
 
-        // Verify the signature
-        const isValid = verifyAssertion(
-          canonicalData,
-          verificationProof, // Type guard function guarantees the type
-          publicKey
-        );
-
-        if (!isValid) {
-          logger.warn(`Signature verification failed for assertion ${assertion.id}`);
-        }
-        return isValid;
-      } else {
-        // TODO: Implement proper OB3 proof verification or handle other verification types
-        const proofType = typeof verificationProof === 'object' && verificationProof !== null && 'type' in verificationProof ? verificationProof.type : 'unstructured';
-        logger.warn(`Signature verification for assertion ${assertion.id} skipped: Expected 'SignedBadge' verification type, but found '${proofType}'.`);
-        return false;
+      if (!isValid) {
+        logger.warn(`Signature verification failed for assertion ${assertion.id} using its verification proof.`);
       }
+      return isValid;
+
     } catch (error) {
-      // Log as warning to avoid error-level logs in normal flows
-      logger.warn('Failed to verify assertion signature', { error });
+      logger.logError('Failed to verify assertion signature', error as Error);
       return false;
     }
   }

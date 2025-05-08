@@ -56,10 +56,14 @@ describe('Verification Service', () => {
     // Check the verification object
     expect(signedAssertion).toBeDefined();
     expect(signedAssertion.verification).toBeDefined();
-    expect(signedAssertion.verification.type).toBe('SignedBadge');
-    expect((signedAssertion.verification as OB3.Proof).created).toBeDefined(); // Use OB3.Proof
-    expect((signedAssertion.verification as OB3.Proof).signatureValue).toBeDefined(); // Use OB3.Proof
-    expect(signedAssertion.verification.creator).toBeDefined();
+    // Cast to DataIntegrityProof (or a compatible OB3.Proof) for type safety with new properties
+    const proof = signedAssertion.verification as OB3.Proof;
+    expect(proof.type).toBe('DataIntegrityProof');
+    expect(proof.cryptosuite).toBe('rsa-sha256');
+    expect(proof.proofPurpose).toBe('assertionMethod');
+    expect(proof.created).toBeDefined();
+    expect(proof.proofValue).toBeDefined(); // Changed from signatureValue
+    expect(proof.verificationMethod).toBeDefined(); // Changed from creator
   });
 
   test('should verify a valid assertion signature', async () => {

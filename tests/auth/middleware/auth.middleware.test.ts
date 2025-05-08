@@ -74,7 +74,7 @@ describe('Authentication Middleware', () => {
     const mockContext = {
       req: request,
       header: (name: string) => request.headers.get(name),
-      set: (_key: string, _value: any) => {}
+      set: (_key: string, _value: unknown) => {}
     } as unknown as Context;
 
     // Create a next function that will be called if authentication passes
@@ -115,7 +115,7 @@ describe('Authentication Middleware', () => {
     const mockContext = {
       req: request,
       header: (name: string) => request.headers.get(name),
-      set: (_key: string, _value: any) => {}
+      set: (_key: string, _value: unknown) => {}
     } as unknown as Context;
 
     // Create a next function that will be called if authentication passes
@@ -160,7 +160,7 @@ describe('Authentication Middleware', () => {
     const mockContext = {
       req: request,
       header: (name: string) => request.headers.get(name),
-      set: (_key: string, _value: any) => {}
+      set: (_key: string, _value: unknown) => {}
     } as unknown as Context;
 
     // Create a next function that will be called if authentication passes
@@ -205,9 +205,10 @@ describe('Authentication Middleware', () => {
     const mockContext = {
       req: request,
       header: (name: string) => request.headers.get(name),
-      set: (_key: string, _value: any) => {},
-      json: (body: any, status?: number) => {
-        return { body, status } as any;
+      set: (_key: string, _value: unknown) => {},
+       
+      json: (body: unknown, status?: number) => {
+        return { body, status } as unknown as Context;
       }
     } as unknown as Context;
 

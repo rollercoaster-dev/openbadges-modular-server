@@ -68,45 +68,53 @@ The project is migrating its API framework from Elysia.js to Hono. This task foc
     *   Remove unused imports of Elysia types or utilities from test files.
     *   Ensure all code passes linting (`bun run lint`) and type-checking (`bun run typecheck`).
 
+## Progress
+
+- [x] Migrate integration tests to use Hono's testClient
+- [x] Update E2E tests to use a custom test setup with random ports
+- [x] Fix any type errors or linting issues
+- [x] Run all tests to verify they pass
+- [x] Remove Elysia and supertest dependencies from package.json
+
 **List of Test Files to Migrate (from previous `find_by_name`):**
 
-*   `test/api/validation/assertion.schemas.test.ts`
-*   `test/e2e/assertion.e2e.test.ts`
-*   `test/e2e/auth.e2e.test.ts`
-*   `test/e2e/badgeClass.e2e.test.ts`
-*   `test/e2e/issuer.e2e.test.ts`
-*   `test/e2e/openBadgesCompliance.e2e.test.ts`
-*   `tests/api/api-endpoints.test.ts`
-*   `tests/api/auth.integration.test.ts`
-*   `tests/api/endpoints.test.ts`
-*   `tests/api/validation/dto.validator.test.ts`
-*   `tests/auth/adapters/api-key.adapter.test.ts`
-*   `tests/auth/middleware/auth.middleware.test.ts`
-*   `tests/auth/services/jwt.service.test.ts`
-*   `tests/config/drizzle-config.test.ts`
-*   `tests/core/verification.service.test.ts`
-*   `tests/domains/assertion/assertion.entity.test.ts`
-*   `tests/domains/auth/api-key.test.ts`
-*   `tests/domains/backpack/platform-user.entity.test.ts`
-*   `tests/domains/backpack/platform.entity.test.ts`
-*   `tests/domains/backpack/user-assertion.entity.test.ts`
-*   `tests/domains/badgeClass/badgeClass.entity.test.ts`
-*   `tests/domains/issuer/issuer.entity.test.ts`
-*   `tests/infrastructure/assets/local-storage.adapter.test.ts`
-*   `tests/infrastructure/database/migrations/run.test.ts`
-*   `tests/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository.test.ts`
-*   `tests/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository.test.ts`
-*   `tests/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository.test.ts`
-*   `tests/infrastructure/database/modules/postgresql/repositories/postgres-platform.repository.test.ts`
-*   `tests/infrastructure/database/modules/postgresql/repositories.test.ts`
-*   `tests/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository.test.ts`
-*   `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts`
-*   `tests/infrastructure/database/utils/query-logger.service.test.ts`
-*   `tests/infrastructure/database/utils/type-conversion.test.ts`
-*   `tests/utils/crypto/signature.test.ts`
-*   `tests/utils/errors/validation.errors.test.ts`
-*   `tests/utils/logging/logger.service.test.ts`
-*   `tests/utils/monitoring/health-check.service.test.ts`
-*   `tests/utils/types/iri-utils.test.ts`
-*   `tests/utils/validation/entity-validator.test.ts`
-*   `tests/utils/validation/validation-middleware.test.ts`
+*   ✅ `test/api/validation/assertion.schemas.test.ts` - No migration needed (testing Zod schemas only)
+*   ✅ `test/e2e/issuer.e2e.test.ts` - Updated to use random port and custom test setup
+*   ✅ `test/e2e/assertion.e2e.test.ts` - Updated to use random port and custom test setup
+*   ✅ `test/e2e/auth.e2e.test.ts` - Updated to use random port and custom test setup
+*   ✅ `test/e2e/badgeClass.e2e.test.ts` - Updated to use random port and custom test setup
+*   ✅ `test/e2e/openBadgesCompliance.e2e.test.ts` - Updated to use random port and custom test setup
+*   ✅ `tests/api/api-endpoints.test.ts` - No migration needed (testing controllers only)
+*   ✅ `tests/api/auth.integration.test.ts` - Migrated to use Hono's testClient
+*   ✅ `tests/api/endpoints.test.ts` - No migration needed (testing Shared.IRI types only)
+*   ✅ `tests/api/validation/dto.validator.test.ts` - No migration needed (testing validators only)
+*   ✅ `tests/auth/adapters/api-key.adapter.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/auth/middleware/auth.middleware.test.ts` - Already using Hono Context
+*   ✅ `tests/auth/services/jwt.service.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/config/drizzle-config.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/core/verification.service.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/assertion/assertion.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/auth/api-key.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/backpack/platform-user.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/backpack/platform.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/backpack/user-assertion.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/badgeClass/badgeClass.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/domains/issuer/issuer.entity.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/assets/local-storage.adapter.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/migrations/run.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/postgresql/repositories/postgres-platform.repository.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/postgresql/repositories.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/utils/query-logger.service.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/infrastructure/database/utils/type-conversion.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/crypto/signature.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/errors/validation.errors.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/logging/logger.service.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/monitoring/health-check.service.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/types/iri-utils.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/validation/entity-validator.test.ts` - No migration needed (unit tests)
+*   ✅ `tests/utils/validation/validation-middleware.test.ts` - Already using Hono Context

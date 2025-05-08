@@ -2,21 +2,22 @@
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
 import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
-import { setupApp } from '../../src/index';
-import type { Hono } from 'hono';
+import { setupTestApp, stopTestServer } from './setup-test-app';
 
-// No need for complex types in this simplified test
+// Use a random port for testing to avoid conflicts
+const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
+process.env.TEST_PORT = TEST_PORT.toString();
 
-// Base URL for the API. Bun Test should load .env.test which sets API_BASE_URL
-const API_URL = process.env['API_BASE_URL'] || `http://${config.server.host}:${config.server.port}`;
+// Base URL for the API
+const API_URL = `http://${config.server.host}:${TEST_PORT}`;
 // The API router is mounted directly on the app, not at the basePath
-const ISSUERS_ENDPOINT = `${API_URL}/issuers`; // e.g., http://localhost:3001/issuers
+const ISSUERS_ENDPOINT = `${API_URL}/issuers`;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
 
 // Server instance for the test
-let app: Hono | null = null;
+let server: unknown = null;
 
 describe('Issuer API - E2E', () => {
   let createdIssuerId: string | undefined = undefined;
@@ -24,12 +25,12 @@ describe('Issuer API - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
     // Set environment variables for the test server
-    process.env['PORT'] = process.env['PORT'] || '3001';
     process.env['NODE_ENV'] = 'test';
 
     try {
-      logger.info('E2E Test: Starting server on port ' + process.env['PORT']);
-      app = await setupApp();
+      logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
+      const result = await setupTestApp();
+      server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -44,10 +45,10 @@ describe('Issuer API - E2E', () => {
 
   // Stop the server after all tests
   afterAll(async () => {
-    if (app) {
+    if (server) {
       try {
         logger.info('E2E Test: Stopping server');
-        // Hono doesn't have a stop method, but we're using Bun.serve which doesn't need explicit cleanup
+        stopTestServer(server);
         logger.info('E2E Test: Server stopped successfully');
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {

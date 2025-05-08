@@ -1,14 +1,20 @@
 // test/e2e/openBadgesCompliance.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
-import { logger } from '@/utils/logging/logger.service';
-import { setupApp } from '@/index';
-import type { Hono } from 'hono';
+import { config } from '../../src/config/config';
+import { logger } from '../../src/utils/logging/logger.service';
+
+import { setupTestApp, stopTestServer } from './setup-test-app';
 
 // No need for complex types in this simplified test
 
 // Base URL for the API
-const API_URL = process.env['API_BASE_URL'] || `http://${config.server.host}:${config.server.port}`;
+
+// Use a random port for testing to avoid conflicts
+const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
+process.env.TEST_PORT = TEST_PORT.toString();
+
+// Base URL for the API
+const API_URL = `http://${config.server.host}:${TEST_PORT}`;
 const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
 const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
@@ -17,7 +23,7 @@ const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
 const API_KEY = 'verysecretkeye2e';
 
 // Server instance for the test
-let app: Hono | null = null;
+let server: unknown = null;
 
 describe('OpenBadges v3.0 Compliance - E2E', () => {
   // No resources to clean up in this simplified test
@@ -25,12 +31,12 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
     // Set environment variables for the test server
-    process.env['PORT'] = process.env['PORT'] || '3001';
     process.env['NODE_ENV'] = 'test';
 
     try {
-      logger.info('E2E Test: Starting server on port ' + process.env['PORT']);
-      app = await setupApp();
+      logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
+      const result = await setupTestApp();
+      server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -45,11 +51,10 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
   // Stop the server after all tests
   afterAll(async () => {
-    // Stop the server
-    if (app) {
+    if (server) {
       try {
         logger.info('E2E Test: Stopping server');
-        // Hono doesn't have a stop method, but we're using Bun.serve which doesn't need explicit cleanup
+        stopTestServer(server);
         logger.info('E2E Test: Server stopped successfully');
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {

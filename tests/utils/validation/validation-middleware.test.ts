@@ -29,8 +29,9 @@ describe('Validation Middleware', () => {
             email: 'not-an-email' // Invalid email to trigger another error
           })
         },
-        json: (body: any, status?: number) => {
-          return { body, status } as any;
+         
+        json: (body: unknown, status?: number) => {
+          return { body, status } as unknown as Context;
         }
       } as unknown as Context;
 
@@ -71,8 +72,9 @@ describe('Validation Middleware', () => {
             email: 'valid@example.com'
           })
         },
-        json: (body: any, status?: number) => {
-          return { body, status } as any;
+         
+        json: (body: unknown, status?: number) => {
+          return { body, status } as unknown as Context;
         }
       } as unknown as Context;
 
