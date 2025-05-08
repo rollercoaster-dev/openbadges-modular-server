@@ -18,9 +18,9 @@ import { BadgeClassData } from '../../utils/types/badge-data.types';
 export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<Partial<OB3.Achievement>, 'image'> {
   id: Shared.IRI;
   type: string = 'BadgeClass';
-  issuer: Shared.IRI;
-  name: string;
-  description?: string;
+  issuer: Shared.IRI | OB3.Issuer;
+  name: string | Shared.MultiLanguageString;
+  description?: string | Shared.MultiLanguageString;
   image?: Shared.IRI | Shared.OB3ImageObject;
   criteria?: OB2.Criteria | OB3.Criteria;
   alignment?: OB2.AlignmentObject[] | OB3.Alignment[];
@@ -62,7 +62,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
     // Create a base object with common properties
     const baseObject = {
       id: this.id,
-      name: this.name,
+      name: this.name, // MultiLanguageString is valid for OB3
       description: this.description || '',
       image: this.image,
       criteria: this.criteria,
@@ -72,18 +72,25 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
 
     // Add version-specific properties
     if (version === BadgeVersion.V2) {
+      // For OB2, ensure name and description are strings
+      const name = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
+      const description = typeof this.description === 'string' ? this.description :
+                         (this.description ? Object.values(this.description)[0] || '' : '');
+
       // OB2 BadgeClass
       return {
         ...baseObject,
         type: 'BadgeClass',
-        issuer: this.issuer,
+        name, // Ensure string for OB2
+        description, // Ensure string for OB2
+        issuer: typeof this.issuer === 'string' ? this.issuer : this.issuer?.id, // Ensure IRI for OB2
       } as OB2.BadgeClass;
     } else {
       // OB3 Achievement
       return {
         ...baseObject,
         type: 'Achievement',
-        issuer: this.issuer,
+        issuer: this.issuer, // Can be IRI or Issuer object for OB3
       } as OB3.Achievement;
     }
   }
@@ -106,14 +113,41 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
+    // Handle issuer based on version and type
+    let issuerValue: Shared.IRI | Record<string, unknown>;
+    if (typeof this.issuer === 'string') {
+      issuerValue = this.issuer;
+    } else if (version === BadgeVersion.V2) {
+      // For OB2, we need just the IRI
+      issuerValue = this.issuer?.id as Shared.IRI;
+    } else {
+      // For OB3, we can use the full issuer object
+      issuerValue = this.issuer as Record<string, unknown>;
+    }
+
+    // Handle name and description based on version
+    let nameValue: string | Shared.MultiLanguageString;
+    let descriptionValue: string | Shared.MultiLanguageString;
+
+    if (version === BadgeVersion.V2) {
+      // For OB2, ensure name and description are strings
+      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
+      descriptionValue = typeof this.description === 'string' ? this.description :
+                        (this.description ? Object.values(this.description)[0] || '' : '');
+    } else {
+      // For OB3, we can use MultiLanguageString
+      nameValue = this.name;
+      descriptionValue = this.description || '';
+    }
+
     // Use direct properties instead of typedData to avoid type issues
     const dataForSerializer: BadgeClassData = {
       id: this.id,
-      issuer: this.issuer as Shared.IRI,
-      name: this.name as string,
-      description: (this.description as string) ?? '', // Ensure description is never undefined
-      image: (this.image as Shared.IRI) ?? '', // Ensure image is never undefined
-      criteria: (this.criteria as Shared.IRI) ?? '',
+      issuer: issuerValue,
+      name: nameValue,
+      description: descriptionValue,
+      image: this.image || '', // Ensure image is never undefined
+      criteria: this.criteria || '',
       // Add other required fields
       alignment: this.alignment,
       tags: this.tags,

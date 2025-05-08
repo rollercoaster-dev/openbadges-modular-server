@@ -1,22 +1,23 @@
 /**
  * Type definitions for badge-related data structures
- * 
+ *
  * These types are used across the application for badge serialization,
  * JSON-LD context handling, and API responses.
  */
 
-import { Shared } from 'openbadges-types';
+import { Shared, OB2 } from 'openbadges-types';
 
 /**
  * Common data structure for issuers
  */
 export interface IssuerData extends Record<string, unknown> {
   id: Shared.IRI;
-  name: string;
+  name: string | Shared.MultiLanguageString;
   url: Shared.IRI;
   email?: string;
-  description?: string;
-  image?: Shared.IRI | string;
+  description?: string | Shared.MultiLanguageString;
+  image?: Shared.IRI | string | Shared.OB3ImageObject | OB2.Image;
+  telephone?: string;
   publicKey?: unknown;
   type?: string;
 }
@@ -26,10 +27,10 @@ export interface IssuerData extends Record<string, unknown> {
  */
 export interface BadgeClassData extends Record<string, unknown> {
   id: Shared.IRI;
-  issuer: Shared.IRI;
-  name: string;
-  description: string;
-  image: Shared.IRI | string;
+  issuer: Shared.IRI | Record<string, unknown>;
+  name: string | Shared.MultiLanguageString;
+  description: string | Shared.MultiLanguageString;
+  image: Shared.IRI | string | Shared.OB3ImageObject;
   criteria: unknown;
   alignment?: unknown[];
   tags?: string[];

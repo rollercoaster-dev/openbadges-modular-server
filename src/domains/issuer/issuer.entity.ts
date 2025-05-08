@@ -17,12 +17,13 @@ import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
  */
 export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial<OB3.Issuer>, 'image'> {
   id: Shared.IRI;
-  type: string = 'Profile';
-  name: string;
+  type: string = 'Issuer'; // Changed from 'Profile' to 'Issuer' for OBv3 compliance
+  name: string | Shared.MultiLanguageString;
   url: Shared.IRI;
   email?: string;
-  description?: string;
+  description?: string | Shared.MultiLanguageString;
   image?: Shared.IRI | OB2.Image | Shared.OB3ImageObject;
+  telephone?: string; // Added for OBv3 compliance
   publicKey?: Record<string, unknown>;
   [key: string]: unknown;
 
@@ -46,7 +47,7 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
 
     // Set default type if not provided
     if (!data.type) {
-      data.type = 'Profile';
+      data.type = 'Issuer'; // Changed from 'Profile' to 'Issuer' for OBv3 compliance
     }
 
     return new Issuer(data);
@@ -58,13 +59,24 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
    * @returns A plain object representation of the issuer, properly typed as OB2.Profile or OB3.Issuer
    */
   toObject(version: BadgeVersion = BadgeVersion.V3): OB2.Profile | OB3.Issuer {
+    // For OB2, ensure name and description are strings
+    let nameValue: string | Shared.MultiLanguageString = this.name;
+    let descriptionValue: string | Shared.MultiLanguageString = this.description || '';
+
+    if (version === BadgeVersion.V2) {
+      // Convert MultiLanguageString to string for OB2
+      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
+      descriptionValue = typeof this.description === 'string' ? this.description :
+                        (this.description ? Object.values(this.description)[0] || '' : '');
+    }
+
     // Create a base object with common properties
     const baseObject = {
       id: this.id,
-      name: this.name,
+      name: nameValue,
       url: this.url,
       email: this.email,
-      description: this.description,
+      description: descriptionValue,
       image: this.image,
     };
 
@@ -73,13 +85,14 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
       // OB2 Profile
       return {
         ...baseObject,
-        type: 'Issuer',
+        type: 'Issuer', // Consistent with OB2 spec
       } as OB2.Profile;
     } else {
       // OB3 Issuer
       return {
         ...baseObject,
-        type: 'Profile',
+        type: 'Issuer', // Changed from 'Profile' to 'Issuer' for OBv3 compliance
+        telephone: this.telephone, // Add telephone for OB3
       } as OB3.Issuer;
     }
   }
@@ -102,15 +115,32 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
   toJsonLd(version: BadgeVersion = BadgeVersion.V3): Record<string, unknown> {
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
+    // Handle name and description based on version
+    let nameValue: string | Shared.MultiLanguageString;
+    let descriptionValue: string | Shared.MultiLanguageString;
+
+    if (version === BadgeVersion.V2) {
+      // For OB2, ensure name and description are strings
+      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
+      descriptionValue = typeof this.description === 'string' ? this.description :
+                        (this.description ? Object.values(this.description)[0] || '' : '');
+    } else {
+      // For OB3, we can use MultiLanguageString
+      nameValue = this.name;
+      descriptionValue = this.description || '';
+    }
+
     // Use direct properties instead of typedData to avoid type issues
     const dataForSerializer: IssuerData = {
       id: this.id,
-      name: this.name as string,
+      name: nameValue,
       url: this.url as Shared.IRI,
       // Add other fields
       email: this.email,
-      description: this.description,
-      image: this.image as Shared.IRI,
+      description: descriptionValue,
+      image: this.image,
+      telephone: version === BadgeVersion.V3 ? this.telephone : undefined, // Only include for OB3
+      type: version === BadgeVersion.V2 ? 'Issuer' : 'Issuer', // Consistent type for both versions
     };
 
     // Pass the properly typed data to the serializer

@@ -5,20 +5,24 @@
  * the Open Badges 3.0 specification.
  */
 
-import { Assertion } from '../domains/assertion/assertion.entity';
-import { KeyService } from './key.service';
-import { createVerification, verifyAssertion, DataIntegrityProof } from '../utils/crypto/signature';
-import { logger } from '../utils/logging/logger.service';
-import { Shared, OB3 } from 'openbadges-types';
+import { Assertion } from '@domains/assertion/assertion.entity';
+import { KeyService } from '@core/key.service';
+import {
+  createVerification,
+  verifyAssertion,
+  DataIntegrityProof, // Import local DataIntegrityProof
+} from '@utils/crypto/signature';
+import { logger } from '@utils/logging/logger.service';
+import type { OB3, Shared } from 'openbadges-types'; // For OB3.Proof and Shared types
 
 // Type guard to check if an object is our specific DataIntegrityProof
-function isDataIntegrityProof(proof: unknown): proof is DataIntegrityProof {
+function isDataIntegrityProof(proof: unknown): proof is DataIntegrityProof { // Uses local DataIntegrityProof
   return (
     typeof proof === 'object' &&
     proof !== null &&
     'type' in proof &&
-    proof.type === 'DataIntegrityProof' &&
-    'cryptosuite' in proof &&
+    (proof as OB3.Proof).type === 'DataIntegrityProof' && // Check type property against OB3.Proof structure
+    'cryptosuite' in proof && // Check for properties of local DataIntegrityProof
     'created' in proof &&
     'proofPurpose' in proof &&
     'verificationMethod' in proof &&
@@ -73,7 +77,8 @@ export class VerificationService {
       // For now, we assume it can be added or will replace 'verification'.
       return Assertion.create({
         ...assertionData,
-        verification: proof as unknown as OB3.Proof, // Assign to existing 'verification' property
+        // createVerification returns local DataIntegrityProof, which is compatible with OB3.Proof here.
+        verification: proof as unknown as OB3.Proof, 
       });
     } catch (error) {
       logger.logError('Failed to create verification for assertion', error as Error);
@@ -86,19 +91,19 @@ export class VerificationService {
    * This ensures that the signature is based on the essential data
    * and is not affected by non-essential changes
    *
-   * @param assertion The assertion to create canonical data for
+   * @param data The assertion to create canonical data for
    * @returns A string representation of the canonical data
    */
-  private static createCanonicalDataForSigning(assertion: Assertion): string {
+  private static createCanonicalDataForSigning(data: Partial<Assertion>): string {
     // Create a minimal object with only the essential properties
     const essentialData = {
-      id: assertion.id,
-      type: assertion.type,
+      id: data.id,
+      type: data.type,
       // Use badgeClass property (internal) rather than badge (from toObject)
-      badgeClass: assertion.badgeClass,
-      recipient: assertion.recipient,
-      issuedOn: assertion.issuedOn,
-      expires: assertion.expires
+      badgeClass: data.badgeClass,
+      recipient: data.recipient,
+      issuedOn: data.issuedOn,
+      expires: data.expires
     };
 
     // Convert to a stable string representation
@@ -110,85 +115,69 @@ export class VerificationService {
    * @param assertion The assertion to verify
    * @returns True if the assertion is valid, false otherwise
    */
-  static async verifyAssertionSignature(assertion: Assertion): Promise<boolean> {
-    try {
-      // Ensure the key service is initialized
-      await KeyService.initialize();
-
-      // Check if assertion.verification exists and is a DataIntegrityProof object
-      if (!assertion.verification || !isDataIntegrityProof(assertion.verification)) {
-        logger.warn(`Assertion ${assertion.id} has no valid 'DataIntegrityProof' on its 'verification' property.`);
-        return false;
-      }
-
-      // At this point, assertion.verification is known to be DataIntegrityProof
-      const proofObject = assertion.verification as DataIntegrityProof; // assertion.verification is now our DataIntegrityProof
-
-      // Extract the key ID from the verificationMethod URL
-      let keyId = 'default';
-      let validVerificationMethod = true;
-
-      if (proofObject.verificationMethod) {
-        const verificationMethodUrl = proofObject.verificationMethod as string;
-        try {
-          const url = new URL(verificationMethodUrl);
-          const match = url.pathname.match(/\/public-keys\/([^/]+)$/);
-          if (match && match[1]) {
-            keyId = match[1];
-          } else {
-            logger.warn(`VerificationMethod URL does not match expected pattern: ${verificationMethodUrl}`);
-            const simpleMatch = verificationMethodUrl.match(/\/public-keys\/([^/]+)$/);
-            if (simpleMatch && simpleMatch[1]) {
-              keyId = simpleMatch[1];
-              logger.info(`Extracted key ID using fallback from verificationMethod: ${keyId}`);
-            } else {
-              validVerificationMethod = false;
-            }
-          }
-        } catch (error) {
-          logger.warn(`Invalid verificationMethod URL format: ${verificationMethodUrl}`, { error });
-          const fallbackMatch = verificationMethodUrl.match(/\/public-keys\/([^/]+)$/);
-          if (fallbackMatch && fallbackMatch[1]) {
-            keyId = fallbackMatch[1];
-            logger.info(`Extracted key ID using fallback from verificationMethod: ${keyId}`);
-          } else {
-            validVerificationMethod = false;
-          }
-        }
-      }
-
-      if (!validVerificationMethod) {
-        logger.warn(`Could not extract valid key ID from verificationMethod: ${proofObject.verificationMethod}`);
-        return false;
-      }
-
-      let publicKey: string;
-      try {
-        publicKey = KeyService.getPublicKey(keyId);
-      } catch (_err) {
-        logger.warn(`Key pair with ID ${keyId} not found for verificationMethod ${proofObject.verificationMethod}, cannot verify signature`);
-        return false;
-      }
-
-      // Create a canonical representation of the assertion for verification
-      const canonicalData = this.createCanonicalDataForSigning(assertion);
-
-      // Verify the signature using the DataIntegrityProof
-      const isValid = verifyAssertion(
-        canonicalData,
-        proofObject, // This is now DataIntegrityProof
-        publicKey
-      );
-
-      if (!isValid) {
-        logger.warn(`Signature verification failed for assertion ${assertion.id} using its verification proof.`);
-      }
-      return isValid;
-
-    } catch (error) {
-      logger.logError('Failed to verify assertion signature', error as Error);
+  public static async verifyAssertionSignature(
+    assertion: Assertion
+  ): Promise<boolean> {
+    if (!assertion.verification || typeof assertion.verification !== 'object') {
+      // logger.warn('Verification object is missing or not an object.');
       return false;
     }
+
+    const proofInput = assertion.verification as OB3.Proof; // Keep as Proof initially for verificationMethod access
+
+    // Construct the data that was originally signed.
+    // This means taking the assertion's content *excluding* the entire proof/verification field.
+    const assertionDataToCanonicalize = { ...assertion };
+    delete (assertionDataToCanonicalize as Partial<Assertion>).verification; // Remove the whole verification field
+
+    const canonicalData = this.createCanonicalDataForSigning(assertionDataToCanonicalize);
+
+    let keyId = 'default'; // Default key ID
+    if (proofInput.verificationMethod) {
+      try {
+        // Attempt to extract keyId from the verificationMethod IRI
+        // Example: https://example.com/public-keys/someKeyId#fragment
+        // Example: /public-keys/someKeyId
+        const VMethodStr = proofInput.verificationMethod as string;
+        const match = VMethodStr.match(/\/public-keys\/([^#\/]+)/);
+        if (match && match[1]) {
+          keyId = match[1];
+        }
+      } catch (e: unknown) {
+        logger.warn(`Error parsing verificationMethod URL: ${proofInput.verificationMethod}`, { message: (e as Error).message }); // Use logger.warn
+        // keyId remains 'default' if parsing fails
+      }
+    }
+
+    // If a specific keyId was derived from verificationMethod and that key doesn't exist, fail verification.
+    // If keyId is 'default' (either originally or as a fallback), proceed to get the default key.
+    if (keyId !== 'default' && !KeyService.keyExists(keyId)) {
+      // logger.warn(`Public key not found for specific keyId derived from verificationMethod: ${keyId}.`);
+      return false;
+    }
+    
+    const publicKey = KeyService.getPublicKey(keyId); // Gets specified key or 'default' key
+
+    if (!publicKey) {
+      // This means the required key (either specific or default) is not available.
+      // logger.error(`Public key not found for ID: ${keyId}. Cannot verify signature.`);
+      return false;
+    }
+
+    // Before passing to verifyAssertion, ensure proofInput is actually a DataIntegrityProof
+    if (!isDataIntegrityProof(proofInput)) {
+      // logger.warn('Proof object is not a valid DataIntegrityProof structure.');
+      return false;
+    }
+
+    // Pass canonicalData, the full proofObject (which includes cryptosuite and proofValue), and publicKey
+    // proofInput is now known to be local DataIntegrityProof due to the guard
+    const isValidSignature = verifyAssertion(
+      canonicalData,
+      proofInput, // This is now correctly typed as local DataIntegrityProof
+      publicKey
+    );
+    return isValidSignature;
   }
 
   /**

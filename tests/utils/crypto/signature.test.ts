@@ -153,12 +153,12 @@ describe('Cryptographic Utilities', () => {
 
     it('should return false if verification object is missing proofValue', () => {
       const verification = createVerification(assertionId, localKeyPair.privateKey);
-      const isValidNoSignature = verifyAssertion(assertionId, { ...verification, proofValue: null as any }, localKeyPair.publicKey);
+      const isValidNoSignature = verifyAssertion(assertionId, { ...verification, proofValue: null }, localKeyPair.publicKey);
       expect(isValidNoSignature).toBe(false);
     });
 
     it('should return false if verification object is null', () => {
-      const isValidNoVerification = verifyAssertion(assertionId, null as any, localKeyPair.publicKey);
+      const isValidNoVerification = verifyAssertion(assertionId, null, localKeyPair.publicKey);
       expect(isValidNoVerification).toBe(false);
     });
   });

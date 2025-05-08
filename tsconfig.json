@@ -20,9 +20,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
       "@domains/*": ["src/domains/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
       "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"],
+      "@types/*": ["src/types/*"],
       "@tests/*": ["tests/*"]
     },
 
