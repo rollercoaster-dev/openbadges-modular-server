@@ -4,19 +4,19 @@ This document outlines the tasks required to ensure our application aligns with 
 
 ## Phase 1: Preparation and Gap Analysis
 
-### 1.1. `BadgeClass` Entity (Alignment with OBv3 `Achievement`)
+### 1.1. `BadgeClass` Entity (Alignment with OBv3 `Achievement`) ✅
 
--   [ ] **`type` Property:** Review the internal `type` property of the `BadgeClass` entity. While `toObject(BadgeVersion.V3)` correctly sets it to 'Achievement', assess if the default internal value ('BadgeClass') could lead to issues. Ensure all OBv3 outputs correctly use 'Achievement'.
--   [ ] **`name` Property:** Update `BadgeClass.name` to support `MultiLanguageString` (currently `string`) as per OBv3 `Achievement` specification and `openbadges-types`.
--   [ ] **`description` Property:** Update `BadgeClass.description` to support `MultiLanguageString` (currently `string`) as per OBv3 `Achievement` specification and `openbadges-types`.
--   [ ] **`issuer` Property:** Modify `BadgeClass.issuer` to support an embedded `Issuer` object in addition to an IRI (currently `Shared.IRI` only), as per OBv3 `Achievement` (`Shared.IRI | OB3.Issuer`).
--   [ ] **`criteria` Property:**
-    -   [ ] Ensure `BadgeClass.criteria` when serialized for OBv3 conforms strictly to `OB3.Criteria` (i.e., an object with optional `id`:IRI and optional `narrative`:MarkdownText, one of which is required).
-    -   [ ] Review the `toJsonLd()` method's casting of `criteria` to `Shared.IRI`; update if `criteria` can be a narrative object for OBv3.
--   [ ] **Optional OBv3 Properties:** Evaluate and implement (if desired) optional OBv3 `Achievement` properties in `BadgeClass`:
-    -   [ ] `achievementType` (string)
-    -   [ ] `related` (AchievementRelationship[])
-    -   [ ] `resultDescription` (ResultDescription[])
+-   [x] **`type` Property:** Review the internal `type` property of the `BadgeClass` entity. While `toObject(BadgeVersion.V3)` correctly sets it to 'Achievement', assess if the default internal value ('BadgeClass') could lead to issues. Ensure all OBv3 outputs correctly use 'Achievement'.
+-   [x] **`name` Property:** Update `BadgeClass.name` to support `MultiLanguageString` (currently `string`) as per OBv3 `Achievement` specification and `openbadges-types`.
+-   [x] **`description` Property:** Update `BadgeClass.description` to support `MultiLanguageString` (currently `string`) as per OBv3 `Achievement` specification and `openbadges-types`.
+-   [x] **`issuer` Property:** Modify `BadgeClass.issuer` to support an embedded `Issuer` object in addition to an IRI (currently `Shared.IRI` only), as per OBv3 `Achievement` (`Shared.IRI | OB3.Issuer`).
+-   [x] **`criteria` Property:**
+    -   [x] Ensure `BadgeClass.criteria` when serialized for OBv3 conforms strictly to `OB3.Criteria` (i.e., an object with optional `id`:IRI and optional `narrative`:MarkdownText, one of which is required).
+    -   [x] Review the `toJsonLd()` method's casting of `criteria` to `Shared.IRI`; update if `criteria` can be a narrative object for OBv3.
+-   [x] **Optional OBv3 Properties:** Evaluate and implement (if desired) optional OBv3 `Achievement` properties in `BadgeClass`:
+    -   [x] `achievementType` (string)
+    -   [x] `creator` (IRI | Issuer) - Implemented instead of `related` as it's part of the OB3 Achievement interface
+    -   [x] `resultDescriptions` (ResultDescription[])
 
 ### 1.2. `Assertion` Entity (Alignment with OBv3 `VerifiableCredential` & `Assertion` structure)
 
@@ -46,20 +46,20 @@ This document outlines the tasks required to ensure our application aligns with 
         -   [ ] Map `this.revoked` and `this.revocationReason` to populate the `credentialStatus` object (e.g., pointing to a status list or providing embedded status).
     -   [ ] Specifically review `type` handling as per MEMORY[301960c0-52ee-4a91-95e6-d297a69e2aa0] (Covered by the `type` sub-task above).
 
-### 1.3. `Issuer` / `IssuerProfile` Entity (Alignment with OBv3 `Issuer`)
+### 1.3. `Issuer` / `IssuerProfile` Entity (Alignment with OBv3 `Issuer`) ✅
 
 -   [x] Locate `Issuer` / `IssuerProfile` entity file(s).
 -   [x] Retrieve OBv3 `Issuer` data model specification from `openbadges-types` or 1EdTech.
 -   [x] Compare local `Issuer` / `IssuerProfile` entity with OBv3 `Issuer` specification.
 -   [x] Document gaps (e.g., `image` type, multi-language support for `name`/`description`).
 -   [ ] Create sub-tasks for addressing identified gaps.
-    -   [ ] **`type` Property**: 
-        -   [ ] Update `Issuer.type` internal default and `toObject(V3)` / `toJsonLd(V3)` output to be 'Issuer' (or an array including 'Issuer') for OBv3, instead of 'Profile'. Clarify if 'Profile' is needed for other contexts.
-    -   [ ] **`name` Property**: Update `Issuer.name` to support `MultiLanguageString` (currently `string`) as per OBv3 `Issuer` spec. Update `toJsonLd` accordingly.
-    -   [ ] **`description` Property**: Update `Issuer.description` to support `MultiLanguageString` (currently `string`) as per OBv3 `Issuer` spec. Update `toJsonLd` accordingly.
-    -   [ ] **`image` Property**: Ensure `Issuer.image` can correctly store and serialize `OB3.ImageObject` for OBv3 (not just IRI). Update `toJsonLd` to handle `OB3.ImageObject` instead of casting to `Shared.IRI`.
-    -   [ ] **`telephone` Property**: Add optional `telephone: string` property to `Issuer` entity and its serialization methods for OBv3.
-    -   [ ] Specifically review `toObject()` method as per MEMORY[301960c0-52ee-4a91-95e6-d297a69e2aa0] (Covered by `type` sub-task above, with clarification on 'Issuer' vs 'Profile').
+    -   [x] **`type` Property**:
+        -   [x] Update `Issuer.type` internal default and `toObject(V3)` / `toJsonLd(V3)` output to be 'Issuer' (or an array including 'Issuer') for OBv3, instead of 'Profile'. Clarify if 'Profile' is needed for other contexts.
+    -   [x] **`name` Property**: Update `Issuer.name` to support `MultiLanguageString` (currently `string`) as per OBv3 `Issuer` spec. Update `toJsonLd` accordingly.
+    -   [x] **`description` Property**: Update `Issuer.description` to support `MultiLanguageString` (currently `string`) as per OBv3 `Issuer` spec. Update `toJsonLd` accordingly.
+    -   [x] **`image` Property**: Ensure `Issuer.image` can correctly store and serialize `OB3.ImageObject` for OBv3 (not just IRI). Update `toJsonLd` to handle `OB3.ImageObject` instead of casting to `Shared.IRI`.
+    -   [x] **`telephone` Property**: Add optional `telephone: string` property to `Issuer` entity and its serialization methods for OBv3.
+    -   [x] Specifically review `toObject()` method as per MEMORY[301960c0-52ee-4a91-95e6-d297a69e2aa0] (Covered by `type` sub-task above, with clarification on 'Issuer' vs 'Profile').
 
 ### 1.4. API Endpoints Review
 

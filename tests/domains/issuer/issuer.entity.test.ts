@@ -81,7 +81,7 @@ describe('Issuer Entity', () => {
 
     expect(jsonLd).toBeDefined();
     expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
-    expect(jsonLd.type).toBe('Profile');
+    expect(jsonLd.type).toBe('Issuer');
     expect(jsonLd.id).toBe(validIssuerData.id);
     expect(jsonLd.name).toBe(validIssuerData.name);
     expect(jsonLd.url).toBe(validIssuerData.url);

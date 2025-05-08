@@ -17,7 +17,12 @@ import { BadgeClassData } from '../../utils/types/badge-data.types';
  */
 export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<Partial<OB3.Achievement>, 'image'> {
   id: Shared.IRI;
-  type: string = 'BadgeClass';
+  /**
+   * The type of the badge class, which can be a single string or an array of strings.
+   * - For Open Badges 2.0, this is 'BadgeClass' in the internal representation, but 'BadgeClass' in the output.
+   * - For Open Badges 3.0, this is 'BadgeClass' in the internal representation, but 'Achievement' in the output.
+   */
+  type: string | string[] = 'BadgeClass';
   issuer: Shared.IRI | OB3.Issuer;
   name: string | Shared.MultiLanguageString;
   description?: string | Shared.MultiLanguageString;
@@ -25,6 +30,26 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
   criteria?: OB2.Criteria | OB3.Criteria;
   alignment?: OB2.AlignmentObject[] | OB3.Alignment[];
   tags?: string[];
+
+  // Optional OBv3 Achievement properties
+  /**
+   * The type of achievement, e.g., 'Certificate', 'Badge', 'Diploma'
+   * Only used in OBv3 output
+   */
+  achievementType?: string;
+
+  /**
+   * Creator of the achievement (in addition to issuer)
+   * Only used in OBv3 output
+   */
+  creator?: Shared.IRI | OB3.Issuer;
+
+  /**
+   * Descriptions of possible results for the achievement
+   * Only used in OBv3 output
+   */
+  resultDescriptions?: OB3.ResultDescription[];
+
   [key: string]: unknown;
 
   /**
@@ -59,39 +84,99 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
    * @returns A plain object representation of the badge class, properly typed as OB2.BadgeClass or OB3.Achievement
    */
   toObject(version: BadgeVersion = BadgeVersion.V3): OB2.BadgeClass | OB3.Achievement {
+    // Handle name and description based on version
+    let nameValue: string | Shared.MultiLanguageString = this.name;
+    let descriptionValue: string | Shared.MultiLanguageString = this.description || '';
+
+    if (version === BadgeVersion.V2) {
+      // For OB2, ensure name and description are strings
+      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
+      descriptionValue = typeof this.description === 'string' ? this.description :
+                       (this.description ? Object.values(this.description)[0] || '' : '');
+    }
+
+    // Handle criteria based on version
+    let criteriaValue: Shared.IRI | OB2.Criteria | OB3.Criteria;
+
+    if (this.criteria) {
+      if (typeof this.criteria === 'string') {
+        // If criteria is already an IRI string, use it directly
+        criteriaValue = this.criteria;
+      } else if (version === BadgeVersion.V2) {
+        // For OB2, if criteria is an object, use it directly (OB2.Criteria)
+        criteriaValue = this.criteria as OB2.Criteria;
+      } else {
+        // For OB3, ensure criteria conforms to OB3.Criteria
+        const criteria = this.criteria as OB3.Criteria;
+        if (!criteria.id && !criteria.narrative) {
+          // If neither id nor narrative is present, create a minimal valid OB3.Criteria
+          criteriaValue = {
+            narrative: 'No criteria specified'
+          } as OB3.Criteria;
+        } else {
+          // Use the criteria as is
+          criteriaValue = criteria;
+        }
+      }
+    } else {
+      // Default empty criteria
+      criteriaValue = version === BadgeVersion.V2 ? ('' as Shared.IRI) : { narrative: 'No criteria specified' } as OB3.Criteria;
+    }
+
     // Create a base object with common properties
     const baseObject = {
       id: this.id,
-      name: this.name, // MultiLanguageString is valid for OB3
-      description: this.description || '',
       image: this.image,
-      criteria: this.criteria,
       alignment: this.alignment,
       tags: this.tags,
     };
 
+    // Add criteria based on version
+    if (version === BadgeVersion.V2) {
+      baseObject['criteria'] = criteriaValue;
+    }
+
     // Add version-specific properties
     if (version === BadgeVersion.V2) {
-      // For OB2, ensure name and description are strings
-      const name = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
-      const description = typeof this.description === 'string' ? this.description :
-                         (this.description ? Object.values(this.description)[0] || '' : '');
-
       // OB2 BadgeClass
       return {
         ...baseObject,
         type: 'BadgeClass',
-        name, // Ensure string for OB2
-        description, // Ensure string for OB2
+        name: nameValue as string, // Ensure string for OB2
+        description: descriptionValue as string, // Ensure string for OB2
         issuer: typeof this.issuer === 'string' ? this.issuer : this.issuer?.id, // Ensure IRI for OB2
       } as OB2.BadgeClass;
     } else {
       // OB3 Achievement
-      return {
+      const achievement: Partial<OB3.Achievement> = {
         ...baseObject,
         type: 'Achievement',
+        name: nameValue, // Can be string or MultiLanguageString for OB3
+        description: descriptionValue, // Can be string or MultiLanguageString for OB3
         issuer: this.issuer, // Can be IRI or Issuer object for OB3
-      } as OB3.Achievement;
+        criteria: criteriaValue as OB3.Criteria, // Use the OB3.Criteria we prepared
+      };
+
+      // Add optional OBv3 properties if they exist
+      if (this.achievementType) {
+        achievement.achievementType = this.achievementType;
+      }
+
+      if (this.creator) {
+        achievement.creator = this.creator;
+      }
+
+      if (this.resultDescriptions) {
+        achievement.resultDescriptions = this.resultDescriptions;
+      }
+
+      // Rename alignment to alignments for OB3 if it exists
+      if (this.alignment) {
+        achievement.alignments = this.alignment as OB3.Alignment[];
+        delete achievement.alignment;
+      }
+
+      return achievement as OB3.Achievement;
     }
   }
 
@@ -140,6 +225,35 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       descriptionValue = this.description || '';
     }
 
+    // Handle criteria based on version and type
+    let criteriaValue: Shared.IRI | OB2.Criteria | OB3.Criteria;
+
+    if (this.criteria) {
+      if (typeof this.criteria === 'string') {
+        // If criteria is already an IRI string, use it directly
+        criteriaValue = this.criteria;
+      } else if (version === BadgeVersion.V2) {
+        // For OB2, if criteria is an object, use it directly (OB2.Criteria)
+        criteriaValue = this.criteria as OB2.Criteria;
+      } else {
+        // For OB3, ensure criteria conforms to OB3.Criteria
+        // OB3.Criteria requires either id or narrative
+        const criteria = this.criteria as OB3.Criteria;
+        if (!criteria.id && !criteria.narrative) {
+          // If neither id nor narrative is present, create a minimal valid OB3.Criteria
+          criteriaValue = {
+            narrative: criteria.narrative || 'No criteria specified'
+          };
+        } else {
+          // Use the criteria as is
+          criteriaValue = criteria;
+        }
+      }
+    } else {
+      // Default empty criteria
+      criteriaValue = version === BadgeVersion.V2 ? ('' as Shared.IRI) : { narrative: 'No criteria specified' } as OB3.Criteria;
+    }
+
     // Use direct properties instead of typedData to avoid type issues
     const dataForSerializer: BadgeClassData = {
       id: this.id,
@@ -147,11 +261,26 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       name: nameValue,
       description: descriptionValue,
       image: this.image || '', // Ensure image is never undefined
-      criteria: this.criteria || '',
+      criteria: criteriaValue,
       // Add other required fields
       alignment: this.alignment,
       tags: this.tags,
     };
+
+    // Add optional OBv3 properties if they exist and we're using OBv3
+    if (version === BadgeVersion.V3) {
+      if (this.achievementType) {
+        dataForSerializer.achievementType = this.achievementType;
+      }
+
+      if (this.creator) {
+        dataForSerializer.creator = this.creator;
+      }
+
+      if (this.resultDescriptions) {
+        dataForSerializer.resultDescriptions = this.resultDescriptions;
+      }
+    }
 
     // Pass the properly typed data to the serializer
     return serializer.serializeBadgeClass(dataForSerializer);

@@ -144,13 +144,14 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
       id: issuer.id as Shared.IRI,
-      type: 'Profile',
+      type: 'Issuer', // Changed from 'Profile' to 'Issuer' for OBv3 compliance
       name: issuer.name,
       url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
       ...(issuer.image && { image: issuer.image }),
-      ...(issuer.publicKey && { publicKey: issuer.publicKey })
+      ...(issuer.publicKey && { publicKey: issuer.publicKey }),
+      ...(issuer.telephone && { telephone: issuer.telephone }) // Add telephone for OBv3
     };
   }
 
@@ -160,18 +161,42 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @returns A serialized badge class in Open Badges 3.0 format
    */
   serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
-    return {
+    // Create base object with common properties
+    const serialized = {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
       id: badgeClass.id as Shared.IRI,
-      type: 'BadgeClass',
+      type: 'Achievement', // Changed from 'BadgeClass' to 'Achievement' for OBv3 compliance
       issuer: badgeClass.issuer as Shared.IRI,
       name: badgeClass.name,
       description: badgeClass.description,
       image: badgeClass.image as Shared.IRI,
       criteria: badgeClass.criteria,
-      ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
-      ...(badgeClass.tags && { tags: badgeClass.tags })
     };
+
+    // Add optional properties
+    if (badgeClass.alignment) {
+      // Use alignments instead of alignment for OBv3
+      serialized['alignments'] = badgeClass.alignment;
+    }
+
+    if (badgeClass.tags) {
+      serialized['tags'] = badgeClass.tags;
+    }
+
+    // Add OBv3-specific properties
+    if (badgeClass.achievementType) {
+      serialized['achievementType'] = badgeClass.achievementType;
+    }
+
+    if (badgeClass.creator) {
+      serialized['creator'] = badgeClass.creator;
+    }
+
+    if (badgeClass.resultDescriptions) {
+      serialized['resultDescriptions'] = badgeClass.resultDescriptions;
+    }
+
+    return serialized;
   }
 
   /**
@@ -228,12 +253,13 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
       issuer: {
         id: issuer.id as Shared.IRI,
-        type: issuer.type || 'Profile',
+        type: issuer.type || 'Issuer', // Changed from 'Profile' to 'Issuer' for OBv3 compliance
         name: issuer.name,
         url: issuer.url as Shared.IRI,
         ...(issuer.email && { email: issuer.email }),
         ...(issuer.description && { description: issuer.description }),
-        ...(issuer.image && { image: issuer.image })
+        ...(issuer.image && { image: issuer.image }),
+        ...(issuer.telephone && { telephone: issuer.telephone }) // Add telephone for OBv3
       },
       issuanceDate: assertion.issuedOn,
       ...(assertion.expires && { expirationDate: assertion.expires }),

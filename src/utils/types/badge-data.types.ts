@@ -35,6 +35,10 @@ export interface BadgeClassData extends Record<string, unknown> {
   alignment?: unknown[];
   tags?: string[];
   type?: string;
+  // Optional OBv3 Achievement properties
+  achievementType?: string;
+  creator?: Shared.IRI | Record<string, unknown>;
+  resultDescriptions?: unknown[];
 }
 
 /**

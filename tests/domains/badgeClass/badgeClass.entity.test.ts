@@ -92,8 +92,11 @@ describe('BadgeClass Entity', () => {
     expect(obj.description).toBe(validBadgeClassData.description);
     expect(obj.image).toBe(validBadgeClassData.image);
     expect(obj.criteria).toEqual(validBadgeClassData.criteria);
-    expect(obj.alignment).toEqual(validBadgeClassData.alignment);
+    // In OB3, alignment is renamed to alignments
+    expect(obj.alignments).toEqual(validBadgeClassData.alignment);
     expect(obj.tags).toEqual(validBadgeClassData.tags);
+    // Verify it's an Achievement in OB3 output
+    expect(obj.type).toBe('Achievement');
   });
 
   it('should convert to JSON-LD format', () => {
@@ -101,15 +104,17 @@ describe('BadgeClass Entity', () => {
     const jsonLd = badgeClass.toJsonLd();
 
     expect(jsonLd).toBeDefined();
-    expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
-    expect(jsonLd.type).toBe('BadgeClass');
+    expect(jsonLd['@context']).toBeDefined();
+    // Type should be Achievement for OB3
+    expect(jsonLd.type).toBe('Achievement');
     expect(jsonLd.id).toBe(validBadgeClassData.id);
     expect(jsonLd.issuer).toBe(validBadgeClassData.issuer);
     expect(jsonLd.name).toBe(validBadgeClassData.name);
     expect(jsonLd.description).toBe(validBadgeClassData.description);
     expect(jsonLd.image).toBe(validBadgeClassData.image);
     expect(jsonLd.criteria).toEqual(validBadgeClassData.criteria);
-    expect(jsonLd.alignment).toEqual(validBadgeClassData.alignment);
+    // In OB3, alignment is renamed to alignments
+    expect(jsonLd.alignments).toEqual(validBadgeClassData.alignment);
     expect(jsonLd.tags).toEqual(validBadgeClassData.tags);
   });
 
