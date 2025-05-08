@@ -9,7 +9,7 @@ import { Hono } from 'hono';
 import { RepositoryFactory } from './infrastructure/repository.factory';
 import { createApiRouter } from './api/api.router';
 import { config } from './config/config';
-import { securityMiddleware } from './utils/security/security.middleware';
+import { createSecurityMiddleware } from './utils/security/security.middleware';
 import { IssuerController } from './api/controllers/issuer.controller';
 import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
@@ -19,22 +19,22 @@ import { BackpackController } from './domains/backpack/backpack.controller';
 import { UserController } from './domains/user/user.controller';
 import { UserService } from './domains/user/user.service';
 import { BackpackService } from './domains/backpack/backpack.service';
-import { errorHandlerMiddleware, notFoundHandlerMiddleware } from './utils/errors/error-handler.middleware';
+import { createErrorHandlerMiddleware, handleNotFound } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
 
-import { requestContextMiddleware } from './utils/logging/request-context.middleware';
+import { createRequestContextMiddleware } from './utils/logging/request-context.middleware';
 import { initializeAuthentication } from './auth/auth.initializer';
-import { authMiddleware, authDebugMiddleware } from './auth/middleware/auth.middleware';
+import { createAuthMiddleware, createAuthDebugMiddleware } from './auth/middleware/auth.middleware';
 import { AuthController } from './auth/auth.controller';
 
 // Create the main application
 const app = new Hono();
 
-// Add middleware (to be refactored for Hono compatibility in their respective files)
-app.use(requestContextMiddleware);
-app.use(securityMiddleware);
-app.use(authMiddleware);
-app.use(authDebugMiddleware);
+// Add middleware
+app.use(createRequestContextMiddleware());
+app.use(createSecurityMiddleware());
+app.use(createAuthMiddleware());
+app.use(createAuthDebugMiddleware());
 
 // Root route
 app.get('/', (c) =>
@@ -110,54 +110,51 @@ export async function setupApp(): Promise<Hono> {
       userAssertionRepository,
       assertionRepository
     );
-    const backpackController = new BackpackController(backpackService);
-
-    // Initialize user service and controller
+    // Initialize user service
     const userService = new UserService(userRepository);
-    const userController = new UserController(userService);
 
-    // Initialize auth controller
-    const authController = new AuthController(userService);
+    // These controllers will be used after Hono migration is complete
+    // We're creating them but not using them yet
+    if (process.env.NODE_ENV === 'development') {
+      // Only create these in development to avoid unused variable warnings
+      new BackpackController(backpackService);
+      new UserController(userService);
+      new AuthController(userService);
+    }
 
     // Create API router with controllers
     const apiRouter = createApiRouter(
       issuerController,
       badgeClassController,
-      assertionController,
-      backpackController,
-      platformRepository,
-      userController,
-      authController
+      assertionController
     );
 
-    // Add API routes
-    app.use(apiRouter);
-    app.use(notFoundHandlerMiddleware);
-    app.use(errorHandlerMiddleware);
+    // TODO: Add backpack, user, and auth routes after migration to Hono is complete
 
-    // Start the server (Bun or Node)
-    const server = Bun ? Bun.serve({
+    // Add API routes
+    app.route('', apiRouter);
+    app.notFound(handleNotFound);
+    app.use(createErrorHandlerMiddleware());
+
+    // Start the server with Bun
+    const server = Bun.serve({
       fetch: app.fetch,
       port: config.server.port,
       hostname: config.server.host,
       development: process.env.NODE_ENV !== 'production',
-      // Add more Bun options as needed
-    }) : app.listen({
-      port: config.server.port,
-      hostname: config.server.host
-    }, () => {
-      logger.info(`Server started successfully`, {
-        server: `http://${config.server.host}:${config.server.port}`,
-        'swagger docs': `http://${config.server.host}:${config.server.port}/docs`,
-        'openapi json': `http://${config.server.host}:${config.server.port}/swagger`
-      });
-
-      if (config.auth?.enabled) {
-        logger.info('Authentication is enabled');
-      } else {
-        logger.warn('Authentication is disabled - all endpoints are publicly accessible');
-      }
     });
+
+    logger.info(`Server started successfully`, {
+      server: `http://${config.server.host}:${config.server.port}`,
+      'swagger docs': `http://${config.server.host}:${config.server.port}/docs`,
+      'openapi json': `http://${config.server.host}:${config.server.port}/swagger`
+    });
+
+    if (config.auth?.enabled) {
+      logger.info('Authentication is enabled');
+    } else {
+      logger.warn('Authentication is disabled - all endpoints are publicly accessible');
+    }
 
     setupGracefulShutdown(server);
     return app;

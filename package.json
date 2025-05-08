@@ -73,6 +73,8 @@
     "elysia": "^1.2.25",
     "elysia-helmet": "^2.0.0",
     "elysia-rate-limit": "^4.3.0",
+    "hono": "^4.7.8",
+    "hono-rate-limiter": "^0.4.2",
     "jose": "^6.0.10",
     "lru.min": "^1.1.2",
     "openapi3-ts": "^4.4.0",

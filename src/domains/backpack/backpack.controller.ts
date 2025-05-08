@@ -15,12 +15,16 @@ import { UserPermission } from '../user/user.entity';
 import {
   CreatePlatformRequest,
   UpdatePlatformRequest,
-  PlatformApiResponse,
+  TypedApiResponse,
+  PlatformResponse,
   PlatformListApiResponse,
   UserAssertionListApiResponse,
   SuccessApiResponse,
   ErrorApiResponse
 } from './api.types';
+
+// Define PlatformApiResponse type
+type PlatformApiResponse = TypedApiResponse<{ platform?: PlatformResponse; error?: string }>;
 import { PlatformCreateParams, PlatformUpdateParams } from './repository.types';
 
 export class BackpackController {

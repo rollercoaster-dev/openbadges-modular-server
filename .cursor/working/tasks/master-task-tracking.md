@@ -1,4 +1,34 @@
-# OpenBadges Modular Server - Master Task Tracking
+# OpenBadges Modular Server <!-- MASTER TASK TRACKING -->
+
+## OpenBadges Modular Server: Elysia → Hono Migration (Master Tracking)
+
+### Status Summary
+- Migration from Elysia to Hono is **in progress**
+- Major blockers: Type errors from mixing Elysia and Hono, incomplete router refactors, context/middleware incompatibilities
+- Current focus: Refactor all routers (user, backpack, versioned, etc.) to use Hono exclusively
+
+### Architectural Mandates
+- **Routers:** All routers must be Hono-native. No Elysia imports, factories, or context usage allowed
+- **Router Composition:** Use `router.route(path, subRouter)` or `router.use(path, subRouter)` (see [Hono docs](https://github.com/honojs/website))
+- **Middleware:** Use Hono's `createMiddleware`/`factory` pattern; access variables via `c.var`
+- **Validation:** All validation must use Zod schemas (see [Zod docs](https://github.com/colinhacks/zod)), with async `.parseAsync` for request bodies/queries
+- **Strict Typing:** No `any`. All handlers and middleware must be strictly typed
+- **Bun:** Use Bun for all scripts and ensure bun.lockb is up to date
+
+### Enforceable Code Style Rules
+- Strict typing everywhere (never use `any`)
+- All validation via Zod; schemas must be colocated or imported
+- Async middleware/handlers, always return Hono Response
+- Remove all unused imports/variables
+- Concise, readable, and well-commented code
+- Document architectural decisions and blockers in this file
+- Each router must be fully type-safe and pass `bun run lint` and `bun run typecheck` before merging
+
+---
+**Implementation Guidance:**
+- Do not attempt to adapt or wrap Elysia routers—rewrite using Hono idioms
+- If a blocker is encountered, document it here and pause for review
+- Use Context7 Hono/Zod docs as the source of truth for patterns
 
 ## Overview
 

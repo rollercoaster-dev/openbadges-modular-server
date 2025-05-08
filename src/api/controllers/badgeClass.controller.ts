@@ -109,8 +109,7 @@ export class BadgeClassController {
       const createdBadgeClass = await this.badgeClassRepository.create(badgeClass);
 
       // Return formatted response
-      // Workaround: force plain object serialization for Elysia
-      return JSON.parse(JSON.stringify(createdBadgeClass.toJsonLd(version))) as BadgeClassResponseDto;
+      return createdBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
     } catch (error) {
       logger.error('Error creating badge class', {
         error: error instanceof Error ? error.message : String(error),

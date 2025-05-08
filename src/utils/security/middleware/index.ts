@@ -1,8 +1,8 @@
 /**
  * Security middleware index file
- * 
+ *
  * This file exports all security-related middleware for easier importing.
  */
 
-export { rateLimitMiddleware } from './rate-limit.middleware';
-export { securityHeadersMiddleware } from './security-headers.middleware'; 
+export { createRateLimitMiddleware } from './rate-limit.middleware';
+export { createSecurityHeadersMiddleware } from './security-headers.middleware';

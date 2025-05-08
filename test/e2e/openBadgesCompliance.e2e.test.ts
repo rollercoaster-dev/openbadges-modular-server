@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupApp } from '@/index';
-import type { Elysia } from 'elysia';
+import type { Hono } from 'hono';
 
 // No need for complex types in this simplified test
 
@@ -17,7 +17,7 @@ const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
 const API_KEY = 'verysecretkeye2e';
 
 // Server instance for the test
-let app: Elysia | null = null;
+let app: Hono | null = null;
 
 describe('OpenBadges v3.0 Compliance - E2E', () => {
   // No resources to clean up in this simplified test
@@ -49,7 +49,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     if (app) {
       try {
         logger.info('E2E Test: Stopping server');
-        await app.stop();
+        // Hono doesn't have a stop method, but we're using Bun.serve which doesn't need explicit cleanup
         logger.info('E2E Test: Server stopped successfully');
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {

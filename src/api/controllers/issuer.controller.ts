@@ -97,8 +97,7 @@ export class IssuerController {
 
       // Return formatted response as a plain object with top-level 'id' property
       const response = { ...createdIssuer.toObject(version), id: createdIssuer.id };
-      // Workaround: force plain object serialization for Elysia
-      return JSON.parse(JSON.stringify(response)) as IssuerResponseDto;
+      return response as IssuerResponseDto;
     } catch (error) {
       logger.error('Error creating issuer', {
         error: error instanceof Error ? error.message : String(error),

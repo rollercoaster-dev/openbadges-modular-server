@@ -9,16 +9,8 @@ import { validateIssuer, validateBadgeClass, validateAssertion } from './entity-
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
-import { Context } from 'elysia';
-
-/**
- * Response type for validation middleware
- */
-interface ValidationResponse {
-  success: boolean;
-  error?: string;
-  details?: Record<string, string[]>;
-}
+import { MiddlewareHandler } from 'hono';
+import { createMiddleware } from 'hono/factory';
 
 /**
  * Convert validation errors array to a record format
@@ -68,78 +60,99 @@ function formatValidationErrors(errors: string[]): Record<string, string[]> {
 
 /**
  * Middleware for validating an issuer
- * @param issuer The issuer to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * @returns A Hono middleware handler
  */
-export function validateIssuerMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+export function validateIssuerMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
 
-  if (body && typeof body === 'object') {
-    const issuerData = Issuer.create(body);
-    const { isValid, errors } = validateIssuer(issuerData);
+      if (body && typeof body === 'object') {
+        const issuerData = Issuer.create(body);
+        const { isValid, errors } = validateIssuer(issuerData);
 
-    if (!isValid) {
-      set.status = 400;
-      return {
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
         success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
     }
-  }
-
-  return { success: true };
+  });
 }
 
 /**
  * Middleware for validating a badge class
- * @param badgeClass The badge class to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * @returns A Hono middleware handler
  */
-export function validateBadgeClassMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+export function validateBadgeClassMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
 
-  if (body && typeof body === 'object') {
-    const badgeClassData = BadgeClass.create(body);
-    const { isValid, errors } = validateBadgeClass(badgeClassData);
+      if (body && typeof body === 'object') {
+        const badgeClassData = BadgeClass.create(body);
+        const { isValid, errors } = validateBadgeClass(badgeClassData);
 
-    if (!isValid) {
-      set.status = 400;
-      return {
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
         success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
     }
-  }
-
-  return { success: true };
+  });
 }
 
 /**
  * Middleware for validating an assertion
- * @param assertion The assertion to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * @returns A Hono middleware handler
  */
-export function validateAssertionMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+export function validateAssertionMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
 
-  if (body && typeof body === 'object') {
-    const assertionData = Assertion.create(body);
-    const { isValid, errors } = validateAssertion(assertionData);
+      if (body && typeof body === 'object') {
+        const assertionData = Assertion.create(body);
+        const { isValid, errors } = validateAssertion(assertionData);
 
-    if (!isValid) {
-      set.status = 400;
-      return {
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
         success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
     }
-  }
-
-  return { success: true };
+  });
 }

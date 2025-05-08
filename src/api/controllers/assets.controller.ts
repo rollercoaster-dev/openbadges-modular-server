@@ -1,8 +1,7 @@
 import { createAssetProvider } from '../../infrastructure/assets/asset-storage.factory';
 import { logger } from '../../utils/logging/logger.service';
-import { OpenAPIHono } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import { z } from 'zod';
-import { createRoute } from '@hono/zod-openapi';
 
 // Initialize asset storage provider
 const assetStorage = createAssetProvider();
@@ -77,6 +76,14 @@ export class AssetsController {
             }
           }
         },
+        403: {
+          description: 'Permission denied',
+          content: {
+            'application/json': {
+              schema: ErrorResponseSchema
+            }
+          }
+        },
         500: {
           description: 'Internal server error',
           content: {
@@ -89,6 +96,7 @@ export class AssetsController {
     });
 
     // Register the route with proper type handling
+    // @ts-expect-error - Type mismatch between OpenAPIHono and Hono handler types
     this.router.openapi(uploadRoute, async (c) => {
       try {
         // For logging correlation

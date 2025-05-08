@@ -5,9 +5,10 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, mock } from 'bun:test';
-import { authDerive, registerAuthAdapter, AuthContext } from '../../../src/auth/middleware/auth.middleware';
+import { createAuthMiddleware, registerAuthAdapter } from '../../../src/auth/middleware/auth.middleware';
 import { AuthAdapter } from '../../../src/auth/adapters/auth-adapter.interface';
 import { JwtService } from '../../../src/auth/services/jwt.service';
+import { Context } from 'hono';
 
 describe('Authentication Middleware', () => {
   // Mock JWT service
@@ -69,18 +70,25 @@ describe('Authentication Middleware', () => {
     // Create a mock request
     const request = new Request('http://localhost/api/protected');
 
-    // Create a mock set object
-    const set: AuthContext['set'] = { headers: {} };
+    // Create a mock context
+    const mockContext = {
+      req: request,
+      header: (name: string) => request.headers.get(name),
+      set: (_key: string, _value: any) => {}
+    } as unknown as Context;
+
+    // Create a next function that will be called if authentication passes
+    let nextCalled = false;
+    const next = async () => { nextCalled = true; };
+
+    // Get the middleware handler
+    const handler = createAuthMiddleware();
 
     // Call the middleware
-    const result = await authDerive({ request, set });
+    await handler(mockContext, next);
 
-    // Check that the middleware authenticated successfully
-    expect(result).toBeDefined();
-    // Since we're testing with Elysia, we can't directly check the result structure
-    // Instead, we'll check that the middleware doesn't throw an error
-
-    // Since we're mocking, we can't reliably check if the adapter was called
+    // Check that next was called, indicating authentication passed
+    expect(nextCalled).toBe(true);
   });
 
   test('should skip authentication for public paths', async () => {
@@ -103,17 +111,25 @@ describe('Authentication Middleware', () => {
     // Create a mock request to a public path
     const request = new Request('http://localhost/public/resource');
 
-    // Create a mock set object
-    const set: AuthContext['set'] = { headers: {} };
+    // Create a mock context
+    const mockContext = {
+      req: request,
+      header: (name: string) => request.headers.get(name),
+      set: (_key: string, _value: any) => {}
+    } as unknown as Context;
+
+    // Create a next function that will be called if authentication passes
+    let nextCalled = false;
+    const next = async () => { nextCalled = true; };
+
+    // Get the middleware handler
+    const handler = createAuthMiddleware();
 
     // Call the middleware
-    const result = await authDerive({ request, set });
+    await handler(mockContext, next);
 
-    // Check that the middleware skipped authentication
-    expect(result).toBeDefined();
-    // Since we're testing with Elysia, we can't directly check the result structure
-
-    // Since we're mocking, we can't reliably check if the adapter was called
+    // Check that next was called, indicating authentication was skipped
+    expect(nextCalled).toBe(true);
   });
 
   test('should authenticate with JWT token', async () => {
@@ -140,17 +156,25 @@ describe('Authentication Middleware', () => {
       }
     });
 
-    // Create a mock set object
-    const set: AuthContext['set'] = { headers: {} };
+    // Create a mock context
+    const mockContext = {
+      req: request,
+      header: (name: string) => request.headers.get(name),
+      set: (_key: string, _value: any) => {}
+    } as unknown as Context;
+
+    // Create a next function that will be called if authentication passes
+    let nextCalled = false;
+    const next = async () => { nextCalled = true; };
+
+    // Get the middleware handler
+    const handler = createAuthMiddleware();
 
     // Call the middleware
-    const result = await authDerive({ request, set });
+    await handler(mockContext, next);
 
-    // Check that the middleware authenticated successfully
-    expect(result).toBeDefined();
-    // Since we're testing with Elysia, we can't directly check the result structure
-
-    // Since we're mocking, we can't reliably check if the adapter was called
+    // Check that next was called, indicating authentication passed
+    expect(nextCalled).toBe(true);
   });
 
   test('should fail authentication with invalid JWT token and no valid adapter', async () => {
@@ -177,16 +201,29 @@ describe('Authentication Middleware', () => {
       }
     });
 
-    // Create a mock set object
-    const set: AuthContext['set'] = { headers: {} };
+    // Create a mock context
+    const mockContext = {
+      req: request,
+      header: (name: string) => request.headers.get(name),
+      set: (_key: string, _value: any) => {},
+      json: (body: any, status?: number) => {
+        return { body, status } as any;
+      }
+    } as unknown as Context;
+
+    // Create a next function that will be called if authentication passes
+    let nextCalled = false;
+    const next = async () => { nextCalled = true; };
+
+    // Get the middleware handler
+    const handler = createAuthMiddleware();
 
     // Call the middleware
-    const result = await authDerive({ request, set });
+    const result = await handler(mockContext, next);
 
-    // Check that the middleware failed authentication
+    // Check that next was not called, indicating authentication failed
+    expect(nextCalled).toBe(false);
+    // Check that a response was returned
     expect(result).toBeDefined();
-    // Since we're testing with Elysia, we can't directly check the result structure
-
-    // Since we're mocking, we can't reliably check if the adapter was called
   });
 });

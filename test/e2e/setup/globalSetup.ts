@@ -1,6 +1,6 @@
 // test/e2e/setup/globalSetup.ts
 import { setupApp } from '../../../src/index';
-import type { Elysia } from 'elysia';
+import type { Hono } from 'hono';
 import { logger } from '../../../src/utils/logging/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -47,7 +47,7 @@ function loadEnvFile(filePath: string): void {
   }
 }
 
-export let runningApp: Elysia | null = null;
+export let runningApp: Hono | null = null;
 
 export default async (): Promise<void> => {
   try {

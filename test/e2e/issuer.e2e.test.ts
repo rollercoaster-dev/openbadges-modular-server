@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
 import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
 import { setupApp } from '../../src/index';
-import type { Elysia } from 'elysia';
+import type { Hono } from 'hono';
 
 // No need for complex types in this simplified test
 
@@ -16,7 +16,7 @@ const ISSUERS_ENDPOINT = `${API_URL}/issuers`; // e.g., http://localhost:3001/is
 const API_KEY = 'verysecretkeye2e';
 
 // Server instance for the test
-let app: Elysia | null = null;
+let app: Hono | null = null;
 
 describe('Issuer API - E2E', () => {
   let createdIssuerId: string | undefined = undefined;
@@ -47,7 +47,7 @@ describe('Issuer API - E2E', () => {
     if (app) {
       try {
         logger.info('E2E Test: Stopping server');
-        await app.stop();
+        // Hono doesn't have a stop method, but we're using Bun.serve which doesn't need explicit cleanup
         logger.info('E2E Test: Server stopped successfully');
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {

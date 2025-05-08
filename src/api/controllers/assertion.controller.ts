@@ -168,13 +168,11 @@ export class AssertionController {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
           const issuer = await this.issuerRepository.findById(badgeClass.issuer);
-          // Workaround: force plain object serialization for Elysia
-          return JSON.parse(JSON.stringify(convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer)));
+          return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
         }
       }
 
-      // Workaround: force plain object serialization for Elysia
-      return JSON.parse(JSON.stringify(convertAssertionToJsonLd(createdAssertion, version)));
+      return convertAssertionToJsonLd(createdAssertion, version);
     } catch (error) {
       logger.logError('Failed to create assertion', error as Error);
       throw error;

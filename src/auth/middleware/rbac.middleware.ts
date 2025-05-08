@@ -7,34 +7,50 @@
 
 import { UserRole, UserPermission } from '../../domains/user/user.entity';
 import { logger } from '../../utils/logging/logger.service';
-import { Context } from 'elysia';
+import { MiddlewareHandler } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { config } from '../../config/config';
+
+// Define the variables that will be set in the context
+type AuthVariables = {
+  isAuthenticated: boolean;
+  user: {
+    id: string;
+    provider: string;
+    claims: Record<string, unknown>;
+  } | null;
+};
 
 /**
  * Create middleware that requires authentication
  * @returns Middleware function
  */
-export function requireAuth(): (context: Context) => void | Record<string, unknown> {
-  return (context: Context): void | Record<string, unknown> => {
+export function requireAuth(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
       logger.debug('RBAC is disabled for testing, skipping authentication check');
+      await next();
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { isAuthenticated, set, user } = context as any;
+    const isAuthenticated = c.get('isAuthenticated');
+    const user = c.get('user');
 
     if (!isAuthenticated || !user) {
-      set.status = 401;
-      return {
+      return c.json({
         success: false,
         error: 'Authentication required'
-      };
+      }, 401);
     }
 
     logger.debug(`User authenticated: ${user.id}`);
-  };
+    await next();
+  });
 }
 
 /**
@@ -42,23 +58,27 @@ export function requireAuth(): (context: Context) => void | Record<string, unkno
  * @param roles Required roles (any of these roles is sufficient)
  * @returns Middleware function
  */
-export function requireRoles(roles: UserRole[]): (context: Context) => void | Record<string, unknown> {
-  return (context: Context): void | Record<string, unknown> => {
+export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
       logger.debug('RBAC is disabled for testing, skipping roles check', { roles });
+      await next();
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { isAuthenticated, user, set } = context as any;
+    const isAuthenticated = c.get('isAuthenticated');
+    const user = c.get('user');
 
     if (!isAuthenticated || !user) {
-      set.status = 401;
-      return {
+      return c.json({
         success: false,
         error: 'Authentication required'
-      };
+      }, 401);
     }
 
     // Check if user has any of the required roles
@@ -72,13 +92,14 @@ export function requireRoles(roles: UserRole[]): (context: Context) => void | Re
         userRoles
       });
 
-      set.status = 403;
-      return {
+      return c.json({
         success: false,
         error: 'Insufficient permissions'
-      };
+      }, 403);
     }
-  };
+
+    await next();
+  });
 }
 
 /**
@@ -87,23 +108,27 @@ export function requireRoles(roles: UserRole[]): (context: Context) => void | Re
  * @param requireAll If true, all permissions are required instead of any
  * @returns Middleware function
  */
-export function requirePermissions(permissions: UserPermission[], requireAll = false): (context: Context) => void | Record<string, unknown> {
-  return (context: Context): void | Record<string, unknown> => {
+export function requirePermissions(permissions: UserPermission[], requireAll = false): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
       logger.debug('RBAC is disabled for testing, skipping permissions check', { permissions });
+      await next();
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { isAuthenticated, user, set } = context as any;
+    const isAuthenticated = c.get('isAuthenticated');
+    const user = c.get('user');
 
     if (!isAuthenticated || !user) {
-      set.status = 401;
-      return {
+      return c.json({
         success: false,
         error: 'Authentication required'
-      };
+      }, 401);
     }
 
     // Check if user has required permissions
@@ -130,20 +155,23 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
         requireAll
       });
 
-      set.status = 403;
-      return {
+      return c.json({
         success: false,
         error: 'Insufficient permissions'
-      };
+      }, 403);
     }
-  };
+
+    await next();
+  });
 }
 
 /**
  * Create middleware that requires admin role
  * @returns Middleware function
  */
-export function requireAdmin(): (context: Context) => void | Record<string, unknown> {
+export function requireAdmin(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
   return requireRoles([UserRole.ADMIN]);
 }
 
@@ -151,7 +179,9 @@ export function requireAdmin(): (context: Context) => void | Record<string, unkn
  * Create middleware that requires issuer role
  * @returns Middleware function
  */
-export function requireIssuer(): (context: Context) => void | Record<string, unknown> {
+export function requireIssuer(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
   return requireRoles([UserRole.ADMIN, UserRole.ISSUER]);
 }
 
@@ -160,23 +190,28 @@ export function requireIssuer(): (context: Context) => void | Record<string, unk
  * or has admin privileges
  * @returns Middleware function
  */
-export function requireSelfOrAdmin(): (context: Context) => void | Record<string, unknown> {
-  return (context: Context): void | Record<string, unknown> => {
+export function requireSelfOrAdmin(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
       logger.debug('RBAC is disabled for testing, skipping self/admin check');
+      await next();
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { isAuthenticated, user, set, params } = context as any;
+    const isAuthenticated = c.get('isAuthenticated');
+    const user = c.get('user');
+    const id = c.req.param('id');
 
     if (!isAuthenticated || !user) {
-      set.status = 401;
-      return {
+      return c.json({
         success: false,
         error: 'Authentication required'
-      };
+      }, 401);
     }
 
     // Check if user is admin
@@ -184,19 +219,20 @@ export function requireSelfOrAdmin(): (context: Context) => void | Record<string
     const isAdmin = userRoles.includes(UserRole.ADMIN);
 
     // Check if user is accessing their own resource
-    const isSelf = params.id === user.id;
+    const isSelf = id === user.id;
 
     if (!isAdmin && !isSelf) {
-      logger.warn(`Access denied: User ${user.id} attempted to access resource for user ${params.id}`, {
+      logger.warn(`Access denied: User ${user.id} attempted to access resource for user ${id}`, {
         userId: user.id,
-        resourceUserId: params.id
+        resourceUserId: id
       });
 
-      set.status = 403;
-      return {
+      return c.json({
         success: false,
         error: 'Insufficient permissions'
-      };
+      }, 403);
     }
-  };
+
+    await next();
+  });
 }

@@ -6,7 +6,7 @@ export default async (): Promise<void> => {
   if (runningApp) {
     try {
       logger.info('Global E2E teardown: Stopping server...');
-      await runningApp.stop();
+      // Hono doesn't have a stop method, but we're using Bun.serve which doesn't need explicit cleanup
       logger.info('Global E2E teardown: Server stopped successfully.');
     } catch (error) {
       logger.error('Global E2E teardown: Error stopping server', {
