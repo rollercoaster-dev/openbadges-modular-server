@@ -5,7 +5,7 @@
  * JSON-LD context handling, and API responses.
  */
 
-import { Shared, OB2 } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 
 /**
  * Common data structure for issuers
@@ -52,9 +52,10 @@ export interface AssertionData extends Record<string, unknown> {
   expires?: string;
   evidence?: unknown;
   verification?: VerificationData;
+  credentialStatus?: OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
-  type?: string;
+  type?: string | string[];
 }
 
 /**
@@ -81,24 +82,28 @@ export interface VerificationData {
  * Data structure for verifiable credentials
  */
 export interface VerifiableCredentialData {
-  '@context': string[];
+  '@context': string | string[];
   id: Shared.IRI;
-  type: string[];
-  issuer: Partial<IssuerData>;
+  type: string | string[];
+  issuer: Shared.IRI | Partial<IssuerData>;
   issuanceDate: string;
   expirationDate?: string;
   credentialSubject: {
     id: string;
-    type: string;
+    type: string | string[];
     achievement: {
       id: Shared.IRI;
-      type: string;
-      name: string;
-      description: string;
-      image: Shared.IRI | string;
+      type: string | string[];
+      name: string | Shared.MultiLanguageString;
+      description: string | Shared.MultiLanguageString;
+      image: Shared.IRI | string | Shared.OB3ImageObject;
       criteria: unknown;
       alignments?: unknown[];
       tags?: string[];
+      // Optional OBv3 Achievement properties
+      achievementType?: string;
+      creator?: Shared.IRI | Record<string, unknown>;
+      resultDescriptions?: unknown[];
     };
   };
   evidence?: unknown;
@@ -109,11 +114,5 @@ export interface VerifiableCredentialData {
     proofPurpose: string;
     proofValue: string;
   };
-  credentialStatus?: {
-    id: Shared.IRI;
-    type: string;
-    statusPurpose: string;
-    statusListIndex: string;
-    statusListCredential: Shared.IRI;
-  };
+  credentialStatus?: OB3.CredentialStatus;
 }

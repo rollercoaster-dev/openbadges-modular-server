@@ -18,33 +18,33 @@ This document outlines the tasks required to ensure our application aligns with 
     -   [x] `creator` (IRI | Issuer) - Implemented instead of `related` as it's part of the OB3 Achievement interface
     -   [x] `resultDescriptions` (ResultDescription[])
 
-### 1.2. `Assertion` Entity (Alignment with OBv3 `VerifiableCredential` & `Assertion` structure)
+### 1.2. `Assertion` Entity (Alignment with OBv3 `VerifiableCredential` & `Assertion` structure) ✅
 
 -   [x] Locate `Assertion` entity file(s).
 -   [x] Retrieve OBv3 `VerifiableCredential` and `Assertion` (if distinct from VC context) data model specifications from `openbadges-types` or 1EdTech. (OBv3 uses `VerifiableCredential` model; specific assertion details are in `credentialSubject`).
 -   [x] Compare local `Assertion` entity with OBv3 specifications.
 -   [x] Document gaps (e.g., property mismatches, missing fields, type differences for `evidence`, `narrative`, `recipient` identity types).
--   [ ] Create sub-tasks for addressing identified gaps in the `Assertion` entity.
-    -   [ ] **`@context`**: Ensure `toObject(V3)` and `toJsonLd(V3)` include both W3C Verifiable Credentials context AND the official Open Badges v3 context (e.g., `https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json`).
-    -   [ ] **`type` Property**: The `toObject(V3)` and `toJsonLd(V3)` methods should ensure the `type` array includes 'VerifiableCredential' AND 'OpenBadgeCredential' (and any other types mandated by the OBv3 spec for badges).
-    -   [ ] **`issuer` Property**: Modify `Assertion.issuer` (and its handling in `toObject`/`toJsonLd`) to support an embedded `Issuer` object (OB3.Issuer) in addition to an IRI, as per OBv3 `VerifiableCredential.issuer`.
-    -   [ ] **`issuanceDate` / `issuedOn`**: Confirm `issuedOn` is always correctly transformed to `issuanceDate` with `DateTime` formatting in `toObject(V3)`/`toJsonLd(V3)`.
-    -   [ ] **`expirationDate` / `expires`**: If `Assertion.expires` is present, ensure it's transformed to `expirationDate` with `DateTime` formatting in `toObject(V3)`/`toJsonLd(V3)`.
-    -   [ ] **`credentialSubject` Construction (`recipient` mapping)**:
-        -   [ ] Review and refactor `toObject(V3)` logic for `credentialSubject` creation. It should correctly handle cases where `this.recipient` might be `OB2.IdentityObject` OR an `OB3.CredentialSubject` structure.
-        -   [ ] Ensure `credentialSubject.id` correctly reflects the recipient's identifier.
-        -   [ ] Ensure `credentialSubject.type` is appropriately set (e.g., 'AchievementSubject').
+-   [x] Create sub-tasks for addressing identified gaps in the `Assertion` entity.
+    -   [x] **`@context`**: Ensure `toObject(V3)` and `toJsonLd(V3)` include both W3C Verifiable Credentials context AND the official Open Badges v3 context (e.g., `https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json`).
+    -   [x] **`type` Property**: The `toObject(V3)` and `toJsonLd(V3)` methods should ensure the `type` array includes 'VerifiableCredential' AND 'OpenBadgeCredential' (and any other types mandated by the OBv3 spec for badges).
+    -   [x] **`issuer` Property**: Modify `Assertion.issuer` (and its handling in `toObject`/`toJsonLd`) to support an embedded `Issuer` object (OB3.Issuer) in addition to an IRI, as per OBv3 `VerifiableCredential.issuer`.
+    -   [x] **`issuanceDate` / `issuedOn`**: Confirm `issuedOn` is always correctly transformed to `issuanceDate` with `DateTime` formatting in `toObject(V3)`/`toJsonLd(V3)`.
+    -   [x] **`expirationDate` / `expires`**: If `Assertion.expires` is present, ensure it's transformed to `expirationDate` with `DateTime` formatting in `toObject(V3)`/`toJsonLd(V3)`.
+    -   [x] **`credentialSubject` Construction (`recipient` mapping)**:
+        -   [x] Review and refactor `toObject(V3)` logic for `credentialSubject` creation. It should correctly handle cases where `this.recipient` might be `OB2.IdentityObject` OR an `OB3.CredentialSubject` structure.
+        -   [x] Ensure `credentialSubject.id` correctly reflects the recipient's identifier.
+        -   [x] Ensure `credentialSubject.type` is appropriately set (e.g., 'AchievementSubject').
         -   [x] Ensure `credentialSubject.achievement` correctly links to the `BadgeClass` IRI (or embedded `Achievement` if supported later).
     -   [ ] **`proof` Property (replaces `verification` for cryptographic proof)**:
         -   [x] Review direct mapping of `this.verification` to `OB3.Proof` in `toObject(V3)`; ensure new proof structure is handled.
         -   [x] Ensure a dedicated `proof: OB3.Proof` property is present in the OBv3 output structure in `toObject(V3)` and `toJsonLd(V3)`.
         -   [x] Integrated `DataIntegrityProof` mechanism to generate and populate this `proof` object via `VerificationService`.
         -   [ ] The existing `this.verification` (e.g. `{type: 'hosted'}`) is for OBv2 and is not part of the core OBv3 VC structure for proof; it might be represented as evidence or a service endpoint if relevant for OBv3.
-    -   [ ] **`credentialStatus` Property (for revocation)**:
-        -   [ ] Remove direct inclusion of `revoked` and `revocationReason` in `toObject(V3)` output.
-        -   [ ] Add a `credentialStatus: OB3.CredentialStatus` property to the OBv3 output structure in `toObject(V3)` and `toJsonLd(V3)`.
-        -   [ ] Map `this.revoked` and `this.revocationReason` to populate the `credentialStatus` object (e.g., pointing to a status list or providing embedded status).
-    -   [ ] Specifically review `type` handling as per MEMORY[301960c0-52ee-4a91-95e6-d297a69e2aa0] (Covered by the `type` sub-task above).
+    -   [x] **`credentialStatus` Property (for revocation)**:
+        -   [x] Remove direct inclusion of `revoked` and `revocationReason` in `toObject(V3)` output.
+        -   [x] Add a `credentialStatus: OB3.CredentialStatus` property to the OBv3 output structure in `toObject(V3)` and `toJsonLd(V3)`.
+        -   [x] Map `this.revoked` and `this.revocationReason` to populate the `credentialStatus` object (e.g., pointing to a status list or providing embedded status).
+    -   [x] Specifically review `type` handling as per MEMORY[301960c0-52ee-4a91-95e6-d297a69e2aa0] (Covered by the `type` sub-task above).
 
 ### 1.3. `Issuer` / `IssuerProfile` Entity (Alignment with OBv3 `Issuer`) ✅
 
@@ -149,13 +149,13 @@ This document outlines the tasks required to ensure our application aligns with 
     -   [ ] Determine why `Verification Service > should handle malformed creator URLs` test in `tests/core/verification.service.test.ts` is failing, despite logic suggesting it should pass. Consider running this test in isolation for more detailed output.
 -   [ ] **Address E2E Test Failures:**
     -   [ ] Begin systematically investigating the 15 failing E2E tests. Start with one category (e.g., Issuer API E2E) to identify patterns or root causes related to OBv3 proof changes or other recent modifications.
--   [ ] **Continue `Assertion` Entity Alignment:**
-    -   [ ] Review and implement remaining sub-tasks for the `Assertion` entity under section `1.2`, focusing on:
-        -   [ ] `credentialSubject` construction, particularly handling different `recipient` types.
-        -   [ ] `credentialStatus` property implementation for revocation.
-        -   [ ] Ensuring correct `@context` and `type` array values in OBv3 output.
--   [ ] **Continue `BadgeClass` and `Issuer` Entity Alignment:**
-    -   [ ] Progress through the sub-tasks for `BadgeClass` (section `1.1`) and `Issuer` (section `1.3`) to ensure full OBv3 compliance for these entities (e.g., multi-language strings, `issuer` embedding, `image` object).
+-   [x] **Continue `Assertion` Entity Alignment:**
+    -   [x] Review and implement remaining sub-tasks for the `Assertion` entity under section `1.2`, focusing on:
+        -   [x] `credentialSubject` construction, particularly handling different `recipient` types.
+        -   [x] `credentialStatus` property implementation for revocation.
+        -   [x] Ensuring correct `@context` and `type` array values in OBv3 output.
+-   [x] **Continue `BadgeClass` and `Issuer` Entity Alignment:**
+    -   [x] Progress through the sub-tasks for `BadgeClass` (section `1.1`) and `Issuer` (section `1.3`) to ensure full OBv3 compliance for these entities (e.g., multi-language strings, `issuer` embedding, `image` object).
 -   [ ] **API Endpoint Review & Alignment:**
     -   [ ] Continue tasks under section `1.4` to ensure API endpoints align with OBv3 specifications, particularly regarding JSON-LD, request/response payloads, and handling of `proof` and `credentialStatus`.
 -   [x] Resolve TypeScript import errors in `VerificationService` by utilizing `tsconfig.json` path aliases and correcting package imports. Discovered `DataIntegrityProof` is a local type in `@utils/crypto/signature.ts`, not from `openbadges-types` as initially presumed. All related type errors in `verification.service.ts` have been addressed.

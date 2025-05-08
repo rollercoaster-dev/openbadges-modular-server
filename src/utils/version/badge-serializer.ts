@@ -274,7 +274,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
           image: badgeClass.image as Shared.IRI,
           criteria: badgeClass.criteria,
           ...(badgeClass.alignment && { alignments: badgeClass.alignment }),
-          ...(badgeClass.tags && { tags: badgeClass.tags })
+          ...(badgeClass.tags && { tags: badgeClass.tags }),
+          ...(badgeClass.achievementType && { achievementType: badgeClass.achievementType }),
+          ...(badgeClass.creator && { creator: badgeClass.creator }),
+          ...(badgeClass.resultDescriptions && { resultDescriptions: badgeClass.resultDescriptions })
         }
       },
       ...(assertion.evidence && { evidence: assertion.evidence }),
@@ -287,13 +290,13 @@ export class OpenBadges3Serializer implements BadgeSerializer {
           proofValue: assertion.verification.signatureValue
         }
       }),
-      ...(assertion.revoked !== undefined && {
+      ...(assertion.credentialStatus && { credentialStatus: assertion.credentialStatus }),
+      ...(!assertion.credentialStatus && assertion.revoked !== undefined && {
         credentialStatus: {
           id: `${assertion.id}#status` as Shared.IRI,
           type: 'StatusList2021Entry',
           statusPurpose: 'revocation',
-          statusListIndex: '0',
-          statusListCredential: `${assertion.id}#list` as Shared.IRI
+          statusList: `${assertion.id}#list` as Shared.IRI
         }
       })
     };
