@@ -21,7 +21,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     const body = await c.req.json();
     const { usernameOrEmail, password } = body;
     const result = await authController.login({ usernameOrEmail, password });
-    return c.json(result.body, result.status);
+    return c.json(result.body, result.status as 200 | 400 | 401 | 500);
   });
 
   // Registration endpoint
@@ -35,7 +35,7 @@ export function createAuthRouter(authController: AuthController): Hono {
       firstName,
       lastName
     });
-    return c.json(result.body, result.status);
+    return c.json(result.body, result.status as 200 | 201 | 400 | 409 | 500);
   });
 
   // Profile endpoint (requires authentication)
@@ -49,7 +49,7 @@ export function createAuthRouter(authController: AuthController): Hono {
       }, 401);
     }
     const result = await authController.getProfile(userId as string);
-    return c.json(result.body, result.status);
+    return c.json(result.body, result.status as 200 | 404 | 500);
   });
 
   return router;

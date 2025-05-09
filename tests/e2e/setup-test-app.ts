@@ -289,7 +289,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
     );
 
     // Create API router with controllers
-    const apiRouter = createApiRouter(
+    const apiRouter = await createApiRouter(
       issuerController,
       badgeClassController,
       assertionController
