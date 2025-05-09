@@ -62,6 +62,12 @@ jobs:
           sudo apt-get install -y libsqlite3-dev
           bun install
 
+      - name: Test rd-logger import directly with Bun
+        run: |
+          echo "Attempting direct import test of @rollercoaster-dev/rd-logger..."
+          echo "import { Logger } from '@rollercoaster-dev/rd-logger'; console.log('Successfully imported Logger from rd-logger:', !!Logger);" > test-rd-logger-import.js
+          bun run test-rd-logger-import.js || echo "Direct bun import test failed"
+
       - name: Migrate PostgreSQL database
         run: |
           echo "Listing contents of @rollercoaster-dev/rd-logger/dist/ to debug..."
