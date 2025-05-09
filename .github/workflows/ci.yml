@@ -65,6 +65,7 @@ jobs:
       - name: Run tests
         run: bun run test:coverage
         env:
+          # Database configuration - use the same for all tests
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -73,9 +74,13 @@ jobs:
           POSTGRES_PORT: 5432
           DB_TYPE: postgresql
           SQLITE_FILE: ':memory:'
+          # Test environment variables
           CI: 'true'
           NODE_PATH: "."
-          # Add API key for E2E tests
+          NODE_ENV: 'test'
+          # API key for E2E tests
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
+          # Format: AUTH_API_KEY_TEST=<API_KEY>:<USER_ID>:<DESCRIPTION>
           AUTH_API_KEY_E2E: verysecretkeye2e:test-user:E2E Test API Key
 
       - name: Upload coverage reports to Codecov

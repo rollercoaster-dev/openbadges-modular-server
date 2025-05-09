@@ -51,14 +51,14 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
   // Create a new app instance for each test
   const app = createApp();
   try {
-    // Override database connection for CI environment
+    // Use the same database configuration as the rest of the tests
+    // This ensures consistency across all test types
     const dbConfig = {
-      // For E2E tests, we always use PostgreSQL
-      type: process.env.CI === 'true' ? 'postgresql' : config.database.type,
-      connectionString: process.env.CI === 'true'
-        ? process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test'
-        : config.database.connectionString,
-      sqliteFile: config.database.sqliteFile,
+      // Use the database type from environment or config
+      type: process.env.DB_TYPE || config.database.type,
+      // Use the connection string from environment or config
+      connectionString: process.env.DATABASE_URL || config.database.connectionString,
+      sqliteFile: process.env.SQLITE_FILE || config.database.sqliteFile,
       sqliteBusyTimeout: config.database.sqliteBusyTimeout,
       sqliteSyncMode: config.database.sqliteSyncMode,
       sqliteCacheSize: config.database.sqliteCacheSize
@@ -75,7 +75,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
     // Create database instance for connection
     await DatabaseFactory.createDatabase(
-      config.database.type,
+      dbConfig.type, // Use the type from dbConfig, not from config.database
       {
         connectionString: dbConfig.connectionString,
         sqliteFile: config.database.sqliteFile,
@@ -85,7 +85,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
       }
     );
 
-    logger.info(`Connected to ${config.database.type} database`);
+    logger.info(`Connected to ${dbConfig.type} database`);
 
     // Initialize authentication system
     await initializeAuthentication();
