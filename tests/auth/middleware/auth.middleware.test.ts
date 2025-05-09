@@ -172,9 +172,10 @@ describe('Authentication Middleware', () => {
     registerAuthAdapter(mockAdapter);
 
     // Create a mock request with a JWT token
+    // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': 'Bearer valid-token'
+        'Authorization': 'Bearer valid-token' // Test token for unit tests only
       }
     });
 
@@ -228,9 +229,10 @@ describe('Authentication Middleware', () => {
     registerAuthAdapter(mockAdapter);
 
     // Create a mock request with an invalid JWT token
+    // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': 'Bearer invalid-token'
+        'Authorization': 'Bearer invalid-token' // Test token for unit tests only
       }
     });
 
