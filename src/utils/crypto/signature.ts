@@ -153,7 +153,7 @@ export function detectKeyType(key: string): KeyType {
 export function signData(data: string, privateKey: string, keyType?: KeyType): string {
   // Auto-detect key type if not provided
   if (!keyType) {
-    if (config.env !== 'production') {
+    if (process.env.NODE_ENV !== 'production') {
       logger.warn('Key type not provided. Auto-detecting key type for signing.');
     }
   }
