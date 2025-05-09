@@ -175,14 +175,15 @@ export class VerificationService {
       }
 
       // If a specific keyId was derived from verificationMethod and that key doesn't exist, fail verification.
-      if (keyId !== 'default' && !KeyService.keyExists(keyId)) {
+      if (keyId !== 'default' && !(await KeyService.keyExists(keyId))) {
         return createVerificationError(
           VerificationErrorCode.KEY_NOT_FOUND,
           `Public key not found for specific keyId derived from verificationMethod: ${keyId}`
         );
       }
 
-      const publicKey = KeyService.getPublicKey(keyId); // Gets specified key or 'default' key
+      // Gets specified key or 'default' key
+      const publicKey = await KeyService.getPublicKey(keyId);
 
       if (!publicKey) {
         return createVerificationError(

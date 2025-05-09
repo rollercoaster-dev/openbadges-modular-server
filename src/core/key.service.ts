@@ -325,14 +325,31 @@ export class KeyService {
    * @param id The ID of the key pair to check.
    * @returns True if the key ID exists, false otherwise.
    */
-  static keyExists(id: string): boolean {
+  static async keyExists(id: string): Promise<boolean> {
     if (id === 'default') {
       // 'default' key is handled by getPublicKey/getPrivateKey which ensure it's loaded or generated.
       // This method is for checking existence of *specific, non-default* keys.
       // The 'default' key is always assumed to exist or be creatable by initialize().
       return true;
     }
-    return keyPairs.has(id);
+
+    // First check in-memory cache
+    if (keyPairs.has(id)) {
+      return true;
+    }
+
+    // If not in memory, check if the key files exist on disk
+    if (!this.KEYS_DIR) {
+      throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
+    }
+
+    const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
+    const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
+
+    const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+    const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+
+    return publicKeyExists && privateKeyExists;
   }
 
   /**
