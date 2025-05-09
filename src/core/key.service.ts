@@ -28,13 +28,23 @@ export class KeyService {
   private static KEYS_DIR: string | undefined;
 
   /**
+   * Helper function to check if a file exists
+   * @param filePath The path to the file
+   * @returns True if the file exists, false otherwise
+   */
+  private static async fileExists(filePath: string): Promise<boolean> {
+    return fs.promises.access(filePath).then(() => true).catch(() => false);
+  }
+
+  /**
    * Initializes the key service by loading or generating a default key pair
    */
   static async initialize(): Promise<void> {
     try {
       // Define and ensure keys directory exists
       this.KEYS_DIR = path.join(process.cwd(), 'keys');
-      if (!fs.existsSync(this.KEYS_DIR)) {
+      const dirExists = await this.fileExists(this.KEYS_DIR);
+      if (!dirExists) {
         await fs.promises.mkdir(this.KEYS_DIR, { recursive: true });
       }
 
@@ -78,8 +88,8 @@ export class KeyService {
       const publicKeyPath = path.join(this.KEYS_DIR, 'default.pub');
       const privateKeyPath = path.join(this.KEYS_DIR, 'default.key');
 
-      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
-      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      const publicKeyExists = await this.fileExists(publicKeyPath);
+      const privateKeyExists = await this.fileExists(privateKeyPath);
       if (publicKeyExists && privateKeyExists) {
         // Load default key pair
         const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
@@ -90,7 +100,7 @@ export class KeyService {
         let cryptosuite: Cryptosuite;
 
         // Try to load metadata if it exists
-        const metadataExists = await fs.promises.access(metadataPath).then(() => true).catch(() => false);
+        const metadataExists = await this.fileExists(metadataPath);
         if (metadataExists) {
           try {
             const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
@@ -161,8 +171,8 @@ export class KeyService {
         const publicKeyPath = path.join(this.KEYS_DIR, `${keyId}.pub`);
         const privateKeyPath = path.join(this.KEYS_DIR, `${keyId}.key`);
 
-        const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
-        const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+        const publicKeyExists = await this.fileExists(publicKeyPath);
+        const privateKeyExists = await this.fileExists(privateKeyPath);
         if (publicKeyExists && privateKeyExists) {
           const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
           const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
@@ -172,7 +182,7 @@ export class KeyService {
           let cryptosuite: Cryptosuite;
 
           // Try to load metadata if it exists
-          const metadataExists = await fs.promises.access(metadataPath).then(() => true).catch(() => false);
+          const metadataExists = await this.fileExists(metadataPath);
           if (metadataExists) {
             try {
               const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
@@ -346,8 +356,8 @@ export class KeyService {
     const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
     const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
 
-    const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
-    const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+    const publicKeyExists = await this.fileExists(publicKeyPath);
+    const privateKeyExists = await this.fileExists(privateKeyPath);
 
     return publicKeyExists && privateKeyExists;
   }
@@ -411,7 +421,7 @@ export class KeyService {
 
       // Try to load the key from storage
       const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+      const publicKeyExists = await this.fileExists(publicKeyPath);
       if (publicKeyExists) {
         return await fs.promises.readFile(publicKeyPath, 'utf8');
       }
@@ -435,7 +445,7 @@ export class KeyService {
 
       // Try to load the key from storage
       const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
-      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      const privateKeyExists = await this.fileExists(privateKeyPath);
       if (privateKeyExists) {
         return await fs.promises.readFile(privateKeyPath, 'utf8');
       }
@@ -476,12 +486,12 @@ export class KeyService {
       const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
       const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
 
-      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+      const publicKeyExists = await this.fileExists(publicKeyPath);
       if (publicKeyExists) {
         await fs.promises.unlink(publicKeyPath);
       }
 
-      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      const privateKeyExists = await this.fileExists(privateKeyPath);
       if (privateKeyExists) {
         await fs.promises.unlink(privateKeyPath);
       }
