@@ -123,7 +123,7 @@ export function detectKeyType(key: string): KeyType {
           logger.info('Detected likely Ed25519 key based on key length');
           return KeyType.Ed25519;
         }
-      } catch (innerError) {
+      } catch (_error) {
         logger.warn('Error examining key details, falling back to length-based detection');
         // Fallback to length-based detection
         if (key.length < 500) {
