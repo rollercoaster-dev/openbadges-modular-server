@@ -31,9 +31,24 @@ export function requireAuth(): MiddlewareHandler<{
   return createMiddleware<{
     Variables: AuthVariables;
   }>(async (c, next) => {
+    // Extract request information for logging
+    const path = c.req.path;
+    const method = c.req.method;
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+
+    // Create context for structured logging
+    const logContext = {
+      requestId,
+      path,
+      method,
+      clientIp,
+      middleware: 'requireAuth'
+    };
+
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
-      logger.debug('RBAC is disabled for testing, skipping authentication check');
+      logger.debug('RBAC is disabled for testing, skipping authentication check', logContext);
       await next();
       return;
     }
@@ -42,13 +57,27 @@ export function requireAuth(): MiddlewareHandler<{
     const user = c.get('user');
 
     if (!isAuthenticated || !user) {
+      logger.warn('Authentication required but user not authenticated', {
+        ...logContext,
+        isAuthenticated,
+        hasUser: !!user
+      });
+
       return c.json({
         success: false,
         error: 'Authentication required'
       }, 401);
     }
 
-    logger.debug(`User authenticated: ${user.id}`);
+    // Add user info to log context
+    const authLogContext = {
+      ...logContext,
+      userId: user.id,
+      provider: user.provider,
+      roles: user.claims.roles || []
+    };
+
+    logger.info('User authenticated successfully', authLogContext);
     await next();
   });
 }
@@ -64,9 +93,25 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
   return createMiddleware<{
     Variables: AuthVariables;
   }>(async (c, next) => {
+    // Extract request information for logging
+    const path = c.req.path;
+    const method = c.req.method;
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+
+    // Create context for structured logging
+    const logContext = {
+      requestId,
+      path,
+      method,
+      clientIp,
+      middleware: 'requireRoles',
+      requiredRoles: roles
+    };
+
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
-      logger.debug('RBAC is disabled for testing, skipping roles check', { roles });
+      logger.debug('RBAC is disabled for testing, skipping roles check', logContext);
       await next();
       return;
     }
@@ -75,6 +120,12 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
     const user = c.get('user');
 
     if (!isAuthenticated || !user) {
+      logger.warn('Role check failed: User not authenticated', {
+        ...logContext,
+        isAuthenticated,
+        hasUser: !!user
+      });
+
       return c.json({
         success: false,
         error: 'Authentication required'
@@ -85,12 +136,17 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
     const userRoles = user.claims.roles as UserRole[] || [];
     const hasRequiredRole = roles.some(role => userRoles.includes(role));
 
+    // Add user info to log context
+    const authLogContext = {
+      ...logContext,
+      userId: user.id,
+      provider: user.provider,
+      userRoles,
+      hasRequiredRole
+    };
+
     if (!hasRequiredRole) {
-      logger.warn(`Access denied: User ${user.id} does not have required roles`, {
-        userId: user.id,
-        requiredRoles: roles,
-        userRoles
-      });
+      logger.warn('Access denied: Insufficient roles', authLogContext);
 
       return c.json({
         success: false,
@@ -98,6 +154,7 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
       }, 403);
     }
 
+    logger.info('Role check passed', authLogContext);
     await next();
   });
 }
@@ -114,9 +171,26 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
   return createMiddleware<{
     Variables: AuthVariables;
   }>(async (c, next) => {
+    // Extract request information for logging
+    const path = c.req.path;
+    const method = c.req.method;
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+
+    // Create context for structured logging
+    const logContext = {
+      requestId,
+      path,
+      method,
+      clientIp,
+      middleware: 'requirePermissions',
+      requiredPermissions: permissions,
+      requireAll
+    };
+
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
-      logger.debug('RBAC is disabled for testing, skipping permissions check', { permissions });
+      logger.debug('RBAC is disabled for testing, skipping permissions check', logContext);
       await next();
       return;
     }
@@ -125,6 +199,12 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
     const user = c.get('user');
 
     if (!isAuthenticated || !user) {
+      logger.warn('Permission check failed: User not authenticated', {
+        ...logContext,
+        isAuthenticated,
+        hasUser: !!user
+      });
+
       return c.json({
         success: false,
         error: 'Authentication required'
@@ -134,25 +214,40 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
     // Check if user has required permissions
     const userPermissions = user.claims.permissions as UserPermission[] || [];
 
+    // Add user info to log context
+    const authLogContext = {
+      ...logContext,
+      userId: user.id,
+      provider: user.provider,
+      userPermissions,
+      userRoles: user.claims.roles || []
+    };
+
     let hasRequiredPermissions: boolean;
     if (requireAll) {
       // User must have all specified permissions
       hasRequiredPermissions = permissions.every(permission =>
         userPermissions.includes(permission)
       );
+      logger.debug(`Checking if user has ALL required permissions: ${hasRequiredPermissions}`, authLogContext);
     } else {
       // User must have at least one of the specified permissions
       hasRequiredPermissions = permissions.some(permission =>
         userPermissions.includes(permission)
       );
+      logger.debug(`Checking if user has ANY required permission: ${hasRequiredPermissions}`, authLogContext);
     }
 
     if (!hasRequiredPermissions) {
-      logger.warn(`Access denied: User ${user.id} does not have required permissions`, {
-        userId: user.id,
-        requiredPermissions: permissions,
-        userPermissions,
-        requireAll
+      // Log which specific permissions are missing
+      const missingPermissions = requireAll
+        ? permissions.filter(p => !userPermissions.includes(p))
+        : permissions;
+
+      logger.warn('Access denied: Insufficient permissions', {
+        ...authLogContext,
+        hasRequiredPermissions,
+        missingPermissions
       });
 
       return c.json({
@@ -160,6 +255,11 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
         error: 'Insufficient permissions'
       }, 403);
     }
+
+    logger.info('Permission check passed', {
+      ...authLogContext,
+      hasRequiredPermissions
+    });
 
     await next();
   });
@@ -196,23 +296,53 @@ export function requireSelfOrAdmin(): MiddlewareHandler<{
   return createMiddleware<{
     Variables: AuthVariables;
   }>(async (c, next) => {
+    // Extract request information for logging
+    const path = c.req.path;
+    const method = c.req.method;
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+    const id = c.req.param('id');
+
+    // Create context for structured logging
+    const logContext = {
+      requestId,
+      path,
+      method,
+      clientIp,
+      middleware: 'requireSelfOrAdmin',
+      resourceId: id
+    };
+
     // Check if RBAC is disabled for testing
     if (process.env['AUTH_DISABLE_RBAC'] === 'true' || config.auth.disableRbac) {
-      logger.debug('RBAC is disabled for testing, skipping self/admin check');
+      logger.debug('RBAC is disabled for testing, skipping self/admin check', logContext);
       await next();
       return;
     }
 
     const isAuthenticated = c.get('isAuthenticated');
     const user = c.get('user');
-    const id = c.req.param('id');
 
     if (!isAuthenticated || !user) {
+      logger.warn('Self/Admin check failed: User not authenticated', {
+        ...logContext,
+        isAuthenticated,
+        hasUser: !!user
+      });
+
       return c.json({
         success: false,
         error: 'Authentication required'
       }, 401);
     }
+
+    // Add user info to log context
+    const authLogContext = {
+      ...logContext,
+      userId: user.id,
+      provider: user.provider,
+      userRoles: user.claims.roles || []
+    };
 
     // Check if user is admin
     const userRoles = user.claims.roles as UserRole[] || [];
@@ -221,17 +351,26 @@ export function requireSelfOrAdmin(): MiddlewareHandler<{
     // Check if user is accessing their own resource
     const isSelf = id === user.id;
 
+    // Add check results to log context
+    const checkLogContext = {
+      ...authLogContext,
+      isAdmin,
+      isSelf,
+      accessAllowed: isAdmin || isSelf
+    };
+
     if (!isAdmin && !isSelf) {
-      logger.warn(`Access denied: User ${user.id} attempted to access resource for user ${id}`, {
-        userId: user.id,
-        resourceUserId: id
-      });
+      logger.warn('Access denied: User attempted to access resource belonging to another user', checkLogContext);
 
       return c.json({
         success: false,
         error: 'Insufficient permissions'
       }, 403);
     }
+
+    // Log the access reason
+    const accessReason = isAdmin ? 'admin role' : 'resource owner';
+    logger.info(`Self/Admin check passed: Access granted due to ${accessReason}`, checkLogContext);
 
     await next();
   });

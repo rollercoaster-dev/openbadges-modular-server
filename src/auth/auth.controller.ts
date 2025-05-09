@@ -24,10 +24,27 @@ export class AuthController {
   async login(data: {
     usernameOrEmail: string;
     password: string;
+    requestId?: string;
+    clientIp?: string;
+    userAgent?: string;
   }): Promise<{ status: number; body: Record<string, unknown> }> {
+    // Create context for structured logging
+    const logContext = {
+      requestId: data.requestId || crypto.randomUUID(),
+      clientIp: data.clientIp || 'unknown',
+      userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
+      action: 'login',
+      usernameOrEmail: data.usernameOrEmail
+    };
+
     try {
       // Validate input
       if (!data.usernameOrEmail || !data.password) {
+        logger.warn('Login attempt with missing credentials', {
+          ...logContext,
+          error: 'Missing credentials'
+        });
+
         return {
           status: 400,
           body: {
@@ -37,11 +54,17 @@ export class AuthController {
         };
       }
 
+      logger.debug('Processing login attempt', logContext);
+
       // Authenticate user
       const user = await this.userService.authenticateUser(data.usernameOrEmail, data.password);
 
       if (!user) {
-        logger.debug(`Failed login attempt for ${data.usernameOrEmail}`);
+        logger.warn('Failed login attempt: Invalid credentials', {
+          ...logContext,
+          timestamp: new Date().toISOString()
+        });
+
         return {
           status: 401,
           body: {
@@ -50,6 +73,14 @@ export class AuthController {
           }
         };
       }
+
+      // Add user info to log context
+      const authLogContext = {
+        ...logContext,
+        userId: user.id,
+        username: user.username,
+        roles: user.roles
+      };
 
       // Generate JWT token
       const token = await JwtService.generateToken({
@@ -63,7 +94,10 @@ export class AuthController {
         }
       });
 
-      logger.info(`User ${user.username} logged in successfully`);
+      logger.info('User logged in successfully', {
+        ...authLogContext,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         status: 200,
@@ -74,7 +108,13 @@ export class AuthController {
         }
       };
     } catch (error) {
-      logger.logError('Login error', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Login error', {
+        ...logContext,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         status: 500,
@@ -97,10 +137,33 @@ export class AuthController {
     password: string;
     firstName?: string;
     lastName?: string;
+    requestId?: string;
+    clientIp?: string;
+    userAgent?: string;
   }): Promise<{ status: number; body: Record<string, unknown> }> {
+    // Create context for structured logging
+    const logContext = {
+      requestId: data.requestId || crypto.randomUUID(),
+      clientIp: data.clientIp || 'unknown',
+      userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
+      action: 'register',
+      username: data.username,
+      email: data.email
+    };
+
     try {
+      logger.debug('Processing user registration request', logContext);
+
       // Validate input
       if (!data.username || !data.email || !data.password) {
+        logger.warn('Registration attempt with missing required fields', {
+          ...logContext,
+          error: 'Missing required fields',
+          hasUsername: !!data.username,
+          hasEmail: !!data.email,
+          hasPassword: !!data.password
+        });
+
         return {
           status: 400,
           body: {
@@ -112,6 +175,11 @@ export class AuthController {
 
       // Validate password
       if (!PasswordService.isPasswordSecure(data.password)) {
+        logger.warn('Registration attempt with insecure password', {
+          ...logContext,
+          error: 'Insecure password'
+        });
+
         return {
           status: 400,
           body: {
@@ -129,6 +197,13 @@ export class AuthController {
         lastName: data.lastName
       }, data.password);
 
+      // Add user info to log context
+      const authLogContext = {
+        ...logContext,
+        userId: user.id,
+        roles: user.roles
+      };
+
       // Generate JWT token
       const token = await JwtService.generateToken({
         sub: user.id,
@@ -141,7 +216,10 @@ export class AuthController {
         }
       });
 
-      logger.info(`User ${user.username} registered successfully`);
+      logger.info('User registered successfully', {
+        ...authLogContext,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         status: 201,
@@ -152,18 +230,32 @@ export class AuthController {
         }
       };
     } catch (error) {
-      logger.logError('Registration error', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
       // Handle specific errors
-      if ((error as Error).message.includes('already exists')) {
+      if (error instanceof Error && error.message.includes('already exists')) {
+        logger.warn('Registration failed: User already exists', {
+          ...logContext,
+          error: errorMessage,
+          timestamp: new Date().toISOString()
+        });
+
         return {
           status: 409,
           body: {
             success: false,
-            error: (error as Error).message
+            error: errorMessage
           }
         };
       }
+
+      // Log general registration errors
+      logger.error('Registration error', {
+        ...logContext,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         status: 500,
@@ -178,15 +270,40 @@ export class AuthController {
   /**
    * Get the current user's profile
    * @param userId User ID
+   * @param requestInfo Additional request information for logging
    * @returns User profile
    */
-  async getProfile(userId: string): Promise<{ status: number; body: Record<string, unknown> }> {
+  async getProfile(
+    userId: string,
+    requestInfo?: {
+      requestId?: string;
+      clientIp?: string;
+      userAgent?: string;
+    }
+  ): Promise<{ status: number; body: Record<string, unknown> }> {
+    // Create context for structured logging
+    const logContext = {
+      requestId: requestInfo?.requestId || crypto.randomUUID(),
+      clientIp: requestInfo?.clientIp || 'unknown',
+      userAgent: requestInfo?.userAgent ? requestInfo.userAgent.substring(0, 100) : 'unknown',
+      action: 'getProfile',
+      userId
+    };
+
     try {
+      logger.debug('Retrieving user profile', logContext);
+
       // Convert string to IRI type
       const userIdIri = userId as Shared.IRI;
       const user = await this.userService.getUserById(userIdIri);
 
       if (!user) {
+        logger.warn('Profile retrieval failed: User not found', {
+          ...logContext,
+          error: 'User not found',
+          timestamp: new Date().toISOString()
+        });
+
         return {
           status: 404,
           body: {
@@ -196,6 +313,18 @@ export class AuthController {
         };
       }
 
+      // Add user info to log context
+      const profileLogContext = {
+        ...logContext,
+        username: user.username,
+        roles: user.roles
+      };
+
+      logger.info('User profile retrieved successfully', {
+        ...profileLogContext,
+        timestamp: new Date().toISOString()
+      });
+
       return {
         status: 200,
         body: {
@@ -204,7 +333,14 @@ export class AuthController {
         }
       };
     } catch (error) {
-      logger.logError('Get profile error', error as Error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      logger.error('Profile retrieval error', {
+        ...logContext,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         status: 500,

@@ -20,7 +20,20 @@ export function createAuthRouter(authController: AuthController): Hono {
   router.post('/login', async (c) => {
     const body = await c.req.json();
     const { usernameOrEmail, password } = body;
-    const result = await authController.login({ usernameOrEmail, password });
+
+    // Extract request information for logging
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+
+    const result = await authController.login({
+      usernameOrEmail,
+      password,
+      requestId,
+      clientIp,
+      userAgent
+    });
+
     return c.json(result.body, result.status as 200 | 400 | 401 | 500);
   });
 
@@ -28,13 +41,23 @@ export function createAuthRouter(authController: AuthController): Hono {
   router.post('/register', async (c) => {
     const body = await c.req.json();
     const { username, email, password, firstName, lastName } = body;
+
+    // Extract request information for logging
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+
     const result = await authController.register({
       username,
       email,
       password,
       firstName,
-      lastName
+      lastName,
+      requestId,
+      clientIp,
+      userAgent
     });
+
     return c.json(result.body, result.status as 200 | 201 | 400 | 409 | 500);
   });
 
@@ -48,7 +71,21 @@ export function createAuthRouter(authController: AuthController): Hono {
         error: 'User not authenticated'
       }, 401);
     }
-    const result = await authController.getProfile(userId as string);
+
+    // Extract request information for logging
+    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+
+    const result = await authController.getProfile(
+      userId as string,
+      {
+        requestId,
+        clientIp,
+        userAgent
+      }
+    );
+
     return c.json(result.body, result.status as 200 | 404 | 500);
   });
 
