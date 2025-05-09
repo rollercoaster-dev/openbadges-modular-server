@@ -12,15 +12,15 @@ import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'bun:test'
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 
-import { PostgresIssuerRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository';
-import { PostgresBadgeClassRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository';
-import { PostgresAssertionRepository } from '../../../../../src/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository';
-import { Issuer } from '../../../../../src/domains/issuer/issuer.entity';
-import { BadgeClass } from '../../../../../src/domains/badgeClass/badgeClass.entity';
-import { Assertion } from '../../../../../src/domains/assertion/assertion.entity';
-import * as schema from '../../../../../src/infrastructure/database/modules/postgresql/schema';
+import { PostgresIssuerRepository } from '@/infrastructure/database/modules/postgresql/repositories/postgres-issuer.repository';
+import { PostgresBadgeClassRepository } from '@/infrastructure/database/modules/postgresql/repositories/postgres-badge-class.repository';
+import { PostgresAssertionRepository } from '@/infrastructure/database/modules/postgresql/repositories/postgres-assertion.repository';
+import { Issuer } from '@/domains/issuer/issuer.entity';
+import { BadgeClass } from '@/domains/badgeClass/badgeClass.entity';
+import { Assertion } from '@/domains/assertion/assertion.entity';
+import * as schema from '@/infrastructure/database/modules/postgresql/schema';
 import { Shared } from 'openbadges-types';
-import { logger } from '../../../../../src/utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
 // Import the test helper
 import { isDatabaseAvailable } from './postgres-test-helper';

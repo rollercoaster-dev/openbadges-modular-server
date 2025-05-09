@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { validateIssuerMiddleware } from '../../../src/utils/validation/validation-middleware';
+import { validateIssuerMiddleware } from '@/utils/validation/validation-middleware';
 
 // Define the ValidationResponse type for testing
 type ValidationResponse = {

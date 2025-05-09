@@ -1,7 +1,7 @@
 // test/e2e/setup/globalSetup.ts
-import { setupApp } from '../../../src/index';
+import { setupApp } from '@/index';
 import type { Hono } from 'hono';
-import { logger } from '../../../src/utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
 

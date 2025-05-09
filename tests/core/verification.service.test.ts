@@ -7,9 +7,9 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { VerificationService } from '../../src/core/verification.service';
-import { KeyService } from '../../src/core/key.service';
-import { Assertion } from '../../src/domains/assertion/assertion.entity';
+import { VerificationService } from '@/core/verification.service';
+import { KeyService } from '@/core/key.service';
+import { Assertion } from '@/domains/assertion/assertion.entity';
 import { Shared, OB3 } from 'openbadges-types'; // Use correct imports
 import * as fs from 'fs';
 import * as path from 'path';

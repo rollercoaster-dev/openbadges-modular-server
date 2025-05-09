@@ -2,7 +2,7 @@
  * Tests for the PlatformUser entity
  */
 import { describe, test, expect } from 'bun:test';
-import { PlatformUser } from '../../../src/domains/backpack/platform-user.entity';
+import { PlatformUser } from '@/domains/backpack/platform-user.entity';
 import { Shared } from 'openbadges-types';
 
 describe('PlatformUser Entity', () => {

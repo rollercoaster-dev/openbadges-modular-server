@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'bun:test';
-import { LocalAssetStorageAdapter } from '../../../src/infrastructure/assets/local/local-storage.adapter';
+import { LocalAssetStorageAdapter } from '@/infrastructure/assets/local/local-storage.adapter';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

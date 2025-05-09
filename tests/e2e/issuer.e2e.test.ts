@@ -1,7 +1,7 @@
 // test/e2e/issuer.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '../../src/config/config';
-import { logger } from '../../src/utils/logging/logger.service';
+import { config } from '@/config/config';
+import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 

@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { SqliteDatabase } from '../../../../../src/infrastructure/database/modules/sqlite/sqlite.database';
+import { SqliteDatabase } from '@/infrastructure/database/modules/sqlite/sqlite.database';
 import { Shared } from 'openbadges-types';
 
 let canRunSqlite = false;

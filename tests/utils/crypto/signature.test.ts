@@ -14,7 +14,7 @@ import {
   createVerification, 
   verifyAssertion,
   hashData 
-} from '../../../src/utils/crypto/signature';
+} from '@/utils/crypto/signature';
 
 describe('Cryptographic Utilities', () => {
   describe('Key Pair Generation', () => {

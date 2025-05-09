@@ -5,9 +5,9 @@
  */
 
 import { describe, test, mock } from 'bun:test';
-import { ApiKeyAdapter } from '../../../src/auth/adapters/api-key.adapter';
-import { ApiKeyRepository } from '../../../src/domains/auth/apiKey.repository';
-import { ApiKey } from '../../../src/domains/auth/apiKey.entity';
+import { ApiKeyAdapter } from '@/auth/adapters/api-key.adapter';
+import { ApiKeyRepository } from '@/domains/auth/apiKey.repository';
+import { ApiKey } from '@/domains/auth/apiKey.entity';
 import { Shared } from 'openbadges-types';
 
 describe('API Key Adapter', () => {

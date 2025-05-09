@@ -1,6 +1,6 @@
 // test/e2e/setup/globalTeardown.ts
 import { runningApp } from './globalSetup';
-import { logger } from '../../../src/utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
 export default async (): Promise<void> => {
   if (runningApp) {

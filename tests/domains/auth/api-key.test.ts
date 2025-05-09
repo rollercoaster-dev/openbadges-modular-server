@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { ApiKey } from '../../../src/domains/auth/apiKey.entity';
+import { ApiKey } from '@/domains/auth/apiKey.entity';
 
 describe('API Key', () => {
   // Test the API Key entity

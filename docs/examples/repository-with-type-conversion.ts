@@ -10,13 +10,13 @@
 // This is an example file and doesn't need to import actual modules
 // In a real implementation, you would import from the actual paths
 
-import { Issuer } from '../../src/domains/issuer/issuer.entity';
+import { Issuer } from '@/domains/issuer/issuer.entity';
 import {
   convertJson,
   convertTimestamp,
   convertUuid
-} from '../../src/infrastructure/database/utils/type-conversion';
-import { config } from '../../src/config/config';
+} from '@/infrastructure/database/utils/type-conversion';
+import { config } from '@/config/config';
 
 /**
  * Example repository implementation that uses type conversion utilities

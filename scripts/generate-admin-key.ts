@@ -5,10 +5,10 @@
  * It can be used to bootstrap the system with an initial admin API key.
  */
 
-import { RepositoryFactory } from '../src/infrastructure/repository.factory';
-import { ApiKey } from '../src/domains/auth/apiKey.entity';
-import { config } from '../src/config/config';
-import { logger } from '../src/utils/logging/logger.service';
+import { RepositoryFactory } from '@/infrastructure/repository.factory';
+import { ApiKey } from '@/domains/auth/apiKey.entity';
+import { config } from '@/config/config';
+import { logger } from '@/utils/logging/logger.service';
 
 /**
  * Display an important message to the user

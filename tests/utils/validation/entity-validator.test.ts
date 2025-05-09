@@ -6,10 +6,10 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { validateIssuer, validateBadgeClass, validateAssertion } from '../../../src/utils/validation/entity-validator';
-import { Issuer } from '../../../src/domains/issuer/issuer.entity';
-import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
-import { Assertion } from '../../../src/domains/assertion/assertion.entity';
+import { validateIssuer, validateBadgeClass, validateAssertion } from '@/utils/validation/entity-validator';
+import { Issuer } from '@/domains/issuer/issuer.entity';
+import { BadgeClass } from '@/domains/badgeClass/badgeClass.entity';
+import { Assertion } from '@/domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import { EXAMPLE_EDU_URL } from '@/constants/urls';
 

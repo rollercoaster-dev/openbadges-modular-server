@@ -6,19 +6,19 @@
  */
 
 import { Hono } from 'hono';
-import { RepositoryFactory } from '../../src/infrastructure/repository.factory';
-import { createApiRouter } from '../../src/api/api.router';
-import { config } from '../../src/config/config';
-import { createSecurityMiddleware } from '../../src/utils/security/security.middleware';
-import { IssuerController } from '../../src/api/controllers/issuer.controller';
-import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
-import { AssertionController } from '../../src/api/controllers/assertion.controller';
-import { DatabaseFactory } from '../../src/infrastructure/database/database.factory';
-import { createErrorHandlerMiddleware, handleNotFound } from '../../src/utils/errors/error-handler.middleware';
-import { logger } from '../../src/utils/logging/logger.service';
-import { createRequestContextMiddleware } from '../../src/utils/logging/request-context.middleware';
-import { initializeAuthentication } from '../../src/auth/auth.initializer';
-import { createAuthMiddleware, createAuthDebugMiddleware } from '../../src/auth/middleware/auth.middleware';
+import { RepositoryFactory } from '@/infrastructure/repository.factory';
+import { createApiRouter } from '@/api/api.router';
+import { config } from '@/config/config';
+import { createSecurityMiddleware } from '@/utils/security/security.middleware';
+import { IssuerController } from '@/api/controllers/issuer.controller';
+import { BadgeClassController } from '@/api/controllers/badgeClass.controller';
+import { AssertionController } from '@/api/controllers/assertion.controller';
+import { DatabaseFactory } from '@/infrastructure/database/database.factory';
+import { createErrorHandlerMiddleware, handleNotFound } from '@/utils/errors/error-handler.middleware';
+import { logger } from '@/utils/logging/logger.service';
+import { createRequestContextMiddleware } from '@/utils/logging/request-context.middleware';
+import { initializeAuthentication } from '@/auth/auth.initializer';
+import { createAuthMiddleware, createAuthDebugMiddleware } from '@/auth/middleware/auth.middleware';
 
 // Create a function to create a new Hono app instance
 function createApp() {

@@ -9,12 +9,12 @@
 
 import { describe, expect, it, mock } from 'bun:test';
 import { Shared, OB2, OB3 } from 'openbadges-types';
-import { IssuerController } from '../../src/api/controllers/issuer.controller';
-import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
-import { AssertionController } from '../../src/api/controllers/assertion.controller';
-import { toIRI } from '../../src/utils/types/iri-utils';
-import { toDateTime } from '../../src/utils/types/type-utils';
-import { BadgeVersion, BADGE_VERSION_CONTEXTS } from '../../src/utils/version/badge-version';
+import { IssuerController } from '@/api/controllers/issuer.controller';
+import { BadgeClassController } from '@/api/controllers/badgeClass.controller';
+import { AssertionController } from '@/api/controllers/assertion.controller';
+import { toIRI } from '@/utils/types/iri-utils';
+import { toDateTime } from '@/utils/types/type-utils';
+import { BadgeVersion, BADGE_VERSION_CONTEXTS } from '@/utils/version/badge-version';
 
 // Mock controllers
 const mockIssuerController = {

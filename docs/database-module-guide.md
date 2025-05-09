@@ -346,15 +346,15 @@ Create tests for your new database module to ensure it works correctly:
 
 import { MongoClient, Db } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoIssuerRepository } from '../../../../../src/infrastructure/database/modules/mongodb/repositories/mongo-issuer.repository';
-import { MongoBadgeClassRepository } from '../../../../../src/infrastructure/database/modules/mongodb/repositories/mongo-badge-class.repository';
-import { MongoAssertionRepository } from '../../../../../src/infrastructure/database/modules/mongodb/repositories/mongo-assertion.repository';
-import { MongoIssuerMapper } from '../../../../../src/infrastructure/database/modules/mongodb/mappers/mongo-issuer.mapper';
-import { MongoBadgeClassMapper } from '../../../../../src/infrastructure/database/modules/mongodb/mappers/mongo-badge-class.mapper';
-import { MongoAssertionMapper } from '../../../../../src/infrastructure/database/modules/mongodb/mappers/mongo-assertion.mapper';
-import { Issuer } from '../../../../../src/domains/issuer/issuer.entity';
-import { BadgeClass } from '../../../../../src/domains/badgeClass/badgeClass.entity';
-import { Assertion } from '../../../../../src/domains/assertion/assertion.entity';
+import { MongoIssuerRepository } from '@/infrastructure/database/modules/mongodb/repositories/mongo-issuer.repository';
+import { MongoBadgeClassRepository } from '@/infrastructure/database/modules/mongodb/repositories/mongo-badge-class.repository';
+import { MongoAssertionRepository } from '@/infrastructure/database/modules/mongodb/repositories/mongo-assertion.repository';
+import { MongoIssuerMapper } from '@/infrastructure/database/modules/mongodb/mappers/mongo-issuer.mapper';
+import { MongoBadgeClassMapper } from '@/infrastructure/database/modules/mongodb/mappers/mongo-badge-class.mapper';
+import { MongoAssertionMapper } from '@/infrastructure/database/modules/mongodb/mappers/mongo-assertion.mapper';
+import { Issuer } from '@/domains/issuer/issuer.entity';
+import { BadgeClass } from '@/domains/badgeClass/badgeClass.entity';
+import { Assertion } from '@/domains/assertion/assertion.entity';
 
 describe('MongoDB Repositories', () => {
   let mongoServer: MongoMemoryServer;

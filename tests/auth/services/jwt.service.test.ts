@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { JwtService } from '../../../src/auth/services/jwt.service';
+import { JwtService } from '@/auth/services/jwt.service';
 
 describe('JWT Service', () => {
   // Save original environment variables

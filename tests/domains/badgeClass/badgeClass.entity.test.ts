@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
+import { BadgeClass } from '@/domains/badgeClass/badgeClass.entity';
 import { Shared } from 'openbadges-types';
 
 describe('BadgeClass Entity', () => {

@@ -5,8 +5,8 @@
 import { describe, it, beforeAll, afterAll, expect, mock } from 'bun:test';
 import { testClient } from 'hono/testing';
 import { Hono } from 'hono';
-import { UserService } from '../../src/domains/user/user.service';
-import { JwtService } from '../../src/auth/services/jwt.service';
+import { UserService } from '@/domains/user/user.service';
+import { JwtService } from '@/auth/services/jwt.service';
 
 describe('Authentication Integration Tests', () => {
   let app: Hono;
