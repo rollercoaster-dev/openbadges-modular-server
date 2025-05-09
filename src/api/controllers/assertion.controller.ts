@@ -459,10 +459,14 @@ export class AssertionController {
       const keyIds = KeyService.listKeyIds();
 
       // Get the public keys for each ID
-      return keyIds.map(id => ({
-        id,
-        publicKey: KeyService.getPublicKey(id)
-      }));
+      const publicKeys = await Promise.all(
+        keyIds.map(async (id) => ({
+          id,
+          publicKey: await KeyService.getPublicKey(id)
+        }))
+      );
+
+      return publicKeys;
     } catch (error) {
       logger.logError('Failed to get public keys', error as Error);
       return [];
@@ -480,7 +484,7 @@ export class AssertionController {
       await KeyService.initialize();
 
       // Get the public key
-      const publicKey = KeyService.getPublicKey(keyId);
+      const publicKey = await KeyService.getPublicKey(keyId);
 
       return {
         id: keyId,
