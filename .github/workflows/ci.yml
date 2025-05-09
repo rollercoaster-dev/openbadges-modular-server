@@ -69,10 +69,14 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: openbadges_test
-          DB_TYPE: sqlite
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          DB_TYPE: postgresql
           SQLITE_FILE: ':memory:'
           CI: 'true'
           NODE_PATH: "."
+          # Add API key for E2E tests
+          AUTH_API_KEY_E2E: verysecretkeye2e:test-user:E2E Test API Key
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3

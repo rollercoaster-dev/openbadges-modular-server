@@ -76,11 +76,22 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       issuersResponse = await fetch(ISSUERS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
+          'Accept': 'application/json'
         }
       });
+
+      // Log the response for debugging
+      logger.debug('Issuers response', {
+        status: issuersResponse.status,
+        statusText: issuersResponse.statusText,
+        headers: Object.fromEntries(issuersResponse.headers.entries())
+      });
     } catch (error) {
-      logger.error('Failed to fetch issuers', { error });
+      logger.error('Failed to fetch issuers', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
 
@@ -94,11 +105,22 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       badgeClassesResponse = await fetch(BADGE_CLASSES_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
+          'Accept': 'application/json'
         }
       });
+
+      // Log the response for debugging
+      logger.debug('Badge classes response', {
+        status: badgeClassesResponse.status,
+        statusText: badgeClassesResponse.statusText,
+        headers: Object.fromEntries(badgeClassesResponse.headers.entries())
+      });
     } catch (error) {
-      logger.error('Failed to fetch badge classes', { error });
+      logger.error('Failed to fetch badge classes', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
 
@@ -112,11 +134,22 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       assertionsResponse = await fetch(ASSERTIONS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
+          'Accept': 'application/json'
         }
       });
+
+      // Log the response for debugging
+      logger.debug('Assertions response', {
+        status: assertionsResponse.status,
+        statusText: assertionsResponse.statusText,
+        headers: Object.fromEntries(assertionsResponse.headers.entries())
+      });
     } catch (error) {
-      logger.error('Failed to fetch assertions', { error });
+      logger.error('Failed to fetch assertions', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
 

@@ -82,8 +82,13 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
 - [ ] Ensure RBAC (Role-Based Access Control) tests are working correctly
 
 ### E2E Tests
-- [ ] Verify that E2E tests are properly configured for the CI environment
-- [ ] Fix any issues with the OpenBadges v3.0 compliance tests
+- [x] Verify that E2E tests are properly configured for the CI environment
+  - Updated CI workflow to use PostgreSQL for E2E tests
+  - Added API key for E2E tests in the CI environment
+  - Improved E2E test logging for better debugging
+- [x] Fix issues with the OpenBadges v3.0 compliance tests
+  - Added Accept header to API requests
+  - Enhanced error logging in tests
 
 ### Security Issues
 - [x] Address security issues identified by CodeQL

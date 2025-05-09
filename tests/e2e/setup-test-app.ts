@@ -53,7 +53,8 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
   try {
     // Override database connection for CI environment
     const dbConfig = {
-      type: config.database.type,
+      // For E2E tests, we always use PostgreSQL
+      type: process.env.CI === 'true' ? 'postgresql' : config.database.type,
       connectionString: process.env.CI === 'true'
         ? process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test'
         : config.database.connectionString,
