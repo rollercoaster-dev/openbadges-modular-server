@@ -86,18 +86,18 @@ describe('Static Assets Middleware', () => {
     existsSyncSpy.mockImplementation(() => false);
     const res = await app.request('/assets/../../../etc/passwd');
     expect(res.status).toBe(404);
-    // The middleware returns JSON responses
-    expect(res.headers.get('Content-Type')).toContain('application/json');
-    const body = await res.json() as { error: string };
-    expect(body.error).toBe('File not found');
+    // The middleware returns text/plain responses
+    expect(res.headers.get('Content-Type')).toContain('text/plain');
+    const text = await res.text();
+    expect(text).toContain('Not Found');
   });
 
   test('should reject invalid filenames', async () => {
     const res = await app.request('/assets/<script>alert("xss")</script>.jpg');
     expect(res.status).toBe(404); // The middleware returns 404 for invalid filenames
-    // The middleware returns JSON responses
-    expect(res.headers.get('Content-Type')).toContain('application/json');
-    const body = await res.json() as { error: string };
-    expect(body.error).toBe('File not found');
+    // The middleware returns text/plain responses
+    expect(res.headers.get('Content-Type')).toContain('text/plain');
+    const text = await res.text();
+    expect(text).toContain('Not Found');
   });
 });
