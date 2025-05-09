@@ -18,13 +18,17 @@ describe('Security Middleware', () => {
 
   beforeEach(() => {
     // Create mock middleware functions
-    const mockRateLimitMiddleware = async (c: any, next: any) => {
-      c.header('X-Rate-Limit-Test', 'true');
+    const mockRateLimitMiddleware = async (c: unknown, next: () => Promise<void>) => {
+      // Cast to Context to access header method
+      const context = c as { header: (name: string, value: string) => void };
+      context.header('X-Rate-Limit-Test', 'true');
       await next();
     };
 
-    const mockSecurityHeadersMiddleware = async (c: any, next: any) => {
-      c.header('X-Security-Headers-Test', 'true');
+    const mockSecurityHeadersMiddleware = async (c: unknown, next: () => Promise<void>) => {
+      // Cast to Context to access header method
+      const context = c as { header: (name: string, value: string) => void };
+      context.header('X-Security-Headers-Test', 'true');
       await next();
     };
 

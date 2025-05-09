@@ -39,9 +39,9 @@ describe('Static Assets Middleware', () => {
     readFileSpy.mockResolvedValue(mockBuffer);
 
     normalizeSpy = spyOn(path, 'normalize');
-    normalizeSpy.mockImplementation((p: string) => {
+    normalizeSpy.mockImplementation((pathStr: string) => {
       // Simple normalization for testing
-      return String(p).replace(/\/\.\.\//g, '/');
+      return String(pathStr).replace(/\/\.\.\//g, '/');
     });
 
     joinSpy = spyOn(path, 'join');
@@ -50,8 +50,8 @@ describe('Static Assets Middleware', () => {
     });
 
     extnameSpy = spyOn(path, 'extname');
-    extnameSpy.mockImplementation((p: string) => {
-      if (String(p).includes('.pdf')) return '.pdf';
+    extnameSpy.mockImplementation((pathStr: string) => {
+      if (String(pathStr).includes('.pdf')) return '.pdf';
       return '.jpg';
     });
 
