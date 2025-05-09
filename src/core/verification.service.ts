@@ -11,9 +11,13 @@ import {
   createVerification,
   verifyAssertion,
   DataIntegrityProof, // Import local DataIntegrityProof
+  Cryptosuite,
+  KeyType,
+  detectKeyType
 } from '@utils/crypto/signature';
 import { logger } from '@utils/logging/logger.service';
 import type { OB3, Shared } from 'openbadges-types'; // For OB3.Proof and Shared types
+import { VerificationStatus, VerificationErrorCode, createVerificationError, createSuccessfulVerification } from '@utils/types/verification-status';
 
 // Type guard to check if an object is our specific DataIntegrityProof
 function isDataIntegrityProof(proof: unknown): proof is DataIntegrityProof { // Uses local DataIntegrityProof
@@ -46,10 +50,28 @@ export class VerificationService {
       // This ensures that the signature is based on the essential data
       const canonicalData = this.createCanonicalDataForSigning(assertion);
 
+      // Get the key pair from the KeyService
+      const keyPair = await KeyService.generateKeyPair(keyId);
+
+      // Determine the appropriate cryptosuite based on key type
+      let cryptosuite: Cryptosuite;
+      switch (keyPair.keyType) {
+        case KeyType.RSA:
+          cryptosuite = Cryptosuite.RsaSha256;
+          break;
+        case KeyType.Ed25519:
+          cryptosuite = Cryptosuite.Ed25519;
+          break;
+        default:
+          cryptosuite = Cryptosuite.RsaSha256; // Default fallback
+      }
+
       // Create verification object (now DataIntegrityProof)
       const proof = createVerification(
         canonicalData,
-        KeyService.getPrivateKey(keyId)
+        keyPair.privateKey,
+        keyPair.keyType,
+        cryptosuite
       );
 
       // The verificationMethod in DataIntegrityProof already contains the key's IRI.
@@ -78,7 +100,7 @@ export class VerificationService {
       return Assertion.create({
         ...assertionData,
         // createVerification returns local DataIntegrityProof, which is compatible with OB3.Proof here.
-        verification: proof as unknown as OB3.Proof, 
+        verification: proof as unknown as OB3.Proof,
       });
     } catch (error) {
       logger.logError('Failed to create verification for assertion', error as Error);
@@ -113,85 +135,159 @@ export class VerificationService {
   /**
    * Verifies an assertion's signature
    * @param assertion The assertion to verify
-   * @returns True if the assertion is valid, false otherwise
+   * @returns A verification status object with detailed information
    */
   public static async verifyAssertionSignature(
     assertion: Assertion
-  ): Promise<boolean> {
-    if (!assertion.verification || typeof assertion.verification !== 'object') {
-      // logger.warn('Verification object is missing or not an object.');
-      return false;
-    }
-
-    const proofInput = assertion.verification as OB3.Proof; // Keep as Proof initially for verificationMethod access
-
-    // Construct the data that was originally signed.
-    // This means taking the assertion's content *excluding* the entire proof/verification field.
-    const assertionDataToCanonicalize = { ...assertion };
-    delete (assertionDataToCanonicalize as Partial<Assertion>).verification; // Remove the whole verification field
-
-    const canonicalData = this.createCanonicalDataForSigning(assertionDataToCanonicalize);
-
-    let keyId = 'default'; // Default key ID
-    if (proofInput.verificationMethod) {
-      try {
-        // Attempt to extract keyId from the verificationMethod IRI
-        // Example: https://example.com/public-keys/someKeyId#fragment
-        // Example: /public-keys/someKeyId
-        const VMethodStr = proofInput.verificationMethod as string;
-        const match = VMethodStr.match(/\/public-keys\/([^#\/]+)/);
-        if (match && match[1]) {
-          keyId = match[1];
-        }
-      } catch (e: unknown) {
-        logger.warn(`Error parsing verificationMethod URL: ${proofInput.verificationMethod}`, { message: (e as Error).message }); // Use logger.warn
-        // keyId remains 'default' if parsing fails
+  ): Promise<VerificationStatus> {
+    try {
+      if (!assertion.verification || typeof assertion.verification !== 'object') {
+        return createVerificationError(
+          VerificationErrorCode.PROOF_MISSING,
+          'Verification object is missing or not an object'
+        );
       }
-    }
 
-    // If a specific keyId was derived from verificationMethod and that key doesn't exist, fail verification.
-    // If keyId is 'default' (either originally or as a fallback), proceed to get the default key.
-    if (keyId !== 'default' && !KeyService.keyExists(keyId)) {
-      // logger.warn(`Public key not found for specific keyId derived from verificationMethod: ${keyId}.`);
-      return false;
-    }
-    
-    const publicKey = KeyService.getPublicKey(keyId); // Gets specified key or 'default' key
+      const proofInput = assertion.verification as OB3.Proof; // Keep as Proof initially for verificationMethod access
 
-    if (!publicKey) {
-      // This means the required key (either specific or default) is not available.
-      // logger.error(`Public key not found for ID: ${keyId}. Cannot verify signature.`);
-      return false;
-    }
+      // Construct the data that was originally signed.
+      // This means taking the assertion's content *excluding* the entire proof/verification field.
+      const assertionDataToCanonicalize = { ...assertion };
+      delete (assertionDataToCanonicalize as Partial<Assertion>).verification; // Remove the whole verification field
 
-    // Before passing to verifyAssertion, ensure proofInput is actually a DataIntegrityProof
-    if (!isDataIntegrityProof(proofInput)) {
-      // logger.warn('Proof object is not a valid DataIntegrityProof structure.');
-      return false;
-    }
+      const canonicalData = this.createCanonicalDataForSigning(assertionDataToCanonicalize);
 
-    // Pass canonicalData, the full proofObject (which includes cryptosuite and proofValue), and publicKey
-    // proofInput is now known to be local DataIntegrityProof due to the guard
-    const isValidSignature = verifyAssertion(
-      canonicalData,
-      proofInput, // This is now correctly typed as local DataIntegrityProof
-      publicKey
-    );
-    return isValidSignature;
+      let keyId = 'default'; // Default key ID
+      if (proofInput.verificationMethod) {
+        try {
+          // Attempt to extract keyId from the verificationMethod IRI
+          // Example: https://example.com/public-keys/someKeyId#fragment
+          // Example: /public-keys/someKeyId
+          const VMethodStr = proofInput.verificationMethod as string;
+          const match = VMethodStr.match(/\/public-keys\/([^#\/]+)/);
+          if (match && match[1]) {
+            keyId = match[1];
+          }
+        } catch (e: unknown) {
+          logger.warn(`Error parsing verificationMethod URL: ${proofInput.verificationMethod}`, { message: (e as Error).message });
+          // keyId remains 'default' if parsing fails
+        }
+      }
+
+      // If a specific keyId was derived from verificationMethod and that key doesn't exist, fail verification.
+      if (keyId !== 'default' && !(await KeyService.keyExists(keyId))) {
+        return createVerificationError(
+          VerificationErrorCode.KEY_NOT_FOUND,
+          `Public key not found for specific keyId derived from verificationMethod: ${keyId}`
+        );
+      }
+
+      // Gets specified key or 'default' key
+      const publicKey = await KeyService.getPublicKey(keyId);
+
+      if (!publicKey) {
+        return createVerificationError(
+          VerificationErrorCode.KEY_NOT_FOUND,
+          `Public key not found for ID: ${keyId}. Cannot verify signature`
+        );
+      }
+
+      // Before passing to verifyAssertion, ensure proofInput is actually a DataIntegrityProof
+      if (!isDataIntegrityProof(proofInput)) {
+        return createVerificationError(
+          VerificationErrorCode.PROOF_INVALID,
+          'Proof object is not a valid DataIntegrityProof structure'
+        );
+      }
+
+      // Check if the proof has a proofValue
+      if (!proofInput.proofValue) {
+        return createVerificationError(
+          VerificationErrorCode.SIGNATURE_MISSING,
+          'Proof object does not contain a proofValue'
+        );
+      }
+
+      // Determine key type based on cryptosuite
+      let keyType: KeyType | undefined;
+      let cryptosuite = proofInput.cryptosuite;
+
+      if (cryptosuite) {
+        switch (cryptosuite) {
+          case Cryptosuite.RsaSha256:
+            keyType = KeyType.RSA;
+            break;
+          case Cryptosuite.Ed25519:
+          case Cryptosuite.EddsaRdfc2022:
+            keyType = KeyType.Ed25519;
+            break;
+          default:
+            // For unknown cryptosuites, log a warning and return an error
+            logger.warn(`Unknown or unsupported cryptosuite: ${cryptosuite}`);
+            return createVerificationError(
+              VerificationErrorCode.CRYPTOSUITE_UNSUPPORTED,
+              `Unsupported cryptosuite: ${cryptosuite}. This server only supports ${Object.values(Cryptosuite).join(', ')}`
+            );
+        }
+      } else {
+        // If no cryptosuite specified, log a warning and attempt to auto-detect
+        logger.warn('No cryptosuite specified in proof. Attempting to auto-detect key type.');
+
+        // Auto-detect key type from the public key
+        keyType = detectKeyType(publicKey);
+
+        // Map the detected key type to a cryptosuite
+        if (keyType === KeyType.RSA) {
+          cryptosuite = Cryptosuite.RsaSha256;
+        } else if (keyType === KeyType.Ed25519) {
+          cryptosuite = Cryptosuite.Ed25519;
+        } else {
+          // This should never happen with our current implementation, but handle it just in case
+          return createVerificationError(
+            VerificationErrorCode.INTERNAL_ERROR,
+            'Failed to determine appropriate cryptosuite from key material'
+          );
+        }
+
+        logger.info(`Auto-detected key type: ${keyType}, using cryptosuite: ${cryptosuite}`);
+      }
+
+      // Pass canonicalData, the full proofObject (which includes cryptosuite and proofValue), and publicKey
+      // proofInput is now known to be local DataIntegrityProof due to the guard
+      const isValidSignature = verifyAssertion(
+        canonicalData,
+        proofInput, // This is now correctly typed as local DataIntegrityProof
+        publicKey
+      );
+
+      if (!isValidSignature) {
+        logger.warn(`Signature verification failed for assertion: ${assertion.id}`);
+        return createVerificationError(
+          VerificationErrorCode.SIGNATURE_VERIFICATION_FAILED,
+          'Signature verification failed'
+        );
+      }
+
+      // Return successful verification status
+      return createSuccessfulVerification({
+        verificationMethod: proofInput.verificationMethod as string,
+        cryptosuite
+      });
+    } catch (error) {
+      logger.logError('Error verifying assertion signature', error as Error);
+      return createVerificationError(
+        VerificationErrorCode.INTERNAL_ERROR,
+        `Internal error: ${(error as Error).message}`
+      );
+    }
   }
 
   /**
    * Verifies an assertion's validity (not expired, not revoked, valid signature)
    * @param assertion The assertion to verify
-   * @returns An object containing verification results
+   * @returns A verification status object with detailed information
    */
-  static async verifyAssertion(assertion: Assertion): Promise<{
-    isValid: boolean;
-    isExpired: boolean;
-    isRevoked: boolean;
-    hasValidSignature: boolean;
-    details?: string;
-  }> {
+  static async verifyAssertion(assertion: Assertion): Promise<VerificationStatus> {
     try {
       // Check if revoked
       const isRevoked = !!assertion.revoked;
@@ -209,39 +305,41 @@ export class VerificationService {
       }
 
       // Check signature
-      const hasValidSignature = await this.verifyAssertionSignature(assertion);
+      const signatureStatus = await this.verifyAssertionSignature(assertion);
+      const hasValidSignature = signatureStatus.isValid;
 
-      // Overall validity
-      const isValid = !isRevoked && !isExpired && hasValidSignature;
-
-      // Determine details message
-      let details = '';
+      // If the assertion is revoked, return a revocation error
       if (isRevoked) {
-        details = `Assertion has been revoked${revocationReason ? `: ${revocationReason}` : ''}`;
-      } else if (isExpired) {
-        details = 'Assertion has expired';
-      } else if (!hasValidSignature) {
-        details = 'Assertion has an invalid signature';
-      } else {
-        details = 'Assertion is valid';
+        return createVerificationError(
+          VerificationErrorCode.ASSERTION_REVOKED,
+          `Assertion has been revoked${revocationReason ? `: ${revocationReason}` : ''}`
+        );
       }
 
-      return {
-        isValid,
-        isExpired,
-        isRevoked,
-        hasValidSignature,
-        details
-      };
+      // If the assertion is expired, return an expiration error
+      if (isExpired) {
+        return createVerificationError(
+          VerificationErrorCode.ASSERTION_EXPIRED,
+          'Assertion has expired'
+        );
+      }
+
+      // If the signature is invalid, return the signature verification error
+      if (!hasValidSignature) {
+        return signatureStatus; // Already contains the appropriate error details
+      }
+
+      // If we get here, the assertion is valid
+      return createSuccessfulVerification({
+        verificationMethod: signatureStatus.verificationMethod,
+        cryptosuite: signatureStatus.cryptosuite
+      });
     } catch (error) {
       logger.logError('Failed to verify assertion', error as Error);
-      return {
-        isValid: false,
-        isExpired: false,
-        isRevoked: false,
-        hasValidSignature: false,
-        details: 'Error during verification process'
-      };
+      return createVerificationError(
+        VerificationErrorCode.INTERNAL_ERROR,
+        `Error during verification process: ${(error as Error).message}`
+      );
     }
   }
 
@@ -249,43 +347,31 @@ export class VerificationService {
    * Verifies an assertion by ID
    * @param assertionId The ID of the assertion to verify
    * @param assertionRepository The repository to use for fetching the assertion
-   * @returns Verification results
+   * @returns A verification status object with detailed information
    */
   static async verifyAssertionById(
     assertionId: Shared.IRI,
     assertionRepository: { findById: (id: Shared.IRI) => Promise<Assertion | null> }
-  ): Promise<{
-    isValid: boolean;
-    isExpired: boolean;
-    isRevoked: boolean;
-    hasValidSignature: boolean;
-    details?: string;
-  }> {
+  ): Promise<VerificationStatus> {
     try {
       // Fetch the assertion
       const assertion = await assertionRepository.findById(assertionId);
 
       if (!assertion) {
-        return {
-          isValid: false,
-          isExpired: false,
-          isRevoked: false,
-          hasValidSignature: false,
-          details: 'Assertion not found'
-        };
+        return createVerificationError(
+          VerificationErrorCode.ASSERTION_NOT_FOUND,
+          `Assertion with ID ${assertionId} not found`
+        );
       }
 
       // Verify the assertion
       return await this.verifyAssertion(assertion);
     } catch (error) {
       logger.logError(`Failed to verify assertion with ID ${assertionId}`, error as Error);
-      return {
-        isValid: false,
-        isExpired: false,
-        isRevoked: false,
-        hasValidSignature: false,
-        details: 'Error during verification process'
-      };
+      return createVerificationError(
+        VerificationErrorCode.INTERNAL_ERROR,
+        `Error during verification process: ${(error as Error).message}`
+      );
     }
   }
 }

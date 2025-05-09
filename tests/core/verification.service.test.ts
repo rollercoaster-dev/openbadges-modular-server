@@ -8,6 +8,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { VerificationService } from '@/core/verification.service';
+import { VerificationErrorCode } from '@/utils/types/verification-status';
 import { KeyService } from '@/core/key.service';
 import { Assertion } from '@/domains/assertion/assertion.entity';
 import { Shared, OB3 } from 'openbadges-types'; // Use correct imports
@@ -83,10 +84,11 @@ describe('Verification Service', () => {
     const signedAssertion = await VerificationService.createVerificationForAssertion(assertion);
 
     // Verify the signature
-    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+    const verificationStatus = await VerificationService.verifyAssertionSignature(signedAssertion);
 
     // Check the result
-    expect(isValid).toBe(true);
+    expect(verificationStatus.isValid).toBe(true);
+    expect(verificationStatus.hasValidSignature).toBe(true);
   });
 
   test('should reject an invalid assertion signature', async () => {
@@ -119,10 +121,11 @@ describe('Verification Service', () => {
     });
 
     // Verify the signature
-    const isValid = await VerificationService.verifyAssertionSignature(tamperedAssertion);
+    const verificationStatus = await VerificationService.verifyAssertionSignature(tamperedAssertion);
 
     // Check the result
-    expect(isValid).toBe(false);
+    expect(verificationStatus.isValid).toBe(false);
+    expect(verificationStatus.hasValidSignature).toBe(false);
   });
 
   test('should verify a valid assertion', async () => {
@@ -149,7 +152,7 @@ describe('Verification Service', () => {
     expect(result.isExpired).toBe(false);
     expect(result.isRevoked).toBe(false);
     expect(result.hasValidSignature).toBe(true);
-    expect(result.details).toBe('Assertion is valid');
+    expect(result.details).toBe('Verification successful');
   });
 
   test('should reject an expired assertion', async () => {
@@ -174,9 +177,7 @@ describe('Verification Service', () => {
 
     // Check the result
     expect(result.isValid).toBe(false);
-    expect(result.isExpired).toBe(true);
-    expect(result.isRevoked).toBe(false);
-    expect(result.hasValidSignature).toBe(true);
+    expect(result.errorCode).toBe(VerificationErrorCode.ASSERTION_EXPIRED);
     expect(result.details).toBe('Assertion has expired');
   });
 
@@ -203,9 +204,7 @@ describe('Verification Service', () => {
 
     // Check the result
     expect(result.isValid).toBe(false);
-    expect(result.isExpired).toBe(false);
-    expect(result.isRevoked).toBe(true);
-    expect(result.hasValidSignature).toBe(true);
+    expect(result.errorCode).toBe(VerificationErrorCode.ASSERTION_REVOKED);
     expect(result.details).toBe('Assertion has been revoked: Test revocation');
   });
 
@@ -229,11 +228,12 @@ describe('Verification Service', () => {
     (signedAssertion.verification as OB3.Proof).verificationMethod = '/public-keys/custom-key-id#test-key' as Shared.IRI;
 
     // Verify the signature
-    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
+    const verificationStatus = await VerificationService.verifyAssertionSignature(signedAssertion);
 
-    // Should be false because the key 'custom-key-id' doesn't exist and the service
-    // currently returns false if a specific non-default key is not found.
-    expect(isValid).toBe(false);
+    // Should be invalid because the key 'custom-key-id' doesn't exist and the service
+    // returns an error status if a specific non-default key is not found.
+    expect(verificationStatus.isValid).toBe(false);
+    expect(verificationStatus.errorCode).toBe(VerificationErrorCode.KEY_NOT_FOUND);
   });
 
   test('should handle malformed creator URLs', async () => {
@@ -258,8 +258,9 @@ describe('Verification Service', () => {
     // Verify the signature directly
     // Since the verificationMethod is malformed, the service will fall back to using the 'default' key.
     // As the signature was created with the 'default' key, it should still be valid.
-    const isValid = await VerificationService.verifyAssertionSignature(signedAssertion);
-    expect(isValid).toBe(true); // Changed from false, as it should fallback to default key and validate
+    const verificationStatus = await VerificationService.verifyAssertionSignature(signedAssertion);
+    expect(verificationStatus.isValid).toBe(true); // Should be valid as it falls back to default key
+    expect(verificationStatus.hasValidSignature).toBe(true);
 
     // Verify the assertion - should not throw an error
     const result = await VerificationService.verifyAssertion(signedAssertion);

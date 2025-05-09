@@ -7,7 +7,7 @@ The OpenBadges Modular Server is a headless server implementation of the OpenBad
 ## Project Status
 
 **Current Status:** ~75-80% complete toward MVP
-**Last Updated:** May 10, 2025
+**Last Updated:** May 9, 2025
 
 ## Overview
 
@@ -17,7 +17,7 @@ This document serves as the master tracking file for all tasks related to the Op
 
 | Task ID | Task Name | Priority | Effort Estimate | Status | Dependencies |
 |---------|-----------|----------|----------------|--------|--------------|
-| 01 | [API Router Integration](./todo/01_api_router_integration.md) | High | 1-2 days | Not Started | None |
+| 01 | [API Router Integration](./todo/01_api_router_integration.md) | High | 1-2 days | Completed | None |
 | 02 | [Security Middleware Migration](./todo/02_security_middleware_migration.md) | High | 1-2 days | Not Started | None |
 | 03 | [End-to-End Testing](./todo/03_e2e_testing.md) | High | 2-3 days | Not Started | 01, 02 |
 | 04 | [Deployment Preparation](./todo/04_deployment_preparation.md) | High | 2 days | Not Started | 01, 02, 03 |
@@ -72,7 +72,7 @@ The following tasks form the critical path for MVP completion:
 ## Weekly Goals
 
 ### Week of May 10, 2025
-- Complete Task 01: API Router Integration
+- ✅ Complete Task 01: API Router Integration
 - Start Task 02: Security Middleware Migration
 - Continue Task 08: Backpack Typing Improvements
 
@@ -91,6 +91,7 @@ The following tasks form the critical path for MVP completion:
 ### Completed Tasks
 - ✅ Framework migration from Elysia to Hono
 - ✅ Test migration to Hono
+- ✅ Task 01: API Router Integration
 
 ### In Progress Tasks
 - Task 05: Enhance Test Coverage
@@ -110,4 +111,4 @@ The following tasks form the critical path for MVP completion:
 
 ---
 
-Last Updated: May 10, 2025
+Last Updated: May 9, 2025
