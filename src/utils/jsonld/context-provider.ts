@@ -12,7 +12,7 @@ import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } f
 /**
  * The Open Badges 3.0 JSON-LD context
  */
-export const OPEN_BADGES_CONTEXT = 'https://w3id.org/openbadges/v3';
+export const OPEN_BADGES_CONTEXT = 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json';
 
 /**
  * Adds JSON-LD context to an object
@@ -97,8 +97,8 @@ export function createVerifiableCredential(
 ): VerifiableCredentialData {
   return {
     '@context': [
-      'https://www.w3.org/2018/credentials/v1',
-      'https://w3id.org/openbadges/v3'
+      'https://www.w3.org/ns/credentials/v2',
+      'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
     ],
     id: assertion.id,
     type: ['VerifiableCredential', 'OpenBadgeCredential'],

@@ -117,8 +117,8 @@ describe('Assertion Entity', () => {
 
     // Check context is an array for OB3
     expect(Array.isArray(obj['@context'])).toBe(true);
-    expect(obj['@context']).toContain('https://www.w3.org/2018/credentials/v1');
-    expect(obj['@context']).toContain('https://w3id.org/openbadges/v3');
+    expect(obj['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(obj['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
 
     // Check proof property (transformed from verification)
     expect(obj.proof).toBeDefined();
@@ -132,8 +132,8 @@ describe('Assertion Entity', () => {
 
     // Check context is an array for OB3
     expect(Array.isArray(jsonLd['@context'])).toBe(true);
-    expect(jsonLd['@context']).toContain('https://www.w3.org/2018/credentials/v1');
-    expect(jsonLd['@context']).toContain('https://w3id.org/openbadges/v3');
+    expect(jsonLd['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(jsonLd['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
 
     // Check type is an array for OB3
     expect(Array.isArray(jsonLd.type)).toBe(true);

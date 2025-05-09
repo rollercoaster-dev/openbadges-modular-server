@@ -80,7 +80,7 @@ describe('Issuer Entity', () => {
     const jsonLd = issuer.toJsonLd();
 
     expect(jsonLd).toBeDefined();
-    expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
+    expect(jsonLd['@context']).toBe('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
     expect(jsonLd.type).toBe('Issuer');
     expect(jsonLd.id).toBe(validIssuerData.id);
     expect(jsonLd.name).toBe(validIssuerData.name);

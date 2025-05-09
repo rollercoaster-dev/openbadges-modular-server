@@ -1,6 +1,6 @@
 /**
  * Badge version enum for Open Badges API
- * 
+ *
  * This file defines the supported Open Badges versions.
  */
 
@@ -14,7 +14,7 @@ export enum BadgeVersion {
  */
 export const BADGE_VERSION_CONTEXTS = {
   [BadgeVersion.V2]: 'https://w3id.org/openbadges/v2',
-  [BadgeVersion.V3]: 'https://w3id.org/openbadges/v3'
+  [BadgeVersion.V3]: 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
 };
 
 /**
