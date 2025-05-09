@@ -1,4 +1,4 @@
-# API Router Integration
+# API Router Integration (COMPLETED)
 
 ## Task Description
 
@@ -89,3 +89,14 @@ None
 - `src/domains/backpack/backpack.controller.ts`
 - `src/domains/user/user.controller.ts`
 - `src/auth/auth.controller.ts`
+
+## Completion Notes
+
+- Completed on: May 9, 2025
+- Pull Request: [#28 Implement API Router Integration](https://github.com/rollercoaster-dev/openbadges-modular-server/pull/28)
+- Implementation Details:
+  - Created a new auth router (`src/api/auth.router.ts`) with login, register, and profile endpoints
+  - Updated the user router (`src/api/user.router.ts`) to implement the missing endpoints
+  - Updated the API router (`src/api/api.router.ts`) to include the backpack, user, and auth routers
+  - Updated the main application (`src/index.ts`) to create and use the backpack, user, and auth controllers
+  - Fixed E2E test setup to properly await the API router creation
