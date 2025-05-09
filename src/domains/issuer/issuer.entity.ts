@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
+import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * Issuer entity representing an organization or individual that issues badges

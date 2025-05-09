@@ -3,6 +3,7 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
 import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
+import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 
 // Use a random port for testing to avoid conflicts
 const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000

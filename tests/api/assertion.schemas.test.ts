@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { CreateAssertionSchema, UpdateAssertionSchema } from '@/api/validation/assertion.schemas';
+import { EXAMPLE_ASSERTION_URL, EXAMPLE_BADGE_CLASS_URL } from '@/constants/urls';
 
 describe('Assertion Schemas', () => {
   describe('CreateAssertionSchema', () => {

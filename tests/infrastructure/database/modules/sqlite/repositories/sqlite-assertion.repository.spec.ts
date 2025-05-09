@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { SqliteAssertionRepository } from '../../../../../../src/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository';
-import { Assertion } from '../../../../../../src/domains/assertion/assertion.entity';
-import { queryLogger } from '../../../../../../src/utils/logging/logger.service';
+import { SqliteAssertionRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository';
+import { Assertion } from '@domains/assertion/assertion.entity';
+import { queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Import SensitiveValue
 import { Shared, OB2 } from 'openbadges-types'; // Import OB2
 import { createId } from '@paralleldrive/cuid2';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { assertions } from '../../../../../../src/infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
-import * as schema from '../../../../../../src/infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
+import { assertions } from '@infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
+import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
 
 // --- Test Setup ---
 let db: ReturnType<typeof drizzle<typeof schema>>;

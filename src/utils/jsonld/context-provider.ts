@@ -8,6 +8,7 @@
 
 import { Shared } from 'openbadges-types';
 import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } from '../types/badge-data.types';
+import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * The Open Badges 3.0 JSON-LD context

@@ -6,6 +6,7 @@
 
 import { OpenAPIObject } from 'openapi3-ts/oas30';
 import { config } from '../config/config';
+import { EXAMPLE_EDU_EVIDENCE_URL, EXAMPLE_EDU_KEYS_URL, EXAMPLE_EDU_URL, GITHUB_REPO_URL, MIT_LICENSE_URL, OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 
 export const openApiConfig: OpenAPIObject = {
   openapi: '3.0.0',

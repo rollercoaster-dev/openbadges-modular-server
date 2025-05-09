@@ -12,6 +12,7 @@ import {
   isUpdateAssertionDto
 } from '../../../src/api/validation/dto.validator';
 import { MissingRequiredFieldsError } from '../../../src/utils/errors/validation.errors';
+import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 describe('validateCreateIssuerDto', () => {
   it('should validate a valid CreateIssuerDto', () => {

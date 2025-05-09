@@ -11,6 +11,7 @@ import { Issuer } from '../../../src/domains/issuer/issuer.entity';
 import { BadgeClass } from '../../../src/domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../../src/domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
+import { EXAMPLE_EDU_URL } from '@/constants/urls';
 
 // Define input types for accurate casting
 type BadgeClassInput = Parameters<typeof BadgeClass.create>[0];

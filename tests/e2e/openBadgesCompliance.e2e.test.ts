@@ -4,6 +4,7 @@ import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
 
 import { setupTestApp, stopTestServer } from './setup-test-app';
+import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 
 // No need for complex types in this simplified test
 

@@ -4,6 +4,7 @@ import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { hashData } from '@/utils/crypto/signature';
+import { EXAMPLE_BADGE_IMAGE_URL, EXAMPLE_ISSUER_URL, VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 // Set database type to PostgreSQL for testing
 // This is the default and should work with the existing database

@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
 import { BadgeClassData } from '../../utils/types/badge-data.types';
+import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * BadgeClass entity representing a type of badge that can be issued

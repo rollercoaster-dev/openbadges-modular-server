@@ -13,6 +13,7 @@ import { AssertionData, RecipientData, VerificationData } from '../../utils/type
 import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
+import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * Assertion entity representing a badge awarded to a recipient

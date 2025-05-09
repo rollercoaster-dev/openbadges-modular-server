@@ -4,6 +4,8 @@
  * This file defines the supported Open Badges versions.
  */
 
+import { VC_V2_CONTEXT_URL } from "@/constants/urls";
+
 export enum BadgeVersion {
   V2 = '2.0',
   V3 = '3.0'

@@ -8,6 +8,7 @@
 import { BadgeVersion, BADGE_VERSION_CONTEXTS } from './badge-version';
 import { Shared } from 'openbadges-types';
 import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } from '../types/badge-data.types';
+import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * Base serializer interface for Open Badges
