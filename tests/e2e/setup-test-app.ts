@@ -119,9 +119,9 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
       );
       logger.info('Database connection established successfully');
 
-      // Run migrations for SQLite
-      if (dbConfig.type === 'sqlite') {
-        try {
+      // Run migrations for the database
+      try {
+        if (dbConfig.type === 'sqlite') {
           logger.info('Running SQLite migrations for E2E tests');
           const fs = require('fs');
           const { join } = require('path');
@@ -150,13 +150,81 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           } else {
             logger.warn(`Migration file not found: ${sqlFilePath}`);
           }
-        } catch (error) {
-          logger.error('Failed to run SQLite migrations', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-          });
-          // Continue even if migrations fail
+        } else if (dbConfig.type === 'postgresql') {
+          logger.info('Running PostgreSQL migrations for E2E tests');
+          const fs = require('fs');
+          const { join } = require('path');
+          // Import postgres module correctly
+          const postgres = await import('postgres');
+
+          // Create PostgreSQL connection
+          const connectionString = dbConfig.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges_test';
+          logger.info(`PostgreSQL connection string: ${connectionString.toString().replace(/:[^:@]+@/, ':***@')}`);
+
+          try {
+            const client = postgres.default(connectionString, { max: 1 });
+
+            // Apply the fixed migration SQL
+            const sqlFilePath = join(process.cwd(), 'drizzle/pg-migrations/0000_strong_gideon_fixed.sql');
+            if (fs.existsSync(sqlFilePath)) {
+              logger.info(`Applying SQL migration from ${sqlFilePath}`);
+              try {
+                const sql = fs.readFileSync(sqlFilePath, 'utf8');
+                await client.unsafe(sql);
+                logger.info('PostgreSQL migrations applied successfully');
+              } catch (error) {
+                // If tables already exist, that's fine
+                if (error.message && error.message.includes('already exists')) {
+                  logger.info('Tables already exist, skipping migration');
+                } else {
+                  logger.error('Error applying PostgreSQL migration', {
+                    error: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined
+                  });
+                }
+              }
+            } else {
+              logger.warn(`Migration file not found: ${sqlFilePath}`);
+
+              // Try the original file as a fallback
+              const originalSqlFilePath = join(process.cwd(), 'drizzle/pg-migrations/0000_strong_gideon.sql');
+              if (fs.existsSync(originalSqlFilePath)) {
+                logger.info(`Fixed SQL file not found, applying original SQL file from ${originalSqlFilePath}`);
+                try {
+                  const sql = fs.readFileSync(originalSqlFilePath, 'utf8');
+                  await client.unsafe(sql);
+                  logger.info('Original PostgreSQL SQL applied successfully');
+                } catch (error) {
+                  // If tables already exist, that's fine
+                  if (error.message && error.message.includes('already exists')) {
+                    logger.info('Tables already exist, skipping migration');
+                  } else {
+                    logger.error('Error applying original PostgreSQL migration', {
+                      error: error instanceof Error ? error.message : String(error),
+                      stack: error instanceof Error ? error.stack : undefined
+                    });
+                  }
+                }
+              } else {
+                logger.warn('No SQL migration files found for PostgreSQL');
+              }
+            }
+
+            // Close the connection
+            await client.end();
+          } catch (error) {
+            logger.error('Failed to connect to PostgreSQL database', {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined
+            });
+          }
         }
+      } catch (error) {
+        logger.error('Failed to run database migrations', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        // Continue even if migrations fail
       }
     } catch (error) {
       logger.error('Failed to create database connection', {

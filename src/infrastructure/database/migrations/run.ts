@@ -156,7 +156,7 @@ async function runPostgresMigrations() {
     // Apply SQL directly to handle circular references
     try {
       // Get the SQL file path
-      const sqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
+      const sqlFilePath = join(migrationsFolder, '0000_strong_gideon_fixed.sql');
 
       // Check if the file exists
       if (fs.existsSync(sqlFilePath)) {
@@ -164,6 +164,17 @@ async function runPostgresMigrations() {
         const sql = fs.readFileSync(sqlFilePath, 'utf8');
         await client.unsafe(sql);
         logger.info('SQL applied successfully.');
+      } else {
+        // Try the original file as a fallback
+        const originalSqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
+        if (fs.existsSync(originalSqlFilePath)) {
+          logger.info('Fixed SQL file not found, applying original SQL file...');
+          const sql = fs.readFileSync(originalSqlFilePath, 'utf8');
+          await client.unsafe(sql);
+          logger.info('Original SQL applied successfully.');
+        } else {
+          logger.warn('No SQL migration files found for PostgreSQL');
+        }
       }
     } catch (error) {
       logger.warn('Error applying SQL directly:', error);
