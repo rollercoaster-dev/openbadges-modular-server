@@ -30,7 +30,7 @@ export class AuthController {
   }): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: data.requestId || crypto.randomUUID(),
+      requestId: data.requestId || Math.random().toString(36).substring(2, 15),
       clientIp: data.clientIp || 'unknown',
       userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
       action: 'login',
@@ -143,7 +143,7 @@ export class AuthController {
   }): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: data.requestId || crypto.randomUUID(),
+      requestId: data.requestId || Math.random().toString(36).substring(2, 15),
       clientIp: data.clientIp || 'unknown',
       userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
       action: 'register',
@@ -283,7 +283,7 @@ export class AuthController {
   ): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: requestInfo?.requestId || crypto.randomUUID(),
+      requestId: requestInfo?.requestId || Math.random().toString(36).substring(2, 15),
       clientIp: requestInfo?.clientIp || 'unknown',
       userAgent: requestInfo?.userAgent ? requestInfo.userAgent.substring(0, 100) : 'unknown',
       action: 'getProfile',

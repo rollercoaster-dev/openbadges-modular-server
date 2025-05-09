@@ -22,7 +22,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     const { usernameOrEmail, password } = body;
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
     const userAgent = c.req.header('user-agent') || 'unknown';
 
@@ -43,7 +43,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     const { username, email, password, firstName, lastName } = body;
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
     const userAgent = c.req.header('user-agent') || 'unknown';
 
@@ -73,7 +73,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     }
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
     const userAgent = c.req.header('user-agent') || 'unknown';
 

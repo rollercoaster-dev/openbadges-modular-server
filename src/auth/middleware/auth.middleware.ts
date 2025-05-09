@@ -74,7 +74,7 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
-    const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
+    const requestId = request.headers.get('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 

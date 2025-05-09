@@ -34,7 +34,7 @@ export function requireAuth(): MiddlewareHandler<{
     // Extract request information for logging
     const path = c.req.path;
     const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || 'unknown';
 
     // Create context for structured logging
@@ -96,7 +96,7 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
     // Extract request information for logging
     const path = c.req.path;
     const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || 'unknown';
 
     // Create context for structured logging
@@ -174,7 +174,7 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
     // Extract request information for logging
     const path = c.req.path;
     const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || 'unknown';
 
     // Create context for structured logging
@@ -299,7 +299,7 @@ export function requireSelfOrAdmin(): MiddlewareHandler<{
     // Extract request information for logging
     const path = c.req.path;
     const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
     const clientIp = c.req.header('x-forwarded-for') || 'unknown';
     const id = c.req.param('id');
 
