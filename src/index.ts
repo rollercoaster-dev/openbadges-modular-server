@@ -113,23 +113,20 @@ export async function setupApp(): Promise<Hono> {
     // Initialize user service
     const userService = new UserService(userRepository);
 
-    // These controllers will be used after Hono migration is complete
-    // We're creating them but not using them yet
-    if (process.env.NODE_ENV === 'development') {
-      // Only create these in development to avoid unused variable warnings
-      new BackpackController(backpackService);
-      new UserController(userService);
-      new AuthController(userService);
-    }
+    // Create backpack, user, and auth controllers
+    const backpackController = new BackpackController(backpackService);
+    const userController = new UserController(userService);
+    const authController = new AuthController(userService);
 
     // Create API router with controllers
-    const apiRouter = createApiRouter(
+    const apiRouter = await createApiRouter(
       issuerController,
       badgeClassController,
-      assertionController
+      assertionController,
+      backpackController,
+      userController,
+      authController
     );
-
-    // TODO: Add backpack, user, and auth routes after migration to Hono is complete
 
     // Add API routes
     app.route('', apiRouter);

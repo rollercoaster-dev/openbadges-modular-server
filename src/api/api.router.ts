@@ -16,6 +16,14 @@ import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
 import { validateIssuerMiddleware, validateBadgeClassMiddleware, validateAssertionMiddleware } from '../utils/validation/validation-middleware';
+import { BackpackController } from '../domains/backpack/backpack.controller';
+import { UserController } from '../domains/user/user.controller';
+import { AuthController } from '../auth/auth.controller';
+import { createBackpackRouter } from './backpack.router';
+import { createUserRouter } from './user.router';
+import { createAuthRouter } from './auth.router';
+import { PlatformRepository } from '../domains/backpack/platform.repository';
+import { RepositoryFactory } from '../infrastructure/repository.factory';
 // TODO: Migrate these middleware for Hono
 // import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
 // import { AssetsController } from './controllers/assets.controller';
@@ -25,13 +33,19 @@ import { validateIssuerMiddleware, validateBadgeClassMiddleware, validateAsserti
  * @param issuerController The issuer controller
  * @param badgeClassController The badge class controller
  * @param assertionController The assertion controller
+ * @param backpackController The backpack controller
+ * @param userController The user controller
+ * @param authController The auth controller
  * @returns The API router
  */
-export function createApiRouter(
+export async function createApiRouter(
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
-): Hono {
+  backpackController?: BackpackController,
+  userController?: UserController,
+  authController?: AuthController,
+): Promise<Hono> {
   // Create the router
   const router = new Hono();
 
@@ -115,13 +129,18 @@ export function createApiRouter(
   // Default route (use v3)
   router.route('/', v3Router);
 
-  // TODO: Compose versioned, user, backpack, auth routers after migration to Hono
-  // if (backpackController && platformRepository) {
-  //   router.route('/api/v1', createBackpackRouter(backpackController, platformRepository));
-  // }
-  // if (userController && authController) {
-  //   router.route('/users', createUserRouter(userController, authController));
-  // }
+  // Compose versioned, user, backpack, auth routers
+  if (backpackController) {
+    // Get the platform repository from the repository factory
+    const platformRepository = await RepositoryFactory.createPlatformRepository();
+    router.route('/api/v1', createBackpackRouter(backpackController, platformRepository));
+  }
+  if (userController) {
+    router.route('/users', createUserRouter(userController));
+  }
+  if (authController) {
+    router.route('/auth', createAuthRouter(authController));
+  }
 
   return router;
 }
