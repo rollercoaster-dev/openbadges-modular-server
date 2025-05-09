@@ -18,14 +18,14 @@ export interface BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in the appropriate format
    */
-  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string };
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string | string[]; type: string | string[] };
 
   /**
    * Serializes a badge class to the appropriate format
    * @param badgeClass The badge class object
    * @returns A serialized badge class in the appropriate format
    */
-  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string };
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string | string[]; type: string | string[] };
 
   /**
    * Serializes an assertion to the appropriate format
@@ -38,7 +38,7 @@ export interface BadgeSerializer {
     assertion: AssertionData,
     badgeClass?: BadgeClassData,
     issuer?: IssuerData
-  ): AssertionData & { '@context': string; type: string } | VerifiableCredentialData;
+  ): AssertionData & { '@context': string | string[]; type: string | string[] } | VerifiableCredentialData;
 
   /**
    * Gets the badge version supported by this serializer
@@ -56,7 +56,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in Open Badges 2.0 format
    */
-  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string | string[]; type: string | string[] } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
       id: issuer.id as Shared.IRI,
@@ -75,7 +75,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 2.0 format
    */
-  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string | string[]; type: string | string[] } {
     return {
       '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V2],
       id: badgeClass.id as Shared.IRI,
@@ -99,8 +99,9 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    */
   serializeAssertion(
     assertion: AssertionData,
-    badgeClass?: BadgeClassData
-  ): AssertionData & { '@context': string; type: string } {
+    badgeClass?: BadgeClassData,
+    issuer?: IssuerData
+  ): AssertionData & { '@context': string | string[]; type: string | string[] } | VerifiableCredentialData {
     // Create verification object if not present
     const verification = assertion.verification || {
       type: 'hosted',
@@ -140,11 +141,15 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @param issuer The issuer object
    * @returns A serialized issuer in Open Badges 3.0 format
    */
-  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
+  serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string | string[]; type: string | string[] } {
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+
     return {
-      '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
+      '@context': v3Contexts,
       id: issuer.id as Shared.IRI,
-      type: 'Issuer', // Changed from 'Profile' to 'Issuer' for OBv3 compliance
+      type: ['Profile', 'Issuer'], // Include both Profile and Issuer for OBv3 compliance
       name: issuer.name,
       url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),
@@ -160,12 +165,17 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 3.0 format
    */
-  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string | string[]; type: string | string[] } {
+    // Get the contexts array
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+      
     // Create base object with common properties
     const serialized = {
-      '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
+      '@context': v3Contexts,
       id: badgeClass.id as Shared.IRI,
-      type: 'Achievement', // Changed from 'BadgeClass' to 'Achievement' for OBv3 compliance
+      type: ['Achievement'], // Changed from 'BadgeClass' to 'Achievement' for OBv3 compliance
       issuer: badgeClass.issuer as Shared.IRI,
       name: badgeClass.name,
       description: badgeClass.description,
@@ -196,7 +206,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       serialized['resultDescriptions'] = badgeClass.resultDescriptions;
     }
 
-    return serialized;
+    return serialized as BadgeClassData & { '@context': string | string[]; type: string | string[] };
   }
 
   /**
@@ -210,17 +220,22 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     assertion: AssertionData,
     badgeClass?: BadgeClassData,
     issuer?: IssuerData
-  ): AssertionData & { '@context': string; type: string } | VerifiableCredentialData {
+  ): AssertionData & { '@context': string | string[]; type: string | string[] } | VerifiableCredentialData {
     // If we have all the necessary components, create a VerifiableCredential
     if (badgeClass && issuer) {
       return this.createVerifiableCredential(assertion, badgeClass, issuer);
     }
 
+    // Get the contexts array
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+    
     // Otherwise, create a basic Assertion
     return {
-      '@context': BADGE_VERSION_CONTEXTS[BadgeVersion.V3],
+      '@context': v3Contexts,
       id: assertion.id as Shared.IRI,
-      type: 'Assertion',
+      type: ['Assertion'],
       badgeClass: (assertion.badgeClass || badgeClass?.id) as Shared.IRI,
       recipient: assertion.recipient,
       issuedOn: assertion.issuedOn,
@@ -244,16 +259,21 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     badgeClass: BadgeClassData,
     issuer: IssuerData
   ): VerifiableCredentialData {
+    // Handle the case where BADGE_VERSION_CONTEXTS might be an array or string
+    const contextList = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3]];
+    
     return {
       '@context': [
         'https://www.w3.org/2018/credentials/v1',
-        BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
+        ...contextList
       ],
       id: assertion.id as Shared.IRI,
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
       issuer: {
         id: issuer.id as Shared.IRI,
-        type: issuer.type || 'Issuer', // Changed from 'Profile' to 'Issuer' for OBv3 compliance
+        type: 'Issuer', // Use Issuer for VerifiableCredential
         name: issuer.name,
         url: issuer.url as Shared.IRI,
         ...(issuer.email && { email: issuer.email }),
@@ -268,7 +288,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
         type: 'AchievementSubject',
         achievement: {
           id: badgeClass.id as Shared.IRI,
-          type: 'Achievement',
+          type: ['Achievement'], // Type as array for consistency
           name: badgeClass.name,
           description: badgeClass.description,
           image: badgeClass.image as Shared.IRI,

@@ -134,6 +134,9 @@ export class AssertionController {
       throw new Error('Insufficient permissions to create assertion');
     }
     try {
+      // Log the raw data for debugging
+      logger.debug('Raw assertion creation data', { data });
+      
       // Validate incoming data using Zod schema first!
       const validatedData = CreateAssertionSchema.parse(data);
 

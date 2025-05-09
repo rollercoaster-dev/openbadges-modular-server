@@ -14,7 +14,7 @@ export enum BadgeVersion {
  */
 export const BADGE_VERSION_CONTEXTS = {
   [BadgeVersion.V2]: 'https://w3id.org/openbadges/v2',
-  [BadgeVersion.V3]: 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+  [BadgeVersion.V3]: ['https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json', 'https://www.w3.org/ns/credentials/v2']
 };
 
 /**
@@ -46,11 +46,13 @@ export function detectBadgeVersion(obj: Record<string, unknown>): BadgeVersion |
 
   // Handle string context
   if (typeof context === 'string') {
-    if (context === BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) {
-      return BadgeVersion.V3;
-    }
     if (context === BADGE_VERSION_CONTEXTS[BadgeVersion.V2]) {
       return BadgeVersion.V2;
+    }
+    // For V3, check if the string matches any context in the array
+    if (Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) && 
+        BADGE_VERSION_CONTEXTS[BadgeVersion.V3].includes(context)) {
+      return BadgeVersion.V3;
     }
   }
 

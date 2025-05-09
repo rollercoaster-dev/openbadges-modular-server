@@ -95,9 +95,9 @@ export class IssuerController {
       const issuer = Issuer.create(mapToIssuerEntity(validatedData));
       const createdIssuer = await this.issuerRepository.create(issuer);
 
-      // Return formatted response as a plain object with top-level 'id' property
-      const response = { ...createdIssuer.toObject(version), id: createdIssuer.id };
-      return response as IssuerResponseDto;
+      // Return formatted response with JSON-LD context
+      const response = createdIssuer.toJsonLd(version) as IssuerResponseDto;
+      return response;
     } catch (error) {
       logger.error('Error creating issuer', {
         error: error instanceof Error ? error.message : String(error),

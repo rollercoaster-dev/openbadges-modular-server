@@ -13,7 +13,10 @@ Current testing is focused on unit and integration tests. E2E tests are needed t
 ## 2. Steps
 - [x] Select an E2E testing tool (e.g., Playwright, Supertest, or curl scripts)
 - [x] Set up a dedicated E2E test environment (SQLite and Docker/Postgres)
-- [ ] Write E2E tests for critical user flows (issuer, badge, assertion CRUD, verification, revocation) - *Partially completed*
+- [~] Write E2E tests for critical user flows (issuer, badge, assertion CRUD, verification, revocation) - *Partially completed*
+  - [x] Basic API endpoint tests for Issuer, BadgeClass, and Assertion
+  - [x] Comprehensive OBv3 compliance test (full badge issuance flow with verification)
+  - [ ] Complete CRUD lifecycle tests for all entities
 - [ ] Add E2E tests for error cases and edge conditions
 - [ ] Integrate E2E tests into CI pipeline
 - [ ] Document how to run E2E tests locally and in CI
@@ -37,6 +40,11 @@ This task has been partially implemented. Based on a review of the codebase and 
 - ✅ Implemented global setup/teardown for E2E tests in `bunfig.toml` (`test/e2e/setup/globalSetup.ts`, `test/e2e/setup/globalTeardown.ts`)
 - ✅ Created basic E2E tests for critical API endpoints (OpenBadges compliance, Issuer, Badge Class, Assertion, Authentication)
 - ✅ **RESOLVED:** PostgreSQL E2E test setup issue with `rd-logger` dependency. Both SQLite and PostgreSQL E2E tests (`bun run test:e2e:sqlite` and `bun run test:e2e:pg`) now complete successfully.
+- ✅ Created comprehensive OBv3 compliance E2E test in `test/e2e/obv3-compliance.e2e.test.ts` that:
+  - Creates a complete badge (issuer, badge class, assertion)
+  - Verifies the badge
+  - Validates correct context URLs, proof structure, and verification process
+  - Includes proper test cleanup to ensure test resources are properly deleted
 
 ### Partially Completed / Needs Enhancement:
 - 🟨 Current tests verify API endpoints exist and respond (and basic create/cleanup for some), but **do not yet fully test complete data persistence and retrieval flows (e.g., detailed Create -> Read -> Update -> Delete -> Verify lifecycle for all fields and relationships).** This was confirmed by reviewing `test/e2e/issuer.e2e.test.ts`.
@@ -44,7 +52,7 @@ This task has been partially implemented. Based on a review of the codebase and 
 ### Remaining (Prioritized - Updated):
 1. **High Priority:**
    - **Enhance existing E2E tests to verify complete data flows:** Ensure tests for Issuer, BadgeClass, and Assertion APIs thoroughly validate creation, accurate retrieval (single and list), updates to various fields, and successful deletion with verification. This includes checking that all persisted data matches the input data and that relationships between entities are correctly handled.
-   - **Add more comprehensive verification tests:** Beyond CRUD, this includes testing specific OpenBadges compliance aspects through API interactions if not already covered.
+   - ✅ **Add more comprehensive verification tests:** The new `test/e2e/obv3-compliance.e2e.test.ts` test now provides comprehensive validation of Open Badges 3.0 compliance, including verification of badges.
 
 2. **Medium Priority:**
    - Add tests for error cases and edge conditions (e.g., invalid input data, unauthorized access attempts, concurrency issues if applicable).
@@ -265,4 +273,10 @@ The following scripts have been added to manage and run E2E tests:
         *   _Expected Outcome:_ Request fails (e.g., 403 Forbidden status).
 
 7.  **Open Badges Specification Compliance (Cross-cutting)**
+    *   **Explicitly Tested:** The `test/e2e/obv3-compliance.e2e.test.ts` test file now provides comprehensive validation of Open Badges 3.0 compliance, including:
+        * Creating a complete badge (issuer, badge class, assertion)
+        * Verifying the badge
+        * Validating correct context URLs (`https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json` and `https://www.w3.org/ns/credentials/v2`)
+        * Validating proof structure and verification process
+        * Checking correct entity types (e.g., `VerifiableCredential`, `OpenBadgeCredential`)
     *   **Implicitly Tested:** Throughout all scenarios, the JSON outputs for Issuer, BadgeClass/Achievement, and Assertion/Credential must be validated against the relevant Open Badges (v2.0, v3.0) and Verifiable Credential specifications. This includes checking `type` fields, `@context` URLs, presence of required properties, and correct data types. (Addresses memories regarding type mismatches in entities).

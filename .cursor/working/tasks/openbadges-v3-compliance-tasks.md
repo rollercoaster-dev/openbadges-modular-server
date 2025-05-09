@@ -124,9 +124,10 @@ This document outlines the tasks required to ensure our application aligns with 
     -   [x] Fixed failing test `Verification Service > should handle malformed creator URLs`
     -   [~] Updated unit tests for `Assertion`/`VerificationService` related to OBv3 proof structure; ongoing for full coverage.
     -   [~] Integration tests for badge issuance flow being implicitly tested/updated; E2E failures indicate more work needed.
-    -   [ ] Create/update API/E2E tests for OBv3 endpoints (request/response validation, behavior).
-        -   Ensure tests generate sample badges and validate them against OBv3 schemas/contexts.
-        -   Follow existing test structure and scripts (MEMORY[3b5f8625-16ba-49e7-86f0-86a51bd5e0c1]).
+    -   [x] Create/update API/E2E tests for OBv3 endpoints (request/response validation, behavior).
+        -   [x] Created comprehensive E2E test for OBv3 compliance in `test/e2e/obv3-compliance.e2e.test.ts`
+        -   [x] Test creates a complete badge (issuer, badge class, assertion) and verifies it
+        -   [x] Test validates correct context URLs, proof structure, and verification
 -   [ ] **Utilize 1EdTech Pre-Certification Tools:**
     -   [ ] Regularly test generated badges and API endpoints using the official **Open Badges 3.0 Testing Suite**: [https://certification.imsglobal.org/certification/verifiable-credentials](https://certification.imsglobal.org/certification/verifiable-credentials)
     -   [ ] (If applicable) Test OBv2.0 compatibility using: [https://openbadgesvalidator.imsglobal.org/openbadges20/index.html](https://openbadgesvalidator.imsglobal.org/openbadges20/index.html)
@@ -194,9 +195,15 @@ We've made significant progress in aligning our codebase with the Open Badges 3.
     -   [x] Improve error handling for validation errors
     -   [x] Ensure type safety throughout the validation process
 
--   [ ] **Continue Phase 2 Implementation:**
-    -   [ ] Focus on developing and updating the internal test suite for OBv3 compliance
-    -   [ ] Begin using 1EdTech pre-certification tools to validate badge compliance
+-   [x] **Develop Comprehensive E2E Tests for OBv3 Compliance:**
+    -   [x] Create E2E test that validates the complete badge issuance flow
+    -   [x] Verify correct context URLs in all entities
+    -   [x] Validate proof structure and verification process
+    -   [x] Test cleanup to ensure test resources are properly deleted
+
+-   [ ] **Begin Using 1EdTech Pre-Certification Tools:**
+    -   [ ] Set up a process to generate sample badges for testing
+    -   [ ] Test badges using the official Open Badges 3.0 Testing Suite
     -   [ ] Address any issues identified by these tools
 
 -   [ ] **Documentation Updates:**

@@ -17,12 +17,12 @@ const determinePostgresConnectionString = () => {
 
   // Priority 2: Construct from individual POSTGRES_* vars (typically for E2E tests or specific overrides)
   const host = process.env['POSTGRES_HOST'];
-  const port = process.env['POSTGRES_PORT'];
+  const port = process.env['POSTGRES_PORT'] || '5432'; // Default to 5432 if not specified
   const user = process.env['POSTGRES_USER'];
   const password = process.env['POSTGRES_PASSWORD'];
   const dbName = process.env['POSTGRES_DB'];
 
-  if (host && port && user && password && dbName) {
+  if (host && user && password && dbName) {
     // This check ensures these variables are used in a PostgreSQL context.
     // It's a bit heuristic if DB_TYPE isn't set, but POSTGRES_HOST existing is a strong indicator.
     if (process.env['DB_TYPE'] === 'postgresql' ||
