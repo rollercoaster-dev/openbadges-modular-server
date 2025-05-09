@@ -50,8 +50,8 @@ export class PreparedStatementManager {
     client: PostgresClient,
     name: string,
     query: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    types?: unknown[]
+    // Types parameter is reserved for future use when implementing proper type handling
+    _types?: unknown[]
   ): PreparedStatementFn<T> {
     if (!this.enabled) {
       // If prepared statements are disabled, just execute the query directly

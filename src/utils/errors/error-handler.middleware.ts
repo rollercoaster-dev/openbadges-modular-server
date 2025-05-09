@@ -1,4 +1,4 @@
-import Elysia from 'elysia';
+import { MiddlewareHandler } from 'hono';
 import { logger } from '../logging/logger.service';
 import { getRequestId } from '../logging/request-context.middleware';
 
@@ -10,55 +10,54 @@ import { getRequestId } from '../logging/request-context.middleware';
  * 2. Returns a consistent error response
  * 3. Masks sensitive details in production
  */
-export const errorHandlerMiddleware = new Elysia().onError((context) => {
-  const { error, request, set } = context;
-  const path = new URL(request.url).pathname;
-  // Context from onError is compatible with MinimalContext expected by getRequestId
-  const requestId = getRequestId(context);
-  const isProd = process.env.NODE_ENV === 'production';
+export function createErrorHandlerMiddleware(): MiddlewareHandler {
+  return async (c, next) => {
+    try {
+      await next();
+    } catch (error) {
+      const path = new URL(c.req.url).pathname;
+      const requestId = getRequestId(c);
+      const isProd = process.env.NODE_ENV === 'production';
 
-  // Log the error with full details
-  if (error instanceof Error) {
-    logger.logError('Unhandled Exception', error, {
-      path,
-      requestId,
-      method: request.method
-    });
-  } else {
-    logger.error('Unhandled Exception', {
-      message: String(error),
-      path,
-      requestId,
-      method: request.method
-    });
-  }
+      // Log the error with full details
+      if (error instanceof Error) {
+        logger.logError('Unhandled Exception', error, {
+          path,
+          requestId,
+          method: c.req.method
+        });
+      } else {
+        logger.error('Unhandled Exception', {
+          message: String(error),
+          path,
+          requestId,
+          method: c.req.method
+        });
+      }
 
-  set.status = 500;
-
-  // In production, return a generic error message
-  // In development, include more details for debugging
-  return {
-    error: {
-      message: isProd ? 'Internal Server Error' : (error instanceof Error ? error.message : String(error)),
-      code: 'INTERNAL_SERVER_ERROR',
-      status: 500,
-      // Include request ID for correlation with logs
-      requestId
+      // In production, return a generic error message
+      // In development, include more details for debugging
+      return c.json({
+        error: {
+          message: isProd ? 'Internal Server Error' : (error instanceof Error ? error.message : String(error)),
+          code: 'INTERNAL_SERVER_ERROR',
+          status: 500,
+          // Include request ID for correlation with logs
+          requestId
+        }
+      }, 500);
     }
   };
-});
+}
 
 /**
- * Not found handler middleware
+ * Not found handler for Hono's app.notFound()
  *
- * This middleware handles requests to undefined routes and:
- * 1. Logs the 404 error with context information
- * 2. Returns a consistent error response
+ * This function is specifically designed to work with Hono's notFound handler
  */
-export const notFoundHandlerMiddleware = new Elysia().all('*', (context) => {
-  const { request, set } = context;
-  const path = new URL(request.url).pathname;
-  const requestId = getRequestId(context);
+export function handleNotFound(c: import('hono').Context): Response {
+  const path = new URL(c.req.url).pathname;
+  const requestId = getRequestId(c);
 
   // Skip logging for common missing resources to reduce noise
   const skipLogging = [
@@ -68,19 +67,18 @@ export const notFoundHandlerMiddleware = new Elysia().all('*', (context) => {
 
   if (!skipLogging) {
     logger.warn('Route Not Found', {
-      method: request.method,
+      method: c.req.method,
       path,
       requestId
     });
   }
 
-  set.status = 404;
-  return {
+  return c.json({
     error: {
-      message: `Route not found: ${request.method} ${path}`,
+      message: `Route not found: ${c.req.method} ${path}`,
       code: 'ROUTE_NOT_FOUND',
       status: 404,
       requestId
     }
-  };
-});
+  }, 404);
+}

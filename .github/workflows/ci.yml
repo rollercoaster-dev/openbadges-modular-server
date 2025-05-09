@@ -32,11 +32,12 @@ jobs:
     needs: lint-and-typecheck
     services:
       postgres:
-        image: postgres:14
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: openbadges_test
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -61,13 +62,62 @@ jobs:
           sudo apt-get install -y libsqlite3-dev
           bun install
 
+      - name: Test rd-logger import directly with Bun
+        run: |
+          echo "Attempting direct import test of @rollercoaster-dev/rd-logger..."
+          echo "import { Logger } from '@rollercoaster-dev/rd-logger'; console.log('Successfully imported Logger from rd-logger:', !!Logger);" > test-rd-logger-import.js
+          bun run test-rd-logger-import.js || echo "Direct bun import test failed"
+
+      - name: Migrate PostgreSQL database
+        run: |
+          echo "Listing contents of @rollercoaster-dev/rd-logger/dist/ to debug..."
+          ls -la ./node_modules/@rollercoaster-dev/rd-logger/dist/
+          echo "Listing contents of @rollercoaster-dev/rd-logger/dist/core/ to debug..."
+          ls -la ./node_modules/@rollercoaster-dev/rd-logger/dist/core/ || echo "Directory @rollercoaster-dev/rd-logger/dist/core/ not found or ls failed"
+
+          echo "Current PWD: $(pwd)"
+          echo "NODE_PATH: $NODE_PATH"
+
+          echo "--- Start of node_modules/@rollercoaster-dev/rd-logger/dist/index.js ---"
+          head -n 15 ./node_modules/@rollercoaster-dev/rd-logger/dist/index.js || echo "Failed to head index.js"
+          echo "--- End of node_modules/@rollercoaster-dev/rd-logger/dist/index.js ---"
+
+          echo "--- Start of node_modules/@rollercoaster-dev/rd-logger/dist/core/logger.service.js ---"
+          head -n 15 ./node_modules/@rollercoaster-dev/rd-logger/dist/core/logger.service.js || echo "Failed to head logger.service.js"
+          echo "--- End of node_modules/@rollercoaster-dev/rd-logger/dist/core/logger.service.js ---"
+
+          echo "Running PostgreSQL migrations..."
+          NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg
+          NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          DB_TYPE: postgresql
+
       - name: Run tests
         run: bun run test:coverage
         env:
+          # Database configuration - use the same for all tests
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
-          DB_TYPE: sqlite
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          DB_TYPE: postgresql
           SQLITE_FILE: ':memory:'
+          # Test environment variables
           CI: 'true'
+          NODE_PATH: "."
+          NODE_ENV: 'test'
+          # API key for E2E tests
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
+          # Format: AUTH_API_KEY_TEST=<API_KEY>:<USER_ID>:<DESCRIPTION>
+          AUTH_API_KEY_E2E: verysecretkeye2e:test-user:E2E Test API Key
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3

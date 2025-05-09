@@ -38,9 +38,9 @@ The deployment preparation involves finalizing the Docker configuration, creatin
 - `/docs/` - Documentation directory
 
 ## Dependencies
-- Task 01_authentication_implementation should be completed first
-- Task 02_assertion_signing_enhancement should be completed first
-- Task 03_database_testing_completion should be completed first
+- Task 01_api_router_integration should be completed first
+- Task 02_security_middleware_migration should be completed first
+- Task 03_e2e_testing should be completed first
 
 ## Notes
 - Consider using Docker Compose for local development
@@ -58,5 +58,5 @@ The deployment preparation involves finalizing the Docker configuration, creatin
 - [ ] Test deployment process
 - [ ] Document deployment process
 
-## Current Status (Updated 2025-05-05)
-Not started. This task is identified as a high priority item from the codebase review.
+## Current Status (Updated 2025-05-10)
+Not started. This task is identified as a high priority item from the codebase review. It is blocked by the completion of API Router Integration, Security Middleware Migration, and End-to-End Testing tasks.

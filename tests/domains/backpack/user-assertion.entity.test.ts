@@ -2,8 +2,8 @@
  * Tests for the UserAssertion entity
  */
 import { describe, test, expect } from 'bun:test';
-import { UserAssertion } from '../../../src/domains/backpack/user-assertion.entity';
-import { UserAssertionStatus } from '../../../src/domains/backpack/backpack.types';
+import { UserAssertion } from '@/domains/backpack/user-assertion.entity';
+import { UserAssertionStatus } from '@/domains/backpack/backpack.types';
 import { Shared } from 'openbadges-types';
 
 describe('UserAssertion Entity', () => {

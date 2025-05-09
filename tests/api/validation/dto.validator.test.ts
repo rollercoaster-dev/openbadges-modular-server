@@ -10,8 +10,9 @@ import {
   isUpdateIssuerDto,
   isUpdateBadgeClassDto,
   isUpdateAssertionDto
-} from '../../../src/api/validation/dto.validator';
-import { MissingRequiredFieldsError } from '../../../src/utils/errors/validation.errors';
+} from '@/api/validation/dto.validator';
+import { MissingRequiredFieldsError } from '@/utils/errors/validation.errors';
+import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 describe('validateCreateIssuerDto', () => {
   it('should validate a valid CreateIssuerDto', () => {
@@ -61,7 +62,7 @@ describe('validateCreateBadgeClassDto', () => {
       name: 'Test Badge',
       description: 'A test badge',
       image: 'https://example.com/badge.png',
-      issuer: 'https://example.com/issuer'
+      issuer: EXAMPLE_ISSUER_URL
     };
     
     // Should not throw an error

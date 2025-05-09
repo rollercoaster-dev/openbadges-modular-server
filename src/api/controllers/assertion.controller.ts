@@ -110,7 +110,7 @@ export class AssertionController {
       return false;
     }
 
-    const permissions = user.claims.permissions as UserPermission[] || [];
+    const permissions = user.claims['permissions'] as UserPermission[] || [];
     return permissions.includes(permission);
   }
 
@@ -130,10 +130,13 @@ export class AssertionController {
   ): Promise<AssertionResponseDto> {
     // Check if user has permission to create assertions
     if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create an assertion without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an assertion without permission`);
       throw new Error('Insufficient permissions to create assertion');
     }
     try {
+      // Log the raw data for debugging
+      logger.debug('Raw assertion creation data', { data });
+
       // Validate incoming data using Zod schema first!
       const validatedData = CreateAssertionSchema.parse(data);
 
@@ -167,7 +170,11 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          // Handle both string and object issuer IDs
+          const issuerId = typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+          const issuer = await this.issuerRepository.findById(issuerId);
           return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
         }
       }
@@ -193,7 +200,11 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          // Handle both string and object issuer IDs
+          const issuerId = typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+          const issuer = await this.issuerRepository.findById(issuerId);
           // Pass entities directly
           return assertion.toJsonLd(version, badgeClass, issuer);
         }
@@ -219,7 +230,8 @@ export class AssertionController {
     if (version === BadgeVersion.V3) {
       const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
       if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+        const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
@@ -240,7 +252,8 @@ export class AssertionController {
     if (version === BadgeVersion.V3) {
       const badgeClass = await this.badgeClassRepository.findById(toIRI(badgeClassId) as Shared.IRI);
       if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+        const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return assertions.map(assertion =>
           convertAssertionToJsonLd(assertion, version, badgeClass, issuer)
@@ -267,7 +280,7 @@ export class AssertionController {
   ): Promise<AssertionResponseDto | null> {
     // Check if user has permission to update assertions
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update assertion ${id} without permission`);
       throw new Error('Insufficient permissions to update assertion');
     }
     try {
@@ -293,7 +306,8 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+          const issuer = await this.issuerRepository.findById(issuerIri);
           return convertAssertionToJsonLd(updatedAssertion, version, badgeClass, issuer);
         }
       }
@@ -314,7 +328,7 @@ export class AssertionController {
   async revokeAssertion(id: string, reason: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
     // Check if user has permission to revoke assertions
     if (user && !this.hasPermission(user, UserPermission.REVOKE_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to revoke assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to revoke assertion ${id} without permission`);
       throw new Error('Insufficient permissions to revoke assertion');
     }
 
@@ -363,7 +377,8 @@ export class AssertionController {
       }
 
       // Verify issuer exists
-      const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+      const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+      const issuer = await this.issuerRepository.findById(issuerIri);
       if (!issuer) {
         return {
           isValid: false,
@@ -404,7 +419,7 @@ export class AssertionController {
   ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
     // Check if user has permission to sign assertions
     if (user && !this.hasPermission(user, UserPermission.SIGN_ASSERTION)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to sign assertion ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to sign assertion ${id} without permission`);
       throw new Error('Insufficient permissions to sign assertion');
     }
     try {
@@ -432,9 +447,10 @@ export class AssertionController {
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
-        const issuer = badgeClass?.issuer
-          ? await this.issuerRepository.findById(badgeClass.issuer)
+        const issuerIri = badgeClass?.issuer 
+          ? (typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI)
           : null;
+        const issuer = issuerIri ? await this.issuerRepository.findById(issuerIri) : null;
         // Pass entities directly
         return signedAssertion.toJsonLd(version, badgeClass, issuer);
       } else {

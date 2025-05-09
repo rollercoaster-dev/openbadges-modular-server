@@ -33,7 +33,7 @@ export class PostgresPlatformMapper {
 
     // Create and return the domain entity
     return Platform.create({
-      id: id.toString() as Shared.IRI,
+      id: (id as unknown).toString() as Shared.IRI,
       name: name as string,
       description: description as string,
       clientId: clientId as string,
@@ -65,9 +65,8 @@ export class PostgresPlatformMapper {
       publicKey,
       webhookUrl,
       status,
-      createdAt,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      updatedAt
+      createdAt
+      // updatedAt is intentionally omitted as we always set it to the current date
     } = obj;
 
     // Create and return the database record

@@ -2,8 +2,8 @@
  * Tests for the Platform entity
  */
 import { describe, test, expect } from 'bun:test';
-import { Platform } from '../../../src/domains/backpack/platform.entity';
-import { PlatformStatus } from '../../../src/domains/backpack/backpack.types';
+import { Platform } from '@/domains/backpack/platform.entity';
+import { PlatformStatus } from '@/domains/backpack/backpack.types';
 import { Shared } from 'openbadges-types';
 
 describe('Platform Entity', () => {

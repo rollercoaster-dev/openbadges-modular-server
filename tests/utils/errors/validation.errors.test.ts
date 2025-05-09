@@ -8,7 +8,7 @@ import {
   InvalidDateFormatError, 
   MissingRequiredFieldError,
   MissingRequiredFieldsError
-} from '../../../src/utils/errors/validation.errors';
+} from '@/utils/errors/validation.errors';
 
 describe('ValidationError', () => {
   it('should create a ValidationError with the correct name and message', () => {

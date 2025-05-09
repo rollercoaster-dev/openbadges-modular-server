@@ -9,6 +9,81 @@
 
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
+// Users table - defined first to avoid circular references
+export const users = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    username: text('username').notNull().unique(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash'),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    roles: text('roles').notNull().default('[]'), // JSON stored as text
+    permissions: text('permissions').notNull().default('[]'), // JSON stored as text
+    isActive: integer('is_active').notNull().default(1),
+    lastLogin: integer('last_login'),
+    metadata: text('metadata'), // JSON stored as text
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on username for faster lookups
+      usernameIdx: index('user_username_idx').on(table.username),
+      // Add index on email for faster lookups
+      emailIdx: index('user_email_idx').on(table.email),
+    };
+  }
+);
+
+// Roles table
+export const roles = sqliteTable(
+  'roles',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    description: text('description'),
+    permissions: text('permissions').notNull(), // JSON stored as text
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on name for faster lookups
+      nameIdx: index('role_name_idx').on(table.name),
+    };
+  }
+);
+
+// API Keys table
+export const apiKeys = sqliteTable(
+  'api_keys',
+  {
+    id: text('id').primaryKey(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    description: text('description'),
+    permissions: text('permissions').notNull(), // JSON stored as text
+    revoked: integer('revoked').notNull().default(0),
+    revokedAt: integer('revoked_at'),
+    lastUsed: integer('last_used'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on key for faster lookups
+      keyIdx: index('api_key_key_idx').on(table.key),
+      // Add index on userId for faster lookups
+      userIdIdx: index('api_key_user_id_idx').on(table.userId),
+      // Add index on revoked for filtering
+      revokedIdx: index('api_key_revoked_idx').on(table.revoked),
+    };
+  }
+);
+
 // Issuers table
 export const issuers = sqliteTable(
   'issuers',
@@ -99,102 +174,6 @@ export const assertions = sqliteTable(
   }
 );
 
-// API Keys table
-export const apiKeys = sqliteTable(
-  'api_keys',
-  {
-    id: text('id').primaryKey(),
-    key: text('key').notNull().unique(),
-    name: text('name').notNull(),
-    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    description: text('description'),
-    permissions: text('permissions').notNull(), // JSON stored as text
-    revoked: integer('revoked').notNull().default(0),
-    revokedAt: integer('revoked_at'),
-    lastUsed: integer('last_used'),
-    createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on key for faster lookups
-      keyIdx: index('api_key_key_idx').on(table.key),
-      // Add index on userId for faster lookups
-      userIdIdx: index('api_key_user_id_idx').on(table.userId),
-      // Add index on revoked for filtering
-      revokedIdx: index('api_key_revoked_idx').on(table.revoked),
-    };
-  }
-);
-
-// Roles table
-export const roles = sqliteTable(
-  'roles',
-  {
-    id: text('id').primaryKey(),
-    name: text('name').notNull().unique(),
-    description: text('description'),
-    permissions: text('permissions').notNull(), // JSON stored as text
-    createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on name for faster lookups
-      nameIdx: index('role_name_idx').on(table.name),
-    };
-  }
-);
-
-// Users table
-export const users = sqliteTable(
-  'users',
-  {
-    id: text('id').primaryKey(),
-    username: text('username').notNull().unique(),
-    email: text('email').notNull().unique(),
-    passwordHash: text('password_hash'),
-    firstName: text('first_name'),
-    lastName: text('last_name'),
-    roles: text('roles').notNull().default('[]'), // JSON stored as text
-    permissions: text('permissions').notNull().default('[]'), // JSON stored as text
-    isActive: integer('is_active').notNull().default(1),
-    lastLogin: integer('last_login'),
-    metadata: text('metadata'), // JSON stored as text
-    createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on username for faster lookups
-      usernameIdx: index('user_username_idx').on(table.username),
-      // Add index on email for faster lookups
-      emailIdx: index('user_email_idx').on(table.email),
-    };
-  }
-);
-
-// User Roles table (many-to-many relationship)
-export const userRoles = sqliteTable(
-  'user_roles',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
-    createdAt: integer('created_at').notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on userId for faster lookups
-      userIdIdx: index('user_role_user_id_idx').on(table.userId),
-      // Add index on roleId for faster lookups
-      roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
-      // Add index on userId and roleId
-      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
-    };
-  }
-);
-
 // Platforms table - for registering external platforms
 export const platforms = sqliteTable(
   'platforms',
@@ -234,6 +213,27 @@ export const platformUsers = sqliteTable(
     return {
       platformUserIdx: index('platform_user_idx').on(table.platformId, table.externalUserId),
       emailIdx: index('platform_user_email_idx').on(table.email),
+    };
+  }
+);
+
+// User Roles table (many-to-many relationship)
+export const userRoles = sqliteTable(
+  'user_roles',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on userId for faster lookups
+      userIdIdx: index('user_role_user_id_idx').on(table.userId),
+      // Add index on roleId for faster lookups
+      roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
+      // Add index on userId and roleId
+      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
     };
   }
 );

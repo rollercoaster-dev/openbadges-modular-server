@@ -1,7 +1,16 @@
 /**
  * Middleware for validating Open Badges entities
  *
- * This file contains middleware functions for validating entities
+ * This filefunction formatZodErrors(result: any): Record<string, string[]> {
+  const formattedErrors: Record<string, string[]> = {};
+
+  // Default error when we can't process the result
+  if (!result || (result.success === true)) {
+    return { general: ['Unknown validation error'] };
+  }
+
+  if (result.error && result.error.errors) {
+    result.error.errors.forEach(err => {tains middleware functions for validating entities
  * before they are processed by the controllers.
  */
 
@@ -9,16 +18,11 @@ import { validateIssuer, validateBadgeClass, validateAssertion } from './entity-
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
-import { Context } from 'elysia';
-
-/**
- * Response type for validation middleware
- */
-interface ValidationResponse {
-  success: boolean;
-  error?: string;
-  details?: Record<string, string[]>;
-}
+import { MiddlewareHandler } from 'hono';
+import { createMiddleware } from 'hono/factory';
+import { CreateIssuerSchema } from '../../api/validation/issuer.schemas';
+import { CreateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
+import { CreateAssertionSchema } from '../../api/validation/assertion.schemas';
 
 /**
  * Convert validation errors array to a record format
@@ -67,79 +71,166 @@ function formatValidationErrors(errors: string[]): Record<string, string[]> {
 }
 
 /**
- * Middleware for validating an issuer
- * @param issuer The issuer to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * Format Zod validation errors into a record format
+ * @param result Zod validation result
+ * @returns Record with error messages grouped by field
  */
-export function validateIssuerMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatZodErrors(result: any): Record<string, string[]> {
+  const formattedErrors: Record<string, string[]> = {};
 
-  if (body && typeof body === 'object') {
-    const issuerData = Issuer.create(body);
-    const { isValid, errors } = validateIssuer(issuerData);
-
-    if (!isValid) {
-      set.status = 400;
-      return {
-        success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
-    }
+  // Handle the case where result is not a SafeParseError or doesn't have errors
+  if (!result || result.success === true || !result.error || !result.error.errors) {
+    return { general: ['Unknown validation error'] };
   }
 
-  return { success: true };
+  // Process the errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result.error.errors.forEach((err: any) => {
+    const path = err.path.join('.') || 'general';
+    if (!formattedErrors[path]) {
+      formattedErrors[path] = [];
+    }
+    formattedErrors[path].push(err.message);
+  });
+
+  return formattedErrors;
+}
+
+/**
+ * Middleware for validating an issuer
+ * @returns A Hono middleware handler
+ */
+export function validateIssuerMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // First validate with Zod schema
+      const result = CreateIssuerSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
+
+      // Then validate with entity validator for additional checks
+      if (body && typeof body === 'object') {
+        const issuerData = Issuer.create(body);
+        const { isValid, errors } = validateIssuer(issuerData);
+
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
+        success: false,
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
+    }
+  });
 }
 
 /**
  * Middleware for validating a badge class
- * @param badgeClass The badge class to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * @returns A Hono middleware handler
  */
-export function validateBadgeClassMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+export function validateBadgeClassMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
 
-  if (body && typeof body === 'object') {
-    const badgeClassData = BadgeClass.create(body);
-    const { isValid, errors } = validateBadgeClass(badgeClassData);
+      // First validate with Zod schema
+      const result = CreateBadgeClassSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
 
-    if (!isValid) {
-      set.status = 400;
-      return {
+      // Then validate with entity validator for additional checks
+      if (body && typeof body === 'object') {
+        const badgeClassData = BadgeClass.create(body);
+        const { isValid, errors } = validateBadgeClass(badgeClassData);
+
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
         success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
     }
-  }
-
-  return { success: true };
+  });
 }
 
 /**
  * Middleware for validating an assertion
- * @param assertion The assertion to validate
- * @param set The Elysia set object for setting response status
- * @returns The validation result or throws an error
+ * @returns A Hono middleware handler
  */
-export function validateAssertionMiddleware(context: Context): ValidationResponse | void {
-  const { body, set } = context;
+export function validateAssertionMiddleware(): MiddlewareHandler {
+  return createMiddleware(async (c, next) => {
+    try {
+      const body = await c.req.json();
 
-  if (body && typeof body === 'object') {
-    const assertionData = Assertion.create(body);
-    const { isValid, errors } = validateAssertion(assertionData);
+      // First validate with Zod schema
+      const result = CreateAssertionSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
 
-    if (!isValid) {
-      set.status = 400;
-      return {
+      // Then validate with entity validator for additional checks
+      if (body && typeof body === 'object') {
+        // Map 'badge' to 'badgeClass' for proper validation
+        const mappedBody = { ...body };
+        if ('badge' in mappedBody && !('badgeClass' in mappedBody)) {
+          mappedBody.badgeClass = mappedBody.badge;
+        }
+
+        const assertionData = Assertion.create(mappedBody);
+        const { isValid, errors } = validateAssertion(assertionData);
+
+        if (!isValid) {
+          return c.json({
+            success: false,
+            error: 'Validation error',
+            details: formatValidationErrors(errors)
+          }, 400);
+        }
+      }
+
+      await next();
+    } catch (_error) {
+      return c.json({
         success: false,
-        error: 'Validation error',
-        details: formatValidationErrors(errors)
-      };
+        error: 'Invalid request body',
+        details: { general: ['Request body must be valid JSON'] }
+      }, 400);
     }
-  }
-
-  return { success: true };
+  });
 }

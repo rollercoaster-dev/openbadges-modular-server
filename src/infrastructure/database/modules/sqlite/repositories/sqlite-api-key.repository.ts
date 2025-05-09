@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { drizzle } from 'drizzle-orm/bun-sqlite';
+// import { drizzle } from 'drizzle-orm/bun-sqlite'; // Will be used in future implementation
 import { Database } from 'bun:sqlite';
 import { ApiKey } from '@domains/auth/apiKey.entity';
 import type { ApiKeyRepository } from '@domains/auth/apiKey.repository';
@@ -16,10 +16,9 @@ import { logger } from '@utils/logging/logger.service';
 // import { apiKeys } from '../schema';
 
 export class SqliteApiKeyRepository implements ApiKeyRepository {
-  private db: ReturnType<typeof drizzle>;
-
-  constructor(client: Database) {
-    this.db = drizzle(client);
+  // Database client will be used in future implementation
+  constructor(_client: Database) {
+    // Store client for future use when implementation is added
   }
 
   async create(apiKey: ApiKey): Promise<ApiKey> {

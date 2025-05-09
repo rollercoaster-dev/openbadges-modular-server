@@ -16,7 +16,8 @@ interface PlatformInput {
 }
 
 class PostgresPlatformRepository {
-  constructor(private client: unknown) {}
+   
+  constructor(_client: unknown) {}
 
   async create(platform: PlatformInput): Promise<Platform> {
     return Platform.create({
@@ -103,7 +104,7 @@ class PostgresPlatformRepository {
   }
 }
 // Import but prefix with _ to avoid unused var warning
-import { PostgresPlatformMapper as _PostgresPlatformMapper } from '../../../../../../src/infrastructure/database/modules/postgresql/mappers/postgres-platform.mapper';
+import { PostgresPlatformMapper as _PostgresPlatformMapper } from '@/infrastructure/database/modules/postgresql/mappers/postgres-platform.mapper';
 
 // Skip mocking drizzle and mappers since we're using a mock class
 

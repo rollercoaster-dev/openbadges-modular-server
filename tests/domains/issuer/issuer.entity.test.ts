@@ -6,15 +6,16 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { Issuer } from '../../../src/domains/issuer/issuer.entity';
+import { Issuer } from '@/domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
+import { EXAMPLE_EDU_URL } from '@/constants/urls';
 
 describe('Issuer Entity', () => {
   // Test data
   const validIssuerData = {
     id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
     name: 'Example University',
-    url: 'https://example.edu' as Shared.IRI,
+    url: EXAMPLE_EDU_URL as Shared.IRI,
     email: 'badges@example.edu',
     description: 'A leading institution in online education',
     image: 'https://example.edu/logo.png' as Shared.IRI
@@ -80,8 +81,13 @@ describe('Issuer Entity', () => {
     const jsonLd = issuer.toJsonLd();
 
     expect(jsonLd).toBeDefined();
-    expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
-    expect(jsonLd.type).toBe('Profile');
+    // Context is now an array in OB3
+    expect(Array.isArray(jsonLd['@context']) ?
+      jsonLd['@context'].includes('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json') :
+      jsonLd['@context'] === 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+    ).toBe(true);
+    // Type can be a string or array in OB3
+    expect(Array.isArray(jsonLd.type) ? jsonLd.type.includes('Issuer') : jsonLd.type === 'Issuer').toBe(true);
     expect(jsonLd.id).toBe(validIssuerData.id);
     expect(jsonLd.name).toBe(validIssuerData.name);
     expect(jsonLd.url).toBe(validIssuerData.url);

@@ -6,7 +6,7 @@
  * according to the Open Badges 3.0 specification.
  */
 
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { 
   generateKeyPair, 
   signData, 
@@ -14,7 +14,7 @@ import {
   createVerification, 
   verifyAssertion,
   hashData 
-} from '../../../src/utils/crypto/signature';
+} from '@/utils/crypto/signature';
 
 describe('Cryptographic Utilities', () => {
   describe('Key Pair Generation', () => {
@@ -71,7 +71,7 @@ describe('Cryptographic Utilities', () => {
   });
   
   describe('Assertion Verification', () => {
-    it('should create and verify an assertion verification object', () => {
+    it('should create a verification object with the correct structure', () => {
       const keyPair = generateKeyPair();
       const assertionId = '123e4567-e89b-12d3-a456-426614174002';
       
@@ -79,10 +79,22 @@ describe('Cryptographic Utilities', () => {
       const verification = createVerification(assertionId, keyPair.privateKey);
       
       expect(verification).toBeDefined();
-      expect(verification.type).toBe('SignedBadge');
-      expect(verification.creator).toBeDefined();
+      expect(verification.type).toBe('DataIntegrityProof');
+      expect(verification.cryptosuite).toBe('rsa-sha256');
       expect(verification.created).toBeDefined();
-      expect(verification.signatureValue).toBeDefined();
+      expect(verification.proofPurpose).toBe('assertionMethod');
+      expect(verification.verificationMethod).toBeDefined();
+      // Check if verificationMethod matches the expected IRI format
+      expect(verification.verificationMethod).toMatch(/^https?:\/\/[^/]+\/public-keys\/default$/);
+      expect(verification.proofValue).toBeDefined();
+    });
+
+    it('should create a verification object with a valid signature', () => {
+      const keyPair = generateKeyPair();
+      const assertionId = '123e4567-e89b-12d3-a456-426614174002';
+      
+      // Create verification object
+      const verification = createVerification(assertionId, keyPair.privateKey);
       
       // Verify the assertion
       const isValid = verifyAssertion(assertionId, verification, keyPair.publicKey);
@@ -106,7 +118,7 @@ describe('Cryptographic Utilities', () => {
       expect(isValidNoVerification).toBe(false);
       
       // Verify with missing signature
-      const isValidNoSignature = verifyAssertion(assertionId, { ...verification, signatureValue: null }, keyPair.publicKey);
+      const isValidNoSignature = verifyAssertion(assertionId, { ...verification, proofValue: null }, keyPair.publicKey);
       expect(isValidNoSignature).toBe(false);
       
       // Generate a different key pair
@@ -115,6 +127,39 @@ describe('Cryptographic Utilities', () => {
       // Verify with wrong public key
       const isValidWrongKey = verifyAssertion(assertionId, verification, otherKeyPair.publicKey);
       expect(isValidWrongKey).toBe(false);
+    });
+  });
+  
+  describe('verifyAssertion', () => {
+    const assertionId = 'test-assertion-id';
+    let localKeyPair: { publicKey: string; privateKey: string };
+
+    beforeEach(() => {
+      localKeyPair = generateKeyPair();
+    });
+
+    it('should return true for a valid signature', () => {
+      const verification = createVerification(assertionId, localKeyPair.privateKey);
+      const isValid = verifyAssertion(assertionId, verification, localKeyPair.publicKey);
+      expect(isValid).toBe(true);
+    });
+
+    it('should return false for an invalid signature', () => {
+      const verification = createVerification(assertionId, localKeyPair.privateKey);
+      const tamperedVerification = { ...verification, proofValue: 'tampered' };
+      const isValid = verifyAssertion(assertionId, tamperedVerification, localKeyPair.publicKey);
+      expect(isValid).toBe(false);
+    });
+
+    it('should return false if verification object is missing proofValue', () => {
+      const verification = createVerification(assertionId, localKeyPair.privateKey);
+      const isValidNoSignature = verifyAssertion(assertionId, { ...verification, proofValue: null }, localKeyPair.publicKey);
+      expect(isValidNoSignature).toBe(false);
+    });
+
+    it('should return false if verification object is null', () => {
+      const isValidNoVerification = verifyAssertion(assertionId, null, localKeyPair.publicKey);
+      expect(isValidNoVerification).toBe(false);
     });
   });
   

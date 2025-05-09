@@ -1,14 +1,15 @@
 /**
  * Authentication Middleware
  *
- * This middleware integrates with Elysia.js and handles authentication for API routes.
+ * This middleware handles authentication for API routes.
  * It uses the registered authentication adapters to authenticate requests and
  * establishes a JWT-based session if authentication is successful.
  *
  * It also provides role-based access control functionality.
  */
 
-import { Elysia } from 'elysia';
+import { MiddlewareHandler } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { AuthAdapter } from '../adapters/auth-adapter.interface';
 import { JwtService } from '../services/jwt.service';
 import { logger } from '../../utils/logging/logger.service';
@@ -23,6 +24,12 @@ interface AuthenticatedUserContext {
   provider: string;
   claims: Record<string, unknown>;
 }
+
+// Define the variables that will be set in the context
+export type AuthVariables = {
+  isAuthenticated: boolean;
+  user: AuthenticatedUserContext | null;
+};
 
 /**
  * Check if a path is public (no authentication required)
@@ -50,14 +57,6 @@ function isPublicPath(path: string): boolean {
 }
 
 /**
- * Minimal context for authentication logic
- */
-export interface AuthContext {
-  request: Request;
-  set: { headers: Record<string, string | number>; status?: number | string };
-}
-
-/**
  * Register an authentication adapter
  * @param adapter The adapter to register
  */
@@ -67,9 +66,9 @@ export function registerAuthAdapter(adapter: AuthAdapter): void {
 }
 
 /**
- * Derive handler for authentication middleware
+ * Authentication handler for middleware
  */
-export async function authDerive({ request, set }: AuthContext): Promise<{ isAuthenticated: boolean; user: AuthenticatedUserContext | null }> {
+async function authenticateRequest(request: Request): Promise<{ isAuthenticated: boolean; user: AuthenticatedUserContext | null; token?: string }> {
   try {
     // Skip authentication for certain paths (e.g., public endpoints)
     const url = new URL(request.url);
@@ -144,16 +143,14 @@ export async function authDerive({ request, set }: AuthContext): Promise<{ isAut
             claims: result.claims
           });
 
-          // Set token in response header
-          set.headers['X-Auth-Token'] = token;
-
           return {
             isAuthenticated: true,
             user: {
               id: result.userId,
               provider: result.provider,
               claims: result.claims || {}
-            }
+            },
+            token
           };
         }
       }
@@ -169,29 +166,45 @@ export async function authDerive({ request, set }: AuthContext): Promise<{ isAut
 }
 
 /**
- * Authentication middleware for Elysia.js
+ * Authentication middleware for Hono
  */
-export const authMiddleware = new Elysia({ name: 'auth-middleware' })
-  .derive(async ctx => {
-    const authResult = await authDerive({ request: ctx.request, set: ctx.set });
+export function createAuthMiddleware(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
+    const authResult = await authenticateRequest(c.req.raw);
 
-    // Add authentication result to context
-    return {
-      isAuthenticated: authResult.isAuthenticated,
-      user: authResult.user
-    };
+    // Set authentication result in context
+    c.set('isAuthenticated', authResult.isAuthenticated);
+    c.set('user', authResult.user);
+
+    // If token was generated, set it in response header
+    if (authResult.token) {
+      c.header('X-Auth-Token', authResult.token);
+    }
+
+    // Continue to the next middleware/handler
+    await next();
   });
+}
 
 /**
  * Debug middleware to log authentication status
  */
-export const authDebugMiddleware = new Elysia({ name: 'auth-debug-middleware' })
-  .derive(async ctx => {
-    // Cast to any to avoid TypeScript errors with the derived context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { isAuthenticated, user, request } = ctx as any;
-    const authHeader = request.headers.get('authorization');
+export function createAuthDebugMiddleware(): MiddlewareHandler<{
+  Variables: AuthVariables;
+}> {
+  return createMiddleware<{
+    Variables: AuthVariables;
+  }>(async (c, next) => {
+    const isAuthenticated = c.get('isAuthenticated');
+    const user = c.get('user');
+    const authHeader = c.req.header('authorization');
     logger.debug(`Auth status: ${isAuthenticated ? 'authenticated' : 'not authenticated'}, User: ${user ? user.id : 'none'}, Auth header: ${authHeader || 'none'}`);
-    return {};
+
+    await next();
   });
+}
 

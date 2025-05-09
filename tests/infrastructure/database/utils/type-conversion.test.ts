@@ -1,11 +1,10 @@
-
 import { describe, expect, it } from 'bun:test';
 import {
   convertJson,
   convertTimestamp,
   convertUuid,
   convertBoolean
-} from '../../../../src/infrastructure/database/utils/type-conversion';
+} from '@/infrastructure/database/utils/type-conversion';
 
 describe('Database Type Conversion Utilities', () => {
   describe('convertJson', () => {

@@ -4,17 +4,19 @@
  * This example shows how to use the type conversion utilities to handle
  * differences between PostgreSQL and SQLite when implementing a repository.
  */
+// This is an example file with intentionally unused methods to demonstrate the pattern
+// @ts-nocheck
 
 // This is an example file and doesn't need to import actual modules
 // In a real implementation, you would import from the actual paths
 
-import { Issuer } from '../../src/domains/issuer/issuer.entity';
+import { Issuer } from '@/domains/issuer/issuer.entity';
 import {
   convertJson,
   convertTimestamp,
   convertUuid
-} from '../../src/infrastructure/database/utils/type-conversion';
-import { config } from '../../src/config/config';
+} from '@/infrastructure/database/utils/type-conversion';
+import { config } from '@/config/config';
 
 /**
  * Example repository implementation that uses type conversion utilities
@@ -33,7 +35,9 @@ export class ExampleIssuerRepository {
    * @param issuer The issuer entity to convert
    * @returns The database record
    */
-  private entityToRecord(issuer: Issuer): any {
+  // This method is not used in this example but would be used in a real implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _entityToRecord(issuer: Issuer): any {
     return {
       id: convertUuid(issuer.id, this.dbType, 'to'),
       name: issuer.name,
@@ -56,7 +60,9 @@ export class ExampleIssuerRepository {
    * @param record The database record to convert
    * @returns The issuer entity
    */
-  private recordToEntity(record: any): any {
+  // This method is not used in this example but would be used in a real implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _recordToEntity(record: any): any {
     // Create a mock Issuer object with toObject method
     const issuer = {
       id: convertUuid(record.id, this.dbType, 'from') as string,
@@ -127,7 +133,8 @@ export class ExampleIssuerRepository {
   async create(issuer: Issuer): Promise<any> {
     try {
       // Convert entity to database record
-      const _record = this.entityToRecord(issuer);
+      // Commented out as it's not used in this example
+      // const _record = this._entityToRecord(issuer);
 
       // This is just an example - in a real implementation, you would:
       // 1. Insert the record into the database using the appropriate client

@@ -12,14 +12,16 @@ import { Shared } from 'openbadges-types';
 import { toIRI } from '../types/iri-utils';
 
 /**
- * Represents the structure of the verification object created for signed badges.
+ * Represents the structure of a Data Integrity Proof object.
+ * Aligns with W3C Verifiable Credentials Data Model and Open Badges 3.0.
  */
-// Define a type that matches OB2.VerificationObject but uses IRI
-export interface SignedBadgeVerification {
-  type: 'SignedBadge'; // Assuming this specific type for now
-  creator: Shared.IRI;
-  created: string; // ISO String
-  signatureValue: string;
+export interface DataIntegrityProof {
+  type: 'DataIntegrityProof';
+  cryptosuite: string; // e.g., 'rsa-sha256', 'RsaSignature2018'
+  created: Shared.DateTime; // ISO 8601 datetime string, branded type
+  proofPurpose: 'assertionMethod' | string; // Typically 'assertionMethod' for badges
+  verificationMethod: Shared.IRI; // IRI of the public key
+  proofValue: string; // The signature, base64 encoded
 }
 
 /**
@@ -80,22 +82,24 @@ export function verifySignature(data: string, signature: string, publicKey: stri
  * Creates a verification object for an assertion
  * @param dataToSign The data to sign (typically a canonical representation of the assertion)
  * @param privateKey The private key to use for signing
- * @returns A verification object with the signature
+ * @returns A DataIntegrityProof object with the signature
  */
-export function createVerification(dataToSign: string, privateKey: string): SignedBadgeVerification {
+export function createVerification(dataToSign: string, privateKey: string): DataIntegrityProof {
   try {
     // Sign the data
     const signature = signData(dataToSign, privateKey);
 
-    // Create the verification object
+    // Create the DataIntegrityProof object
     return {
-      type: 'SignedBadge',
-      creator: toIRI(`${config.openBadges.baseUrl}/public-keys/default`), // Default creator URL from config
-      created: new Date().toISOString(),
-      signatureValue: signature
+      type: 'DataIntegrityProof',
+      cryptosuite: 'rsa-sha256', // Placeholder, consider more specific like 'RsaSignature2018'
+      created: new Date().toISOString() as Shared.DateTime,
+      proofPurpose: 'assertionMethod',
+      verificationMethod: toIRI(`${config.openBadges.baseUrl}/public-keys/default`), // Default public key IRI
+      proofValue: signature
     };
   } catch (error) {
-    logger.logError('Failed to create verification', error as Error);
+    logger.logError('Failed to create verification proof', error as Error);
     throw error;
   }
 }
@@ -103,21 +107,21 @@ export function createVerification(dataToSign: string, privateKey: string): Sign
 /**
  * Verifies an assertion's signature
  * @param dataToVerify The data to verify (typically a canonical representation of the assertion)
- * @param verification The verification object with the signature
+ * @param proof The DataIntegrityProof object with the signature
  * @param publicKey The public key to use for verification
  * @returns True if the signature is valid, false otherwise
  */
-export function verifyAssertion(dataToVerify: string, verification: SignedBadgeVerification, publicKey: string): boolean {
+export function verifyAssertion(dataToVerify: string, proof: DataIntegrityProof, publicKey: string): boolean {
   try {
-    if (!verification || !verification.signatureValue) {
-      logger.warn('Verification object is missing or has no signature value');
+    if (!proof || !proof.proofValue) {
+      logger.warn('Proof object is missing or has no proofValue');
       return false;
     }
 
     // Verify the signature
-    return verifySignature(dataToVerify, verification.signatureValue, publicKey);
+    return verifySignature(dataToVerify, proof.proofValue, publicKey);
   } catch (error) {
-    logger.logError('Failed to verify assertion', error as Error);
+    logger.logError('Failed to verify assertion proof', error as Error);
     return false;
   }
 }

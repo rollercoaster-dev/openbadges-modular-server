@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { HealthCheckService } from '../../../src/utils/monitoring/health-check.service';
+import { HealthCheckService } from '@/utils/monitoring/health-check.service';
 
 describe('Health Check Service', () => {
   it('should return a valid health check result', async () => {

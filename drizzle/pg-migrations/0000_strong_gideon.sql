@@ -2,7 +2,7 @@ CREATE TABLE "api_keys" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"key" text NOT NULL,
 	"name" text NOT NULL,
-	"user_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
 	"description" text,
 	"permissions" jsonb NOT NULL,
 	"revoked" boolean DEFAULT false NOT NULL,
@@ -101,16 +101,36 @@ CREATE TABLE "user_assertions" (
 --> statement-breakpoint
 CREATE TABLE "user_roles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
 	"role_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "users" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"username" varchar(50) NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"password_hash" text,
+	"first_name" varchar(50),
+	"last_name" varchar(50),
+	"roles" jsonb DEFAULT '[]' NOT NULL,
+	"permissions" jsonb DEFAULT '[]' NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"last_login" timestamp,
+	"metadata" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "users_username_unique" UNIQUE("username"),
+	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "assertions" ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk" FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "badge_classes" ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk" FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "platform_users" ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk" FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_assertions" ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_assertions" ADD CONSTRAINT "user_assertions_assertion_id_assertions_id_fk" FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "api_key_key_idx" ON "api_keys" USING btree ("key");--> statement-breakpoint
 CREATE INDEX "api_key_user_id_idx" ON "api_keys" USING btree ("user_id");--> statement-breakpoint
@@ -135,4 +155,6 @@ CREATE INDEX "user_assertion_idx" ON "user_assertions" USING btree ("user_id","a
 CREATE INDEX "user_assertion_added_at_idx" ON "user_assertions" USING btree ("added_at");--> statement-breakpoint
 CREATE INDEX "user_role_user_id_idx" ON "user_roles" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "user_role_role_id_idx" ON "user_roles" USING btree ("role_id");--> statement-breakpoint
-CREATE INDEX "user_role_user_id_role_id_idx" ON "user_roles" USING btree ("user_id","role_id");
+CREATE INDEX "user_role_user_id_role_id_idx" ON "user_roles" USING btree ("user_id","role_id");--> statement-breakpoint
+CREATE INDEX "user_username_idx" ON "users" USING btree ("username");--> statement-breakpoint
+CREATE INDEX "user_email_idx" ON "users" USING btree ("email");

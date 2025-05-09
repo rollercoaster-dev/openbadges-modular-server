@@ -182,9 +182,9 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
     if ('signatureValue' in assertion.verification && 'creator' in assertion.verification && 'created' in assertion.verification) {
       const verificationProof = assertion.verification as OB3.Proof;
 
-      if (!verificationProof.creator) {
+      if (!verificationProof['creator']) {
         errors.push('Verification creator is required');
-      } else if (typeof verificationProof.creator === 'string' && !isValidUrl(verificationProof.creator)) {
+      } else if (typeof verificationProof['creator'] === 'string' && !isValidUrl(verificationProof['creator'])) {
         errors.push('Verification creator must be a valid URL');
       }
 
@@ -194,7 +194,7 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
         errors.push('Verification created must be a valid ISO date string');
       }
 
-      if (!verificationProof.signatureValue) {
+      if (!verificationProof['signatureValue']) {
         errors.push('Verification signatureValue is required');
       }
     } else if (assertion.verification.type === 'hosted') {

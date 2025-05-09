@@ -20,9 +20,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
       "@domains/*": ["src/domains/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
       "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"],
+      "@types/*": ["src/types/*"],
       "@tests/*": ["tests/*"]
     },
 
@@ -34,9 +37,13 @@
     "ignoreDeprecations": "5.0",
 
     // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": false
   },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["drizzle.config.ts", "node_modules"]
 }

@@ -3,8 +3,8 @@
  */
 
 import { describe, test, expect, spyOn, beforeEach, afterEach } from 'bun:test';
-import { QueryLoggerService } from '../../../../src/infrastructure/database/utils/query-logger.service';
-import { logger } from '../../../../src/utils/logging/logger.service';
+import { QueryLoggerService } from '@/infrastructure/database/utils/query-logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
 describe('QueryLoggerService', () => {
   let warnSpy: ReturnType<typeof spyOn>;

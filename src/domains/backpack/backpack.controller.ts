@@ -15,12 +15,16 @@ import { UserPermission } from '../user/user.entity';
 import {
   CreatePlatformRequest,
   UpdatePlatformRequest,
-  PlatformApiResponse,
+  TypedApiResponse,
+  PlatformResponse,
   PlatformListApiResponse,
   UserAssertionListApiResponse,
   SuccessApiResponse,
   ErrorApiResponse
 } from './api.types';
+
+// Define PlatformApiResponse type
+type PlatformApiResponse = TypedApiResponse<{ platform?: PlatformResponse; error?: string }>;
 import { PlatformCreateParams, PlatformUpdateParams } from './repository.types';
 
 export class BackpackController {
@@ -37,7 +41,7 @@ export class BackpackController {
       return false;
     }
 
-    const permissions = user.claims.permissions as UserPermission[] || [];
+    const permissions = user.claims['permissions'] as UserPermission[] || [];
     return permissions.includes(permission);
   }
 
@@ -50,7 +54,7 @@ export class BackpackController {
   async createPlatform(data: CreatePlatformRequest, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse }> {
     // Check if user has permission to manage platforms
     if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create a platform without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create a platform without permission`);
       return {
         status: 403,
         body: {
@@ -96,7 +100,7 @@ export class BackpackController {
   async getAllPlatforms(user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformListApiResponse }> {
     // Check if user has permission to manage platforms
     if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to get all platforms without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to get all platforms without permission`);
       return {
         status: 403,
         body: {
@@ -136,7 +140,7 @@ export class BackpackController {
   async getPlatformById(id: Shared.IRI, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
     // Check if user has permission to manage platforms
     if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to get platform ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to get platform ${id} without permission`);
       return {
         status: 403,
         body: {
@@ -185,7 +189,7 @@ export class BackpackController {
   async updatePlatform(id: Shared.IRI, data: UpdatePlatformRequest, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: PlatformApiResponse | ErrorApiResponse }> {
     // Check if user has permission to manage platforms
     if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update platform ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update platform ${id} without permission`);
       return {
         status: 403,
         body: {
@@ -241,7 +245,7 @@ export class BackpackController {
   async deletePlatform(id: Shared.IRI, user?: { claims?: Record<string, unknown> } | null): Promise<{ status: number; body: SuccessApiResponse | ErrorApiResponse }> {
     // Check if user has permission to manage platforms
     if (user && !this.hasPermission(user, UserPermission.MANAGE_PLATFORMS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete platform ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to delete platform ${id} without permission`);
       return {
         status: 403,
         body: {

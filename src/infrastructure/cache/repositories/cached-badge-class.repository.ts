@@ -1,6 +1,6 @@
 /**
  * Cached BadgeClass Repository
- * 
+ *
  * This class wraps a BadgeClassRepository implementation and adds caching functionality.
  * It caches badge class entities to improve read performance.
  */
@@ -26,15 +26,15 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
    */
   async create(badgeClass: Omit<BadgeClass, 'id'>): Promise<BadgeClass> {
     const result = await this.repository.create(badgeClass);
-    
+
     // Invalidate cache after creation
     this.invalidateEntity(result);
-    
+
     // Also invalidate issuer-related caches
     if ('issuerId' in badgeClass) {
       this.cache.delete(`issuer:${(badgeClass as { issuerId?: Shared.IRI }).issuerId}`);
     }
-    
+
     return result;
   }
 
@@ -46,26 +46,26 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
     if (!this.enabled) {
       return this.repository.findAll();
     }
-    
+
     const cacheKey = 'collection:all';
-    
+
     // Try to get from cache
     const cached = this.cache.get<BadgeClass[]>(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Get from repository
     const badgeClasses = await this.repository.findAll();
-    
+
     // Cache the result
     this.cache.set(cacheKey, badgeClasses);
-    
+
     // Also cache individual badge classes
     for (const badgeClass of badgeClasses) {
       this.cache.set(this.generateIdKey(badgeClass.id), badgeClass);
     }
-    
+
     return badgeClasses;
   }
 
@@ -78,23 +78,23 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
     if (!this.enabled) {
       return this.repository.findById(id);
     }
-    
+
     const cacheKey = this.generateIdKey(id as string);
-    
+
     // Try to get from cache
     const cached = this.cache.get<BadgeClass>(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Get from repository
     const badgeClass = await this.repository.findById(id);
-    
+
     // Cache the result (even if null)
     if (badgeClass) {
       this.cache.set(cacheKey, badgeClass);
     }
-    
+
     return badgeClass;
   }
 
@@ -107,26 +107,26 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
     if (!this.enabled) {
       return this.repository.findByIssuer(issuerId);
     }
-    
+
     const cacheKey = `issuer:${issuerId}`;
-    
+
     // Try to get from cache
     const cached = this.cache.get<BadgeClass[]>(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Get from repository
     const badgeClasses = await this.repository.findByIssuer(issuerId);
-    
+
     // Cache the result
     this.cache.set(cacheKey, badgeClasses);
-    
+
     // Also cache individual badge classes
     for (const badgeClass of badgeClasses) {
       this.cache.set(this.generateIdKey(badgeClass.id), badgeClass);
     }
-    
+
     return badgeClasses;
   }
 
@@ -138,19 +138,19 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
    */
   async update(id: Shared.IRI, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
     const result = await this.repository.update(id, badgeClass);
-    
+
     // Invalidate cache after update
     if (result) {
       this.invalidateEntity(result);
-      
+
       // Also invalidate issuer-related caches
       if ('issuerId' in badgeClass) {
         this.cache.delete(`issuer:${(badgeClass as { issuerId?: Shared.IRI }).issuerId}`);
-      } else if (result.issuerId) {
-        this.cache.delete(`issuer:${result.issuerId}`);
+      } else if (result['issuerId']) {
+        this.cache.delete(`issuer:${result['issuerId']}`);
       }
     }
-    
+
     return result;
   }
 
@@ -162,20 +162,20 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
   async delete(id: Shared.IRI): Promise<boolean> {
     // Get the badge class before deletion to get the issuer ID
     const badgeClass = await this.findById(id);
-    
+
     const result = await this.repository.delete(id);
-    
+
     // Invalidate cache after deletion
     if (result) {
       this.cache.delete(this.generateIdKey(id as string));
       this.invalidateCollections();
-      
+
       // Also invalidate issuer-related caches
-      if (badgeClass && badgeClass.issuerId) {
-        this.cache.delete(`issuer:${badgeClass.issuerId}`);
+      if (badgeClass && badgeClass['issuerId']) {
+        this.cache.delete(`issuer:${badgeClass['issuerId']}`);
       }
     }
-    
+
     return result;
   }
 

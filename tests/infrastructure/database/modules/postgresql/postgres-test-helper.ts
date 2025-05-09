@@ -11,7 +11,7 @@ import { logger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 // Default connection strings for tests with passwords wrapped in SensitiveValue
-const DEFAULT_LOCAL_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5433/openbadges_test`;
+const DEFAULT_LOCAL_TEST_CONNECTION_STRING = `postgres://testuser:testpassword@localhost:5433/openbadges_test`;
 const DEFAULT_CI_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges_test`;
 
 // Determine if running in CI environment
@@ -64,6 +64,93 @@ export function createDrizzleInstance(client: postgres.Sql): ReturnType<typeof d
  */
 export async function createTestTables(client: postgres.Sql): Promise<void> {
   try {
+    // Create users table
+    await client`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT UNIQUE,
+        password_hash TEXT,
+        name TEXT,
+        avatar TEXT,
+        bio TEXT,
+        verified BOOLEAN DEFAULT FALSE,
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP WITH TIME ZONE,
+        metadata JSONB
+      );
+    `;
+
+    // Create roles table
+    await client`
+      CREATE TABLE IF NOT EXISTS roles (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        permissions JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Create user_roles table
+    await client`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Create platforms table
+    await client`
+      CREATE TABLE IF NOT EXISTS platforms (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        client_id TEXT NOT NULL,
+        public_key TEXT NOT NULL,
+        webhook_url TEXT,
+        status TEXT DEFAULT 'active' NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Create platform_users table
+    await client`
+      CREATE TABLE IF NOT EXISTS platform_users (
+        id UUID PRIMARY KEY,
+        platform_id UUID NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        display_name TEXT,
+        email TEXT,
+        metadata JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Create api_keys table
+    await client`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id UUID PRIMARY KEY,
+        key TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        description TEXT,
+        permissions JSONB NOT NULL,
+        revoked BOOLEAN DEFAULT FALSE NOT NULL,
+        revoked_at TIMESTAMP WITH TIME ZONE,
+        last_used TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
     // Create issuers table
     await client`
       CREATE TABLE IF NOT EXISTS issuers (
@@ -115,6 +202,18 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
       );
     `;
 
+    // Create user_assertions table
+    await client`
+      CREATE TABLE IF NOT EXISTS user_assertions (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES platform_users(id) ON DELETE CASCADE,
+        assertion_id UUID NOT NULL REFERENCES assertions(id) ON DELETE CASCADE,
+        added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        status TEXT DEFAULT 'active' NOT NULL,
+        metadata JSONB
+      );
+    `;
+
     logger.info('Created test tables in PostgreSQL database');
   } catch (error) {
     logger.error('Error creating test tables in PostgreSQL database', {
@@ -131,12 +230,35 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
 export async function dropTestTables(client: postgres.Sql): Promise<void> {
   try {
     // Drop tables in reverse order to handle foreign key constraints
-    await client`DROP TABLE IF EXISTS assertions;`;
-    await client`DROP TABLE IF EXISTS badge_classes;`;
-    await client`DROP TABLE IF EXISTS issuers;`;
+    // First, disable triggers to avoid foreign key constraint issues
+    await client`SET session_replication_role = 'replica';`;
+
+    // Drop all tables that might have dependencies
+    await client`DROP TABLE IF EXISTS user_assertions CASCADE;`;
+    await client`DROP TABLE IF EXISTS user_roles CASCADE;`;
+    await client`DROP TABLE IF EXISTS platform_users CASCADE;`;
+    await client`DROP TABLE IF EXISTS assertions CASCADE;`;
+    await client`DROP TABLE IF EXISTS badge_classes CASCADE;`;
+    await client`DROP TABLE IF EXISTS issuers CASCADE;`;
+    await client`DROP TABLE IF EXISTS platforms CASCADE;`;
+    await client`DROP TABLE IF EXISTS roles CASCADE;`;
+    await client`DROP TABLE IF EXISTS api_keys CASCADE;`;
+    await client`DROP TABLE IF EXISTS users CASCADE;`;
+
+    // Re-enable triggers
+    await client`SET session_replication_role = 'origin';`;
 
     logger.info('Dropped test tables from PostgreSQL database');
   } catch (error) {
+    // Re-enable triggers even if there was an error
+    try {
+      await client`SET session_replication_role = 'origin';`;
+    } catch (triggerError) {
+      logger.error('Error re-enabling triggers', {
+        error: triggerError instanceof Error ? triggerError.message : String(triggerError)
+      });
+    }
+
     logger.error('Error dropping test tables from PostgreSQL database', {
       error: error instanceof Error ? error.message : String(error)
     });
@@ -150,13 +272,35 @@ export async function dropTestTables(client: postgres.Sql): Promise<void> {
  */
 export async function cleanupTestData(client: postgres.Sql): Promise<void> {
   try {
+    // Disable triggers to avoid foreign key constraint issues during cleanup
+    await client`SET session_replication_role = 'replica';`;
+
     // Delete all data from tables in reverse order to handle foreign key constraints
+    await client`DELETE FROM user_assertions;`;
+    await client`DELETE FROM user_roles;`;
+    await client`DELETE FROM platform_users;`;
     await client`DELETE FROM assertions;`;
     await client`DELETE FROM badge_classes;`;
     await client`DELETE FROM issuers;`;
+    await client`DELETE FROM platforms;`;
+    await client`DELETE FROM roles;`;
+    await client`DELETE FROM api_keys;`;
+    await client`DELETE FROM users;`;
+
+    // Re-enable triggers
+    await client`SET session_replication_role = 'origin';`;
 
     logger.info('Cleaned up test data from PostgreSQL database');
   } catch (error) {
+    // Re-enable triggers even if there was an error
+    try {
+      await client`SET session_replication_role = 'origin';`;
+    } catch (triggerError) {
+      logger.error('Error re-enabling triggers', {
+        error: triggerError instanceof Error ? triggerError.message : String(triggerError)
+      });
+    }
+
     logger.error('Error cleaning up test data from PostgreSQL database', {
       error: error instanceof Error ? error.message : String(error)
     });

@@ -1,43 +1,51 @@
 /**
  * Platform authentication middleware
  */
-import { Elysia } from 'elysia';
+import { MiddlewareHandler } from 'hono';
 import { PlatformRepository } from '../../domains/backpack/platform.repository';
 import { PlatformJwtService } from '../services/platform-jwt.service';
 import { PlatformUser } from '../../domains/backpack/platform-user.entity';
 import { Shared } from 'openbadges-types';
-import { PlatformAuthSuccess, PlatformAuthFailure } from '../../domains/backpack/auth.types';
 import { decodeJwt } from 'jose';
-type AuthResult = Record<string, unknown>;
+import { createMiddleware } from 'hono/factory';
+
+// Define the variables that will be set in the context
+type PlatformAuthVariables = {
+  platformUser: {
+    id: Shared.IRI;
+    platformId: Shared.IRI;
+    externalUserId: string;
+    displayName: string;
+    email: string;
+  } | null;
+  isAuthenticated: boolean;
+};
 
 /**
  * Create a middleware for platform authentication
  * @param platformRepository The platform repository
- * @returns An Elysia middleware
+ * @returns A Hono middleware
  */
-export function createPlatformAuthMiddleware(platformRepository: PlatformRepository): Elysia {
-  return new Elysia().derive(async ({ request, set }): Promise<AuthResult> => {
+export function createPlatformAuthMiddleware(platformRepository: PlatformRepository): MiddlewareHandler {
+  return createMiddleware<{
+    Variables: PlatformAuthVariables;
+  }>(async (c, next) => {
     // Default response
-    let response: PlatformAuthFailure & AuthResult = {
-      isAuthenticated: false,
-      platformUser: null,
-      error: ''
-    };
 
     // Get authorization header
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = c.req.header('Authorization');
     if (!authHeader) {
-      set.status = 401;
-      response.error = 'Authentication required';
-      return response;
+      c.set('isAuthenticated', false);
+      c.set('platformUser', null);
+      return c.json({ error: 'Authentication required' }, 401);
     }
 
     // Extract token
     const token = PlatformJwtService.extractTokenFromHeader(authHeader);
     if (!token) {
-      set.status = 401;
-      response.error = 'Authentication required';
-      return response;
+      c.set('isAuthenticated', false);
+      c.set('platformUser', null);
+      return c.json({ error: 'Authentication required' }, 401);
     }
 
     try {
@@ -48,39 +56,40 @@ export function createPlatformAuthMiddleware(platformRepository: PlatformReposit
       // Get platform by client ID
       const platform = await platformRepository.findByClientId(clientId);
       if (!platform) {
-        set.status = 401;
-        response.error = 'Unknown platform';
-        return response;
+        c.set('isAuthenticated', false);
+        c.set('platformUser', null);
+        return c.json({ error: 'Unknown platform' }, 401);
       }
 
       // Verify token
       const decodedToken = await PlatformJwtService.verifyToken(token, platform.publicKey);
 
       // Create platform user
-      const platformUser = PlatformUser.create({
+      const platformUserEntity = PlatformUser.create({
         platformId: platform.id as Shared.IRI,
         externalUserId: decodedToken.sub,
         displayName: decodedToken.displayName,
         email: decodedToken.email
       });
 
-      // Create success response
-      const successResponse: PlatformAuthSuccess & AuthResult = {
-        isAuthenticated: true,
-        platformUser: {
-          id: platformUser.id as Shared.IRI,
-          platformId: platformUser.platformId,
-          externalUserId: platformUser.externalUserId,
-          displayName: platformUser.displayName,
-          email: platformUser.email
-        },
-        error: null
+      // Set platform user in context
+      const platformUserData = {
+        id: platformUserEntity.id as Shared.IRI,
+        platformId: platformUserEntity.platformId,
+        externalUserId: platformUserEntity.externalUserId,
+        displayName: platformUserEntity.displayName,
+        email: platformUserEntity.email
       };
-      return successResponse;
+
+      c.set('isAuthenticated', true);
+      c.set('platformUser', platformUserData);
+
+      // Continue to the next middleware/handler
+      await next();
     } catch (_error) {
-      set.status = 401;
-      response.error = 'Authentication failed';
-      return response;
+      c.set('isAuthenticated', false);
+      c.set('platformUser', null);
+      return c.json({ error: 'Authentication failed' }, 401);
     }
   });
 }

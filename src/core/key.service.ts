@@ -178,6 +178,21 @@ export class KeyService {
   }
 
   /**
+   * Checks if a specific key ID (other than 'default') exists in the loaded key pairs.
+   * @param id The ID of the key pair to check.
+   * @returns True if the key ID exists, false otherwise.
+   */
+  static keyExists(id: string): boolean {
+    if (id === 'default') {
+      // 'default' key is handled by getPublicKey/getPrivateKey which ensure it's loaded or generated.
+      // This method is for checking existence of *specific, non-default* keys.
+      // The 'default' key is always assumed to exist or be creatable by initialize().
+      return true; 
+    }
+    return keyPairs.has(id);
+  }
+
+  /**
    * Generates a new key pair with the given ID
    * @param id The ID for the new key pair
    * @returns The generated key pair

@@ -8,6 +8,7 @@ import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { toIRI } from '@utils/types/iri-utils';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 const MIGRATIONS_FOLDER = 'drizzle/migrations';
 
@@ -15,7 +16,7 @@ const mockIssuer = {
   id: `urn:uuid:${createId()}`,
   type: 'Profile',
   name: 'Test Issuer',
-  url: 'https://example.com/issuer',
+  url: EXAMPLE_ISSUER_URL,
   email: 'issuer@example.com',
 };
 

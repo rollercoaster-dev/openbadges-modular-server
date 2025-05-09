@@ -16,7 +16,7 @@ import {
   toStringArray,
   objectWithIRIToString,
   objectWithStringToIRI
-} from '../../../src/utils/types/iri-utils';
+} from '@/utils/types/iri-utils';
 
 describe('IRI Utilities', () => {
   describe('toIRI', () => {

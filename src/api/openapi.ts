@@ -6,6 +6,7 @@
 
 import { OpenAPIObject } from 'openapi3-ts/oas30';
 import { config } from '../config/config';
+import { EXAMPLE_EDU_EVIDENCE_URL, EXAMPLE_EDU_KEYS_URL, EXAMPLE_EDU_URL, GITHUB_REPO_URL, MIT_LICENSE_URL, OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 
 export const openApiConfig: OpenAPIObject = {
   openapi: '3.0.0',
@@ -15,11 +16,11 @@ export const openApiConfig: OpenAPIObject = {
     description: 'A stateless, modular Open Badges API adhering to the Open Badges 3.0 specification',
     contact: {
       name: 'Open Badges API Team',
-      url: 'https://github.com/rollercoaster-dev/bun-badges'
+      url: GITHUB_REPO_URL
     },
     license: {
       name: 'MIT',
-      url: 'https://opensource.org/licenses/MIT'
+      url: MIT_LICENSE_URL
     }
   },
   servers: [
@@ -995,7 +996,7 @@ export const openApiConfig: OpenAPIObject = {
           '@context': {
             type: 'string',
             description: 'JSON-LD context',
-            example: 'https://w3id.org/openbadges/v3'
+            example: OPENBADGES_V3_CONTEXT_EXAMPLE
           },
           type: {
             type: 'string',
@@ -1017,7 +1018,7 @@ export const openApiConfig: OpenAPIObject = {
             type: 'string',
             format: 'uri',
             description: 'URL of the issuer',
-            example: 'https://example.edu'
+            example: EXAMPLE_EDU_URL
           },
           email: {
             type: 'string',
@@ -1044,12 +1045,12 @@ export const openApiConfig: OpenAPIObject = {
               id: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu/keys/1'
+                example: EXAMPLE_EDU_KEYS_URL
               },
               owner: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu'
+                example: EXAMPLE_EDU_URL
               },
               publicKeyPem: {
                 type: 'string',
@@ -1072,7 +1073,7 @@ export const openApiConfig: OpenAPIObject = {
             type: 'string',
             format: 'uri',
             description: 'URL of the issuer',
-            example: 'https://example.edu'
+            example: EXAMPLE_EDU_URL
           },
           email: {
             type: 'string',
@@ -1099,12 +1100,12 @@ export const openApiConfig: OpenAPIObject = {
               id: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu/keys/1'
+                example: EXAMPLE_EDU_KEYS_URL
               },
               owner: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu'
+                example: EXAMPLE_EDU_URL
               },
               publicKeyPem: {
                 type: 'string',
@@ -1127,7 +1128,7 @@ export const openApiConfig: OpenAPIObject = {
             type: 'string',
             format: 'uri',
             description: 'URL of the issuer',
-            example: 'https://example.edu'
+            example: EXAMPLE_EDU_URL
           },
           email: {
             type: 'string',
@@ -1154,12 +1155,12 @@ export const openApiConfig: OpenAPIObject = {
               id: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu/keys/1'
+                example: EXAMPLE_EDU_KEYS_URL
               },
               owner: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu'
+                example: EXAMPLE_EDU_URL
               },
               publicKeyPem: {
                 type: 'string',
@@ -1187,7 +1188,7 @@ export const openApiConfig: OpenAPIObject = {
           '@context': {
             type: 'string',
             description: 'JSON-LD context',
-            example: 'https://w3id.org/openbadges/v3'
+            example: OPENBADGES_V3_CONTEXT_EXAMPLE
           },
           type: {
             type: 'string',
@@ -1421,7 +1422,7 @@ export const openApiConfig: OpenAPIObject = {
           '@context': {
             type: 'string',
             description: 'JSON-LD context',
-            example: 'https://w3id.org/openbadges/v3'
+            example: OPENBADGES_V3_CONTEXT_EXAMPLE
           },
           type: {
             type: 'string',
@@ -1481,7 +1482,7 @@ export const openApiConfig: OpenAPIObject = {
                 id: {
                   type: 'string',
                   format: 'uri',
-                  example: 'https://example.edu/evidence/123'
+                  example: EXAMPLE_EDU_EVIDENCE_URL
                 },
                 name: {
                   type: 'string',
@@ -1513,7 +1514,7 @@ export const openApiConfig: OpenAPIObject = {
               creator: {
                 type: 'string',
                 format: 'uri',
-                example: 'https://example.edu/keys/1'
+                example: EXAMPLE_EDU_KEYS_URL
               },
               created: {
                 type: 'string',
@@ -1588,7 +1589,7 @@ export const openApiConfig: OpenAPIObject = {
                 id: {
                   type: 'string',
                   format: 'uri',
-                  example: 'https://example.edu/evidence/123'
+                  example: EXAMPLE_EDU_EVIDENCE_URL
                 },
                 name: {
                   type: 'string',
@@ -1662,7 +1663,7 @@ export const openApiConfig: OpenAPIObject = {
                 id: {
                   type: 'string',
                   format: 'uri',
-                  example: 'https://example.edu/evidence/123'
+                  example: EXAMPLE_EDU_EVIDENCE_URL
                 },
                 name: {
                   type: 'string',
@@ -1723,7 +1724,7 @@ export const openApiConfig: OpenAPIObject = {
             type: 'string',
             format: 'uri',
             description: 'URI of the image author',
-            example: 'https://example.edu'
+            example: EXAMPLE_EDU_URL
           }
         },
         required: ['id', 'type']

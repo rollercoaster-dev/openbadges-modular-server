@@ -5,16 +5,16 @@
  * with the new Shared.IRI types.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 
 import { describe, expect, it, mock } from 'bun:test';
 import { Shared, OB2, OB3 } from 'openbadges-types';
-import { IssuerController } from '../../src/api/controllers/issuer.controller';
-import { BadgeClassController } from '../../src/api/controllers/badgeClass.controller';
-import { AssertionController } from '../../src/api/controllers/assertion.controller';
-import { toIRI } from '../../src/utils/types/iri-utils';
-import { toDateTime } from '../../src/utils/types/type-utils';
-import { BadgeVersion, BADGE_VERSION_CONTEXTS } from '../../src/utils/version/badge-version';
+import { IssuerController } from '@/api/controllers/issuer.controller';
+import { BadgeClassController } from '@/api/controllers/badgeClass.controller';
+import { AssertionController } from '@/api/controllers/assertion.controller';
+import { toIRI } from '@/utils/types/iri-utils';
+import { toDateTime } from '@/utils/types/type-utils';
+import { BadgeVersion, BADGE_VERSION_CONTEXTS } from '@/utils/version/badge-version';
 
 // Mock controllers
 const mockIssuerController = {
@@ -27,7 +27,7 @@ const mockIssuerController = {
   updateIssuer: mock(async (id: string, data: Partial<OB2.Profile | OB3.Issuer>): Promise<OB2.Profile | OB3.Issuer> => {
     return { id: toIRI(id), ...data } as OB2.Profile | OB3.Issuer;
   }),
-  deleteIssuer: mock(async (id: string): Promise<boolean> => {
+  deleteIssuer: mock(async (_id: string): Promise<boolean> => {
     return true;
   })
 } as unknown as IssuerController;
@@ -49,7 +49,7 @@ const mockBadgeClassController = {
   updateBadgeClass: mock(async (id: string, data: Partial<OB2.BadgeClass | OB3.Achievement>): Promise<OB2.BadgeClass | OB3.Achievement> => {
     return { id: toIRI(id), ...data } as OB2.BadgeClass | OB3.Achievement;
   }),
-  deleteBadgeClass: mock(async (id: string): Promise<boolean> => {
+  deleteBadgeClass: mock(async (_id: string): Promise<boolean> => {
     return true;
   }),
   getBadgeClassesByIssuer: mock(async (issuerId: string): Promise<(OB2.BadgeClass | OB3.Achievement)[]> => {
@@ -105,7 +105,7 @@ const mockAssertionController = {
       }
     ];
   }) as unknown as () => Promise<(OB2.Assertion | OB3.VerifiableCredential)[]>,
-  revokeAssertion: mock(async (id: string, reason: string): Promise<boolean> => {
+  revokeAssertion: mock(async (_id: string, _reason: string): Promise<boolean> => {
     return true;
   })
 } as unknown as AssertionController;

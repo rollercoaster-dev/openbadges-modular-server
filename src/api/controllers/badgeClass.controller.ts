@@ -83,7 +83,7 @@ export class BadgeClassController {
       return false;
     }
 
-    const permissions = user.claims.permissions as UserPermission[] || [];
+    const permissions = user.claims['permissions'] as UserPermission[] || [];
     return permissions.includes(permission);
   }
 
@@ -97,7 +97,7 @@ export class BadgeClassController {
   async createBadgeClass(data: CreateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<BadgeClassResponseDto> {
     // Check if user has permission to create badge classes
     if (user && !this.hasPermission(user, UserPermission.CREATE_BADGE_CLASS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create a badge class without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create a badge class without permission`);
       throw new Error('Insufficient permissions to create badge class');
     }
     try {
@@ -165,7 +165,7 @@ export class BadgeClassController {
   async updateBadgeClass(id: string, data: UpdateBadgeClassDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<BadgeClassResponseDto | null> {
     // Check if user has permission to update badge classes
     if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update badge class ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update badge class ${id} without permission`);
       throw new Error('Insufficient permissions to update badge class');
     }
     try {
@@ -197,7 +197,7 @@ export class BadgeClassController {
   async deleteBadgeClass(id: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
     // Check if user has permission to delete badge classes
     if (user && !this.hasPermission(user, UserPermission.DELETE_BADGE_CLASS)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete badge class ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to delete badge class ${id} without permission`);
       throw new Error('Insufficient permissions to delete badge class');
     }
 

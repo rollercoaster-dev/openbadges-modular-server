@@ -8,7 +8,7 @@
 import { Issuer } from '../../domains/issuer/issuer.entity';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
-import { toIRI } from '../../utils/types/iri-utils';
+import { toIssuerId } from '../../utils/types/iri-utils';
 import { Shared, OB2 } from 'openbadges-types';
 import { CreateIssuerDto, IssuerResponseDto, UpdateIssuerDto } from '../dtos';
 import { CreateIssuerSchema, UpdateIssuerSchema } from '../validation/issuer.schemas';
@@ -70,7 +70,7 @@ export class IssuerController {
       return false;
     }
 
-    const permissions = user.claims.permissions as UserPermission[] || [];
+    const permissions = user.claims['permissions'] as UserPermission[] || [];
     return permissions.includes(permission);
   }
 
@@ -84,7 +84,7 @@ export class IssuerController {
   async createIssuer(data: CreateIssuerDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<IssuerResponseDto> {
     // Check if user has permission to create issuers
     if (user && !this.hasPermission(user, UserPermission.CREATE_ISSUER)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to create an issuer without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an issuer without permission`);
       throw new Error('Insufficient permissions to create issuer');
     }
     try {
@@ -95,8 +95,9 @@ export class IssuerController {
       const issuer = Issuer.create(mapToIssuerEntity(validatedData));
       const createdIssuer = await this.issuerRepository.create(issuer);
 
-      // Return formatted response
-      return createdIssuer.toJsonLd(version) as IssuerResponseDto;
+      // Return formatted response with JSON-LD context
+      const response = createdIssuer.toJsonLd(version) as IssuerResponseDto;
+      return response;
     } catch (error) {
       logger.error('Error creating issuer', {
         error: error instanceof Error ? error.message : String(error),
@@ -123,7 +124,13 @@ export class IssuerController {
    * @returns The issuer with the specified ID
    */
   async getIssuerById(id: string, version: BadgeVersion = BadgeVersion.V3): Promise<IssuerResponseDto | null> {
-    const issuer = await this.issuerRepository.findById(toIRI(id) as Shared.IRI);
+    let iri: Shared.IRI;
+    try {
+      iri = toIssuerId(id) as Shared.IRI;
+    } catch (_e) {
+      throw new Error('Invalid IRI');
+    }
+    const issuer = await this.issuerRepository.findById(iri);
     if (!issuer) {
       return null;
     }
@@ -141,15 +148,21 @@ export class IssuerController {
   async updateIssuer(id: string, data: UpdateIssuerDto, version: BadgeVersion = BadgeVersion.V3, user?: { claims?: Record<string, unknown> } | null): Promise<IssuerResponseDto | null> {
     // Check if user has permission to update issuers
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ISSUER)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to update issuer ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update issuer ${id} without permission`);
       throw new Error('Insufficient permissions to update issuer');
+    }
+    let iri: Shared.IRI;
+    try {
+      iri = toIssuerId(id) as Shared.IRI;
+    } catch (_e) {
+      throw new Error('Invalid IRI');
     }
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateIssuerSchema.parse(data);
 
       // Use validated data mapped to entity format
-      const updatedIssuer = await this.issuerRepository.update(toIRI(id) as Shared.IRI, mapToIssuerEntity(validatedData));
+      const updatedIssuer = await this.issuerRepository.update(iri, mapToIssuerEntity(validatedData));
       if (!updatedIssuer) {
         return null;
       }
@@ -173,10 +186,15 @@ export class IssuerController {
   async deleteIssuer(id: string, user?: { claims?: Record<string, unknown> } | null): Promise<boolean> {
     // Check if user has permission to delete issuers
     if (user && !this.hasPermission(user, UserPermission.DELETE_ISSUER)) {
-      logger.warn(`User ${user.claims?.sub || 'unknown'} attempted to delete issuer ${id} without permission`);
+      logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to delete issuer ${id} without permission`);
       throw new Error('Insufficient permissions to delete issuer');
     }
-
-    return await this.issuerRepository.delete(toIRI(id) as Shared.IRI);
+    let iri: Shared.IRI;
+    try {
+      iri = toIssuerId(id) as Shared.IRI;
+    } catch (_e) {
+      throw new Error('Invalid IRI');
+    }
+    return await this.issuerRepository.delete(iri);
   }
 }

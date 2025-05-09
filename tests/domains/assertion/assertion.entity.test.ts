@@ -6,8 +6,9 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { Assertion } from '../../../src/domains/assertion/assertion.entity';
+import { Assertion } from '@/domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
+import { EXAMPLE_EDU_EVIDENCE_URL, EXAMPLE_EDU_KEYS_URL, VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 describe('Assertion Entity', () => {
   // Test data
@@ -25,7 +26,7 @@ describe('Assertion Entity', () => {
     evidence: [
       {
         type: 'Evidence',
-        id: 'https://example.edu/evidence/123' as Shared.IRI,
+        id: EXAMPLE_EDU_EVIDENCE_URL as Shared.IRI,
         name: 'Course Completion Certificate',
         description: 'Certificate of completion for the Introduction to Programming course',
         genre: 'Certificate',
@@ -34,7 +35,7 @@ describe('Assertion Entity', () => {
     ],
     verification: {
       type: 'SignedBadge',
-      creator: 'https://example.edu/keys/1' as Shared.IRI,
+      creator: EXAMPLE_EDU_KEYS_URL as Shared.IRI,
       created: '2023-01-01T00:00:00Z',
       signatureValue: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...'
     }
@@ -97,17 +98,33 @@ describe('Assertion Entity', () => {
 
     expect(obj).toBeDefined();
     expect(obj.id).toBe(validAssertionData.id);
-    expect(obj.recipient).toEqual(validAssertionData.recipient);
-    expect(obj.issuedOn).toBe(validAssertionData.issuedOn);
-    expect(obj.expires).toBe(validAssertionData.expires);
+
+    // For OB3, recipient is transformed into credentialSubject
+    expect(obj.credentialSubject).toBeDefined();
+    // Use type assertion since we know the structure
+    const credentialSubject = obj.credentialSubject as { id: string; achievement: string };
+    expect(credentialSubject.id).toBe(validAssertionData.recipient.identity);
+    expect(credentialSubject.achievement).toBe(validAssertionData.badgeClass);
+
+    // Check dates
+    expect(obj.issuanceDate).toBeDefined(); // OB3 uses issuanceDate instead of issuedOn
+    expect(obj.expirationDate).toBeDefined(); // OB3 uses expirationDate instead of expires
+
     expect(obj.evidence).toEqual(validAssertionData.evidence);
     expect(obj.issuer).toBe(validAssertionData.issuer);
 
-    // In OB2, badge is the IRI of the BadgeClass
-    expect(obj.badge).toBe(validAssertionData.badgeClass);
+    // Check type is an array for OB3
+    expect(Array.isArray(obj.type)).toBe(true);
+    expect(obj.type).toContain('VerifiableCredential');
+    expect(obj.type).toContain('OpenBadgeCredential');
 
-    // Check verification property
-    expect(obj.verification).toBeDefined();
+    // Check context is an array for OB3
+    expect(Array.isArray(obj['@context'])).toBe(true);
+    expect(obj['@context']).toContain(VC_V2_CONTEXT_URL);
+    expect(obj['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
+
+    // Check proof property (transformed from verification)
+    expect(obj.proof).toBeDefined();
   });
 
   it('should convert to JSON-LD format', () => {
@@ -115,15 +132,46 @@ describe('Assertion Entity', () => {
     const jsonLd = assertion.toJsonLd();
 
     expect(jsonLd).toBeDefined();
-    expect(jsonLd['@context']).toBe('https://w3id.org/openbadges/v3');
-    expect(jsonLd.type).toBe('Assertion');
+
+    // Check context is an array for OB3
+    expect(Array.isArray(jsonLd['@context'])).toBe(true);
+    expect(jsonLd['@context']).toContain(VC_V2_CONTEXT_URL);
+    expect(jsonLd['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
+
+    // Check type is an array for OB3
+    expect(Array.isArray(jsonLd.type)).toBe(true);
+    expect(jsonLd.type).toContain('VerifiableCredential');
+    expect(jsonLd.type).toContain('OpenBadgeCredential');
+
     expect(jsonLd.id).toBe(validAssertionData.id);
+
+    // For OB3, badgeClass is transformed into badge
     expect(jsonLd.badge).toBe(validAssertionData.badgeClass);
-    expect(jsonLd.recipient).toEqual(validAssertionData.recipient);
-    expect(jsonLd.issuedOn).toBe(validAssertionData.issuedOn);
-    expect(jsonLd.expires).toBe(validAssertionData.expires);
+
+    // For OB3, recipient is transformed into credentialSubject
+    expect(jsonLd.credentialSubject).toBeDefined();
+
+    // Check dates
+    expect(jsonLd.issuanceDate).toBeDefined(); // OB3 uses issuanceDate instead of issuedOn
+    expect(jsonLd.expirationDate).toBeDefined(); // OB3 uses expirationDate instead of expires
+
     expect(jsonLd.evidence).toEqual(validAssertionData.evidence);
-    expect(jsonLd.verification).toEqual(validAssertionData.verification);
+
+    // Check proof property (transformed from verification)
+    expect(jsonLd.proof).toBeDefined();
+    // Use type assertion to avoid TypeScript errors
+    const proof = jsonLd.proof as {
+      type: string;
+      cryptosuite: string;
+      created: string;
+      verificationMethod: string;
+      proofValue: string
+    };
+    expect(proof.type).toBe('DataIntegrityProof');
+    expect(proof.cryptosuite).toBe('rsa-sha256');
+    expect(proof.created).toBeDefined();
+    expect(proof.verificationMethod).toBe(validAssertionData.verification.creator);
+    expect(proof.proofValue).toBe(validAssertionData.verification.signatureValue);
   });
 
   it('should get property values', () => {

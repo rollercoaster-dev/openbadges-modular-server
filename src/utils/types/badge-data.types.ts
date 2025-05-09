@@ -1,22 +1,23 @@
 /**
  * Type definitions for badge-related data structures
- * 
+ *
  * These types are used across the application for badge serialization,
  * JSON-LD context handling, and API responses.
  */
 
-import { Shared } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 
 /**
  * Common data structure for issuers
  */
 export interface IssuerData extends Record<string, unknown> {
   id: Shared.IRI;
-  name: string;
+  name: string | Shared.MultiLanguageString;
   url: Shared.IRI;
   email?: string;
-  description?: string;
-  image?: Shared.IRI | string;
+  description?: string | Shared.MultiLanguageString;
+  image?: Shared.IRI | string | Shared.OB3ImageObject | OB2.Image;
+  telephone?: string;
   publicKey?: unknown;
   type?: string;
 }
@@ -26,14 +27,18 @@ export interface IssuerData extends Record<string, unknown> {
  */
 export interface BadgeClassData extends Record<string, unknown> {
   id: Shared.IRI;
-  issuer: Shared.IRI;
-  name: string;
-  description: string;
-  image: Shared.IRI | string;
+  issuer: Shared.IRI | Record<string, unknown>;
+  name: string | Shared.MultiLanguageString;
+  description: string | Shared.MultiLanguageString;
+  image: Shared.IRI | string | Shared.OB3ImageObject;
   criteria: unknown;
   alignment?: unknown[];
   tags?: string[];
   type?: string;
+  // Optional OBv3 Achievement properties
+  achievementType?: string;
+  creator?: Shared.IRI | Record<string, unknown>;
+  resultDescriptions?: unknown[];
 }
 
 /**
@@ -47,9 +52,10 @@ export interface AssertionData extends Record<string, unknown> {
   expires?: string;
   evidence?: unknown;
   verification?: VerificationData;
+  credentialStatus?: OB3.CredentialStatus;
   revoked?: boolean;
   revocationReason?: string;
-  type?: string;
+  type?: string | string[];
 }
 
 /**
@@ -76,24 +82,28 @@ export interface VerificationData {
  * Data structure for verifiable credentials
  */
 export interface VerifiableCredentialData {
-  '@context': string[];
+  '@context': string | string[];
   id: Shared.IRI;
-  type: string[];
-  issuer: Partial<IssuerData>;
+  type: string | string[];
+  issuer: Shared.IRI | Partial<IssuerData>;
   issuanceDate: string;
   expirationDate?: string;
   credentialSubject: {
     id: string;
-    type: string;
+    type: string | string[];
     achievement: {
       id: Shared.IRI;
-      type: string;
-      name: string;
-      description: string;
-      image: Shared.IRI | string;
+      type: string | string[];
+      name: string | Shared.MultiLanguageString;
+      description: string | Shared.MultiLanguageString;
+      image: Shared.IRI | string | Shared.OB3ImageObject;
       criteria: unknown;
       alignments?: unknown[];
       tags?: string[];
+      // Optional OBv3 Achievement properties
+      achievementType?: string;
+      creator?: Shared.IRI | Record<string, unknown>;
+      resultDescriptions?: unknown[];
     };
   };
   evidence?: unknown;
@@ -104,11 +114,5 @@ export interface VerifiableCredentialData {
     proofPurpose: string;
     proofValue: string;
   };
-  credentialStatus?: {
-    id: Shared.IRI;
-    type: string;
-    statusPurpose: string;
-    statusListIndex: string;
-    statusListCredential: Shared.IRI;
-  };
+  credentialStatus?: OB3.CredentialStatus;
 }

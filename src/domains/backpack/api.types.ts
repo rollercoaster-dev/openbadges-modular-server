@@ -3,6 +3,10 @@
  */
 import { Shared } from 'openbadges-types';
 import { PlatformStatus, UserAssertionStatus, ApiResponse } from './backpack.types';
+import { z } from 'zod';
+
+// Base IRI schema for reusability
+const IRISchema = z.string().url(); // Assuming IRIs should be valid URLs. Adjust if not.
 
 /**
  * Platform creation request
@@ -33,6 +37,14 @@ export interface CreatePlatformRequest {
    */
   webhookUrl?: string;
 }
+
+export const CreatePlatformRequestSchema = z.object({
+  name: z.string().min(1),
+  clientId: z.string().min(1),
+  publicKey: z.string().min(1),
+  description: z.string().optional(),
+  webhookUrl: z.string().url().optional()
+});
 
 /**
  * Platform update request
@@ -68,6 +80,15 @@ export interface UpdatePlatformRequest {
    */
   webhookUrl?: string;
 }
+
+export const UpdatePlatformRequestSchema = z.object({
+  name: z.string().min(1).optional(),
+  clientId: z.string().min(1).optional(),
+  publicKey: z.string().min(1).optional(),
+  status: z.nativeEnum(PlatformStatus).optional(),
+  description: z.string().optional(),
+  webhookUrl: z.string().url().optional()
+});
 
 /**
  * Platform response
@@ -119,6 +140,18 @@ export interface PlatformResponse {
   updatedAt: string;
 }
 
+export const PlatformSchema = z.object({
+  id: IRISchema,
+  name: z.string(),
+  clientId: z.string(),
+  publicKey: z.string(),
+  status: z.nativeEnum(PlatformStatus),
+  description: z.string().optional(),
+  webhookUrl: z.string().url().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
 /**
  * Platform list response
  */
@@ -128,6 +161,15 @@ export interface PlatformListResponse {
    */
   platforms: PlatformResponse[];
 }
+
+export const PlatformsArraySchema = z.object({
+  success: z.literal(true),
+  platforms: z.array(PlatformSchema)
+});
+
+export const PlatformIdSchema = z.object({
+  id: IRISchema
+});
 
 /**
  * Platform user response
@@ -169,6 +211,16 @@ export interface PlatformUserResponse {
   updatedAt: string;
 }
 
+export const PlatformUserSchema = z.object({
+  id: IRISchema,
+  platformId: IRISchema,
+  externalUserId: z.string(),
+  displayName: z.string().optional(),
+  email: z.string().email().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
 /**
  * User assertion creation request
  */
@@ -184,6 +236,11 @@ export interface AddAssertionRequest {
   metadata?: Record<string, unknown>;
 }
 
+export const AddAssertionRequestSchema = z.object({
+  assertionId: IRISchema,
+  metadata: z.record(z.unknown()).optional() // More specific schema might be better if metadata structure is known
+});
+
 /**
  * User assertion update status request
  */
@@ -193,6 +250,10 @@ export interface UpdateAssertionStatusRequest {
    */
   status: UserAssertionStatus;
 }
+
+export const UpdateAssertionStatusRequestSchema = z.object({
+  status: z.nativeEnum(UserAssertionStatus)
+});
 
 /**
  * User assertion response
@@ -229,6 +290,15 @@ export interface UserAssertionResponse {
   metadata?: Record<string, unknown>;
 }
 
+export const UserAssertionSchema = z.object({
+  id: IRISchema,
+  userId: IRISchema,
+  assertionId: IRISchema,
+  addedAt: z.string().datetime(),
+  status: z.nativeEnum(UserAssertionStatus),
+  metadata: z.record(z.unknown()).optional()
+});
+
 /**
  * User assertion list response
  */
@@ -238,6 +308,18 @@ export interface UserAssertionListResponse {
    */
   assertions: UserAssertionResponse[];
 }
+
+export const UserAssertionsArraySchema = z.object({
+  success: z.literal(true),
+  assertions: z.array(UserAssertionSchema)
+});
+
+/**
+ * Success API response for general success cases like DELETE
+ */
+export const SuccessResponseSchema = z.object({
+  success: z.literal(true)
+});
 
 /**
  * API error response
@@ -259,6 +341,16 @@ export interface ApiErrorResponse {
   details?: Record<string, unknown>;
 }
 
+export const ApiErrorResponseSchema = z.object({
+  success: z.literal(false),
+  error: z.string(),
+  code: z.string().optional(), // Assuming code might not always be present
+  details: z.record(z.unknown()).optional()
+});
+
+// Updated response types for OpenAPI documentation, ensuring they return objects directly
+// These wrap the core data schemas with a success flag, which is a common pattern for API responses.
+
 /**
  * Typed API response
  */
@@ -267,7 +359,10 @@ export type TypedApiResponse<T> = ApiResponse<T>;
 /**
  * Platform API response
  */
-export type PlatformApiResponse = TypedApiResponse<{ platform: PlatformResponse }>;
+export const PlatformApiResponseSchema = z.object({
+  success: z.literal(true),
+  platform: PlatformSchema
+});
 
 /**
  * Platform list API response
@@ -277,7 +372,10 @@ export type PlatformListApiResponse = TypedApiResponse<PlatformListResponse>;
 /**
  * User assertion API response
  */
-export type UserAssertionApiResponse = TypedApiResponse<{ assertion: UserAssertionResponse }>;
+export const UserAssertionApiResponseSchema = z.object({
+  success: z.literal(true),
+  assertion: UserAssertionSchema // Renamed from userAssertion to assertion to match existing interface UserAssertionApiResponse
+});
 
 /**
  * User assertion list API response

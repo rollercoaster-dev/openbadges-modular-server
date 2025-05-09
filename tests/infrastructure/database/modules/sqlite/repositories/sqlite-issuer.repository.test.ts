@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { SqliteIssuerRepository } from '../../../../../../src/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository';
-import { Issuer } from '../../../../../../src/domains/issuer/issuer.entity';
+import { SqliteIssuerRepository } from '@/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository';
+import { Issuer } from '@/domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
 
 describe('SqliteIssuerRepository', () => {

@@ -1,9 +1,19 @@
 import type { Config } from 'drizzle-kit';
-import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
-import { logger } from './src/utils/logging/logger.service';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { databaseConfig } from './drizzle-config-helper';
+
+// Use console for logging in drizzle.config.ts to avoid module resolution issues
+const logger = {
+  // eslint-disable-next-line no-console
+  error: console.error,
+  // eslint-disable-next-line no-console
+  warn: console.warn,
+  // eslint-disable-next-line no-console
+  info: console.info,
+  // eslint-disable-next-line no-console
+  debug: console.debug
+};
 
 /**
  * Drizzle Kit configuration
@@ -15,7 +25,7 @@ import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 // Use the main application logger
 
 // Determine database type from environment variable or config
-const dbType = process.env.DB_TYPE || config.database.type || 'sqlite';
+const dbType = process.env['DB_TYPE'] || databaseConfig.type || 'sqlite';
 
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
@@ -29,13 +39,13 @@ let drizzleConfig: Config;
 
 if (dbType === 'postgresql') {
   // Parse connection string to extract credentials
-  const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
+  const connectionString = databaseConfig.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
   let url: URL;
   try {
     url = new URL(connectionString);
   } catch (error) {
-    // Use SensitiveValue to automatically mask the password in logs
-    logger.error('Invalid connection string', { connectionString: SensitiveValue.from(connectionString), error });
+    // Log error without sensitive data
+    logger.error('Invalid connection string', { error });
     throw new Error('Failed to parse the database connection string. Please check your configuration.');
   }
 
@@ -58,7 +68,7 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: process.env.SQLITE_DB_PATH || config.database.sqliteFile || 'sqlite.db',
+      url: process.env['SQLITE_DB_PATH'] || databaseConfig.sqliteFile || 'sqlite.db',
     },
   };
 }
