@@ -19,6 +19,8 @@ jobs:
         run: bun install
       - name: Run core tests
         run: bun test --pattern "!tests/infrastructure/database/**"
+        env:
+          NODE_PATH: "."
 
   # SQLite-specific tests
   sqlite-tests:
@@ -32,6 +34,8 @@ jobs:
         run: bun install
       - name: Run SQLite tests
         run: bun test tests/infrastructure/database/modules/sqlite
+        env:
+          NODE_PATH: "."
 
   # PostgreSQL-specific tests
   postgres-tests:
@@ -63,6 +67,7 @@ jobs:
           # Use TEST_DATABASE_URL from secrets if available, otherwise use default
           # This allows for configurable database connection in different environments
           TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL != '' && secrets.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test' }}
+          NODE_PATH: "."
 
   # Template for future database implementations (e.g., MongoDB)
   # Uncomment and modify this section when adding a new database
