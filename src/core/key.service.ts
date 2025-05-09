@@ -35,7 +35,7 @@ export class KeyService {
       // Define and ensure keys directory exists
       this.KEYS_DIR = path.join(process.cwd(), 'keys');
       if (!fs.existsSync(this.KEYS_DIR)) {
-        fs.mkdirSync(this.KEYS_DIR, { recursive: true });
+        await fs.promises.mkdir(this.KEYS_DIR, { recursive: true });
       }
 
       // Try to load existing keys first
@@ -78,19 +78,22 @@ export class KeyService {
       const publicKeyPath = path.join(this.KEYS_DIR, 'default.pub');
       const privateKeyPath = path.join(this.KEYS_DIR, 'default.key');
 
-      if (fs.existsSync(publicKeyPath) && fs.existsSync(privateKeyPath)) {
+      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      if (publicKeyExists && privateKeyExists) {
         // Load default key pair
-        const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
-        const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+        const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
+        const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
         const metadataPath = path.join(this.KEYS_DIR, 'default.meta.json');
 
         let keyType: KeyType;
         let cryptosuite: Cryptosuite;
 
         // Try to load metadata if it exists
-        if (fs.existsSync(metadataPath)) {
+        const metadataExists = await fs.promises.access(metadataPath).then(() => true).catch(() => false);
+        if (metadataExists) {
           try {
-            const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+            const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
             const metadata = JSON.parse(metadataContent);
             keyType = metadata.keyType;
             cryptosuite = metadata.cryptosuite;
@@ -125,7 +128,7 @@ export class KeyService {
               cryptosuite,
               created: new Date().toISOString()
             };
-            fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+            await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
             logger.info('Created metadata file for existing key');
           } catch (error) {
             logger.warn('Failed to create metadata file for existing key');
@@ -142,7 +145,7 @@ export class KeyService {
       }
 
       // Load other key pairs from the keys directory
-      const files = fs.readdirSync(this.KEYS_DIR);
+      const files = await fs.promises.readdir(this.KEYS_DIR);
       const keyIds = new Set<string>();
 
       // Find all key IDs (files ending with .pub)
@@ -158,18 +161,21 @@ export class KeyService {
         const publicKeyPath = path.join(this.KEYS_DIR, `${keyId}.pub`);
         const privateKeyPath = path.join(this.KEYS_DIR, `${keyId}.key`);
 
-        if (fs.existsSync(publicKeyPath) && fs.existsSync(privateKeyPath)) {
-          const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
-          const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+        const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+        const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+        if (publicKeyExists && privateKeyExists) {
+          const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
+          const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
           const metadataPath = path.join(this.KEYS_DIR, `${keyId}.meta.json`);
 
           let keyType: KeyType;
           let cryptosuite: Cryptosuite;
 
           // Try to load metadata if it exists
-          if (fs.existsSync(metadataPath)) {
+          const metadataExists = await fs.promises.access(metadataPath).then(() => true).catch(() => false);
+          if (metadataExists) {
             try {
-              const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+              const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
               const metadata = JSON.parse(metadataContent);
               keyType = metadata.keyType;
               cryptosuite = metadata.cryptosuite;
@@ -204,7 +210,7 @@ export class KeyService {
                 cryptosuite,
                 created: new Date().toISOString()
               };
-              fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+              await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
               logger.info(`Created metadata file for existing key: ${keyId}`);
             } catch (error) {
               logger.warn(`Failed to create metadata file for key: ${keyId}`);
@@ -243,10 +249,10 @@ export class KeyService {
       const metadataPath = path.join(this.KEYS_DIR, `${id}.meta.json`);
 
       // Save public key
-      fs.writeFileSync(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
+      await fs.promises.writeFile(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
 
       // Save private key with restricted permissions
-      fs.writeFileSync(privateKeyPath, keyPair.privateKey, { mode: 0o600 }); // Read/write by owner only
+      await fs.promises.writeFile(privateKeyPath, keyPair.privateKey, { mode: 0o600 }); // Read/write by owner only
 
       // Save metadata (key type and cryptosuite)
       const metadata = {
@@ -254,7 +260,7 @@ export class KeyService {
         cryptosuite: keyPair.cryptosuite,
         created: new Date().toISOString()
       };
-      fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+      await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
 
       logger.info(`Saved key pair with ID: ${id} (${keyPair.keyType})`);
     } catch (error) {
@@ -267,7 +273,7 @@ export class KeyService {
    * Gets the default public key
    * @returns The default public key
    */
-  static getDefaultPublicKey(): string {
+  static async getDefaultPublicKey(): Promise<string> {
     const keyPair = keyPairs.get('default');
     if (!keyPair) {
       throw new Error('Default key pair not found');
@@ -279,7 +285,7 @@ export class KeyService {
    * Gets the default private key
    * @returns The default private key
    */
-  static getDefaultPrivateKey(): string {
+  static async getDefaultPrivateKey(): Promise<string> {
     const keyPair = keyPairs.get('default');
     if (!keyPair) {
       throw new Error('Default key pair not found');
@@ -292,7 +298,7 @@ export class KeyService {
    * @param data The data to sign
    * @returns The signature
    */
-  static signWithDefaultKey(data: string): string {
+  static async signWithDefaultKey(data: string): Promise<string> {
     const keyPair = keyPairs.get('default');
     if (!keyPair) {
       throw new Error('Default key pair not found');
@@ -306,7 +312,7 @@ export class KeyService {
    * @param signature The signature to verify
    * @returns True if the signature is valid, false otherwise
    */
-  static verifyWithDefaultKey(data: string, signature: string): boolean {
+  static async verifyWithDefaultKey(data: string, signature: string): Promise<boolean> {
     const keyPair = keyPairs.get('default');
     if (!keyPair) {
       throw new Error('Default key pair not found');
@@ -378,7 +384,7 @@ export class KeyService {
    * @param id The ID of the key pair
    * @returns The public key
    */
-  static getPublicKey(id: string): string {
+  static async getPublicKey(id: string): Promise<string> {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
       // Ensure KEYS_DIR is defined before proceeding
@@ -388,8 +394,9 @@ export class KeyService {
 
       // Try to load the key from storage
       const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-      if (fs.existsSync(publicKeyPath)) {
-        return fs.readFileSync(publicKeyPath, 'utf8');
+      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+      if (publicKeyExists) {
+        return await fs.promises.readFile(publicKeyPath, 'utf8');
       }
       throw new Error(`Key pair with ID ${id} not found`);
     }
@@ -401,7 +408,7 @@ export class KeyService {
    * @param id The ID of the key pair
    * @returns The private key
    */
-  static getPrivateKey(id: string): string {
+  static async getPrivateKey(id: string): Promise<string> {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
       // Ensure KEYS_DIR is defined before proceeding
@@ -411,8 +418,9 @@ export class KeyService {
 
       // Try to load the key from storage
       const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
-      if (fs.existsSync(privateKeyPath)) {
-        return fs.readFileSync(privateKeyPath, 'utf8');
+      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      if (privateKeyExists) {
+        return await fs.promises.readFile(privateKeyPath, 'utf8');
       }
       throw new Error(`Key pair with ID ${id} not found`);
     }
@@ -451,12 +459,14 @@ export class KeyService {
       const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
       const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
 
-      if (fs.existsSync(publicKeyPath)) {
-        fs.unlinkSync(publicKeyPath);
+      const publicKeyExists = await fs.promises.access(publicKeyPath).then(() => true).catch(() => false);
+      if (publicKeyExists) {
+        await fs.promises.unlink(publicKeyPath);
       }
 
-      if (fs.existsSync(privateKeyPath)) {
-        fs.unlinkSync(privateKeyPath);
+      const privateKeyExists = await fs.promises.access(privateKeyPath).then(() => true).catch(() => false);
+      if (privateKeyExists) {
+        await fs.promises.unlink(privateKeyPath);
       }
 
       return removed;
