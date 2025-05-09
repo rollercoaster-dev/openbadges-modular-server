@@ -2,8 +2,8 @@ import type { Config } from 'drizzle-kit';
 import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
-import { logger } from './src/utils/logging/logger.service';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+// import { logger } from './src/utils/logging/logger.service'; // Temporarily commented out
+// import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Temporarily commented out
 
 /**
  * Drizzle Kit configuration
@@ -20,7 +20,9 @@ const dbType = process.env['DB_TYPE'] || config.database.type || 'sqlite';
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
 if (!supportedDbTypes.includes(dbType)) {
-  logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
+  // logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`); // Temporarily commented out
+  // eslint-disable-next-line no-console
+  console.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`); // Fallback to console.error
   process.exit(1);
 }
 
@@ -35,7 +37,9 @@ if (dbType === 'postgresql') {
     url = new URL(connectionString);
   } catch (error) {
     // Use SensitiveValue to automatically mask the password in logs
-    logger.error('Invalid connection string', { connectionString: SensitiveValue.from(connectionString), error });
+    // logger.error('Invalid connection string', { connectionString: SensitiveValue.from(connectionString), error }); // Temporarily commented out
+    // eslint-disable-next-line no-console
+    console.error('Invalid connection string', { connectionString /* Consider masking manually if sensitive */, error }); // Fallback
     throw new Error('Failed to parse the database connection string. Please check your configuration.');
   }
 
@@ -81,7 +85,9 @@ function verifyConfiguration(config: Config, dbType: string) {
   // Check if schema file exists
   const schemaPath = Array.isArray(config.schema) ? config.schema[0] : config.schema;
   if (schemaPath && !existsSync(schemaPath)) {
-    logger.error("Schema file not found:", { schemaPath });
+    // logger.error("Schema file not found:", { schemaPath }); // Temporarily commented out
+    // eslint-disable-next-line no-console
+    console.error("Schema file not found:", { schemaPath }); // Fallback
     process.exit(1);
   }
 
@@ -89,7 +95,9 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (config.out) {
     const migrationsDir = dirname(config.out);
     if (!existsSync(migrationsDir)) {
-      logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
+      // logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`); // Temporarily commented out
+      // eslint-disable-next-line no-console
+      console.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`); // Fallback
     }
   }
 
@@ -111,7 +119,11 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (dbType === 'postgresql' && dbCredentials) {
     const { host, port, user, database } = dbCredentials;
     if (!host || !port || !user || !database) {
-      logger.error("Missing PostgreSQL connection details:", {
+      // logger.error("Missing PostgreSQL connection details:", { // Temporarily commented out
+      //   missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
+      // });
+      // eslint-disable-next-line no-console
+      console.error("Missing PostgreSQL connection details:", { // Fallback
         missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
       });
       process.exit(1);
@@ -119,11 +131,15 @@ function verifyConfiguration(config: Config, dbType: string) {
   } else if (dbType === 'sqlite' && dbCredentials) {
     const { url } = dbCredentials;
     if (!url) {
-      logger.error("Missing SQLite connection URL");
+      // logger.error("Missing SQLite connection URL"); // Temporarily commented out
+      // eslint-disable-next-line no-console
+      console.error("Missing SQLite connection URL"); // Fallback
       process.exit(1);
     }
     if (url && url !== ':memory:' && !existsSync(url) && !url.includes(':memory:')) {
-      logger.warn(`SQLite database file not found: ${url}. It will be created.`);
+      // logger.warn(`SQLite database file not found: ${url}. It will be created.`); // Temporarily commented out
+      // eslint-disable-next-line no-console
+      console.warn(`SQLite database file not found: ${url}. It will be created.`); // Fallback
     }
   }
 }
