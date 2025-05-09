@@ -100,7 +100,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
   serializeAssertion(
     assertion: AssertionData,
     badgeClass?: BadgeClassData,
-    issuer?: IssuerData
+    _issuer?: IssuerData
   ): AssertionData & { '@context': string | string[]; type: string | string[] } | VerifiableCredentialData {
     // Create verification object if not present
     const verification = assertion.verification || {
@@ -142,8 +142,8 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @returns A serialized issuer in Open Badges 3.0 format
    */
   serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string | string[]; type: string | string[] } {
-    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
-      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
 
     return {
@@ -167,10 +167,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    */
   serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & { '@context': string | string[]; type: string | string[] } {
     // Get the contexts array
-    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
-      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
-      
+
     // Create base object with common properties
     const serialized = {
       '@context': v3Contexts,
@@ -227,10 +227,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     }
 
     // Get the contexts array
-    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
-      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+    const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
-    
+
     // Otherwise, create a basic Assertion
     return {
       '@context': v3Contexts,
@@ -260,10 +260,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     issuer: IssuerData
   ): VerifiableCredentialData {
     // Handle the case where BADGE_VERSION_CONTEXTS might be an array or string
-    const contextList = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3]) 
-      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3] 
+    const contextList = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
+      ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
       : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3]];
-    
+
     return {
       '@context': [
         'https://www.w3.org/2018/credentials/v1',

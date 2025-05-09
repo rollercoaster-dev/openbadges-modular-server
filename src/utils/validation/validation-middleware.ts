@@ -11,9 +11,9 @@ import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
 import { MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
-import { CreateIssuerSchema, UpdateIssuerSchema } from '../../api/validation/issuer.schemas';
-import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
-import { CreateAssertionSchema, UpdateAssertionSchema } from '../../api/validation/assertion.schemas';
+import { CreateIssuerSchema } from '../../api/validation/issuer.schemas';
+import { CreateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
+import { CreateAssertionSchema } from '../../api/validation/assertion.schemas';
 import { z } from 'zod';
 
 /**

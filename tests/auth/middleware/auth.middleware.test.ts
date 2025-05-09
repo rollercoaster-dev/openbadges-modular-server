@@ -263,7 +263,7 @@ describe('Authentication Middleware', () => {
     const handler = createAuthMiddleware();
 
     // Call the middleware
-    const result = await handler(mockContext, next);
+    const _result = await handler(mockContext, next);
 
     // Check that next was called (middleware always calls next)
     expect(nextCalled).toBe(true);

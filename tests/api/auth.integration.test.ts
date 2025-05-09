@@ -10,14 +10,16 @@ import { JwtService } from '../../src/auth/services/jwt.service';
 
 describe('Authentication Integration Tests', () => {
   let app: Hono;
-   
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let client: any;
   // We don't need to store the auth token for now
   // let _authToken: string;
 
   // Mock user service for testing
   const mockUserService = {
-     
+    // Add findUserByCredentials which doesn't exist on the real UserService
+    // but we need it for this test
     findUserByCredentials: mock(async (username: string, password: string) => {
       if (username === 'testuser' && password === 'password') {
         return {
@@ -27,7 +29,7 @@ describe('Authentication Integration Tests', () => {
         };
       }
       return null;
-    }) as any,
+    }),
     findUserById: mock(async (id: string) => {
       if (id === 'test-user-id') {
         return {
@@ -44,7 +46,13 @@ describe('Authentication Integration Tests', () => {
       }
       return null;
     })
-  } as unknown as UserService;
+  } as unknown as UserService & {
+    findUserByCredentials: (username: string, password: string) => Promise<{ 
+      id: string;
+      username: string;
+      roles: string[];
+    } | null>;
+  };
 
   // Mock JWT service
   const originalGenerateToken = JwtService.generateToken;
@@ -112,8 +120,7 @@ describe('Authentication Integration Tests', () => {
       const body = await c.req.json();
       const { username, password } = body;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const user = await (mockUserService as any).findUserByCredentials(username, password);
+      const user = await mockUserService.findUserByCredentials(username, password);
       if (!user) {
         return c.json({ error: 'Invalid credentials' }, 401);
       }
@@ -141,16 +148,14 @@ describe('Authentication Integration Tests', () => {
 
   describe('Unauthenticated Access', () => {
     it('should return 401 Unauthorized when accessing protected route without authentication', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (client as any).issuers.$get();
+      const res = await client.issuers.$get();
       expect(res.status).toBe(401);
     });
   });
 
   describe('User Login', () => {
     it('should return a JWT token upon successful login with valid credentials', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (client as any).api.v1.auth.login.$post({
+      const res = await client.api.v1.auth.login.$post({
         json: { username: 'testuser', password: 'password' }
       });
 
@@ -162,8 +167,7 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return 401 Unauthorized with invalid credentials', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (client as any).api.v1.auth.login.$post({
+      const res = await client.api.v1.auth.login.$post({
         json: { username: 'testuser', password: 'wrongpassword' }
       });
 
@@ -175,7 +179,7 @@ describe('Authentication Integration Tests', () => {
     it('should allow access to a protected route with a valid JWT token', async () => {
       // Use the token that our mock JwtService.verifyToken accepts
       // Make the request without using the result
-      await (client as any).issuers.$get({
+      await client.issuers.$get({
         headers: { 'Authorization': 'Bearer valid-token' }
       });
 
@@ -186,7 +190,7 @@ describe('Authentication Integration Tests', () => {
 
     it('should return 401 Unauthorized when using an invalid JWT token', async () => {
       // Make the request without using the result
-      await (client as any).issuers.$get({
+      await client.issuers.$get({
         headers: { 'Authorization': 'Bearer invalid-token' }
       });
 

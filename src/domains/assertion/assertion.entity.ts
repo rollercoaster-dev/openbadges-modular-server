@@ -13,7 +13,6 @@ import { AssertionData, RecipientData, VerificationData } from '../../utils/type
 import type { BadgeClassData, IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
-import { toIRI } from '../../utils/types/iri-utils';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
