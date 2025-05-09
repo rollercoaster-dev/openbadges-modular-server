@@ -23,9 +23,8 @@ import { createBackpackRouter } from './backpack.router';
 import { createUserRouter } from './user.router';
 import { createAuthRouter } from './auth.router';
 import { RepositoryFactory } from '../infrastructure/repository.factory';
-// TODO: Migrate these middleware for Hono
-// import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
-// import { AssetsController } from './controllers/assets.controller';
+import { createSecurityMiddleware } from '../utils/security/security.middleware';
+import { createStaticAssetsRouter } from './static-assets.middleware';
 
 /**
  * Creates the API router
@@ -48,16 +47,12 @@ export async function createApiRouter(
   // Create the router
   const router = new Hono();
 
-  // TODO: Migrate security middleware for Hono
-  // router.use(securityHeadersMiddleware);
-  // router.use(rateLimitMiddleware);
+  // Apply security middleware (rate limiting and security headers)
+  router.use('*', createSecurityMiddleware());
 
-  // Add static file middleware for uploads (TODO: migrate staticAssetsMiddleware for Hono if needed)
-  // staticAssetsMiddleware(router); // TODO: migrate this middleware for Hono
-
-  // TODO: Migrate assets controller router for Hono
-  // const assetsController = new AssetsController();
-  // router.use(assetsController.router);
+  // Add static assets router for uploads
+  const staticAssetsRouter = createStaticAssetsRouter();
+  router.route('/assets', staticAssetsRouter);
 
   // Add OpenAPI documentation
   router.get('/swagger', (c) => c.json(openApiConfig));

@@ -27,7 +27,7 @@ const MIME_TYPES: Record<string, string> = {
 export function createStaticAssetsRouter(): Hono {
   const router = new Hono();
 
-  router.get('/uploads/:filename', async (c) => {
+  router.get('/:filename', async (c) => {
     try {
       // Validate filename to prevent directory traversal attacks
       // First, sanitize the filename to remove any path traversal attempts and disallow special characters
