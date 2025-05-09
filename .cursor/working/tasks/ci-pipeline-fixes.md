@@ -54,6 +54,8 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
 - [x] Address any test failures identified in the logs
   - Fixed E2E test database connection in CI environment
   - Updated setup-test-app.ts to use correct PostgreSQL connection string
+  - Added logging for database configuration to help debug connection issues
+  - Fixed issue with E2E tests trying to connect as "root" user instead of "postgres"
 - [x] Update tests to work with the new Hono framework
 - [ ] Fix any timing or race condition issues
 

@@ -55,13 +55,19 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
     const dbConfig = {
       type: config.database.type,
       connectionString: process.env.CI === 'true'
-        ? 'postgres://postgres:postgres@localhost:5432/openbadges_test'
+        ? process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test'
         : config.database.connectionString,
       sqliteFile: config.database.sqliteFile,
       sqliteBusyTimeout: config.database.sqliteBusyTimeout,
       sqliteSyncMode: config.database.sqliteSyncMode,
       sqliteCacheSize: config.database.sqliteCacheSize
     };
+
+    logger.info('Database configuration', {
+      type: dbConfig.type,
+      connectionString: dbConfig.connectionString.toString().replace(/:[^:@]+@/, ':***@'), // Mask password
+      isCI: process.env.CI === 'true'
+    });
 
     // Initialize the repository factory
     await RepositoryFactory.initialize(dbConfig);
