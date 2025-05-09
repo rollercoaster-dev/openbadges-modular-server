@@ -22,7 +22,6 @@ import { AuthController } from '../auth/auth.controller';
 import { createBackpackRouter } from './backpack.router';
 import { createUserRouter } from './user.router';
 import { createAuthRouter } from './auth.router';
-import { PlatformRepository } from '../domains/backpack/platform.repository';
 import { RepositoryFactory } from '../infrastructure/repository.factory';
 // TODO: Migrate these middleware for Hono
 // import { rateLimitMiddleware, securityHeadersMiddleware } from '../utils/security/middleware';
