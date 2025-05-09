@@ -6,9 +6,8 @@ import { setupTestApp, stopTestServer } from './setup-test-app';
 import { hashData } from '@/utils/crypto/signature';
 import { EXAMPLE_BADGE_IMAGE_URL, EXAMPLE_ISSUER_URL, VC_V2_CONTEXT_URL } from '@/constants/urls';
 
-// Set database type to PostgreSQL for testing
-// This is the default and should work with the existing database
-process.env.DB_TYPE = 'postgresql';
+// Database type is set in setup-test-app.ts
+// We always use PostgreSQL for E2E tests for consistency
 
 // Use a random port for testing to avoid conflicts
 const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000

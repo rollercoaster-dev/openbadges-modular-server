@@ -64,31 +64,94 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
       sqliteCacheSize: config.database.sqliteCacheSize
     };
 
-    logger.info('Database configuration', {
+    // Enhanced logging for database configuration
+    logger.info('Database configuration for E2E tests', {
       type: dbConfig.type,
       connectionString: dbConfig.connectionString.toString().replace(/:[^:@]+@/, ':***@'), // Mask password
-      isCI: process.env.CI === 'true'
+      sqliteFile: dbConfig.sqliteFile,
+      isCI: process.env.CI === 'true',
+      nodeEnv: process.env.NODE_ENV,
+      testPort: process.env.TEST_PORT
     });
 
-    // Initialize the repository factory
-    await RepositoryFactory.initialize(dbConfig);
+    // Log all relevant environment variables for debugging
+    logger.info('Environment variables for E2E tests', {
+      DB_TYPE: process.env.DB_TYPE,
+      DATABASE_URL: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@') : undefined,
+      POSTGRES_USER: process.env.POSTGRES_USER,
+      POSTGRES_HOST: process.env.POSTGRES_HOST,
+      POSTGRES_PORT: process.env.POSTGRES_PORT,
+      POSTGRES_DB: process.env.POSTGRES_DB,
+      SQLITE_FILE: process.env.SQLITE_FILE,
+      NODE_ENV: process.env.NODE_ENV,
+      CI: process.env.CI,
+      AUTH_API_KEY_TEST: process.env.AUTH_API_KEY_TEST ? 'set' : 'not set',
+      AUTH_API_KEY_E2E: process.env.AUTH_API_KEY_E2E ? 'set' : 'not set'
+    });
 
-    // Create database instance for connection
-    await DatabaseFactory.createDatabase(
-      dbConfig.type, // Use the type from dbConfig, not from config.database
-      {
-        connectionString: dbConfig.connectionString,
-        sqliteFile: config.database.sqliteFile,
-        sqliteBusyTimeout: config.database.sqliteBusyTimeout,
-        sqliteSyncMode: config.database.sqliteSyncMode,
-        sqliteCacheSize: config.database.sqliteCacheSize
-      }
-    );
+    // Initialize the repository factory with enhanced error handling
+    try {
+      await RepositoryFactory.initialize(dbConfig);
+      logger.info('Repository factory initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize repository factory', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        dbConfig: {
+          type: dbConfig.type,
+          connectionString: dbConfig.connectionString.toString().replace(/:[^:@]+@/, ':***@')
+        }
+      });
+      throw error; // Re-throw to fail the test
+    }
+
+    // Create database instance for connection with enhanced error handling
+    try {
+      await DatabaseFactory.createDatabase(
+        dbConfig.type, // Use the type from dbConfig, not from config.database
+        {
+          connectionString: dbConfig.connectionString,
+          sqliteFile: config.database.sqliteFile,
+          sqliteBusyTimeout: config.database.sqliteBusyTimeout,
+          sqliteSyncMode: config.database.sqliteSyncMode,
+          sqliteCacheSize: config.database.sqliteCacheSize
+        }
+      );
+      logger.info('Database connection established successfully');
+    } catch (error) {
+      logger.error('Failed to create database connection', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        dbConfig: {
+          type: dbConfig.type,
+          connectionString: dbConfig.connectionString.toString().replace(/:[^:@]+@/, ':***@')
+        }
+      });
+      throw error; // Re-throw to fail the test
+    }
 
     logger.info(`Connected to ${dbConfig.type} database`);
 
-    // Initialize authentication system
-    await initializeAuthentication();
+    // Initialize authentication system with enhanced error handling
+    try {
+      logger.info('Initializing authentication system for E2E tests');
+      await initializeAuthentication();
+      logger.info('Authentication system initialized successfully for E2E tests');
+
+      // Log available API keys (without exposing the actual keys)
+      if (config.auth?.adapters?.apiKey?.enabled) {
+        logger.info('API Key authentication adapter is available');
+        logger.info(`API Key count: ${Object.keys(config.auth.adapters.apiKey.keys || {}).length}`);
+      } else {
+        logger.warn('API Key authentication adapter is NOT available');
+      }
+    } catch (error) {
+      logger.error('Failed to initialize authentication system for E2E tests', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error; // Re-throw to fail the test
+    }
 
     // Initialize repositories
     const issuerRepository = await RepositoryFactory.createIssuerRepository();
