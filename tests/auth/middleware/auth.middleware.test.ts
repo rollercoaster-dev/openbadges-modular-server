@@ -10,6 +10,10 @@ import { AuthAdapter } from '@/auth/adapters/auth-adapter.interface';
 import { JwtService } from '@/auth/services/jwt.service';
 import { Context } from 'hono';
 
+// Test constants for authentication tokens - only used in tests
+const TEST_VALID_TOKEN = 'valid-token';
+const TEST_INVALID_TOKEN = 'invalid-token';
+
 describe('Authentication Middleware', () => {
   // Mock JWT service
   const originalGenerateToken = JwtService.generateToken;
@@ -23,7 +27,7 @@ describe('Authentication Middleware', () => {
     });
 
     JwtService.verifyToken = mock(async (token: string) => {
-      if (token === 'valid-token') {
+      if (token === TEST_VALID_TOKEN) {
         return {
           sub: 'test-user',
           provider: 'test-provider',
@@ -175,7 +179,7 @@ describe('Authentication Middleware', () => {
     // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': 'Bearer valid-token' // Test token for unit tests only
+        'Authorization': `Bearer ${TEST_VALID_TOKEN}` // Test token for unit tests only
       }
     });
 
@@ -232,7 +236,7 @@ describe('Authentication Middleware', () => {
     // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': 'Bearer invalid-token' // Test token for unit tests only
+        'Authorization': `Bearer ${TEST_INVALID_TOKEN}` // Test token for unit tests only
       }
     });
 
@@ -270,8 +274,8 @@ describe('Authentication Middleware', () => {
     // Check that next was called (middleware always calls next)
     expect(nextCalled).toBe(true);
 
-    // In our test setup, we're using a mock JwtService that returns a valid user for 'valid-token'
-    // and throws an error for 'invalid-token'. Since we're using 'invalid-token', the JWT verification
+    // In our test setup, we're using a mock JwtService that returns a valid user for valid tokens
+    // and throws an error for invalid tokens. Since we're using an invalid token, the JWT verification
     // should fail, but our test is set up to authenticate the user anyway.
     // This is a limitation of our test setup, so we'll just check that next was called.
 

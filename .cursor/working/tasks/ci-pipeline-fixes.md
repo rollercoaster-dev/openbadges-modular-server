@@ -85,6 +85,12 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
 - [ ] Verify that E2E tests are properly configured for the CI environment
 - [ ] Fix any issues with the OpenBadges v3.0 compliance tests
 
+### Security Issues
+- [x] Address security issues identified by CodeQL
+  - Fixed path traversal vulnerability in static-assets.middleware.ts
+  - Replaced hard-coded credentials in test files with constants
+  - Improved input validation for file paths
+
 ## Resources
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Hono Framework Documentation](https://hono.dev/)

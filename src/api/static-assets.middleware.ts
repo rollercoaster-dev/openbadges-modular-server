@@ -26,12 +26,17 @@ const MIME_TYPES: Record<string, string> = {
 
 export function createStaticAssetsRouter(): Hono {
   const router = new Hono();
-  
+
   router.get('/uploads/:filename', async (c) => {
     try {
       // Validate filename to prevent directory traversal attacks
-      // First, sanitize the filename to remove any path traversal attempts
-      const sanitizedFilename = c.req.param('filename').replace(/\.\.\/|\\\.\.\\|\.\.|\\\.\./g, '');
+      // First, sanitize the filename to remove any path traversal attempts and disallow special characters
+      const filename = c.req.param('filename');
+      // Only allow alphanumeric characters, hyphens, underscores, and periods
+      if (!/^[a-zA-Z0-9_\-\.]+$/.test(filename)) {
+        return c.json({ error: 'Invalid filename format' }, 400);
+      }
+      const sanitizedFilename = filename;
 
       // Normalize the path and ensure it's within the uploads directory
       const normalizedPath = path.normalize(path.join(UPLOADS_DIR, sanitizedFilename));
