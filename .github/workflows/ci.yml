@@ -64,6 +64,11 @@ jobs:
 
       - name: Migrate PostgreSQL database
         run: |
+          echo "Listing contents of @rollercoaster-dev/rd-logger/dist/ to debug..."
+          ls -la ./node_modules/@rollercoaster-dev/rd-logger/dist/
+          echo "Listing contents of @rollercoaster-dev/rd-logger/dist/core/ to debug..."
+          ls -la ./node_modules/@rollercoaster-dev/rd-logger/dist/core/ || echo "Directory @rollercoaster-dev/rd-logger/dist/core/ not found or ls failed"
+
           echo "Running PostgreSQL migrations..."
           NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg
           NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg
