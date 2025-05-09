@@ -17,7 +17,7 @@ import {
 } from '@utils/crypto/signature';
 import { logger } from '@utils/logging/logger.service';
 import type { OB3, Shared } from 'openbadges-types'; // For OB3.Proof and Shared types
-import { VerificationStatus, VerificationErrorCode, createVerificationStatus, createVerificationError, createSuccessfulVerification } from '@utils/types/verification-status';
+import { VerificationStatus, VerificationErrorCode, createVerificationError, createSuccessfulVerification } from '@utils/types/verification-status';
 
 // Type guard to check if an object is our specific DataIntegrityProof
 function isDataIntegrityProof(proof: unknown): proof is DataIntegrityProof { // Uses local DataIntegrityProof

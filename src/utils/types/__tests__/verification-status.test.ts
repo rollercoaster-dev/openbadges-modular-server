@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'bun:test';
 import {
-  VerificationStatus,
   VerificationErrorCode,
   createVerificationStatus,
   createVerificationError,
