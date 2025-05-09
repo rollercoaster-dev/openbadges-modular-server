@@ -9,10 +9,7 @@ import { createAuthMiddleware, registerAuthAdapter } from '@/auth/middleware/aut
 import { AuthAdapter } from '@/auth/adapters/auth-adapter.interface';
 import { JwtService } from '@/auth/services/jwt.service';
 import { Context } from 'hono';
-
-// Test constants for authentication tokens - only used in tests
-const TEST_VALID_TOKEN = 'valid-token';
-const TEST_INVALID_TOKEN = 'invalid-token';
+import { TEST_TOKENS } from '../../test-utils/constants';
 
 describe('Authentication Middleware', () => {
   // Mock JWT service
@@ -27,7 +24,7 @@ describe('Authentication Middleware', () => {
     });
 
     JwtService.verifyToken = mock(async (token: string) => {
-      if (token === TEST_VALID_TOKEN) {
+      if (token === TEST_TOKENS.VALID_TOKEN) {
         return {
           sub: 'test-user',
           provider: 'test-provider',
@@ -179,7 +176,7 @@ describe('Authentication Middleware', () => {
     // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': `Bearer ${TEST_VALID_TOKEN}` // Test token for unit tests only
+        'Authorization': `Bearer ${TEST_TOKENS.VALID_TOKEN}` // Test token for unit tests only
       }
     });
 
@@ -236,7 +233,7 @@ describe('Authentication Middleware', () => {
     // Note: This is a test token used only for testing purposes, not a real credential
     const request = new Request('http://localhost/api/protected', {
       headers: {
-        'Authorization': `Bearer ${TEST_INVALID_TOKEN}` // Test token for unit tests only
+        'Authorization': `Bearer ${TEST_TOKENS.INVALID_TOKEN}` // Test token for unit tests only
       }
     });
 
@@ -275,7 +272,7 @@ describe('Authentication Middleware', () => {
     expect(nextCalled).toBe(true);
 
     // In our test setup, we're using a mock JwtService that returns a valid user for valid tokens
-    // and throws an error for invalid tokens. Since we're using an invalid token, the JWT verification
+    // and throws an error for invalid tokens. Since we're using an invalid token from our constants, the JWT verification
     // should fail, but our test is set up to authenticate the user anyway.
     // This is a limitation of our test setup, so we'll just check that next was called.
 

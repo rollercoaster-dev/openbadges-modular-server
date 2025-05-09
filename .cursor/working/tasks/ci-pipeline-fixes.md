@@ -90,6 +90,7 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
   - Fixed path traversal vulnerability in static-assets.middleware.ts
   - Replaced hard-coded credentials in test files with constants
   - Improved input validation for file paths
+  - Created a centralized constants file for test tokens
 
 ## Resources
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)

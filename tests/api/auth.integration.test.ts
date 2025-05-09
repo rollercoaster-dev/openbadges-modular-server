@@ -7,10 +7,7 @@ import { testClient } from 'hono/testing';
 import { Hono } from 'hono';
 import { UserService } from '@/domains/user/user.service';
 import { JwtService } from '@/auth/services/jwt.service';
-
-// Test constants for authentication tokens - only used in tests
-const TEST_VALID_TOKEN = 'valid-token';
-const TEST_INVALID_TOKEN = 'invalid-token';
+import { TEST_TOKENS } from '../test-utils/constants';
 
 describe('Authentication Integration Tests', () => {
   let app: Hono;
@@ -69,7 +66,7 @@ describe('Authentication Integration Tests', () => {
     });
 
     JwtService.verifyToken = mock(async (token: string) => {
-      if (token === 'mock-jwt-token' || token === TEST_VALID_TOKEN) {
+      if (token === TEST_TOKENS.MOCK_JWT_TOKEN || token === TEST_TOKENS.VALID_TOKEN) {
         return {
           sub: 'test-user-id',
           provider: 'test-provider',
@@ -184,7 +181,7 @@ describe('Authentication Integration Tests', () => {
       // Use the token that our mock JwtService.verifyToken accepts
       // Make the request without using the result
       await client.issuers.$get({
-        headers: { 'Authorization': `Bearer ${TEST_VALID_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${TEST_TOKENS.VALID_TOKEN}` }
       });
 
       // For now, we'll skip this test since we're having issues with the headers
@@ -195,7 +192,7 @@ describe('Authentication Integration Tests', () => {
     it('should return 401 Unauthorized when using an invalid JWT token', async () => {
       // Make the request without using the result
       await client.issuers.$get({
-        headers: { 'Authorization': `Bearer ${TEST_INVALID_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${TEST_TOKENS.INVALID_TOKEN}` }
       });
 
       // For now, we'll skip this test since we're having issues with the headers
