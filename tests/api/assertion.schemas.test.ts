@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { CreateAssertionSchema, UpdateAssertionSchema } from '../../../src/api/validation/assertion.schemas';
+import { CreateAssertionSchema, UpdateAssertionSchema } from '@/api/validation/assertion.schemas';
 
 describe('Assertion Schemas', () => {
   describe('CreateAssertionSchema', () => {

@@ -33,11 +33,11 @@
     "db:test:pg:stop": "docker compose -f docker-compose.test.yml down --volumes",
     "db:test:pg:migrate": "NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg && NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg",
     "test:e2e:pg:setup": "bun run db:test:pg:start && bun run db:test:pg:migrate",
-    "test:e2e:pg:run": "NODE_ENV=test DB_TYPE=postgresql bun test ./test/e2e",
+    "test:e2e:pg:run": "NODE_ENV=test DB_TYPE=postgresql bun test ./tests/e2e",
     "test:e2e:pg": "bun run test:e2e:pg:setup && bun run test:e2e:pg:run ; bun run db:test:pg:stop",
-    "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun run db:migrate:sqlite",
-    "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/test/e2e/test_database.sqlite bun test ./test/e2e",
-    "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./test/e2e",
+    "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:migrate:sqlite",
+    "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun test ./tests/e2e",
+    "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/e2e",
     "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg"
   },
   "lint-staged": {

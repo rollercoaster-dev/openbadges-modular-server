@@ -3,6 +3,7 @@ import { describe, it, expect, afterAll, beforeAll, afterEach } from 'bun:test';
 import { config } from '../../src/config/config';
 import { logger } from '../../src/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
+import { hashData } from '@/utils/crypto/signature';
 
 // Set database type to PostgreSQL for testing
 // This is the default and should work with the existing database
@@ -177,10 +178,10 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     expect(issuerResponse.status).toBe(201);
-    const issuer = await issuerResponse.json();
+    const issuer = await issuerResponse.json() as Record<string, unknown>;
     expect(issuer).toBeDefined();
     expect(issuer.id).toBeDefined();
-    createdResources.issuerId = issuer.id;
+    createdResources.issuerId = issuer.id as string;
 
     // Verify issuer has correct context URLs
     expect(issuer['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
@@ -197,7 +198,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       criteria: {
         narrative: 'Complete the OBv3 compliance test'
       },
-      issuer: issuer.id
+      issuer: issuer.id as string
     };
 
     const badgeClassResponse = await fetch(BADGE_CLASSES_ENDPOINT, {
@@ -215,10 +216,10 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     expect(badgeClassResponse.status).toBe(201);
-    const badgeClass = await badgeClassResponse.json();
+    const badgeClass = await badgeClassResponse.json() as Record<string, unknown>;
     expect(badgeClass).toBeDefined();
     expect(badgeClass.id).toBeDefined();
-    createdResources.badgeClassId = badgeClass.id;
+    createdResources.badgeClassId = badgeClass.id as string;
 
     // Verify badge class has correct context URLs
     expect(badgeClass['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
@@ -231,14 +232,8 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     const email = 'test@example.com';
     const salt = 'test-salt';
 
-    // Properly hash the email with SHA-256 - compatible with Bun
-    const emailWithSalt = email + salt;
-    const encoder = new TextEncoder();
-    const hashData = encoder.encode(emailWithSalt);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', hashData);
-    const hashString = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Use the local hashData utility for SHA-256 hashing
+    const hashString = hashData(email + salt);
 
     const assertionData = {
       recipient: {
@@ -247,7 +242,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         hashed: true,
         salt: salt
       },
-      badge: badgeClass.id, // The API schema expects 'badge'
+      badge: badgeClass.id as string, // The API schema expects 'badge'
       issuedOn: new Date().toISOString()
     };
 
@@ -288,40 +283,40 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     expect(assertionResponse.status).toBe(201);
-    const assertion = await assertionResponse.json();
+    const assertion = await assertionResponse.json() as Record<string, unknown>;
     expect(assertion).toBeDefined();
     expect(assertion.id).toBeDefined();
-    createdResources.assertionId = assertion.id;
+    createdResources.assertionId = assertion.id as string;
 
     // Verify assertion has correct context URLs
     expect(assertion['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
     expect(assertion['@context']).toContain('https://www.w3.org/ns/credentials/v2');
 
     // Verify assertion has correct type
-    expect(assertion.type).toContain('VerifiableCredential');
-    expect(assertion.type).toContain('OpenBadgeCredential');
+    expect((assertion.type as string[])).toContain('VerifiableCredential');
+    expect((assertion.type as string[])).toContain('OpenBadgeCredential');
 
     // Verify assertion has proof
     expect(assertion.proof).toBeDefined();
-    expect(assertion.proof.type).toBe('DataIntegrityProof');
-    expect(assertion.proof.cryptosuite).toBe('rsa-sha256');
-    expect(assertion.proof.proofPurpose).toBe('assertionMethod');
-    expect(assertion.proof.created).toBeDefined();
-    expect(assertion.proof.proofValue).toBeDefined();
-    expect(assertion.proof.verificationMethod).toBeDefined();
+    expect((assertion.proof as Record<string, unknown>).type).toBe('DataIntegrityProof');
+    expect((assertion.proof as Record<string, unknown>).cryptosuite).toBe('rsa-sha256');
+    expect((assertion.proof as Record<string, unknown>).proofPurpose).toBe('assertionMethod');
+    expect((assertion.proof as Record<string, unknown>).created).toBeDefined();
+    expect((assertion.proof as Record<string, unknown>).proofValue).toBeDefined();
+    expect((assertion.proof as Record<string, unknown>).verificationMethod).toBeDefined();
 
     // Verify assertion has credentialSubject
     expect(assertion.credentialSubject).toBeDefined();
-    expect(assertion.credentialSubject.type).toBe('AchievementSubject');
-    expect(assertion.credentialSubject.achievement).toBeDefined();
+    expect((assertion.credentialSubject as Record<string, unknown>).type).toBe('AchievementSubject');
+    expect((assertion.credentialSubject as Record<string, unknown>).achievement).toBeDefined();
 
     // Enhanced validation: Verify assertion correctly references the badge class and issuer
-    expect(assertion.credentialSubject.achievement).toBeDefined();
+    expect((assertion.credentialSubject as Record<string, unknown>).achievement).toBeDefined();
     // Check that the achievement ID matches our badge class ID
-    expect(assertion.credentialSubject.achievement.id).toBe(badgeClass.id);
+    expect(((assertion.credentialSubject as Record<string, unknown>).achievement as Record<string, unknown>).id).toBe(badgeClass.id);
     // Check that the issuer is correctly referenced
     expect(assertion.issuer).toBeDefined();
-    expect(assertion.issuer.id || assertion.issuer).toBe(issuer.id);
+    expect((assertion.issuer as Record<string, unknown>).id || assertion.issuer).toBe(issuer.id);
 
     // Use the validator function for more thorough checks
     validateOBv3Entity(assertion, 'assertion');
@@ -340,7 +335,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     expect(verifyResponse.status).toBe(200);
-    const verifyResult = await verifyResponse.json();
+    const verifyResult = await verifyResponse.json() as Record<string, unknown>;
     expect(verifyResult).toBeDefined();
     expect(verifyResult.isValid).toBe(true);
     expect(verifyResult.hasValidSignature).toBe(true);
