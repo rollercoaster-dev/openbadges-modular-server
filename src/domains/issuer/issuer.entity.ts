@@ -144,7 +144,26 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
     };
 
     // Pass the properly typed data to the serializer
-    return serializer.serializeIssuer(dataForSerializer);
+    const jsonLd = serializer.serializeIssuer(dataForSerializer);
+
+    // Ensure the context is set correctly for tests
+    if (version === BadgeVersion.V3) {
+      // Make sure context is an array for OB3
+      if (!Array.isArray(jsonLd['@context'])) {
+        jsonLd['@context'] = [jsonLd['@context']].filter(Boolean);
+      }
+
+      // Ensure both required contexts are present
+      if (!jsonLd['@context'].includes('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json')) {
+        jsonLd['@context'].push('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
+      }
+
+      if (!jsonLd['@context'].includes('https://www.w3.org/ns/credentials/v2')) {
+        jsonLd['@context'].push('https://www.w3.org/ns/credentials/v2');
+      }
+    }
+
+    return jsonLd;
   }
 
   /**

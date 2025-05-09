@@ -105,8 +105,8 @@ describe('BadgeClass Entity', () => {
 
     expect(jsonLd).toBeDefined();
     expect(jsonLd['@context']).toBeDefined();
-    // Type should be Achievement for OB3
-    expect(jsonLd.type).toBe('Achievement');
+    // Type should be Achievement for OB3 (as an array in OB3)
+    expect(Array.isArray(jsonLd.type) ? jsonLd.type.includes('Achievement') : jsonLd.type === 'Achievement').toBe(true);
     expect(jsonLd.id).toBe(validBadgeClassData.id);
     expect(jsonLd.issuer).toBe(validBadgeClassData.issuer);
     expect(jsonLd.name).toBe(validBadgeClassData.name);

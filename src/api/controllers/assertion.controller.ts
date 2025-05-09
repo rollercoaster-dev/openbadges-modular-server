@@ -136,7 +136,7 @@ export class AssertionController {
     try {
       // Log the raw data for debugging
       logger.debug('Raw assertion creation data', { data });
-      
+
       // Validate incoming data using Zod schema first!
       const validatedData = CreateAssertionSchema.parse(data);
 
@@ -170,7 +170,11 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          // Handle both string and object issuer IDs
+          const issuerId = typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+          const issuer = await this.issuerRepository.findById(issuerId);
           return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
         }
       }
@@ -196,7 +200,11 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          // Handle both string and object issuer IDs
+          const issuerId = typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+          const issuer = await this.issuerRepository.findById(issuerId);
           // Pass entities directly
           return assertion.toJsonLd(version, badgeClass, issuer);
         }

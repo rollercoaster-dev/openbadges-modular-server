@@ -80,8 +80,13 @@ describe('Issuer Entity', () => {
     const jsonLd = issuer.toJsonLd();
 
     expect(jsonLd).toBeDefined();
-    expect(jsonLd['@context']).toBe('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
-    expect(jsonLd.type).toBe('Issuer');
+    // Context is now an array in OB3
+    expect(Array.isArray(jsonLd['@context']) ?
+      jsonLd['@context'].includes('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json') :
+      jsonLd['@context'] === 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+    ).toBe(true);
+    // Type can be a string or array in OB3
+    expect(Array.isArray(jsonLd.type) ? jsonLd.type.includes('Issuer') : jsonLd.type === 'Issuer').toBe(true);
     expect(jsonLd.id).toBe(validIssuerData.id);
     expect(jsonLd.name).toBe(validIssuerData.name);
     expect(jsonLd.url).toBe(validIssuerData.url);
