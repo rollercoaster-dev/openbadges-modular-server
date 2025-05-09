@@ -71,7 +71,7 @@ describe('Authentication Middleware', () => {
     const request = new Request('http://localhost/api/protected');
 
     // Create a mock context with storage for variables
-    const variables: Record<string, any> = {};
+    const variables: Record<string, unknown> = {};
 
     const mockContext = {
       req: {
@@ -123,7 +123,7 @@ describe('Authentication Middleware', () => {
     const request = new Request('http://localhost/public/resource');
 
     // Create a mock context with storage for variables
-    const variables: Record<string, any> = {};
+    const variables: Record<string, unknown> = {};
 
     const mockContext = {
       req: {
@@ -179,7 +179,7 @@ describe('Authentication Middleware', () => {
     });
 
     // Create a mock context with storage for variables
-    const variables: Record<string, any> = {};
+    const variables: Record<string, unknown> = {};
 
     const mockContext = {
       req: {
@@ -235,7 +235,7 @@ describe('Authentication Middleware', () => {
     });
 
     // Create a mock context with storage for variables
-    const variables: Record<string, any> = {};
+    const variables: Record<string, unknown> = {};
 
     const mockContext = {
       req: {
@@ -263,7 +263,7 @@ describe('Authentication Middleware', () => {
     const handler = createAuthMiddleware();
 
     // Call the middleware
-    const _result = await handler(mockContext, next);
+    await handler(mockContext, next);
 
     // Check that next was called (middleware always calls next)
     expect(nextCalled).toBe(true);
