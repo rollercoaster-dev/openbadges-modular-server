@@ -118,7 +118,7 @@ export class Assertion {
         ...baseObject,
         type: ['VerifiableCredential', 'OpenBadgeCredential'],
         '@context': [
-          'https://www.w3.org/ns/credentials/v2',
+          VC_V2_CONTEXT_URL,
           'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
         ],
         // Cast to proper types for OB3
@@ -244,7 +244,7 @@ export class Assertion {
       // Ensure context includes both VC and OB3 contexts
       if (typeof output['@context'] === 'string') {
         output['@context'] = [
-          'https://www.w3.org/ns/credentials/v2',
+          VC_V2_CONTEXT_URL,
           output['@context']
         ];
       }
@@ -364,11 +364,11 @@ export class Assertion {
 
     // Validate context includes VC context
     if (Array.isArray(vcData['@context'])) {
-      if (!vcData['@context'].includes('https://www.w3.org/ns/credentials/v2')) {
-        throw new Error("VerifiableCredential @context must include 'https://www.w3.org/ns/credentials/v2'");
+      if (!vcData['@context'].includes(VC_V2_CONTEXT_URL)) {
+        throw new Error("VerifiableCredential @context must include VC_V2_CONTEXT_URL");
       }
-    } else if (vcData['@context'] !== 'https://www.w3.org/ns/credentials/v2') {
-      throw new Error("VerifiableCredential @context must be 'https://www.w3.org/ns/credentials/v2' or include it in the array");
+    } else if (vcData['@context'] !== VC_V2_CONTEXT_URL) {
+      throw new Error("VerifiableCredential @context must be VC_V2_CONTEXT_URL or include it in the array");
     }
 
     // Validate credentialSubject has achievement

@@ -95,7 +95,7 @@ expect(badgeClassesResponse.status).toBe(200);
           'X-API-Key': API_KEY
         },
         body: JSON.stringify({
-          '@context': 'https://w3id.org/openbadges/v3',
+          '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
           type: 'BadgeClass',
           name: 'Test Badge Class',
           description: 'A test badge class',

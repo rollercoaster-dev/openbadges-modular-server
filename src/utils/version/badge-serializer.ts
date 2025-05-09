@@ -144,7 +144,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
   serializeIssuer(issuer: IssuerData): IssuerData & { '@context': string | string[]; type: string | string[] } {
     const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
       ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
-      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], VC_V2_CONTEXT_URL];
 
     return {
       '@context': v3Contexts,
@@ -169,7 +169,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     // Get the contexts array
     const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
       ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
-      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], VC_V2_CONTEXT_URL];
 
     // Create base object with common properties
     const serialized = {
@@ -229,7 +229,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     // Get the contexts array
     const v3Contexts = Array.isArray(BADGE_VERSION_CONTEXTS[BadgeVersion.V3])
       ? BADGE_VERSION_CONTEXTS[BadgeVersion.V3]
-      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], 'https://www.w3.org/ns/credentials/v2'];
+      : [BADGE_VERSION_CONTEXTS[BadgeVersion.V3], VC_V2_CONTEXT_URL];
 
     // Otherwise, create a basic Assertion
     return {

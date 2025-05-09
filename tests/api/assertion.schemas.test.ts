@@ -10,7 +10,7 @@ describe('Assertion Schemas', () => {
           identity: 'test@example.com',
           hashed: false
         },
-        badge: 'https://example.com/badges/123',
+        badge: EXAMPLE_BADGE_CLASS_URL,
         issuedOn: new Date().toISOString(),
         verification: {
           type: 'HostedBadge'
@@ -23,14 +23,14 @@ describe('Assertion Schemas', () => {
 
     test('should validate a valid OB3 assertion', () => {
       const validOB3Assertion = {
-        id: 'https://example.com/assertions/123',
+        id: EXAMPLE_ASSERTION_URL,
         type: 'VerifiableCredential',
         recipient: {
           type: 'email',
           identity: 'test@example.com',
           hashed: false
         },
-        badge: 'https://example.com/badges/123',
+        badge: EXAMPLE_BADGE_CLASS_URL,
         issuedOn: new Date().toISOString(),
         verification: {
           type: 'HostedBadge'
@@ -69,7 +69,7 @@ describe('Assertion Schemas', () => {
           identity: 'test@example.com',
           hashed: false
         },
-        badge: 'https://example.com/badges/123',
+        badge: EXAMPLE_BADGE_CLASS_URL,
         issuedOn: 'not-a-date' // Invalid date format
       };
 
@@ -87,7 +87,7 @@ describe('Assertion Schemas', () => {
       // Create an invalid assertion with completely missing recipient
       const invalidAssertion = {
         // Missing recipient entirely
-        badge: 'https://example.com/badges/123',
+        badge: EXAMPLE_BADGE_CLASS_URL,
         issuedOn: new Date().toISOString()
       };
 

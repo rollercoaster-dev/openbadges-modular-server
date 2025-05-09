@@ -14,7 +14,7 @@ describe('Issuer Entity', () => {
   const validIssuerData = {
     id: '123e4567-e89b-12d3-a456-426614174000' as Shared.IRI,
     name: 'Example University',
-    url: 'https://example.edu' as Shared.IRI,
+    url: EXAMPLE_EDU_URL as Shared.IRI,
     email: 'badges@example.edu',
     description: 'A leading institution in online education',
     image: 'https://example.edu/logo.png' as Shared.IRI

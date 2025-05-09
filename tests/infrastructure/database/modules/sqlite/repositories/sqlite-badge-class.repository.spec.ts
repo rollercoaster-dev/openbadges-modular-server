@@ -15,7 +15,7 @@ const mockIssuer = {
   id: `urn:uuid:${createId()}`,
   type: 'Profile',
   name: 'Test Issuer',
-  url: 'https://example.com/issuer',
+  url: EXAMPLE_ISSUER_URL,
   email: 'issuer@example.com',
 };
 

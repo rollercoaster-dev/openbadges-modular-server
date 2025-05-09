@@ -158,8 +158,8 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
         jsonLd['@context'].push('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
       }
 
-      if (!jsonLd['@context'].includes('https://www.w3.org/ns/credentials/v2')) {
-        jsonLd['@context'].push('https://www.w3.org/ns/credentials/v2');
+      if (!jsonLd['@context'].includes(VC_V2_CONTEXT_URL)) {
+        jsonLd['@context'].push(VC_V2_CONTEXT_URL);
       }
     }
 

@@ -61,7 +61,7 @@ describe('validateCreateBadgeClassDto', () => {
       name: 'Test Badge',
       description: 'A test badge',
       image: 'https://example.com/badge.png',
-      issuer: 'https://example.com/issuer'
+      issuer: EXAMPLE_ISSUER_URL
     };
     
     // Should not throw an error

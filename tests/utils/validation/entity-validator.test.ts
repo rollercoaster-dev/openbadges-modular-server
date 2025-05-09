@@ -21,7 +21,7 @@ describe('Entity Validators', () => {
     it('should validate a valid issuer', () => {
       const validIssuer = Issuer.create({
         name: 'Example University',
-        url: 'https://example.edu' as Shared.IRI,
+        url: EXAMPLE_EDU_URL as Shared.IRI,
         email: 'badges@example.edu'
       });
 
@@ -34,7 +34,7 @@ describe('Entity Validators', () => {
     it('should reject an issuer without a name', () => {
       const invalidIssuer = Issuer.create({
         name: '',
-        url: 'https://example.edu' as Shared.IRI
+        url: EXAMPLE_EDU_URL as Shared.IRI
       });
 
       const result = validateIssuer(invalidIssuer);
@@ -70,7 +70,7 @@ describe('Entity Validators', () => {
     it('should reject an issuer with an invalid email', () => {
       const invalidIssuer = Issuer.create({
         name: 'Example University',
-        url: 'https://example.edu' as Shared.IRI,
+        url: EXAMPLE_EDU_URL as Shared.IRI,
         email: 'not-an-email'
       });
 

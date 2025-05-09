@@ -25,7 +25,7 @@ describe('Assertion Entity', () => {
     evidence: [
       {
         type: 'Evidence',
-        id: 'https://example.edu/evidence/123' as Shared.IRI,
+        id: EXAMPLE_EDU_EVIDENCE_URL as Shared.IRI,
         name: 'Course Completion Certificate',
         description: 'Certificate of completion for the Introduction to Programming course',
         genre: 'Certificate',
@@ -34,7 +34,7 @@ describe('Assertion Entity', () => {
     ],
     verification: {
       type: 'SignedBadge',
-      creator: 'https://example.edu/keys/1' as Shared.IRI,
+      creator: EXAMPLE_EDU_KEYS_URL as Shared.IRI,
       created: '2023-01-01T00:00:00Z',
       signatureValue: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...'
     }
@@ -119,7 +119,7 @@ describe('Assertion Entity', () => {
 
     // Check context is an array for OB3
     expect(Array.isArray(obj['@context'])).toBe(true);
-    expect(obj['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(obj['@context']).toContain(VC_V2_CONTEXT_URL);
     expect(obj['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
 
     // Check proof property (transformed from verification)
@@ -134,7 +134,7 @@ describe('Assertion Entity', () => {
 
     // Check context is an array for OB3
     expect(Array.isArray(jsonLd['@context'])).toBe(true);
-    expect(jsonLd['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(jsonLd['@context']).toContain(VC_V2_CONTEXT_URL);
     expect(jsonLd['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
 
     // Check type is an array for OB3

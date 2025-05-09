@@ -62,7 +62,7 @@ describe('Issuer API - E2E', () => {
     // --- CREATE ---
   it.skip('should create an issuer with valid data', async () => {
     const issuerData = {
-      '@context': 'https://w3id.org/openbadges/v3',
+      '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
       type: 'Issuer',
       name: 'E2E Test Issuer',
       url: 'https://issuer.example.com',
@@ -206,7 +206,7 @@ describe('Issuer API - E2E', () => {
         'X-API-Key': API_KEY
       },
       body: JSON.stringify({
-        '@context': 'https://w3id.org/openbadges/v3',
+        '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
         type: 'Issuer',
         name: 'Bad URL Issuer',
         url: 'not-a-url',

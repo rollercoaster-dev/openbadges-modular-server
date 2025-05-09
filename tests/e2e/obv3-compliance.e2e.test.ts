@@ -49,7 +49,7 @@ function validateOBv3Entity(entity: Record<string, unknown>, entityType: 'issuer
   expect(entity.id).toBeDefined();
   expect(entity['@context']).toBeDefined();
   expect(entity['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
-  expect(entity['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+  expect(entity['@context']).toContain(VC_V2_CONTEXT_URL);
 
   // Type-specific validations
   switch (entityType) {
@@ -158,7 +158,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     // Step 1: Create an issuer
     const issuerData = {
       name: 'Test Issuer for OBv3',
-      url: 'https://example.com/issuer',
+      url: EXAMPLE_ISSUER_URL,
       email: 'issuer@example.com',
       description: 'A test issuer for OBv3 compliance testing'
     };
@@ -185,7 +185,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // Verify issuer has correct context URLs
     expect(issuer['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
-    expect(issuer['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(issuer['@context']).toContain(VC_V2_CONTEXT_URL);
 
     // Use the validator function for more thorough checks
     validateOBv3Entity(issuer, 'issuer');
@@ -194,7 +194,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     const badgeClassData = {
       name: 'Test Badge Class for OBv3',
       description: 'A test badge class for OBv3 compliance testing',
-      image: 'https://example.com/badge-image.png',
+      image: EXAMPLE_BADGE_IMAGE_URL,
       criteria: {
         narrative: 'Complete the OBv3 compliance test'
       },
@@ -223,7 +223,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // Verify badge class has correct context URLs
     expect(badgeClass['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
-    expect(badgeClass['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(badgeClass['@context']).toContain(VC_V2_CONTEXT_URL);
 
     // Use the validator function for more thorough checks
     validateOBv3Entity(badgeClass, 'badgeClass');
@@ -290,7 +290,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // Verify assertion has correct context URLs
     expect(assertion['@context']).toContain('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
-    expect(assertion['@context']).toContain('https://www.w3.org/ns/credentials/v2');
+    expect(assertion['@context']).toContain(VC_V2_CONTEXT_URL);
 
     // Verify assertion has correct type
     expect((assertion.type as string[])).toContain('VerifiableCredential');

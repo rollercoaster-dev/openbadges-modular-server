@@ -5,6 +5,7 @@
  * database connection details and other environment-specific settings.
  */
 
+import { OBV3_CONTEXT_URL } from '@/constants/urls';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import crypto from 'node:crypto';
 
@@ -208,7 +209,7 @@ export const config = {
   // Open Badges configuration
   openBadges: {
     version: '3.0',
-    context: 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json',
+    context: OBV3_CONTEXT_URL,
     baseUrl: process.env['BASE_URL'] || 'http://localhost:3000',
   },
 
