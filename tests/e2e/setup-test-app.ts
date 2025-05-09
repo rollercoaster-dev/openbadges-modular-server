@@ -51,21 +51,26 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
   // Create a new app instance for each test
   const app = createApp();
   try {
-    // Initialize the repository factory
-    await RepositoryFactory.initialize({
+    // Override database connection for CI environment
+    const dbConfig = {
       type: config.database.type,
-      connectionString: config.database.connectionString,
+      connectionString: process.env.CI === 'true'
+        ? 'postgres://postgres:postgres@localhost:5432/openbadges_test'
+        : config.database.connectionString,
       sqliteFile: config.database.sqliteFile,
       sqliteBusyTimeout: config.database.sqliteBusyTimeout,
       sqliteSyncMode: config.database.sqliteSyncMode,
       sqliteCacheSize: config.database.sqliteCacheSize
-    });
+    };
+
+    // Initialize the repository factory
+    await RepositoryFactory.initialize(dbConfig);
 
     // Create database instance for connection
     await DatabaseFactory.createDatabase(
       config.database.type,
       {
-        connectionString: config.database.connectionString,
+        connectionString: dbConfig.connectionString,
         sqliteFile: config.database.sqliteFile,
         sqliteBusyTimeout: config.database.sqliteBusyTimeout,
         sqliteSyncMode: config.database.sqliteSyncMode,
