@@ -88,27 +88,57 @@ export function generateKeyPair(
  */
 export function detectKeyType(key: string): KeyType {
   try {
-    // For more accurate detection, we can try to use the key with both algorithms
-    // and see which one works. This is a simplified approach for the test.
-
-    // Check for Ed25519 key format
-    if (key.includes('BEGIN PRIVATE KEY') || key.includes('BEGIN PUBLIC KEY')) {
-      // Ed25519 keys are typically shorter than RSA keys
-      if (key.length < 500) {
-        return KeyType.Ed25519;
-      }
-    }
-
-    // For RSA keys, look for specific RSA headers
+    // First, check for explicit RSA headers which are definitive
     if (key.includes('BEGIN RSA PRIVATE KEY') || key.includes('BEGIN RSA PUBLIC KEY')) {
       return KeyType.RSA;
     }
 
+    // For generic PEM headers, we need more sophisticated detection
+    if (key.includes('BEGIN PRIVATE KEY') || key.includes('BEGIN PUBLIC KEY')) {
+      try {
+        // Try to create a key object and examine its algorithm
+        const keyObj = key.includes('PRIVATE')
+          ? crypto.createPrivateKey(key)
+          : crypto.createPublicKey(key);
+
+        // Get the key details
+        const keyDetails = keyObj.asymmetricKeyDetails;
+
+        // If we have key details with the name property
+        if (keyDetails && keyDetails.namedCurve) {
+          // Ed25519 keys will have a namedCurve of 'ED25519'
+          if (keyDetails.namedCurve === 'ED25519') {
+            return KeyType.Ed25519;
+          }
+        }
+
+        // If we have key details with modulusLength, it's RSA
+        if (keyDetails && 'modulusLength' in keyDetails) {
+          return KeyType.RSA;
+        }
+
+        // Fallback to length-based heuristic if we couldn't determine from key details
+        // Ed25519 keys are typically much shorter than RSA keys
+        if (key.length < 500) {
+          logger.info('Detected likely Ed25519 key based on key length');
+          return KeyType.Ed25519;
+        }
+      } catch (innerError) {
+        logger.warn('Error examining key details, falling back to length-based detection');
+        // Fallback to length-based detection
+        if (key.length < 500) {
+          return KeyType.Ed25519;
+        }
+      }
+    }
+
     // If we can't determine for sure, default to RSA as it's more common
+    logger.info('Could not definitively determine key type, defaulting to RSA');
     return KeyType.RSA;
-  } catch (_error) {
+  } catch (error) {
     // If there's an error in detection, default to RSA
     logger.warn('Error detecting key type, defaulting to RSA');
+    logger.logError('Key type detection error', error as Error);
     return KeyType.RSA;
   }
 }
