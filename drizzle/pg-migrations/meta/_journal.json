@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1746355671322,
-      "tag": "0000_known_tigra",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1746451520467,
-      "tag": "0001_awesome_hellcat",
+      "when": 1746814517628,
+      "tag": "0000_strong_gideon",
       "breakpoints": true
     }
   ]

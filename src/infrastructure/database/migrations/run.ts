@@ -89,6 +89,23 @@ async function runSqliteMigrations() {
     // We use Promise.resolve to ensure it's handled properly either way
     await Promise.resolve(migrate(db, { migrationsFolder }));
 
+    // Apply SQL directly to handle circular references
+    try {
+      // Get the SQL file path
+      const sqlFilePath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
+
+      // Check if the file exists
+      if (fs.existsSync(sqlFilePath)) {
+        logger.info('Applying SQL directly to handle circular references...');
+        const sql = fs.readFileSync(sqlFilePath, 'utf8');
+        await db.run(sql);
+        logger.info('SQL applied successfully.');
+      }
+    } catch (error) {
+      logger.warn('Error applying SQL directly:', error);
+      // Continue execution even if this fails
+    }
+
     // Close database connection
     sqlite.close();
 
@@ -135,6 +152,23 @@ async function runPostgresMigrations() {
     // Run migrations
     logger.info('Applying migrations...');
     await pgMigrate(db, { migrationsFolder });
+
+    // Apply SQL directly to handle circular references
+    try {
+      // Get the SQL file path
+      const sqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
+
+      // Check if the file exists
+      if (fs.existsSync(sqlFilePath)) {
+        logger.info('Applying SQL directly to handle circular references...');
+        const sql = fs.readFileSync(sqlFilePath, 'utf8');
+        await client.unsafe(sql);
+        logger.info('SQL applied successfully.');
+      }
+    } catch (error) {
+      logger.warn('Error applying SQL directly:', error);
+      // Continue execution even if this fails
+    }
 
     // Close database connection
     await client.end();

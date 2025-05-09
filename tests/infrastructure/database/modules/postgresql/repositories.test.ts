@@ -69,9 +69,9 @@ describePg('PostgreSQL Repositories', () => {
       // For testing purposes, we'll just create the tables directly
       // In a real implementation, use migrations
       await db.execute(/* sql */`
-        DROP TABLE IF EXISTS assertions;
-        DROP TABLE IF EXISTS badge_classes;
-        DROP TABLE IF EXISTS issuers;
+        DROP TABLE IF EXISTS assertions CASCADE;
+        DROP TABLE IF EXISTS badge_classes CASCADE;
+        DROP TABLE IF EXISTS issuers CASCADE;
 
         CREATE TABLE IF NOT EXISTS issuers (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -125,9 +125,9 @@ describePg('PostgreSQL Repositories', () => {
   afterAll(async () => {
     // Drop tables
     await db.execute(/* sql */`
-      DROP TABLE IF EXISTS assertions;
-      DROP TABLE IF EXISTS badge_classes;
-      DROP TABLE IF EXISTS issuers;
+      DROP TABLE IF EXISTS assertions CASCADE;
+      DROP TABLE IF EXISTS badge_classes CASCADE;
+      DROP TABLE IF EXISTS issuers CASCADE;
     `);
 
     // Close connection

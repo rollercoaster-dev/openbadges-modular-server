@@ -118,6 +118,46 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
         }
       );
       logger.info('Database connection established successfully');
+
+      // Run migrations for SQLite
+      if (dbConfig.type === 'sqlite') {
+        try {
+          logger.info('Running SQLite migrations for E2E tests');
+          const fs = require('fs');
+          const { join } = require('path');
+          const { Database } = require('bun:sqlite');
+
+          // Create SQLite database connection
+          const sqliteFile = config.database.sqliteFile || './test/e2e/test_database.sqlite';
+          const db = new Database(sqliteFile);
+
+          // Apply the fixed migration SQL
+          const sqlFilePath = join(process.cwd(), 'drizzle/migrations/0000_oval_starbolt_fixed.sql');
+          if (fs.existsSync(sqlFilePath)) {
+            logger.info(`Applying SQL migration from ${sqlFilePath}`);
+            try {
+              const sql = fs.readFileSync(sqlFilePath, 'utf8');
+              db.exec(sql);
+              logger.info('SQLite migrations applied successfully');
+            } catch (error) {
+              // If tables already exist, that's fine
+              if (error.message && error.message.includes('already exists')) {
+                logger.info('Tables already exist, skipping migration');
+              } else {
+                throw error;
+              }
+            }
+          } else {
+            logger.warn(`Migration file not found: ${sqlFilePath}`);
+          }
+        } catch (error) {
+          logger.error('Failed to run SQLite migrations', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          // Continue even if migrations fail
+        }
+      }
     } catch (error) {
       logger.error('Failed to create database connection', {
         error: error instanceof Error ? error.message : String(error),

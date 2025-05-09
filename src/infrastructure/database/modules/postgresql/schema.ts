@@ -9,6 +9,81 @@
 
 import { pgTable, text, timestamp, uuid, jsonb, index, boolean, varchar } from 'drizzle-orm/pg-core';
 
+// Users table - defined first to avoid circular references
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    username: varchar('username', { length: 50 }).notNull().unique(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    passwordHash: text('password_hash'),
+    firstName: varchar('first_name', { length: 50 }),
+    lastName: varchar('last_name', { length: 50 }),
+    roles: jsonb('roles').notNull().default('[]'),
+    permissions: jsonb('permissions').notNull().default('[]'),
+    isActive: boolean('is_active').notNull().default(true),
+    lastLogin: timestamp('last_login'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on username for faster lookups
+      usernameIdx: index('user_username_idx').on(table.username),
+      // Add index on email for faster lookups
+      emailIdx: index('user_email_idx').on(table.email),
+    };
+  }
+);
+
+// Roles table
+export const roles = pgTable(
+  'roles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull().unique(),
+    description: text('description'),
+    permissions: jsonb('permissions').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on name for faster lookups
+      nameIdx: index('role_name_idx').on(table.name),
+    };
+  }
+);
+
+// API Keys table
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    description: text('description'),
+    permissions: jsonb('permissions').notNull(),
+    revoked: boolean('revoked').default(false).notNull(),
+    revokedAt: timestamp('revoked_at'),
+    lastUsed: timestamp('last_used'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on key for faster lookups
+      keyIdx: index('api_key_key_idx').on(table.key),
+      // Add index on userId for faster lookups
+      userIdIdx: index('api_key_user_id_idx').on(table.userId),
+      // Add index on revoked for filtering
+      revokedIdx: index('api_key_revoked_idx').on(table.revoked),
+    };
+  }
+);
+
 // Issuer table
 export const issuers = pgTable(
   'issuers',
@@ -100,102 +175,6 @@ export const assertions = pgTable(
   }
 );
 
-// API Keys table
-export const apiKeys = pgTable(
-  'api_keys',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    key: text('key').notNull().unique(),
-    name: text('name').notNull(),
-    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    description: text('description'),
-    permissions: jsonb('permissions').notNull(),
-    revoked: boolean('revoked').default(false).notNull(),
-    revokedAt: timestamp('revoked_at'),
-    lastUsed: timestamp('last_used'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on key for faster lookups
-      keyIdx: index('api_key_key_idx').on(table.key),
-      // Add index on userId for faster lookups
-      userIdIdx: index('api_key_user_id_idx').on(table.userId),
-      // Add index on revoked for filtering
-      revokedIdx: index('api_key_revoked_idx').on(table.revoked),
-    };
-  }
-);
-
-// Roles table
-export const roles = pgTable(
-  'roles',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    name: text('name').notNull().unique(),
-    description: text('description'),
-    permissions: jsonb('permissions').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on name for faster lookups
-      nameIdx: index('role_name_idx').on(table.name),
-    };
-  }
-);
-
-// Users table
-export const users = pgTable(
-  'users',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    username: varchar('username', { length: 50 }).notNull().unique(),
-    email: varchar('email', { length: 255 }).notNull().unique(),
-    passwordHash: text('password_hash'),
-    firstName: varchar('first_name', { length: 50 }),
-    lastName: varchar('last_name', { length: 50 }),
-    roles: jsonb('roles').notNull().default('[]'),
-    permissions: jsonb('permissions').notNull().default('[]'),
-    isActive: boolean('is_active').notNull().default(true),
-    lastLogin: timestamp('last_login'),
-    metadata: jsonb('metadata'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on username for faster lookups
-      usernameIdx: index('user_username_idx').on(table.username),
-      // Add index on email for faster lookups
-      emailIdx: index('user_email_idx').on(table.email),
-    };
-  }
-);
-
-// User Roles table (many-to-many relationship)
-export const userRoles = pgTable(
-  'user_roles',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (table) => {
-    return {
-      // Add index on userId for faster lookups
-      userIdIdx: index('user_role_user_id_idx').on(table.userId),
-      // Add index on roleId for faster lookups
-      roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
-      // Add index on userId and roleId
-      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
-    };
-  }
-);
-
 // Platforms table - for registering external platforms
 export const platforms = pgTable(
   'platforms',
@@ -235,6 +214,27 @@ export const platformUsers = pgTable(
     return {
       platformUserIdx: index('platform_user_idx').on(table.platformId, table.externalUserId),
       emailIdx: index('platform_user_email_idx').on(table.email),
+    };
+  }
+);
+
+// User Roles table (many-to-many relationship)
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on userId for faster lookups
+      userIdIdx: index('user_role_user_id_idx').on(table.userId),
+      // Add index on roleId for faster lookups
+      roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
+      // Add index on userId and roleId
+      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
     };
   }
 );

@@ -9,7 +9,8 @@ CREATE TABLE `api_keys` (
 	`revoked_at` integer,
 	`last_used` integer,
 	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `api_keys_key_unique` ON `api_keys` (`key`);--> statement-breakpoint
@@ -130,9 +131,30 @@ CREATE TABLE `user_roles` (
 	`user_id` text NOT NULL,
 	`role_id` text NOT NULL,
 	`created_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `user_role_user_id_idx` ON `user_roles` (`user_id`);--> statement-breakpoint
 CREATE INDEX `user_role_role_id_idx` ON `user_roles` (`role_id`);--> statement-breakpoint
-CREATE INDEX `user_role_user_id_role_id_idx` ON `user_roles` (`user_id`,`role_id`);
+CREATE INDEX `user_role_user_id_role_id_idx` ON `user_roles` (`user_id`,`role_id`);--> statement-breakpoint
+CREATE TABLE `users` (
+	`id` text PRIMARY KEY NOT NULL,
+	`username` text NOT NULL,
+	`email` text NOT NULL,
+	`password_hash` text,
+	`first_name` text,
+	`last_name` text,
+	`roles` text DEFAULT '[]' NOT NULL,
+	`permissions` text DEFAULT '[]' NOT NULL,
+	`is_active` integer DEFAULT 1 NOT NULL,
+	`last_login` integer,
+	`metadata` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);--> statement-breakpoint
+CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);--> statement-breakpoint
+CREATE INDEX `user_username_idx` ON `users` (`username`);--> statement-breakpoint
+CREATE INDEX `user_email_idx` ON `users` (`email`);
