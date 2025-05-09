@@ -1,9 +1,19 @@
 import type { Config } from 'drizzle-kit';
-import { config } from './src/config/config';
 import { existsSync } from 'fs';
 import { dirname } from 'path';
-// import { logger } from './src/utils/logging/logger.service'; // Temporarily commented out
-// import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Temporarily commented out
+import { databaseConfig } from './drizzle-config-helper';
+
+// Use console for logging in drizzle.config.ts to avoid module resolution issues
+const logger = {
+  // eslint-disable-next-line no-console
+  error: console.error,
+  // eslint-disable-next-line no-console
+  warn: console.warn,
+  // eslint-disable-next-line no-console
+  info: console.info,
+  // eslint-disable-next-line no-console
+  debug: console.debug
+};
 
 /**
  * Drizzle Kit configuration
@@ -15,14 +25,12 @@ import { dirname } from 'path';
 // Use the main application logger
 
 // Determine database type from environment variable or config
-const dbType = process.env['DB_TYPE'] || config.database.type || 'sqlite';
+const dbType = process.env['DB_TYPE'] || databaseConfig.type || 'sqlite';
 
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
 if (!supportedDbTypes.includes(dbType)) {
-  // logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`); // Temporarily commented out
-  // eslint-disable-next-line no-console
-  console.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`); // Fallback to console.error
+  logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
   process.exit(1);
 }
 
@@ -31,15 +39,13 @@ let drizzleConfig: Config;
 
 if (dbType === 'postgresql') {
   // Parse connection string to extract credentials
-  const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
+  const connectionString = databaseConfig.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
   let url: URL;
   try {
     url = new URL(connectionString);
   } catch (error) {
-    // Use SensitiveValue to automatically mask the password in logs
-    // logger.error('Invalid connection string', { connectionString: SensitiveValue.from(connectionString), error }); // Temporarily commented out
-    // eslint-disable-next-line no-console
-    console.error('Invalid connection string', { connectionString /* Consider masking manually if sensitive */, error }); // Fallback
+    // Log error without sensitive data
+    logger.error('Invalid connection string', { error });
     throw new Error('Failed to parse the database connection string. Please check your configuration.');
   }
 
@@ -62,7 +68,7 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: process.env['SQLITE_DB_PATH'] || config.database.sqliteFile || 'sqlite.db',
+      url: process.env['SQLITE_DB_PATH'] || databaseConfig.sqliteFile || 'sqlite.db',
     },
   };
 }
@@ -85,9 +91,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   // Check if schema file exists
   const schemaPath = Array.isArray(config.schema) ? config.schema[0] : config.schema;
   if (schemaPath && !existsSync(schemaPath)) {
-    // logger.error("Schema file not found:", { schemaPath }); // Temporarily commented out
-    // eslint-disable-next-line no-console
-    console.error("Schema file not found:", { schemaPath }); // Fallback
+    logger.error("Schema file not found:", { schemaPath });
     process.exit(1);
   }
 
@@ -95,9 +99,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (config.out) {
     const migrationsDir = dirname(config.out);
     if (!existsSync(migrationsDir)) {
-      // logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`); // Temporarily commented out
-      // eslint-disable-next-line no-console
-      console.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`); // Fallback
+      logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
     }
   }
 
@@ -119,11 +121,7 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (dbType === 'postgresql' && dbCredentials) {
     const { host, port, user, database } = dbCredentials;
     if (!host || !port || !user || !database) {
-      // logger.error("Missing PostgreSQL connection details:", { // Temporarily commented out
-      //   missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
-      // });
-      // eslint-disable-next-line no-console
-      console.error("Missing PostgreSQL connection details:", { // Fallback
+      logger.error("Missing PostgreSQL connection details:", {
         missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
       });
       process.exit(1);
@@ -131,15 +129,11 @@ function verifyConfiguration(config: Config, dbType: string) {
   } else if (dbType === 'sqlite' && dbCredentials) {
     const { url } = dbCredentials;
     if (!url) {
-      // logger.error("Missing SQLite connection URL"); // Temporarily commented out
-      // eslint-disable-next-line no-console
-      console.error("Missing SQLite connection URL"); // Fallback
+      logger.error("Missing SQLite connection URL");
       process.exit(1);
     }
     if (url && url !== ':memory:' && !existsSync(url) && !url.includes(':memory:')) {
-      // logger.warn(`SQLite database file not found: ${url}. It will be created.`); // Temporarily commented out
-      // eslint-disable-next-line no-console
-      console.warn(`SQLite database file not found: ${url}. It will be created.`); // Fallback
+      logger.warn(`SQLite database file not found: ${url}. It will be created.`);
     }
   }
 }

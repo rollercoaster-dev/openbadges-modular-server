@@ -33,7 +33,7 @@ jobs:
     needs: lint-and-typecheck
     services:
       postgres:
-        image: postgres:14
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -62,6 +62,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libsqlite3-dev
           bun install
+
+      - name: Migrate PostgreSQL database
+        run: |
+          echo "Running PostgreSQL migrations..."
+          NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg
+          NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          DB_TYPE: postgresql
+          NODE_ENV: test
 
       - name: Run tests
         run: bun run test:coverage
