@@ -1,5 +1,5 @@
 // test/e2e/openBadgesCompliance.e2e.test.ts
-import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
+import { describe, it, afterAll, beforeAll } from 'bun:test';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 
