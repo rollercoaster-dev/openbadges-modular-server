@@ -15,6 +15,7 @@ import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared, OB2, OB3 } from 'openbadges-types';
 import { VerificationService } from '../../core/verification.service';
+import { VerificationStatus, VerificationErrorCode, createVerificationError } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
 import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
@@ -341,13 +342,7 @@ export class AssertionController {
    * @param id The assertion ID
    * @returns Verification results
    */
-  async verifyAssertion(id: string): Promise<{
-    isValid: boolean;
-    isExpired: boolean;
-    isRevoked: boolean;
-    hasValidSignature: boolean;
-    details?: string;
-  }> {
+  async verifyAssertion(id: string): Promise<VerificationStatus> {
     try {
       // Initialize the key service
       await KeyService.initialize();
@@ -355,51 +350,39 @@ export class AssertionController {
       // Get the assertion
       const assertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
       if (!assertion) {
-        return {
-          isValid: false,
-          isExpired: false,
-          isRevoked: false,
-          hasValidSignature: false,
-          details: 'Assertion not found'
-        };
+        return createVerificationError(
+          VerificationErrorCode.ASSERTION_NOT_FOUND,
+          'Assertion not found'
+        );
       }
 
       // Verify badge class exists
       const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
       if (!badgeClass) {
-        return {
-          isValid: false,
-          isExpired: false,
-          isRevoked: false,
-          hasValidSignature: false,
-          details: 'Referenced badge class not found'
-        };
+        return createVerificationError(
+          VerificationErrorCode.INTERNAL_ERROR,
+          'Referenced badge class not found'
+        );
       }
 
       // Verify issuer exists
       const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
       const issuer = await this.issuerRepository.findById(issuerIri);
       if (!issuer) {
-        return {
-          isValid: false,
-          isExpired: false,
-          isRevoked: false,
-          hasValidSignature: false,
-          details: 'Referenced issuer not found'
-        };
+        return createVerificationError(
+          VerificationErrorCode.INTERNAL_ERROR,
+          'Referenced issuer not found'
+        );
       }
 
       // Use the verification service to verify the assertion
       return await VerificationService.verifyAssertion(assertion);
     } catch (error) {
       logger.logError(`Failed to verify assertion with ID ${id}`, error as Error);
-      return {
-        isValid: false,
-        isExpired: false,
-        isRevoked: false,
-        hasValidSignature: false,
-        details: 'Error during verification process'
-      };
+      return createVerificationError(
+        VerificationErrorCode.INTERNAL_ERROR,
+        `Error during verification process: ${(error as Error).message}`
+      );
     }
   }
 
@@ -447,7 +430,7 @@ export class AssertionController {
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
-        const issuerIri = badgeClass?.issuer 
+        const issuerIri = badgeClass?.issuer
           ? (typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI)
           : null;
         const issuer = issuerIri ? await this.issuerRepository.findById(issuerIri) : null;

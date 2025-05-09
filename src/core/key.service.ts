@@ -5,13 +5,20 @@
  * for digital signatures in the Open Badges API.
  */
 
-import { generateKeyPair, signData, verifySignature } from '../utils/crypto/signature';
+import { generateKeyPair, signData, verifySignature, KeyType, detectKeyType, Cryptosuite } from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // In-memory cache of key pairs
-let keyPairs: Map<string, { publicKey: string; privateKey: string }> = new Map();
+interface KeyPair {
+  publicKey: string;
+  privateKey: string;
+  keyType: KeyType;
+  cryptosuite?: Cryptosuite;
+}
+
+let keyPairs: Map<string, KeyPair> = new Map();
 
 /**
  * Key service class
@@ -36,13 +43,18 @@ export class KeyService {
 
       // If no default key pair exists, generate one
       if (!keyPairs.has('default')) {
-        const defaultKeyPair = generateKeyPair();
+        const keyPairData = generateKeyPair();
+        const defaultKeyPair: KeyPair = {
+          ...keyPairData,
+          keyType: KeyType.RSA,
+          cryptosuite: Cryptosuite.RsaSha256
+        };
         keyPairs.set('default', defaultKeyPair);
 
         // Save the new key pair
         await this.saveKeyPair('default', defaultKeyPair);
 
-        logger.info('Generated and saved default key pair');
+        logger.info('Generated and saved default RSA key pair');
       } else {
         logger.info('Loaded existing default key pair');
       }
@@ -70,8 +82,63 @@ export class KeyService {
         // Load default key pair
         const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
         const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+        const metadataPath = path.join(this.KEYS_DIR, 'default.meta.json');
 
-        keyPairs.set('default', { publicKey, privateKey });
+        let keyType: KeyType;
+        let cryptosuite: Cryptosuite;
+
+        // Try to load metadata if it exists
+        if (fs.existsSync(metadataPath)) {
+          try {
+            const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+            const metadata = JSON.parse(metadataContent);
+            keyType = metadata.keyType;
+            cryptosuite = metadata.cryptosuite;
+            logger.info('Loaded key metadata from file');
+          } catch (error) {
+            // If metadata file exists but can't be parsed, fall back to detection
+            logger.warn('Failed to parse key metadata, falling back to detection');
+            logger.logError('Metadata parsing error', error as Error);
+            keyType = detectKeyType(publicKey);
+            cryptosuite = keyType === KeyType.RSA ? Cryptosuite.RsaSha256 : Cryptosuite.Ed25519;
+          }
+        } else {
+          // If no metadata file, detect key type from the loaded key
+          keyType = detectKeyType(publicKey);
+
+          // Determine cryptosuite based on key type
+          switch (keyType) {
+            case KeyType.RSA:
+              cryptosuite = Cryptosuite.RsaSha256;
+              break;
+            case KeyType.Ed25519:
+              cryptosuite = Cryptosuite.Ed25519;
+              break;
+            default:
+              cryptosuite = Cryptosuite.RsaSha256; // Default fallback
+          }
+
+          // Create metadata file for future use
+          try {
+            const metadata = {
+              keyType,
+              cryptosuite,
+              created: new Date().toISOString()
+            };
+            fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+            logger.info('Created metadata file for existing key');
+          } catch (error) {
+            logger.warn('Failed to create metadata file for existing key');
+            logger.logError('Metadata creation error', error as Error);
+          }
+        }
+
+        keyPairs.set('default', {
+          publicKey,
+          privateKey,
+          keyType,
+          cryptosuite
+        });
       }
 
       // Load other key pairs from the keys directory
@@ -94,8 +161,63 @@ export class KeyService {
         if (fs.existsSync(publicKeyPath) && fs.existsSync(privateKeyPath)) {
           const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
           const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+          const metadataPath = path.join(this.KEYS_DIR, `${keyId}.meta.json`);
 
-          keyPairs.set(keyId, { publicKey, privateKey });
+          let keyType: KeyType;
+          let cryptosuite: Cryptosuite;
+
+          // Try to load metadata if it exists
+          if (fs.existsSync(metadataPath)) {
+            try {
+              const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+              const metadata = JSON.parse(metadataContent);
+              keyType = metadata.keyType;
+              cryptosuite = metadata.cryptosuite;
+              logger.info(`Loaded metadata for key: ${keyId}`);
+            } catch (error) {
+              // If metadata file exists but can't be parsed, fall back to detection
+              logger.warn(`Failed to parse metadata for key: ${keyId}`);
+              logger.logError('Metadata parsing error', error as Error);
+              keyType = detectKeyType(publicKey);
+              cryptosuite = keyType === KeyType.RSA ? Cryptosuite.RsaSha256 : Cryptosuite.Ed25519;
+            }
+          } else {
+            // If no metadata file, detect key type from the loaded key
+            keyType = detectKeyType(publicKey);
+
+            // Determine cryptosuite based on key type
+            switch (keyType) {
+              case KeyType.RSA:
+                cryptosuite = Cryptosuite.RsaSha256;
+                break;
+              case KeyType.Ed25519:
+                cryptosuite = Cryptosuite.Ed25519;
+                break;
+              default:
+                cryptosuite = Cryptosuite.RsaSha256; // Default fallback
+            }
+
+            // Create metadata file for future use
+            try {
+              const metadata = {
+                keyType,
+                cryptosuite,
+                created: new Date().toISOString()
+              };
+              fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+              logger.info(`Created metadata file for existing key: ${keyId}`);
+            } catch (error) {
+              logger.warn(`Failed to create metadata file for key: ${keyId}`);
+              logger.logError('Metadata creation error', error as Error);
+            }
+          }
+
+          keyPairs.set(keyId, {
+            publicKey,
+            privateKey,
+            keyType,
+            cryptosuite
+          });
         }
       }
     } catch (error) {
@@ -109,7 +231,7 @@ export class KeyService {
    * @param id The ID of the key pair
    * @param keyPair The key pair to save
    */
-  private static async saveKeyPair(id: string, keyPair: { publicKey: string; privateKey: string }): Promise<void> {
+  private static async saveKeyPair(id: string, keyPair: KeyPair): Promise<void> {
     try {
       // Ensure KEYS_DIR is defined before proceeding
       if (!this.KEYS_DIR) {
@@ -118,6 +240,7 @@ export class KeyService {
 
       const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
       const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
+      const metadataPath = path.join(this.KEYS_DIR, `${id}.meta.json`);
 
       // Save public key
       fs.writeFileSync(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
@@ -125,7 +248,15 @@ export class KeyService {
       // Save private key with restricted permissions
       fs.writeFileSync(privateKeyPath, keyPair.privateKey, { mode: 0o600 }); // Read/write by owner only
 
-      logger.info(`Saved key pair with ID: ${id}`);
+      // Save metadata (key type and cryptosuite)
+      const metadata = {
+        keyType: keyPair.keyType,
+        cryptosuite: keyPair.cryptosuite,
+        created: new Date().toISOString()
+      };
+      fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+
+      logger.info(`Saved key pair with ID: ${id} (${keyPair.keyType})`);
     } catch (error) {
       logger.logError(`Failed to save key pair with ID: ${id}`, error as Error);
       throw error;
@@ -162,8 +293,11 @@ export class KeyService {
    * @returns The signature
    */
   static signWithDefaultKey(data: string): string {
-    const privateKey = this.getDefaultPrivateKey();
-    return signData(data, privateKey);
+    const keyPair = keyPairs.get('default');
+    if (!keyPair) {
+      throw new Error('Default key pair not found');
+    }
+    return signData(data, keyPair.privateKey, keyPair.keyType);
   }
 
   /**
@@ -173,8 +307,11 @@ export class KeyService {
    * @returns True if the signature is valid, false otherwise
    */
   static verifyWithDefaultKey(data: string, signature: string): boolean {
-    const publicKey = this.getDefaultPublicKey();
-    return verifySignature(data, signature, publicKey);
+    const keyPair = keyPairs.get('default');
+    if (!keyPair) {
+      throw new Error('Default key pair not found');
+    }
+    return verifySignature(data, signature, keyPair.publicKey, keyPair.keyType);
   }
 
   /**
@@ -187,7 +324,7 @@ export class KeyService {
       // 'default' key is handled by getPublicKey/getPrivateKey which ensure it's loaded or generated.
       // This method is for checking existence of *specific, non-default* keys.
       // The 'default' key is always assumed to exist or be creatable by initialize().
-      return true; 
+      return true;
     }
     return keyPairs.has(id);
   }
@@ -195,11 +332,35 @@ export class KeyService {
   /**
    * Generates a new key pair with the given ID
    * @param id The ID for the new key pair
+   * @param keyType The type of key to generate (defaults to RSA)
    * @returns The generated key pair
    */
-  static async generateKeyPair(id: string): Promise<{ publicKey: string; privateKey: string }> {
+  static async generateKeyPair(id: string, keyType: KeyType = KeyType.RSA): Promise<KeyPair> {
     try {
-      const keyPair = generateKeyPair();
+      // Generate the key pair with the specified type
+      const keyPairData = generateKeyPair(keyType);
+
+      // Determine cryptosuite based on key type
+      let cryptosuite: Cryptosuite;
+      switch (keyType) {
+        case KeyType.RSA:
+          cryptosuite = Cryptosuite.RsaSha256;
+          break;
+        case KeyType.Ed25519:
+          cryptosuite = Cryptosuite.Ed25519;
+          break;
+        default:
+          cryptosuite = Cryptosuite.RsaSha256; // Default fallback
+      }
+
+      // Create the full key pair object
+      const keyPair: KeyPair = {
+        ...keyPairData,
+        keyType,
+        cryptosuite
+      };
+
+      // Store in memory
       keyPairs.set(id, keyPair);
 
       // Save the new key pair
