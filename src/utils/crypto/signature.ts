@@ -317,10 +317,17 @@ export function verifyAssertion(dataToVerify: string, proof: DataIntegrityProof,
           keyType = KeyType.Ed25519;
           break;
         default:
-          // For unknown cryptosuites, we'll try to auto-detect the key type
-          logger.warn(`Unknown cryptosuite: ${proof.cryptosuite}, attempting auto-detection`);
+          // For unknown cryptosuites, set a default key type
+          logger.warn(`Unknown cryptosuite: ${proof.cryptosuite}, setting default key type to RSA`);
+          keyType = KeyType.RSA; // Default to RSA as a fallback
           break;
       }
+    }
+
+    // If key type is still undefined after all checks, abort verification
+    if (!keyType) {
+      logger.error('Key type could not be determined. Verification aborted.');
+      return false;
     }
 
     // Verify the signature with the appropriate key type

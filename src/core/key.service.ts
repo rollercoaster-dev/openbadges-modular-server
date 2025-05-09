@@ -408,8 +408,12 @@ export class KeyService {
 
   /**
    * Gets a public key by ID
+   *
+   * This method retrieves the public key associated with the given ID. If the key pair
+   * is not found in memory, it attempts to load the public key from storage.
+   *
    * @param id The ID of the key pair
-   * @returns The public key
+   * @returns A promise that resolves to the public key as a string
    */
   static async getPublicKey(id: string): Promise<string> {
     const keyPair = keyPairs.get(id);
@@ -432,8 +436,12 @@ export class KeyService {
 
   /**
    * Gets a private key by ID
+   *
+   * This method retrieves the private key associated with the given ID. If the key pair
+   * is not found in memory, it attempts to load the private key from storage.
+   *
    * @param id The ID of the key pair
-   * @returns The private key
+   * @returns A promise that resolves to the private key as a string
    */
   static async getPrivateKey(id: string): Promise<string> {
     const keyPair = keyPairs.get(id);
