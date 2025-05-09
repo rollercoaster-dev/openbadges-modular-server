@@ -222,16 +222,34 @@ export class VerificationService {
             keyType = KeyType.Ed25519;
             break;
           default:
-            // For unknown cryptosuites, we'll try to auto-detect the key type
-            keyType = detectKeyType(publicKey);
-            logger.warn(`Unknown cryptosuite: ${cryptosuite}, using auto-detected key type: ${keyType}`);
-            break;
+            // For unknown cryptosuites, log a warning and return an error
+            logger.warn(`Unknown or unsupported cryptosuite: ${cryptosuite}`);
+            return createVerificationError(
+              VerificationErrorCode.CRYPTOSUITE_UNSUPPORTED,
+              `Unsupported cryptosuite: ${cryptosuite}. This server only supports ${Object.values(Cryptosuite).join(', ')}`
+            );
         }
       } else {
-        // If no cryptosuite specified, auto-detect key type
+        // If no cryptosuite specified, log a warning and attempt to auto-detect
+        logger.warn('No cryptosuite specified in proof. Attempting to auto-detect key type.');
+
+        // Auto-detect key type from the public key
         keyType = detectKeyType(publicKey);
-        cryptosuite = keyType === KeyType.RSA ? Cryptosuite.RsaSha256 : Cryptosuite.Ed25519;
-        logger.warn(`No cryptosuite specified, using auto-detected key type: ${keyType} and cryptosuite: ${cryptosuite}`);
+
+        // Map the detected key type to a cryptosuite
+        if (keyType === KeyType.RSA) {
+          cryptosuite = Cryptosuite.RsaSha256;
+        } else if (keyType === KeyType.Ed25519) {
+          cryptosuite = Cryptosuite.Ed25519;
+        } else {
+          // This should never happen with our current implementation, but handle it just in case
+          return createVerificationError(
+            VerificationErrorCode.INTERNAL_ERROR,
+            'Failed to determine appropriate cryptosuite from key material'
+          );
+        }
+
+        logger.info(`Auto-detected key type: ${keyType}, using cryptosuite: ${cryptosuite}`);
       }
 
       // Pass canonicalData, the full proofObject (which includes cryptosuite and proofValue), and publicKey
