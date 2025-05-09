@@ -117,8 +117,8 @@ This document outlines the tasks required to ensure our application aligns with 
 
 -   [~] **Address Gaps:** Work through the prioritized list of gaps identified in Phase 1 for entities and APIs.
     -   [x] Update JSON-LD context URLs to match OBv3 specification
-    -   [ ] Ensure strict typing (MEMORY[a4a77766-bf8e-4e3e-aad4-ed3e5b9418a8]).
-    -   [ ] Utilize Zod for validation where appropriate (MEMORY[29ccfc7d-18d3-4d60-860b-9a9a28b7fefc]).
+    -   [x] Ensure strict typing (MEMORY[a4a77766-bf8e-4e3e-aad4-ed3e5b9418a8]).
+    -   [x] Utilize Zod for validation where appropriate (MEMORY[29ccfc7d-18d3-4d60-860b-9a9a28b7fefc]).
     -   [x] Fix lint errors in `tests/api/auth.integration.test.ts` (unused `result` and `error` variables).
 -   [~] **Develop/Update Internal Test Suite for OBv3 Compliance:**
     -   [x] Fixed failing test `Verification Service > should handle malformed creator URLs`
@@ -181,13 +181,18 @@ We've made significant progress in aligning our codebase with the Open Badges 3.
    - Updated authentication middleware tests
    - All tests are now passing
 
-## Next Steps (as of 2025-05-14)
+## Next Steps (as of 2025-05-15)
 
--   [ ] **Complete JSON-LD Context Implementation:**
+-   [x] **Complete JSON-LD Context Implementation:**
     -   [x] Update OBv3 context URL from `https://w3id.org/openbadges/v3` to the official `https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json`
     -   [x] Update Verifiable Credentials context URL from v1 to v2: `https://www.w3.org/ns/credentials/v2`
-    -   [ ] Verify all entity serialization methods correctly use the updated context URLs
-    -   [ ] Run comprehensive tests to ensure the context changes don't break existing functionality
+    -   [x] Verify all entity serialization methods correctly use the updated context URLs
+    -   [x] Run comprehensive tests to ensure the context changes don't break existing functionality
+
+-   [x] **Implement Strict Typing with Zod:**
+    -   [x] Update validation middleware to use Zod schemas for validation
+    -   [x] Improve error handling for validation errors
+    -   [x] Ensure type safety throughout the validation process
 
 -   [ ] **Continue Phase 2 Implementation:**
     -   [ ] Focus on developing and updating the internal test suite for OBv3 compliance

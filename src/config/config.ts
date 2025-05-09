@@ -208,7 +208,7 @@ export const config = {
   // Open Badges configuration
   openBadges: {
     version: '3.0',
-    context: 'https://w3id.org/openbadges/v3',
+    context: 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json',
     baseUrl: process.env['BASE_URL'] || 'http://localhost:3000',
   },
 

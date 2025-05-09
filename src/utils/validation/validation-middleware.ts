@@ -11,6 +11,10 @@ import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
 import { Assertion } from '../../domains/assertion/assertion.entity';
 import { MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
+import { CreateIssuerSchema, UpdateIssuerSchema } from '../../api/validation/issuer.schemas';
+import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
+import { CreateAssertionSchema, UpdateAssertionSchema } from '../../api/validation/assertion.schemas';
+import { z } from 'zod';
 
 /**
  * Convert validation errors array to a record format
@@ -59,6 +63,25 @@ function formatValidationErrors(errors: string[]): Record<string, string[]> {
 }
 
 /**
+ * Format Zod validation errors into a record format
+ * @param result Zod validation result
+ * @returns Record with error messages grouped by field
+ */
+function formatZodErrors(result: z.SafeParseError<unknown>): Record<string, string[]> {
+  const formattedErrors: Record<string, string[]> = {};
+
+  result.error.errors.forEach(err => {
+    const path = err.path.join('.') || 'general';
+    if (!formattedErrors[path]) {
+      formattedErrors[path] = [];
+    }
+    formattedErrors[path].push(err.message);
+  });
+
+  return formattedErrors;
+}
+
+/**
  * Middleware for validating an issuer
  * @returns A Hono middleware handler
  */
@@ -67,6 +90,17 @@ export function validateIssuerMiddleware(): MiddlewareHandler {
     try {
       const body = await c.req.json();
 
+      // First validate with Zod schema
+      const result = CreateIssuerSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
+
+      // Then validate with entity validator for additional checks
       if (body && typeof body === 'object') {
         const issuerData = Issuer.create(body);
         const { isValid, errors } = validateIssuer(issuerData);
@@ -100,6 +134,17 @@ export function validateBadgeClassMiddleware(): MiddlewareHandler {
     try {
       const body = await c.req.json();
 
+      // First validate with Zod schema
+      const result = CreateBadgeClassSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
+
+      // Then validate with entity validator for additional checks
       if (body && typeof body === 'object') {
         const badgeClassData = BadgeClass.create(body);
         const { isValid, errors } = validateBadgeClass(badgeClassData);
@@ -133,6 +178,17 @@ export function validateAssertionMiddleware(): MiddlewareHandler {
     try {
       const body = await c.req.json();
 
+      // First validate with Zod schema
+      const result = CreateAssertionSchema.safeParse(body);
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Validation error',
+          details: formatZodErrors(result)
+        }, 400);
+      }
+
+      // Then validate with entity validator for additional checks
       if (body && typeof body === 'object') {
         const assertionData = Assertion.create(body);
         const { isValid, errors } = validateAssertion(assertionData);
