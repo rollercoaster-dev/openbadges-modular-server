@@ -76,7 +76,7 @@ describe('Static Assets Middleware', () => {
   test('should return 404 for non-existent files', async () => {
     const res = await app.request('/assets/non-existent.jpg');
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = await res.json() as { error: string };
     expect(body.error).toBe('File not found');
   });
 
