@@ -38,6 +38,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: openbadges_test
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -66,6 +67,9 @@ jobs:
         run: bun run test:coverage
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
           DB_TYPE: sqlite
           SQLITE_FILE: ':memory:'
           CI: 'true'

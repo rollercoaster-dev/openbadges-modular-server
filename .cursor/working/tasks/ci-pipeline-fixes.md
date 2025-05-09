@@ -16,9 +16,9 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
   - This ensures that import aliases like @/domains/... work correctly in CI
 
 ### 2. Test Execution Issues
-- [ ] Investigate why tests are failing in CI but passing locally
-  - Check for race conditions or timing issues in tests
-  - Look for environment-specific failures
+- [x] Investigate why tests are failing in CI but passing locally
+  - Identified PostgreSQL authentication issues in CI environment
+  - Added POSTGRES_HOST_AUTH_METHOD: trust to fix authentication issues
 
 ### 3. Framework Migration Issues
 - [ ] Fix any remaining issues from the Elysia to Hono framework migration
@@ -43,8 +43,9 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
 ### 2. Fix Environment Configuration
 - [x] Update environment variables in CI workflow
   - Added NODE_PATH="." to all CI workflows
+  - Added POSTGRES_HOST_AUTH_METHOD: trust to fix PostgreSQL authentication
 - [x] Ensure database connections are properly configured
-  - PostgreSQL connection is already properly configured in CI
+  - Fixed PostgreSQL connection authentication in CI
 - [x] Check for any missing secrets or configuration values
   - No missing secrets or configuration values identified
 
@@ -66,7 +67,9 @@ This task file outlines the issues with the GitHub CI pipeline and the steps nee
 ## Additional Considerations
 
 ### Database Configuration
-- [ ] Ensure both SQLite and PostgreSQL tests are properly configured
+- [x] Ensure both SQLite and PostgreSQL tests are properly configured
+  - Fixed PostgreSQL authentication with POSTGRES_HOST_AUTH_METHOD: trust
+  - SQLite tests are already properly configured
 - [ ] Check if database migrations are running correctly in CI
 
 ### Authentication Tests
