@@ -100,8 +100,10 @@ describe('Assertion Entity', () => {
 
     // For OB3, recipient is transformed into credentialSubject
     expect(obj.credentialSubject).toBeDefined();
-    expect(obj.credentialSubject.id).toBe(validAssertionData.recipient.identity);
-    expect(obj.credentialSubject.achievement).toBe(validAssertionData.badgeClass);
+    // Use type assertion since we know the structure
+    const credentialSubject = obj.credentialSubject as { id: string; achievement: string };
+    expect(credentialSubject.id).toBe(validAssertionData.recipient.identity);
+    expect(credentialSubject.achievement).toBe(validAssertionData.badgeClass);
 
     // Check dates
     expect(obj.issuanceDate).toBeDefined(); // OB3 uses issuanceDate instead of issuedOn
@@ -156,10 +158,19 @@ describe('Assertion Entity', () => {
 
     // Check proof property (transformed from verification)
     expect(jsonLd.proof).toBeDefined();
-    expect(jsonLd.proof.type).toBe(validAssertionData.verification.type);
-    expect(jsonLd.proof.created).toBeDefined();
-    expect(jsonLd.proof.verificationMethod).toBe(validAssertionData.verification.creator);
-    expect(jsonLd.proof.proofValue).toBe(validAssertionData.verification.signatureValue);
+    // Use type assertion to avoid TypeScript errors
+    const proof = jsonLd.proof as {
+      type: string;
+      cryptosuite: string;
+      created: string;
+      verificationMethod: string;
+      proofValue: string
+    };
+    expect(proof.type).toBe('DataIntegrityProof');
+    expect(proof.cryptosuite).toBe('rsa-sha256');
+    expect(proof.created).toBeDefined();
+    expect(proof.verificationMethod).toBe(validAssertionData.verification.creator);
+    expect(proof.proofValue).toBe(validAssertionData.verification.signatureValue);
   });
 
   it('should get property values', () => {

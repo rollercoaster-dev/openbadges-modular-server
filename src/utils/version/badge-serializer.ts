@@ -149,7 +149,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
     return {
       '@context': v3Contexts,
       id: issuer.id as Shared.IRI,
-      type: ['Profile', 'Issuer'], // Include both Profile and Issuer for OBv3 compliance
+      type: 'Issuer', // Use 'Issuer' type for OBv3 compliance
       name: issuer.name,
       url: issuer.url as Shared.IRI,
       ...(issuer.email && { email: issuer.email }),

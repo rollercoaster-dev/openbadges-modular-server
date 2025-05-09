@@ -1,7 +1,16 @@
 /**
  * Middleware for validating Open Badges entities
  *
- * This file contains middleware functions for validating entities
+ * This filefunction formatZodErrors(result: any): Record<string, string[]> {
+  const formattedErrors: Record<string, string[]> = {};
+
+  // Default error when we can't process the result
+  if (!result || (result.success === true)) {
+    return { general: ['Unknown validation error'] };
+  }
+
+  if (result.error && result.error.errors) {
+    result.error.errors.forEach(err => {tains middleware functions for validating entities
  * before they are processed by the controllers.
  */
 
@@ -14,7 +23,6 @@ import { createMiddleware } from 'hono/factory';
 import { CreateIssuerSchema } from '../../api/validation/issuer.schemas';
 import { CreateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
 import { CreateAssertionSchema } from '../../api/validation/assertion.schemas';
-import { z } from 'zod';
 
 /**
  * Convert validation errors array to a record format
@@ -67,10 +75,18 @@ function formatValidationErrors(errors: string[]): Record<string, string[]> {
  * @param result Zod validation result
  * @returns Record with error messages grouped by field
  */
-function formatZodErrors(result: z.SafeParseError<unknown>): Record<string, string[]> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatZodErrors(result: any): Record<string, string[]> {
   const formattedErrors: Record<string, string[]> = {};
 
-  result.error.errors.forEach(err => {
+  // Handle the case where result is not a SafeParseError or doesn't have errors
+  if (!result || result.success === true || !result.error || !result.error.errors) {
+    return { general: ['Unknown validation error'] };
+  }
+
+  // Process the errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result.error.errors.forEach((err: any) => {
     const path = err.path.join('.') || 'general';
     if (!formattedErrors[path]) {
       formattedErrors[path] = [];
@@ -190,7 +206,13 @@ export function validateAssertionMiddleware(): MiddlewareHandler {
 
       // Then validate with entity validator for additional checks
       if (body && typeof body === 'object') {
-        const assertionData = Assertion.create(body);
+        // Map 'badge' to 'badgeClass' for proper validation
+        const mappedBody = { ...body };
+        if ('badge' in mappedBody && !('badgeClass' in mappedBody)) {
+          mappedBody.badgeClass = mappedBody.badge;
+        }
+
+        const assertionData = Assertion.create(mappedBody);
         const { isValid, errors } = validateAssertion(assertionData);
 
         if (!isValid) {

@@ -155,14 +155,14 @@ export class Assertion {
       }
 
       // Create a proper CredentialSubject with required achievement property
-      let recipientId: string;
+      let recipientId = '';
       if (this.recipient && typeof this.recipient === 'object') {
         if ('identity' in this.recipient) {
           // OB2 style recipient
-          recipientId = this.recipient.identity || '';
+          recipientId = this.recipient.identity ? String(this.recipient.identity) : '';
         } else if ('id' in this.recipient) {
           // OB3 style recipient
-          recipientId = this.recipient.id as string;
+          recipientId = this.recipient.id ? String(this.recipient.id) : '';
         } else {
           // Fallback
           recipientId = 'unknown';
@@ -257,9 +257,10 @@ export class Assertion {
 
       // Ensure proof is properly formatted if verification is present
       if (assertionData.verification) {
-        const verification = assertionData.verification as Record<string, unknown>;
+        const verification = assertionData.verification as unknown as Record<string, unknown>;
         output.proof = {
-          type: verification.type || 'Ed25519Signature2020',
+          type: 'DataIntegrityProof',
+          cryptosuite: 'rsa-sha256',
           created: verification.created || createDateTime(new Date().toISOString()),
           verificationMethod: verification.creator || `${this.id}#key-1`,
           proofPurpose: 'assertionMethod',
@@ -273,7 +274,7 @@ export class Assertion {
       if (!output.credentialSubject && this.recipient) {
         let recipientId: string;
         if (typeof this.recipient === 'object' && 'identity' in this.recipient) {
-          recipientId = this.recipient.identity || '';
+          recipientId = this.recipient.identity ? String(this.recipient.identity) : '';
         } else if (typeof this.recipient === 'object' && 'id' in this.recipient) {
           recipientId = this.recipient.id as string;
         } else {

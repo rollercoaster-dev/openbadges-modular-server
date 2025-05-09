@@ -26,7 +26,7 @@ interface AuthenticatedUserContext {
 }
 
 // Define the variables that will be set in the context
-type AuthVariables = {
+export type AuthVariables = {
   isAuthenticated: boolean;
   user: AuthenticatedUserContext | null;
 };

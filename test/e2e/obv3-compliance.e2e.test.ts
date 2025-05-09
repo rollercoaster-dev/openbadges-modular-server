@@ -53,7 +53,7 @@ function validateOBv3Entity(entity: Record<string, unknown>, entityType: 'issuer
   // Type-specific validations
   switch (entityType) {
     case 'issuer':
-      expect(entity.type).toContain('Profile');
+      expect(entity.type).toContain('Issuer');
       expect(entity.name).toBeDefined();
       expect(entity.url).toBeDefined();
       break;

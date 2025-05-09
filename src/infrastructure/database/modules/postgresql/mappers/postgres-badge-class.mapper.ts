@@ -95,8 +95,8 @@ export class PostgresBadgeClassMapper {
     } = {
       ...(entity.id && { id: entity.id as string }),
       issuerId: entity.issuer as string,
-      name: entity.name,
-      description: entity.description,
+      name: typeof entity.name === 'object' ? JSON.stringify(entity.name) : String(entity.name),
+      description: typeof entity.description === 'object' ? JSON.stringify(entity.description) : String(entity.description || ''),
       // Handle image type, provide default empty string for notNull schema field
       image: typeof entity.image === 'string'
         ? entity.image

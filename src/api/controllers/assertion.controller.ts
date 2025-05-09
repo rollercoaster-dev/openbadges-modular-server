@@ -230,7 +230,8 @@ export class AssertionController {
     if (version === BadgeVersion.V3) {
       const badgeClass = await this.badgeClassRepository.findById(assertion.badgeClass);
       if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+        const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
@@ -251,7 +252,8 @@ export class AssertionController {
     if (version === BadgeVersion.V3) {
       const badgeClass = await this.badgeClassRepository.findById(toIRI(badgeClassId) as Shared.IRI);
       if (badgeClass) {
-        const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+        const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return assertions.map(assertion =>
           convertAssertionToJsonLd(assertion, version, badgeClass, issuer)
@@ -304,7 +306,8 @@ export class AssertionController {
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(updatedAssertion.badgeClass);
         if (badgeClass) {
-          const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+          const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+          const issuer = await this.issuerRepository.findById(issuerIri);
           return convertAssertionToJsonLd(updatedAssertion, version, badgeClass, issuer);
         }
       }
@@ -374,7 +377,8 @@ export class AssertionController {
       }
 
       // Verify issuer exists
-      const issuer = await this.issuerRepository.findById(badgeClass.issuer);
+      const issuerIri = typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI;
+      const issuer = await this.issuerRepository.findById(issuerIri);
       if (!issuer) {
         return {
           isValid: false,
@@ -443,9 +447,10 @@ export class AssertionController {
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
         const badgeClass = await this.badgeClassRepository.findById(signedAssertion.badgeClass);
-        const issuer = badgeClass?.issuer
-          ? await this.issuerRepository.findById(badgeClass.issuer)
+        const issuerIri = badgeClass?.issuer 
+          ? (typeof badgeClass.issuer === 'string' ? badgeClass.issuer : badgeClass.issuer.id as Shared.IRI)
           : null;
+        const issuer = issuerIri ? await this.issuerRepository.findById(issuerIri) : null;
         // Pass entities directly
         return signedAssertion.toJsonLd(version, badgeClass, issuer);
       } else {

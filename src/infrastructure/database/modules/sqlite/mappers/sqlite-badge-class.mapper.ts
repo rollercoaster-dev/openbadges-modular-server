@@ -108,8 +108,8 @@ export class SqliteBadgeClassMapper {
     const record: SqliteBadgeClassRecord = {
       id: convertUuid(entity.id, 'sqlite', 'to') as string,
       issuerId: convertUuid(entity.issuer as string, 'sqlite', 'to') as string,
-      name: entity.name,
-      description: entity.description,
+      name: typeof entity.name === 'object' ? JSON.stringify(entity.name) : String(entity.name),
+      description: typeof entity.description === 'object' ? JSON.stringify(entity.description) : String(entity.description || ''),
       image: typeof entity.image === 'string'
         ? entity.image
         : typeof entity.image === 'object' && entity.image !== null && 'id' in entity.image
