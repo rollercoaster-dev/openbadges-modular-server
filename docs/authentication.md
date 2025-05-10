@@ -1,0 +1,233 @@
+# Authentication System Documentation
+
+## Overview
+
+The OpenBadges Modular Server implements a flexible, multi-provider authentication system with role-based access control (RBAC). The system is designed to be extensible, allowing for different authentication methods to be used based on configuration.
+
+## Authentication Methods
+
+The server supports the following authentication methods:
+
+### 1. JWT-based Authentication
+
+JSON Web Tokens (JWT) are used for stateless authentication. Once a user is authenticated through any method, a JWT token is generated and can be used for subsequent requests.
+
+- **Token Format**: `Bearer <token>`
+- **Header**: `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+- **Expiration**: Configurable via `JWT_TOKEN_EXPIRY_SECONDS` (default: 3600 seconds / 1 hour)
+
+### 2. API Key Authentication
+
+API keys can be used for service-to-service authentication or for clients that don't support interactive login.
+
+- **Header**: `Authorization: ApiKey <key>`
+- **Configuration**: API keys are configured in the server configuration
+
+### 3. Basic Authentication
+
+Username and password authentication using HTTP Basic Auth.
+
+- **Header**: `Authorization: Basic <base64-encoded-credentials>`
+- **Format**: `base64(username:password)`
+
+### 4. OAuth2 Authentication
+
+OAuth2 support for integration with external identity providers.
+
+- **Supported Flows**: Authorization Code, Client Credentials
+- **Configuration**: OAuth2 settings are configured in the server configuration
+
+## Role-Based Access Control (RBAC)
+
+The authentication system implements role-based access control to restrict access to resources based on user roles and permissions.
+
+### User Roles
+
+- **Admin**: Full system access
+- **Issuer**: Can create and manage badge classes and assertions
+- **Viewer**: Read-only access to public resources
+- **User**: Basic user with limited permissions
+
+### Permissions
+
+Permissions are granular access controls that define what actions a user can perform. Each role has a default set of permissions, but these can be customized per user.
+
+Examples of permissions:
+- `manage:users` - Can manage user accounts
+- `create:badgeClass` - Can create badge classes
+- `issue:assertion` - Can issue badge assertions
+- `view:backpack` - Can view backpack contents
+
+## Authentication Flow
+
+1. **Client Authentication**:
+   - Client sends credentials via one of the supported authentication methods
+   - Server validates credentials using the appropriate adapter
+
+2. **Token Generation**:
+   - Upon successful authentication, server generates a JWT token
+   - Token contains user ID, roles, and permissions
+
+3. **Subsequent Requests**:
+   - Client includes JWT token in the Authorization header
+   - Server validates token and extracts user information
+   - RBAC middleware checks if user has required roles/permissions
+
+## API Endpoints
+
+### Authentication Endpoints
+
+#### Login
+
+```
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "user@example.com",
+  "password": "secure-password"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "user-id",
+    "username": "username",
+    "email": "user@example.com",
+    "roles": ["user"]
+  }
+}
+```
+
+#### Register
+
+```
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "newuser",
+  "email": "newuser@example.com",
+  "password": "secure-password",
+  "firstName": "New",
+  "lastName": "User"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "user-id",
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "roles": ["user"]
+  }
+}
+```
+
+#### Get Profile
+
+```
+GET /api/v1/auth/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+Response:
+```json
+{
+  "success": true,
+  "user": {
+    "id": "user-id",
+    "username": "username",
+    "email": "user@example.com",
+    "roles": ["user"],
+    "permissions": ["view:backpack", "manage:backpack"]
+  }
+}
+```
+
+## Configuration
+
+Authentication settings are configured in the server configuration file:
+
+```typescript
+// config.ts
+export const config = {
+  auth: {
+    enabled: true,
+    jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
+    tokenExpirySeconds: parseInt(process.env.JWT_TOKEN_EXPIRY_SECONDS || '3600', 10),
+    issuer: process.env.JWT_ISSUER || 'openbadges-server',
+    publicPaths: ['/api/v1/auth/login', '/api/v1/auth/register'],
+    adapters: {
+      apiKey: {
+        enabled: true,
+        keys: {
+          'service-1': {
+            key: 'api-key-1',
+            roles: ['service']
+          }
+        }
+      },
+      basicAuth: {
+        enabled: true,
+        credentials: {
+          'admin': {
+            password: 'hashed-password',
+            roles: ['admin']
+          }
+        }
+      },
+      oauth2: {
+        enabled: false,
+        jwksUri: 'https://example.com/.well-known/jwks.json',
+        issuer: 'https://example.com',
+        audience: 'api://openbadges'
+      }
+    },
+    adminUser: {
+      enabled: true,
+      username: 'admin',
+      email: 'admin@example.com',
+      password: process.env.ADMIN_PASSWORD
+    }
+  }
+};
+```
+
+## Security Considerations
+
+1. **JWT Secret**: Use a strong, unique secret for JWT signing
+2. **Password Storage**: Passwords are hashed using bcrypt
+3. **Rate Limiting**: Implement rate limiting for authentication endpoints
+4. **HTTPS**: Always use HTTPS in production
+5. **Token Expiry**: Set appropriate token expiry times
+6. **Logging**: Authentication events are logged for audit purposes
+
+## Error Handling
+
+Authentication errors return appropriate HTTP status codes:
+
+- **400 Bad Request**: Invalid input data
+- **401 Unauthorized**: Authentication required or failed
+- **403 Forbidden**: Authenticated but insufficient permissions
+- **500 Internal Server Error**: Server-side error
+
+## Logging
+
+The authentication system includes comprehensive logging for security events:
+
+- Login attempts (successful and failed)
+- Registration events
+- Permission checks
+- Token validation
+- Authentication adapter usage
+
+Logs include structured data for easy filtering and analysis.

@@ -1,6 +1,6 @@
 /**
  * Test Constants
- * 
+ *
  * This file contains constants used across test files.
  * Centralizing these values makes them easier to maintain and update.
  */
@@ -9,7 +9,9 @@
 export const TEST_TOKENS = {
   VALID_TOKEN: 'valid-token',
   INVALID_TOKEN: 'invalid-token',
-  MOCK_JWT_TOKEN: 'mock-jwt-token'
+  MOCK_JWT_TOKEN: 'mock-jwt-token',
+  ADMIN_TOKEN: 'admin-token',
+  ISSUER_TOKEN: 'issuer-token'
 };
 
 // Database test constants
