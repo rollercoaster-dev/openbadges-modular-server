@@ -2,6 +2,7 @@
  * Utility functions for logging
  */
 import { Context } from 'hono';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Extract common logging context from a request
@@ -16,7 +17,7 @@ export function extractLoggingContext(c: Context): {
   method: string;
 } {
   return {
-    requestId: c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15),
+    requestId: c.req.header('x-request-id') || uuidv4(),
     clientIp: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown',
     userAgent: c.req.header('user-agent') || 'unknown',
     path: c.req.path,

@@ -14,6 +14,7 @@ import { AuthAdapter } from '../adapters/auth-adapter.interface';
 import { JwtService } from '../services/jwt.service';
 import { logger } from '../../utils/logging/logger.service';
 import { config } from '../../config/config';
+import { v4 as uuidv4 } from 'uuid';
 
 // Store registered auth adapters
 const authAdapters: AuthAdapter[] = [];
@@ -74,7 +75,7 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
-    const requestId = request.headers.get('x-request-id') || Math.random().toString(36).substring(2, 15);
+    const requestId = request.headers.get('x-request-id') || uuidv4();
     const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 

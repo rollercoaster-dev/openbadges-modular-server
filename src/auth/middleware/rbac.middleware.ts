@@ -10,6 +10,7 @@ import { logger } from '../../utils/logging/logger.service';
 import { MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { config } from '../../config/config';
+import { extractLoggingContext } from '../../utils/logging.utils';
 
 // Define the variables that will be set in the context
 type AuthVariables = {
@@ -32,10 +33,7 @@ export function requireAuth(): MiddlewareHandler<{
     Variables: AuthVariables;
   }>(async (c, next) => {
     // Extract request information for logging
-    const path = c.req.path;
-    const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+    const { requestId, clientIp, path, method } = extractLoggingContext(c);
 
     // Create context for structured logging
     const logContext = {
@@ -94,10 +92,7 @@ export function requireRoles(roles: UserRole[]): MiddlewareHandler<{
     Variables: AuthVariables;
   }>(async (c, next) => {
     // Extract request information for logging
-    const path = c.req.path;
-    const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+    const { requestId, clientIp, path, method } = extractLoggingContext(c);
 
     // Create context for structured logging
     const logContext = {
@@ -172,10 +167,7 @@ export function requirePermissions(permissions: UserPermission[], requireAll = f
     Variables: AuthVariables;
   }>(async (c, next) => {
     // Extract request information for logging
-    const path = c.req.path;
-    const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+    const { requestId, clientIp, path, method } = extractLoggingContext(c);
 
     // Create context for structured logging
     const logContext = {
@@ -297,10 +289,7 @@ export function requireSelfOrAdmin(): MiddlewareHandler<{
     Variables: AuthVariables;
   }>(async (c, next) => {
     // Extract request information for logging
-    const path = c.req.path;
-    const method = c.req.method;
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || 'unknown';
+    const { requestId, clientIp, path, method } = extractLoggingContext(c);
     const id = c.req.param('id');
 
     // Create context for structured logging
