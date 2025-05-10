@@ -9,6 +9,7 @@ import { PasswordService } from './services/password.service';
 import { JwtService } from './services/jwt.service';
 import { logger } from '../utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Authentication controller for handling auth-related HTTP requests
@@ -30,7 +31,7 @@ export class AuthController {
   }): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: data.requestId || Math.random().toString(36).substring(2, 15),
+      requestId: data.requestId || uuidv4(),
       clientIp: data.clientIp || 'unknown',
       userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
       action: 'login',
@@ -143,7 +144,7 @@ export class AuthController {
   }): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: data.requestId || Math.random().toString(36).substring(2, 15),
+      requestId: data.requestId || uuidv4(),
       clientIp: data.clientIp || 'unknown',
       userAgent: data.userAgent ? data.userAgent.substring(0, 100) : 'unknown',
       action: 'register',
@@ -283,7 +284,7 @@ export class AuthController {
   ): Promise<{ status: number; body: Record<string, unknown> }> {
     // Create context for structured logging
     const logContext = {
-      requestId: requestInfo?.requestId || Math.random().toString(36).substring(2, 15),
+      requestId: requestInfo?.requestId || uuidv4(),
       clientIp: requestInfo?.clientIp || 'unknown',
       userAgent: requestInfo?.userAgent ? requestInfo.userAgent.substring(0, 100) : 'unknown',
       action: 'getProfile',
