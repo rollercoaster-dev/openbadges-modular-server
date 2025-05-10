@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { AuthController } from '../auth/auth.controller';
 import { requireAuth } from '../auth/middleware/rbac.middleware';
+import { extractLoggingContext } from '../utils/logging.utils';
 
 /**
  * Create a router for authentication endpoints
@@ -22,9 +23,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     const { usernameOrEmail, password } = body;
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
-    const userAgent = c.req.header('user-agent') || 'unknown';
+    const { requestId, clientIp, userAgent } = extractLoggingContext(c);
 
     const result = await authController.login({
       usernameOrEmail,
@@ -43,9 +42,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     const { username, email, password, firstName, lastName } = body;
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
-    const userAgent = c.req.header('user-agent') || 'unknown';
+    const { requestId, clientIp, userAgent } = extractLoggingContext(c);
 
     const result = await authController.register({
       username,
@@ -73,9 +70,7 @@ export function createAuthRouter(authController: AuthController): Hono {
     }
 
     // Extract request information for logging
-    const requestId = c.req.header('x-request-id') || Math.random().toString(36).substring(2, 15);
-    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
-    const userAgent = c.req.header('user-agent') || 'unknown';
+    const { requestId, clientIp, userAgent } = extractLoggingContext(c);
 
     const result = await authController.getProfile(
       userId as string,
