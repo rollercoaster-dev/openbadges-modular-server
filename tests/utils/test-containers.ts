@@ -62,19 +62,59 @@ export async function createPostgresContainer(
   try {
     // Try to import the testcontainers library
     // This is a dynamic import to avoid requiring the library if not used
-    const testcontainers = await import('testcontainers');
+    const { GenericContainer } = await import('testcontainers');
 
     // Create and return the container
-    // @ts-ignore - PostgreSQLContainer exists in testcontainers but TypeScript doesn't recognize it
-    const container = new testcontainers.PostgreSQLContainer(
-      `${config.image}:${config.tag}`
-    )
+    const container = new GenericContainer(`${config.image}:${config.tag}`)
       .withExposedPorts(config.port || 5432)
-      .withUsername(config.username || 'testuser')
-      .withPassword(config.password || 'testpassword')
-      .withDatabase(config.database || 'openbadges_test');
+      .withEnvironment({
+        POSTGRES_USER: config.username || 'testuser',
+        POSTGRES_PASSWORD: config.password || 'testpassword',
+        POSTGRES_DB: config.database || 'openbadges_test'
+      });
 
-    return container;
+    // Create a wrapper that implements the PostgresContainer interface
+    return {
+      async start(): Promise<PostgresContainer> {
+        const startedContainer = await container.start();
+
+        // Store container properties for later use
+        (this as any).startedContainer = startedContainer;
+        (this as any).mappedPort = startedContainer.getMappedPort(config.port || 5432);
+
+        return this;
+      },
+
+      async stop(): Promise<void> {
+        if ((this as any).startedContainer) {
+          await (this as any).startedContainer.stop();
+        }
+      },
+
+      getConnectionUri(): string {
+        return `postgresql://${config.username || 'testuser'}:${config.password || 'testpassword'}@localhost:${(this as any).mappedPort}/${config.database || 'openbadges_test'}`;
+      },
+
+      getHost(): string {
+        return 'localhost';
+      },
+
+      getPort(): number {
+        return (this as any).mappedPort;
+      },
+
+      getUsername(): string {
+        return config.username || 'testuser';
+      },
+
+      getPassword(): string {
+        return config.password || 'testpassword';
+      },
+
+      getDatabase(): string {
+        return config.database || 'openbadges_test';
+      }
+    };
   } catch (error) {
     // If the library is not installed, return a mock container
     logger.warn('testcontainers library not found, using mock container', {

@@ -7,6 +7,10 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+# Limit permissions of the GITHUB_TOKEN
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -129,6 +133,15 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Install testcontainers
+        run: bun add -d testcontainers
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start Docker service
+        run: sudo systemctl start docker
 
       - name: Run E2E tests with Test Containers
         run: bun run test:e2e:containers

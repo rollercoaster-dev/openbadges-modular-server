@@ -115,12 +115,31 @@ export async function databaseAwareDescribe(
 
   // Register cleanup handler
   if (dbAvailable) {
-    process.on('exit', () => {
-      cleanupTestDatabase().catch(error => {
-        logger.error('Failed to clean up test database', {
-          error: error instanceof Error ? error.message : String(error)
-        });
+    // Use afterAll for cleanup instead of process.on('exit')
+    // This ensures cleanup happens even if tests fail
+    try {
+      // @ts-ignore - afterAll is available in the global scope
+      afterAll(async () => {
+        await cleanupTestDatabase();
       });
-    });
+    } catch (_error) {
+      // If afterAll is not available, fall back to process.on('exit')
+      process.on('exit', () => {
+        // We can't use async functions in exit handlers
+        // So we just log any errors that might occur
+        try {
+          // This is a synchronous call that will be executed immediately
+          cleanupTestDatabase().catch(error => {
+            logger.error('Failed to clean up test database', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          });
+        } catch (cleanupError) {
+          logger.error('Failed to clean up test database', {
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+          });
+        }
+      });
+    }
   }
 }
