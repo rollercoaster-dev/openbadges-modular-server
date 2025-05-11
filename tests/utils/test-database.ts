@@ -1,6 +1,6 @@
 /**
  * Test Database Configuration Utility
- * 
+ *
  * This file provides utilities for configuring and checking database availability
  * for tests. It supports both SQLite and PostgreSQL databases.
  */
@@ -30,11 +30,11 @@ export interface TestDatabaseConfig {
 export function getTestDatabaseConfig(): TestDatabaseConfig {
   // Default to the configuration from config.ts
   const dbType = (process.env.DB_TYPE || config.database.type) as DatabaseType;
-  
+
   return {
     type: dbType,
     connectionString: process.env.DATABASE_URL || config.database.connectionString,
-    sqliteFile: process.env.SQLITE_FILE || './test/e2e/test_database.sqlite',
+    sqliteFile: process.env.SQLITE_FILE || './tests/e2e/test_database.sqlite',
     useTestContainers: process.env.USE_TEST_CONTAINERS === 'true'
   };
 }
@@ -46,7 +46,7 @@ export function getTestDatabaseConfig(): TestDatabaseConfig {
  */
 export async function isPostgresAvailable(config?: TestContainersPostgresConfig): Promise<boolean> {
   const dbConfig = getTestDatabaseConfig();
-  
+
   // If we're not using PostgreSQL, return false
   if (dbConfig.type !== 'postgresql') {
     logger.info('Not using PostgreSQL, skipping PostgreSQL availability check');
@@ -68,13 +68,13 @@ export async function isPostgresAvailable(config?: TestContainersPostgresConfig)
 
   // Get the connection string
   const connectionString = dbConfig.connectionString;
-  
+
   // Create a PostgreSQL client with a short timeout
   let client: postgres.Sql | null = null;
-  
+
   try {
     logger.info('Checking PostgreSQL availability');
-    
+
     // Create a client with a short timeout
     client = postgres(connectionString, {
       max: 1,
@@ -82,10 +82,10 @@ export async function isPostgresAvailable(config?: TestContainersPostgresConfig)
       idle_timeout: 3,
       max_lifetime: 10
     });
-    
+
     // Try to connect
     await client`SELECT 1`;
-    
+
     logger.info('PostgreSQL is available');
     return true;
   } catch (error) {
@@ -108,7 +108,7 @@ export async function isPostgresAvailable(config?: TestContainersPostgresConfig)
  */
 export async function isSqliteAvailable(): Promise<boolean> {
   const dbConfig = getTestDatabaseConfig();
-  
+
   // If we're not using SQLite, return false
   if (dbConfig.type !== 'sqlite') {
     logger.info('Not using SQLite, skipping SQLite availability check');
@@ -120,7 +120,7 @@ export async function isSqliteAvailable(): Promise<boolean> {
     const { Database } = await import('bun:sqlite');
     const db = new Database(':memory:');
     db.close();
-    
+
     logger.info('SQLite is available');
     return true;
   } catch (error) {
@@ -137,7 +137,7 @@ export async function isSqliteAvailable(): Promise<boolean> {
  */
 export async function isDatabaseAvailable(): Promise<boolean> {
   const dbConfig = getTestDatabaseConfig();
-  
+
   if (dbConfig.type === 'postgresql') {
     return await isPostgresAvailable();
   } else if (dbConfig.type === 'sqlite') {

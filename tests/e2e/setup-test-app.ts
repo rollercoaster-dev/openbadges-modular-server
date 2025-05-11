@@ -128,7 +128,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           const { Database } = require('bun:sqlite');
 
           // Create SQLite database connection
-          const sqliteFile = config.database.sqliteFile || './test/e2e/test_database.sqlite';
+          const sqliteFile = config.database.sqliteFile || './tests/e2e/test_database.sqlite';
           const db = new Database(sqliteFile);
 
           // Apply the fixed migration SQL
