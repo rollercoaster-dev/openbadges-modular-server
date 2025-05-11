@@ -82,14 +82,36 @@ export async function createPostgresContainer(
       private mappedPort?: number;
 
       async start(): Promise<PostgresContainer> {
-        this.startedContainer = await container.start();
-        this.mappedPort = this.startedContainer.getMappedPort(config.port || 5432);
-        return this;
+        try {
+          logger.info('Starting PostgreSQL test container...');
+          this.startedContainer = await container.start();
+          this.mappedPort = this.startedContainer.getMappedPort(config.port || 5432);
+          logger.info('PostgreSQL test container started successfully', {
+            port: this.mappedPort
+          });
+          return this;
+        } catch (error) {
+          logger.error('Failed to start PostgreSQL test container', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          throw error;
+        }
       }
 
       async stop(): Promise<void> {
         if (this.startedContainer) {
-          await this.startedContainer.stop();
+          try {
+            logger.info('Stopping PostgreSQL test container...');
+            await this.startedContainer.stop();
+            logger.info('PostgreSQL test container stopped successfully');
+          } catch (error) {
+            logger.error('Failed to stop PostgreSQL test container', {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined
+            });
+            // Don't throw here to allow cleanup to continue
+          }
         }
       }
 

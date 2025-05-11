@@ -103,6 +103,7 @@ jobs:
           # Database configuration for SQLite
           DB_TYPE: sqlite
           SQLITE_FILE: './tests/e2e/test_database.sqlite'
+          SQLITE_DB_PATH: './tests/e2e/test_database.sqlite'
           # Test environment variables
           CI: 'true'
           NODE_PATH: "."
@@ -238,8 +239,11 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
+          SQLITE_DB_PATH: './tests/e2e/test_database.sqlite'
           DEBUG: drizzle*
           CI: 'true'
+          # Allow tests to continue even if PostgreSQL is not available
+          REQUIRE_POSTGRESQL: 'false'
 
       - name: Archive test logs on failure
         if: failure()

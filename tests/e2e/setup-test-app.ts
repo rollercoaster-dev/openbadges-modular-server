@@ -111,7 +111,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
         dbConfig.type, // Use the type from dbConfig, not from config.database
         {
           connectionString: dbConfig.connectionString,
-          sqliteFile: config.database.sqliteFile,
+          sqliteFile: process.env.SQLITE_DB_PATH || config.database.sqliteFile,
           sqliteBusyTimeout: config.database.sqliteBusyTimeout,
           sqliteSyncMode: config.database.sqliteSyncMode,
           sqliteCacheSize: config.database.sqliteCacheSize
@@ -128,7 +128,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           const { Database } = require('bun:sqlite');
 
           // Create SQLite database connection
-          let sqliteFile = config.database.sqliteFile || './tests/e2e/test_database.sqlite';
+          let sqliteFile = process.env.SQLITE_DB_PATH || config.database.sqliteFile || './tests/e2e/test_database.sqlite';
 
           // Ensure the directory exists
           const dirPath = sqliteFile.substring(0, sqliteFile.lastIndexOf('/'));
@@ -214,9 +214,10 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
             // Add connection timeout to fail faster in CI environment
             const client = postgres.default(connectionString, {
               max: 1,
-              connect_timeout: 5, // 5 seconds timeout
-              idle_timeout: 5,
+              connect_timeout: 10, // 10 seconds timeout
+              idle_timeout: 10,
               max_lifetime: 30
+              // postgres.js doesn't support retry options directly
             });
 
             // Apply the fixed migration SQL
@@ -272,6 +273,16 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
               error: error instanceof Error ? error.message : String(error),
               stack: error instanceof Error ? error.stack : undefined
             });
+
+            // Check if we're in CI environment
+            if (process.env.CI === 'true' && process.env.USE_TEST_CONTAINERS !== 'true') {
+              logger.warn('PostgreSQL connection failed in CI environment. Consider using test containers.');
+              // In CI, we want to fail fast if PostgreSQL is required but not available
+              if (process.env.REQUIRE_POSTGRESQL === 'true') {
+                throw new Error('PostgreSQL connection required but failed in CI environment');
+              }
+            }
+
             logger.warn('Continuing without PostgreSQL database - tests will be skipped');
             // Don't throw error, just continue without database
             // This allows tests to run in environments without PostgreSQL
