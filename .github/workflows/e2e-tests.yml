@@ -1,0 +1,86 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: openbadges_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+          bun install
+      
+      - name: Create .env.test file
+        run: |
+          cat > .env.test << EOF
+          # API Configuration
+          API_BASE_URL=http://localhost:3001
+          PORT=3001
+          
+          # Database Configuration
+          DB_TYPE=postgresql
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5433
+          POSTGRES_USER=testuser
+          POSTGRES_PASSWORD=testpassword
+          POSTGRES_DB=openbadges_test
+          DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test
+          
+          # Authentication Configuration
+          AUTH_ENABLED=true
+          AUTH_API_KEY_TEST=verysecretkeye2e:test-user:E2E Testing Key
+          AUTH_PUBLIC_PATHS=/docs,/swagger,/health,/public,/v3/issuers/*/verify,/v3/badge-classes/*/verify,/v3/assertions/*/verify
+          AUTH_DISABLE_RBAC=true
+          EOF
+      
+      - name: Migrate PostgreSQL database
+        run: |
+          NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg
+          NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
+      
+      - name: Run E2E tests with PostgreSQL
+        run: NODE_ENV=test bun test tests/e2e
+        env:
+          DB_TYPE: postgresql
+          DATABASE_URL: postgresql://testuser:testpassword@localhost:5433/openbadges_test
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Testing Key
+          NODE_PATH: "."
+      
+      - name: Run E2E tests with SQLite
+        run: NODE_ENV=test bun test tests/e2e
+        env:
+          DB_TYPE: sqlite
+          SQLITE_DB_PATH: ':memory:'
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Testing Key
+          NODE_PATH: "."
