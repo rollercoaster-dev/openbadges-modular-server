@@ -148,6 +148,12 @@ export class SqliteAssertionMapper {
       badgeClassId: convertUuid((entity.badgeClass || entity['badge']) as string, 'sqlite', 'to'),
       recipient: convertJson(entity.recipient as object, 'sqlite', 'to') as string,
       issuedOn: convertTimestamp(entity.issuedOn as string | Date, 'sqlite', 'to') as number,
+      expires: entity.expires ? convertTimestamp(entity.expires as string | Date, 'sqlite', 'to') as number : null,
+      evidence: entity.evidence ? convertJson(entity.evidence, 'sqlite', 'to') as string : null,
+      verification: entity.verification ? convertJson(entity.verification, 'sqlite', 'to') as string : null,
+      revoked: entity.revoked !== undefined ? convertBoolean(entity.revoked, 'sqlite', 'to') as number : null,
+      revocationReason: entity.revocationReason || null,
+      additionalFields: entity['additionalFields'] ? convertJson(entity['additionalFields'], 'sqlite', 'to') as string : null,
       createdAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
       updatedAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
     };
