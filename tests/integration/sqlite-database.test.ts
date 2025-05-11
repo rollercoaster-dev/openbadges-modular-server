@@ -10,6 +10,7 @@ import { logger } from '@/utils/logging/logger.service';
 import { databaseAwareDescribe } from './test-utils/database-check';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Shared } from 'openbadges-types';
 
 // Database instance for tests
 let sqliteDb: SqliteDatabase | null = null;
@@ -31,7 +32,7 @@ databaseAwareDescribe('SQLite Database Integration Tests', (describeTest) => {
       try {
         // Create SQLite database
         sqliteClient = new Database(SQLITE_FILE);
-        
+
         // Apply SQLite optimizations
         sqliteClient.exec('PRAGMA journal_mode = WAL;');
         sqliteClient.exec('PRAGMA busy_timeout = 5000;');
@@ -39,10 +40,10 @@ databaseAwareDescribe('SQLite Database Integration Tests', (describeTest) => {
         sqliteClient.exec('PRAGMA cache_size = 10000;');
         sqliteClient.exec('PRAGMA foreign_keys = ON;');
         sqliteClient.exec('PRAGMA temp_store = MEMORY;');
-        
+
         // Apply migrations
         const db = drizzle(sqliteClient);
-        
+
         try {
           migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
           logger.info('SQLite migrations applied successfully');
@@ -53,11 +54,11 @@ databaseAwareDescribe('SQLite Database Integration Tests', (describeTest) => {
           });
           throw error;
         }
-        
+
         // Create SQLite database instance
         sqliteDb = new SqliteDatabase(db);
         await sqliteDb.connect();
-        
+
         logger.info('SQLite database connected successfully');
       } catch (error) {
         logger.error('Error setting up SQLite database', {
@@ -67,19 +68,19 @@ databaseAwareDescribe('SQLite Database Integration Tests', (describeTest) => {
         throw error;
       }
     });
-    
+
     afterAll(async () => {
       try {
         // Disconnect from database
         if (sqliteDb) {
           await sqliteDb.disconnect();
         }
-        
+
         // Close SQLite client
         if (sqliteClient) {
           sqliteClient.close();
         }
-        
+
         logger.info('SQLite database disconnected successfully');
       } catch (error) {
         logger.error('Error disconnecting from SQLite database', {
@@ -88,39 +89,39 @@ databaseAwareDescribe('SQLite Database Integration Tests', (describeTest) => {
         });
       }
     });
-    
+
     it('should connect to SQLite database', () => {
       expect(sqliteDb).not.toBeNull();
       expect(sqliteDb?.isConnected()).toBe(true);
     });
-    
+
     it('should create and retrieve an issuer', async () => {
       if (!sqliteDb) {
         throw new Error('SQLite database not initialized');
       }
-      
+
       // Create issuer
       const issuer = await sqliteDb.createIssuer({
         name: 'Test Issuer',
-        url: 'https://example.com' as any,
+        url: 'https://example.com' as unknown as Shared.IRI,
         email: 'test@example.com',
         description: 'Test issuer for integration tests',
-        image: 'https://example.com/image.png' as any
+        image: 'https://example.com/image.png' as unknown as Shared.IRI
       });
-      
+
       // Verify issuer was created
       expect(issuer).toBeDefined();
       expect(issuer.id).toBeDefined();
       expect(issuer.name).toBe('Test Issuer');
-      
+
       // Retrieve issuer
       const retrievedIssuer = await sqliteDb.getIssuerById(issuer.id);
-      
+
       // Verify issuer was retrieved
       expect(retrievedIssuer).toBeDefined();
       expect(retrievedIssuer?.id).toBe(issuer.id);
       expect(retrievedIssuer?.name).toBe('Test Issuer');
-      
+
       // Clean up
       await sqliteDb.deleteIssuer(issuer.id);
     });

@@ -8,6 +8,7 @@ import { databaseAwareDescribe } from './test-utils/database-check';
 import postgres from 'postgres';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Shared } from 'openbadges-types';
 
 // Database instance for tests
 let pgDb: PostgresqlDatabase | null = null;
@@ -23,7 +24,8 @@ if (!fs.existsSync(MIGRATIONS_FOLDER)) {
 }
 
 // Check if PostgreSQL is available
-let pgAvailable = false;
+// This variable is not used directly but is kept for future use
+let _pgAvailable = false;
 
 // Use database-aware describe to handle database availability
 databaseAwareDescribe('PostgreSQL Database Integration Tests', (describeTest) => {
@@ -128,10 +130,10 @@ databaseAwareDescribe('PostgreSQL Database Integration Tests', (describeTest) =>
       // Create issuer
       const issuer = await pgDb.createIssuer({
         name: 'Test Issuer',
-        url: 'https://example.com' as any,
+        url: 'https://example.com' as unknown as Shared.IRI,
         email: 'test@example.com',
         description: 'Test issuer for integration tests',
-        image: 'https://example.com/image.png' as any
+        image: 'https://example.com/image.png' as unknown as Shared.IRI
       });
 
       // Verify issuer was created
