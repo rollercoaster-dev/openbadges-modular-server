@@ -212,11 +212,16 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
           try {
             // Add connection timeout to fail faster in CI environment
+            // Use longer timeouts in CI to handle potential network delays
+            const connectTimeout = process.env.CI === 'true' ? 30 : 10; // 30 seconds in CI, 10 seconds otherwise
+
+            logger.info(`Using PostgreSQL connection timeout: ${connectTimeout} seconds`);
+
             const client = postgres.default(connectionString, {
               max: 1,
-              connect_timeout: 10, // 10 seconds timeout
-              idle_timeout: 10,
-              max_lifetime: 30
+              connect_timeout: connectTimeout,
+              idle_timeout: connectTimeout,
+              max_lifetime: connectTimeout * 3
               // postgres.js doesn't support retry options directly
             });
 

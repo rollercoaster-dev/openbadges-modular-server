@@ -27,7 +27,17 @@ let dockerAvailable = false;
 try {
   // Simple check to see if testcontainers can be imported
   require.resolve('testcontainers');
-  dockerAvailable = true;
+
+  // In CI, only run if USE_TEST_CONTAINERS is explicitly set to true
+  if (process.env.CI === 'true') {
+    dockerAvailable = process.env.USE_TEST_CONTAINERS === 'true';
+    if (!dockerAvailable) {
+      logger.info('In CI environment but USE_TEST_CONTAINERS is not set to true - skipping Docker tests');
+    }
+  } else {
+    // In non-CI environments, assume Docker is available if testcontainers can be imported
+    dockerAvailable = true;
+  }
 } catch (_importError) {
   logger.warn('testcontainers library is not available - Docker tests will be skipped');
 }
