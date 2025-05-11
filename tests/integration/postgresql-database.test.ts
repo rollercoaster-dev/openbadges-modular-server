@@ -25,8 +25,8 @@ if (!fs.existsSync(MIGRATIONS_FOLDER)) {
 
 // Check if PostgreSQL is available
 // This variable is intentionally unused but kept for future reference
- 
-let _pgAvailable = false;
+// @ts-ignore - Intentionally unused variable
+const _unused = false;
 
 // Use database-aware describe to handle database availability
 databaseAwareDescribe('PostgreSQL Database Integration Tests', (describeTest) => {
