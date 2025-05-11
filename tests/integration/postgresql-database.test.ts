@@ -1,7 +1,7 @@
 /**
  * Integration test for PostgreSQL database
  */
-import { it, expect, beforeAll, afterAll } from 'bun:test';
+import { it, expect, beforeAll, afterAll, describe } from 'bun:test';
 import { PostgresqlDatabase } from '@/infrastructure/database/modules/postgresql/postgresql.database';
 import { logger } from '@/utils/logging/logger.service';
 import { databaseAwareDescribe } from './test-utils/database-check';
@@ -24,13 +24,17 @@ if (!fs.existsSync(MIGRATIONS_FOLDER)) {
 }
 
 // Check if PostgreSQL is available
-// This variable is not used directly but is kept for future use
+// This variable is intentionally unused but kept for future reference
+ 
 let _pgAvailable = false;
 
 // Use database-aware describe to handle database availability
 databaseAwareDescribe('PostgreSQL Database Integration Tests', (describeTest) => {
   // Skip tests if PostgreSQL is not available
-  const testFn = process.env.DB_TYPE === 'postgresql' ? describeTest : describeTest.skip;
+  const testFn = process.env.DB_TYPE === 'postgresql' ? describeTest : (name: string, fn: () => void) => {
+    logger.info(`Skipping PostgreSQL tests: ${name}`);
+    describe.skip(name, fn);
+  };
 
   testFn('PostgreSQL Database', () => {
     beforeAll(async () => {

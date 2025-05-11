@@ -1,6 +1,6 @@
 /**
  * Database availability check for integration tests
- * 
+ *
  * This file provides utility functions to check if the database is available
  * and to skip tests if it's not.
  */
@@ -23,13 +23,13 @@ export async function isPostgresAvailable(): Promise<boolean> {
 
   // Get the connection string
   const connectionString = process.env.DATABASE_URL || config.database.connectionString;
-  
+
   // Create a PostgreSQL client with a short timeout
   let client: postgres.Sql | null = null;
-  
+
   try {
     logger.info('Checking PostgreSQL availability');
-    
+
     // Create a client with a short timeout
     client = postgres(connectionString, {
       max: 1,
@@ -37,10 +37,10 @@ export async function isPostgresAvailable(): Promise<boolean> {
       idle_timeout: 3,
       max_lifetime: 10
     });
-    
+
     // Try to connect
     await client`SELECT 1`;
-    
+
     logger.info('PostgreSQL is available');
     return true;
   } catch (error) {
@@ -73,7 +73,7 @@ export async function isSqliteAvailable(): Promise<boolean> {
     const { Database } = await import('bun:sqlite');
     const db = new Database(':memory:');
     db.close();
-    
+
     logger.info('SQLite is available');
     return true;
   } catch (error) {
@@ -90,7 +90,7 @@ export async function isSqliteAvailable(): Promise<boolean> {
  */
 export async function isDatabaseAvailable(): Promise<boolean> {
   const dbType = process.env.DB_TYPE || config.database.type;
-  
+
   if (dbType === 'postgresql') {
     return await isPostgresAvailable();
   } else if (dbType === 'sqlite') {
@@ -131,7 +131,7 @@ export function createDatabaseAwareDescribe(dbAvailable: boolean): typeof bunDes
  * @returns Promise that resolves when the test suite is complete
  */
 export async function databaseAwareDescribe(
-  title: string,
+  _title: string, // Prefix with underscore to indicate it's intentionally unused
   fn: (describeTest: typeof bunDescribe | typeof bunDescribe.skip) => void
 ): Promise<void> {
   // Check if the database is available
