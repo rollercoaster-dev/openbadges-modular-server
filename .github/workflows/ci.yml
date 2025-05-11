@@ -3,6 +3,9 @@ name: PR Validation
 on:
   pull_request:
     branches: [ main ]
+  # Also run on push to main branch
+  push:
+    branches: [ main, feat/e2e-testing ]
 
 # Limit permissions of the GITHUB_TOKEN
 permissions:
@@ -14,12 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install
@@ -43,6 +54,14 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: |
           # Install system dependencies for better-sqlite3
@@ -50,12 +69,14 @@ jobs:
           sudo apt-get install -y libsqlite3-dev
           bun install
 
-      - name: Create E2E test directory
+      - name: Create E2E test directory and set permissions
         run: |
           mkdir -p tests/e2e
           touch tests/e2e/test_database.sqlite
           chmod 777 tests/e2e/test_database.sqlite
           chmod 777 tests/e2e
+          # Verify directory and file permissions
+          ls -la tests/e2e/
 
       - name: Create migrations directory
         run: |
@@ -63,6 +84,18 @@ jobs:
           mkdir -p drizzle/pg-migrations
           # Verify directories
           ls -la drizzle/
+
+      - name: Generate SQLite migrations
+        run: DB_TYPE=sqlite bun run db:generate:sqlite
+        env:
+          NODE_ENV: test
+          SQLITE_FILE: './tests/e2e/test_database.sqlite'
+
+      - name: Run SQLite migrations
+        run: DB_TYPE=sqlite bun run db:migrate:sqlite
+        env:
+          NODE_ENV: test
+          SQLITE_FILE: './tests/e2e/test_database.sqlite'
 
       - name: Run tests with SQLite
         run: bun run test:coverage
@@ -81,13 +114,30 @@ jobs:
           AUTH_API_KEY_E2E: verysecretkeye2e:test-user:E2E Test API Key
           DEBUG: 'drizzle*'
 
+      - name: Archive test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sqlite-test-logs
+          path: |
+            tests/e2e/*.log
+            ./*.log
+            ./logs/*.log
+
+      - name: Upload coverage data
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sqlite-coverage
+          path: coverage/
+
   postgresql-tests:
     name: PostgreSQL Tests
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
@@ -97,9 +147,9 @@ jobs:
           - 5433:5432
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     steps:
       - name: Checkout repository
@@ -110,6 +160,14 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install
 
@@ -119,6 +177,8 @@ jobs:
           touch tests/e2e/test_database.sqlite
           chmod 777 tests/e2e/test_database.sqlite
           chmod 777 tests/e2e
+          # Verify directory and file permissions
+          ls -la tests/e2e/
 
       - name: Create migrations directory
         run: |
@@ -126,6 +186,26 @@ jobs:
           mkdir -p drizzle/pg-migrations
           # Verify directories
           ls -la drizzle/
+
+      - name: Verify PostgreSQL connection
+        run: |
+          # Install PostgreSQL client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          # Check connection
+          PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT 1"
+          # Show PostgreSQL version
+          PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT version()"
+
+      - name: Generate PostgreSQL migrations
+        run: DB_TYPE=postgresql DATABASE_URL=postgres://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg
+        env:
+          NODE_ENV: test
+
+      - name: Run PostgreSQL migrations
+        run: DB_TYPE=postgresql DATABASE_URL=postgres://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
+        env:
+          NODE_ENV: test
 
       - name: Run integration tests with PostgreSQL
         run: bun run test:integration:pg
@@ -142,6 +222,7 @@ jobs:
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
           DEBUG: drizzle*
+          CI: 'true'
 
       - name: Run E2E tests with PostgreSQL
         run: bun run test:e2e:pg
@@ -158,18 +239,101 @@ jobs:
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
           DEBUG: drizzle*
+          CI: 'true'
+
+      - name: Archive test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: postgresql-test-logs
+          path: |
+            tests/e2e/*.log
+            ./*.log
+            ./logs/*.log
+
+      - name: Upload coverage data
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: postgresql-coverage
+          path: coverage/
 
   upload-coverage:
     name: Upload Coverage
     runs-on: ubuntu-latest
     needs: [sqlite-tests, postgresql-tests]
+    if: always() # Run even if previous jobs fail
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download SQLite coverage artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: sqlite-coverage
+          path: coverage-sqlite
+        continue-on-error: true
+
+      - name: Download PostgreSQL coverage artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: postgresql-coverage
+          path: coverage-postgresql
+        continue-on-error: true
+
+      - name: Display structure of downloaded files
+        run: |
+          echo "SQLite coverage:"
+          ls -la coverage-sqlite || echo "No SQLite coverage found"
+          echo "PostgreSQL coverage:"
+          ls -la coverage-postgresql || echo "No PostgreSQL coverage found"
+
+      - name: Setup Node.js for coverage merging
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install coverage tools
+        run: npm install -g nyc
+
+      - name: Merge coverage reports
+        run: |
+          mkdir -p merged-coverage
+          if [ -f "coverage-sqlite/lcov.info" ]; then
+            cp coverage-sqlite/lcov.info merged-coverage/lcov-sqlite.info
+          fi
+          if [ -f "coverage-postgresql/lcov.info" ]; then
+            cp coverage-postgresql/lcov.info merged-coverage/lcov-postgresql.info
+          fi
+          ls -la merged-coverage || echo "No coverage files to merge"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage/lcov.info
+          directory: ./merged-coverage/
           fail_ci_if_error: false
+          verbose: true
+
+  # Add a summary job to report overall status
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, sqlite-tests, postgresql-tests, upload-coverage]
+    if: always() # Run even if previous jobs fail
+    steps:
+      - name: Check overall status
+        run: |
+          if [ "${{ needs.lint-and-typecheck.result }}" != "success" ]; then
+            echo "❌ Lint and Type Check failed"
+            exit 1
+          fi
+          if [ "${{ needs.sqlite-tests.result }}" != "success" ]; then
+            echo "❌ SQLite Tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.postgresql-tests.result }}" != "success" ]; then
+            echo "❌ PostgreSQL Tests failed"
+            exit 1
+          fi
+          echo "✅ All checks passed!"
