@@ -153,7 +153,8 @@ export class SqliteAssertionMapper {
     };
 
     // Add additional fields using type assertion
-    const fullRecord = persistenceRecord as any;
+    // Use Record<string, unknown> instead of any to satisfy linting rules
+    const fullRecord = persistenceRecord as Record<string, unknown>;
 
     // Add optional fields
     fullRecord.evidence = entity.evidence ? convertJson(entity.evidence, 'sqlite', 'to') as string : null;
