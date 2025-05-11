@@ -5,8 +5,8 @@
  * LRU (Least Recently Used) cache implementation that's compatible with Bun.js.
  */
 
-// Import LRU module - using dynamic import since the module doesn't have proper TypeScript definitions
- 
+// Import LRU module - using CommonJS require since the module doesn't have proper TypeScript definitions
+// The module exports a function that creates a new LRU cache
 const lruModule = require('lru.min');
 
 // Define a more specific type for the LRU cache instance
