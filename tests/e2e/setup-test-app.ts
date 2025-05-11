@@ -128,13 +128,21 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           const { Database } = require('bun:sqlite');
 
           // Create SQLite database connection
-          const sqliteFile = config.database.sqliteFile || './tests/e2e/test_database.sqlite';
+          let sqliteFile = config.database.sqliteFile || './tests/e2e/test_database.sqlite';
 
           // Ensure the directory exists
           const dirPath = sqliteFile.substring(0, sqliteFile.lastIndexOf('/'));
           if (dirPath && !fs.existsSync(dirPath)) {
             logger.info(`Creating directory for SQLite database: ${dirPath}`);
             fs.mkdirSync(dirPath, { recursive: true });
+
+            // Set directory permissions to ensure it's writable
+            try {
+              fs.chmodSync(dirPath, 0o777);
+              logger.info(`Set permissions on SQLite directory: ${dirPath}`);
+            } catch (error) {
+              logger.warn(`Failed to set permissions on SQLite directory: ${error instanceof Error ? error.message : String(error)}`);
+            }
           }
 
           // Ensure the file exists and is writable
@@ -145,9 +153,29 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
           // Set permissions to ensure it's writable
           try {
-            fs.chmodSync(sqliteFile, 0o666);
+            fs.chmodSync(sqliteFile, 0o777);
+            logger.info(`Set permissions on SQLite file: ${sqliteFile}`);
+
+            // Check if the file is writable
+            const stats = fs.statSync(sqliteFile);
+            const isWritable = stats.mode & 0o200; // Check write permission
+            logger.info(`SQLite file permissions: ${stats.mode.toString(8)}, writable: ${isWritable ? 'yes' : 'no'}`);
+
+            // Try to write to the file to verify permissions
+            fs.appendFileSync(sqliteFile, '');
+            logger.info('Successfully verified write access to SQLite file');
           } catch (error) {
-            logger.warn(`Failed to set permissions on SQLite file: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(`Failed to set permissions or write to SQLite file: ${error instanceof Error ? error.message : String(error)}`);
+
+            // Try an alternative approach for CI environments
+            try {
+              logger.info('Trying alternative approach for SQLite in CI environment');
+              // Use in-memory SQLite as a fallback
+              sqliteFile = ':memory:';
+              logger.info('Switched to in-memory SQLite database');
+            } catch (fallbackError) {
+              logger.error(`Failed to set up in-memory SQLite: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+            }
           }
 
           const db = new Database(sqliteFile);
