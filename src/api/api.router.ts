@@ -15,6 +15,7 @@ import { AssertionController } from './controllers/assertion.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
+import { isValidIRI } from '../utils/types/iri-utils';
 import { validateIssuerMiddleware, validateBadgeClassMiddleware, validateAssertionMiddleware } from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
@@ -248,9 +249,69 @@ function createVersionedRouter(
 
   // Badge class routes
   router.post('/badge-classes', validateBadgeClassMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+
+      // Validate issuer ID is a valid UUID or URL before proceeding
+      if (body.issuer && typeof body.issuer === 'string') {
+        const issuerId = body.issuer;
+        if (!isValidIRI(issuerId)) {
+          logger.warn('POST /badge-classes invalid issuer ID', { issuerId });
+          return c.json({
+            error: 'Bad Request',
+            message: 'Invalid issuer ID format. Must be a valid UUID or URL.'
+          }, 400);
+        }
+      }
+
+      const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      // Handle specific error cases
+      if (message.includes('Invalid IRI')) {
+        logger.error('POST /badge-classes invalid IRI', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({
+          error: 'Bad Request',
+          message: 'Invalid ID format in request. IDs must be valid UUIDs or URLs.'
+        }, 400);
+      }
+
+      if (message.includes('Issuer with ID') && message.includes('does not exist')) {
+        logger.error('POST /badge-classes non-existent issuer', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({
+          error: 'Bad Request',
+          message: 'The specified issuer does not exist.'
+        }, 400);
+      }
+
+      if (message.includes('permission')) {
+        logger.error('POST /badge-classes forbidden', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+
+      // Log the error and return a 400 for validation errors, 500 for server errors
+      logger.error('POST /badge-classes failed', {
+        error: message,
+        body: await c.req.json().catch(() => ({}))
+      });
+
+      // Determine if this is a client error or server error
+      const statusCode = message.includes('validation') || message.includes('invalid') ? 400 : 500;
+      const errorType = statusCode === 400 ? 'Bad Request' : 'Internal Server Error';
+
+      return c.json({ error: errorType, message }, statusCode);
+    }
   });
 
   router.get('/badge-classes', async (c) => {
@@ -271,24 +332,119 @@ function createVersionedRouter(
   });
 
   router.put('/badge-classes/:id', validateBadgeClassMiddleware(), async (c) => {
-    const id = c.req.param('id');
-    const body = await c.req.json();
-    const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const body = await c.req.json();
+      const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Badge class not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('PUT /badge-classes/:id invalid IRI', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        return c.json({ error: 'Bad Request', message: 'Invalid badge class ID' }, 400);
+      }
+      if (message.includes('permission')) {
+        logger.error('PUT /badge-classes/:id forbidden', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      logger.error('PUT /badge-classes/:id failed', { error: message, id: c.req.param('id'), body: await c.req.json() });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   router.delete('/badge-classes/:id', async (c) => {
-    const id = c.req.param('id');
-    const result = await badgeClassController.deleteBadgeClass(id);
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const deleted = await badgeClassController.deleteBadgeClass(id);
+      if (!deleted) {
+        return c.json({ error: 'Not Found', message: 'Badge class not found' }, 404);
+      }
+      return c.body(null, 204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('DELETE /badge-classes/:id invalid IRI', { error: message, id: c.req.param('id') });
+        return c.json({ error: 'Bad Request', message: 'Invalid badge class ID' }, 400);
+      }
+      if (message.includes('permission')) {
+        logger.error('DELETE /badge-classes/:id forbidden', { error: message, id: c.req.param('id') });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      logger.error('DELETE /badge-classes/:id failed', { error: message, id: c.req.param('id') });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   // Assertion routes
   router.post('/assertions', validateAssertionMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
-    const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+
+      // Validate badge ID is a valid UUID or URL before proceeding
+      if (body.badge && typeof body.badge === 'string') {
+        const badgeId = body.badge;
+        if (!isValidIRI(badgeId)) {
+          logger.warn('POST /assertions invalid badge ID', { badgeId });
+          return c.json({
+            error: 'Bad Request',
+            message: 'Invalid badge ID format. Must be a valid UUID or URL.'
+          }, 400);
+        }
+      }
+
+      // Always sign assertions for compliance with Open Badges v3.0 specification
+      const sign = true;
+      const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      // Handle specific error cases
+      if (message.includes('Invalid IRI')) {
+        logger.error('POST /assertions invalid IRI', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({
+          error: 'Bad Request',
+          message: 'Invalid ID format in request. IDs must be valid UUIDs or URLs.'
+        }, 400);
+      }
+
+      if (message.includes('Badge class with ID') && message.includes('does not exist')) {
+        logger.error('POST /assertions non-existent badge class', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({
+          error: 'Bad Request',
+          message: 'The specified badge class does not exist.'
+        }, 400);
+      }
+
+      if (message.includes('permission')) {
+        logger.error('POST /assertions forbidden', {
+          error: message,
+          body: await c.req.json().catch(() => ({}))
+        });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+
+      // Log the error and return a 400 for validation errors, 500 for server errors
+      logger.error('POST /assertions failed', {
+        error: message,
+        body: await c.req.json().catch(() => ({}))
+      });
+
+      // Determine if this is a client error or server error
+      const statusCode = message.includes('validation') || message.includes('invalid') ? 400 : 500;
+      const errorType = statusCode === 400 ? 'Bad Request' : 'Internal Server Error';
+
+      return c.json({ error: errorType, message }, statusCode);
+    }
   });
 
   router.get('/assertions', async (c) => {
@@ -313,6 +469,29 @@ function createVersionedRouter(
     const body = await c.req.json();
     const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
     return c.json(result);
+  });
+
+  router.delete('/assertions/:id', async (c) => {
+    try {
+      const id = c.req.param('id');
+      const deleted = await assertionController.deleteAssertion(id);
+      if (!deleted) {
+        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+      }
+      return c.body(null, 204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('DELETE /assertions/:id invalid IRI', { error: message, id: c.req.param('id') });
+        return c.json({ error: 'Bad Request', message: 'Invalid assertion ID' }, 400);
+      }
+      if (message.includes('permission')) {
+        logger.error('DELETE /assertions/:id forbidden', { error: message, id: c.req.param('id') });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      logger.error('DELETE /assertions/:id failed', { error: message, id: c.req.param('id') });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   router.post('/assertions/:id/revoke', async (c) => {
