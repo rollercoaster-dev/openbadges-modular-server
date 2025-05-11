@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+# Limit permissions of the GITHUB_TOKEN
+permissions:
+  contents: read
+
 jobs:
   # Core tests that don't depend on specific databases
   core-tests:

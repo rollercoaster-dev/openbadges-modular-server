@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [ main ]
 
+# Limit permissions of the GITHUB_TOKEN
+permissions:
+  contents: read
+
 jobs:
   lint-and-typecheck:
     name: Lint and Type Check
