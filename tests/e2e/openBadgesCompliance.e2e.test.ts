@@ -1,10 +1,11 @@
 // test/e2e/openBadgesCompliance.e2e.test.ts
-import { describe, it, afterAll, beforeAll } from 'bun:test';
+import { it, afterAll, beforeAll } from 'bun:test';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
+import { databaseAwareDescribe } from './utils/test-setup';
 
 // No need for complex types in this simplified test
 
@@ -108,10 +109,11 @@ const API_KEY = 'verysecretkeye2e';
 // Server instance for the test
 let server: unknown = null;
 
-describe('OpenBadges v3.0 Compliance - E2E', () => {
-  // No resources to clean up in this simplified test
-
-  // Start the server before all tests
+// Use database-aware describe to handle database availability
+databaseAwareDescribe('OpenBadges v3.0 Compliance - E2E', (describeTest) => {
+  // Use the provided describe function that handles database availability
+  describeTest('OpenBadges v3.0 API Tests', () => {
+    // Start the server before all tests
   beforeAll(async () => {
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
@@ -365,4 +367,5 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
   });
 
   // No cleanup needed in this simplified test
+  });
 });

@@ -1,11 +1,12 @@
 // tests/e2e/badgeClass.e2e.test.ts
-import { describe, it, expect, afterAll, beforeAll, afterEach } from 'bun:test';
+import { it, expect, afterAll, beforeAll, afterEach } from 'bun:test';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { EXAMPLE_BADGE_IMAGE_URL } from '@/constants/urls';
 import { createTestBadgeClassData, createTestIssuerData } from './utils/test-data-generator';
 import { checkDatabaseConnectionIssue, validateBadgeClassFields, validateOBv3Entity } from './utils/validation';
+import { databaseAwareDescribe } from './utils/test-setup';
 
 // Use a random port for testing to avoid conflicts
 const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
@@ -22,7 +23,9 @@ const API_KEY = 'verysecretkeye2e';
 // Server instance for the test
 let server: unknown = null;
 
-describe('Badge Class API - E2E', () => {
+// Use database-aware describe to handle database availability
+databaseAwareDescribe('Badge Class API - E2E', (describeTest) => {
+  describeTest('Badge Class CRUD Operations', () => {
   // Store created resources for cleanup
   let createdIssuerId: string | undefined = undefined;
   let createdBadgeClassId: string | undefined = undefined;
@@ -570,5 +573,6 @@ describe('Badge Class API - E2E', () => {
       // Otherwise, expect a 404 status
       expect(res.status).toBe(404);
     }
+  });
   });
 });

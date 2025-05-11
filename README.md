@@ -180,36 +180,63 @@ See the [Database Integration Guide](./docs/database-integration-guide.md) for d
 
 ### Testing
 
+The project uses a comprehensive testing approach with support for multiple database backends. Tests are organized into three categories:
+
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test interactions between components with database access
+- **E2E Tests**: Test the entire application from end to end
+
+#### Running Tests
+
 Run the full test suite (will skip tests for unavailable databases):
 
 ```bash
 bun test
 ```
 
-Run database-specific tests:
+Run specific test categories:
 
 ```bash
-# SQLite tests
-bun run test:sqlite
+# Core tests (no database dependencies)
+bun run test:core
 
-# PostgreSQL tests (requires PostgreSQL running)
-bun run test:pg
+# Unit tests
+bun run test:unit
 
-# PostgreSQL tests with Docker (starts and stops a PostgreSQL container)
-bun run test:pg:with-docker
+# Integration tests with SQLite
+bun run test:integration:sqlite
+
+# Integration tests with PostgreSQL
+bun run test:integration:pg
+
+# E2E tests with SQLite
+bun run test:e2e:sqlite
+
+# E2E tests with PostgreSQL
+bun run test:e2e:pg
+
+# E2E tests with PostgreSQL in Docker containers
+bun run test:e2e:containers
+
+# Run all tests (core, unit, integration with SQLite, E2E with SQLite)
+bun run test:all
 ```
 
-Run tests with coverage:
+#### Database Configuration for Tests
 
-```bash
-bun test:coverage
-```
+Tests can be run against different database backends:
 
-The test suite includes:
+- **SQLite**: Fast, in-memory database for local development and CI
+- **PostgreSQL**: Production-like database for more comprehensive testing
+- **Test Containers**: PostgreSQL in Docker containers for isolated testing
 
-- Unit tests for domain entities
-- Integration tests for repositories (for each supported database)
-- Validation tests for Open Badges compliance
+The test framework automatically handles database availability:
+
+- Tests that require a database will check if the configured database is available
+- If the database is not available, the tests will be skipped with a clear message
+- The framework supports using Docker containers for PostgreSQL tests
+
+For more details on the testing approach, see the [Testing Guide](./tests/README.md).
 
 ### Linting and Type Checking
 
@@ -243,20 +270,23 @@ bun run build
 
 The project uses GitHub Actions for continuous integration and deployment:
 
-1. **CI Pipeline**: Runs on all branches and pull requests
-   - **Lint and Type Check**: Ensures code quality and type safety
-   - **Tests**: Runs the test suite with coverage reporting
-
-2. **Database Tests Pipeline**: Runs database-specific tests in parallel
+1. **Test Workflow**: Runs on all branches and pull requests
+   - **Lint**: Ensures code quality and style
    - **Core Tests**: Tests that don't depend on specific databases
-   - **SQLite Tests**: Tests specific to SQLite
-   - **PostgreSQL Tests**: Tests specific to PostgreSQL
+   - **SQLite Tests**: Integration and E2E tests with SQLite
+   - **PostgreSQL Tests**: Integration and E2E tests with PostgreSQL
+   - **Test Containers**: E2E tests with PostgreSQL in Docker containers
+   - **Build**: Builds the application if all tests pass
 
-3. **CI/CD Pipeline**: Runs only on release tags (v*)
+2. **CI/CD Pipeline**: Runs only on release tags (v*)
    - **Lint and Type Check**: Ensures code quality and type safety
    - **Tests**: Runs the test suite with coverage reporting
    - **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
    - **Deploy**: Deploys to Kubernetes when a new version is tagged
+
+The test workflow runs tests with different database configurations in parallel, ensuring comprehensive test coverage across all supported database backends.
+
+For more details on the CI/CD setup, see the [CI/CD Configuration](./.github/README.md).
 
 To create a new release:
 
