@@ -76,7 +76,7 @@ export async function cleanupTestDatabase(): Promise<void> {
  * @param dbAvailable Whether the database is available
  * @returns A describe function that skips tests if the database is not available
  */
-export function createDatabaseAwareDescribe(dbAvailable: boolean): typeof bunDescribe {
+export function createDatabaseAwareDescribe(dbAvailable: boolean): typeof bunDescribe | typeof bunDescribe.skip {
   // Use the appropriate describe function based on database availability
   const describeTest = dbAvailable ? bunDescribe : bunDescribe.skip;
 
@@ -101,8 +101,8 @@ export function createDatabaseAwareDescribe(dbAvailable: boolean): typeof bunDes
  * @returns Promise that resolves when the test suite is complete
  */
 export async function databaseAwareDescribe(
-  title: string,
-  fn: (describeTest: typeof bunDescribe) => void
+  _title: string, // Title is used in the function passed to describeTest
+  fn: (describeTest: typeof bunDescribe | typeof bunDescribe.skip) => void
 ): Promise<void> {
   // Initialize the database
   const dbAvailable = await initializeTestDatabase();
