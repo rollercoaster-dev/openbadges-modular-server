@@ -21,6 +21,40 @@ let postgresContainer: PostgresContainer | null = null;
 export async function initializeTestDatabase(): Promise<boolean> {
   const dbConfig = getTestDatabaseConfig();
 
+  // For SQLite, ensure the directory exists
+  if (dbConfig.type === 'sqlite' && process.env.SQLITE_FILE && process.env.SQLITE_FILE !== ':memory:') {
+    try {
+      const fs = require('fs');
+      const sqliteFile = process.env.SQLITE_FILE;
+
+      // Ensure the directory exists
+      const dirPath = sqliteFile.substring(0, sqliteFile.lastIndexOf('/'));
+      if (dirPath && !fs.existsSync(dirPath)) {
+        logger.info(`Creating directory for SQLite database: ${dirPath}`);
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
+      // Ensure the file exists and is writable
+      if (!fs.existsSync(sqliteFile)) {
+        logger.info(`Creating empty SQLite database file: ${sqliteFile}`);
+        fs.writeFileSync(sqliteFile, '');
+      }
+
+      // Set permissions to ensure it's writable
+      try {
+        fs.chmodSync(sqliteFile, 0o666);
+        fs.chmodSync(dirPath, 0o777);
+      } catch (error) {
+        logger.warn(`Failed to set permissions on SQLite file: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } catch (error) {
+      logger.error('Failed to prepare SQLite database file', {
+        error: error instanceof Error ? error.message : String(error),
+        sqliteFile: process.env.SQLITE_FILE
+      });
+    }
+  }
+
   // If using test containers for PostgreSQL, start the container
   if (dbConfig.type === 'postgresql' && dbConfig.useTestContainers) {
     try {

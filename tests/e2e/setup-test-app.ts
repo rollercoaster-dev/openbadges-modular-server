@@ -129,6 +129,27 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
           // Create SQLite database connection
           const sqliteFile = config.database.sqliteFile || './tests/e2e/test_database.sqlite';
+
+          // Ensure the directory exists
+          const dirPath = sqliteFile.substring(0, sqliteFile.lastIndexOf('/'));
+          if (dirPath && !fs.existsSync(dirPath)) {
+            logger.info(`Creating directory for SQLite database: ${dirPath}`);
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+
+          // Ensure the file exists and is writable
+          if (!fs.existsSync(sqliteFile)) {
+            logger.info(`Creating empty SQLite database file: ${sqliteFile}`);
+            fs.writeFileSync(sqliteFile, '');
+          }
+
+          // Set permissions to ensure it's writable
+          try {
+            fs.chmodSync(sqliteFile, 0o666);
+          } catch (error) {
+            logger.warn(`Failed to set permissions on SQLite file: ${error instanceof Error ? error.message : String(error)}`);
+          }
+
           const db = new Database(sqliteFile);
 
           // Apply the fixed migration SQL

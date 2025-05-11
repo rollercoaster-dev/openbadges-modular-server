@@ -118,8 +118,47 @@ export async function isSqliteAvailable(): Promise<boolean> {
   try {
     // Try to import bun:sqlite and create a DB
     const { Database } = await import('bun:sqlite');
-    const db = new Database(':memory:');
-    db.close();
+
+    // First test with in-memory database
+    const memDb = new Database(':memory:');
+    memDb.close();
+
+    // If we're using a file-based database, ensure the directory exists
+    if (dbConfig.sqliteFile && dbConfig.sqliteFile !== ':memory:') {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+
+        // Ensure the directory exists
+        const dirPath = path.dirname(dbConfig.sqliteFile);
+        if (!fs.existsSync(dirPath)) {
+          logger.info(`Creating directory for SQLite database: ${dirPath}`);
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+
+        // Ensure the file exists and is writable
+        if (!fs.existsSync(dbConfig.sqliteFile)) {
+          logger.info(`Creating empty SQLite database file: ${dbConfig.sqliteFile}`);
+          fs.writeFileSync(dbConfig.sqliteFile, '');
+        }
+
+        // Set permissions to ensure it's writable
+        try {
+          fs.chmodSync(dbConfig.sqliteFile, 0o666);
+          fs.chmodSync(dirPath, 0o777);
+        } catch (permError) {
+          logger.warn(`Failed to set permissions on SQLite file: ${permError instanceof Error ? permError.message : String(permError)}`);
+        }
+
+        // Try to open the file-based database
+        const fileDb = new Database(dbConfig.sqliteFile);
+        fileDb.close();
+      } catch (fileError) {
+        logger.warn(`Failed to create file-based SQLite database: ${fileError instanceof Error ? fileError.message : String(fileError)}`);
+        // Continue even if file-based database fails
+        // We'll use in-memory database as fallback
+      }
+    }
 
     logger.info('SQLite is available');
     return true;
