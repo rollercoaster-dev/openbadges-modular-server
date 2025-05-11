@@ -74,47 +74,51 @@ export async function createPostgresContainer(
       });
 
     // Create a wrapper that implements the PostgresContainer interface
-    return {
+    // Define a class to avoid using 'any' type
+    class PostgresContainerImpl implements PostgresContainer {
+      // Using any here is necessary because we don't have the type definitions for the container
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      private startedContainer?: any;
+      private mappedPort?: number;
+
       async start(): Promise<PostgresContainer> {
-        const startedContainer = await container.start();
-
-        // Store container properties for later use
-        (this as any).startedContainer = startedContainer;
-        (this as any).mappedPort = startedContainer.getMappedPort(config.port || 5432);
-
+        this.startedContainer = await container.start();
+        this.mappedPort = this.startedContainer.getMappedPort(config.port || 5432);
         return this;
-      },
+      }
 
       async stop(): Promise<void> {
-        if ((this as any).startedContainer) {
-          await (this as any).startedContainer.stop();
+        if (this.startedContainer) {
+          await this.startedContainer.stop();
         }
-      },
+      }
 
       getConnectionUri(): string {
-        return `postgresql://${config.username || 'testuser'}:${config.password || 'testpassword'}@localhost:${(this as any).mappedPort}/${config.database || 'openbadges_test'}`;
-      },
+        return `postgresql://${config.username || 'testuser'}:${config.password || 'testpassword'}@localhost:${this.mappedPort}/${config.database || 'openbadges_test'}`;
+      }
 
       getHost(): string {
         return 'localhost';
-      },
+      }
 
       getPort(): number {
-        return (this as any).mappedPort;
-      },
+        return this.mappedPort || (config.port || 5433);
+      }
 
       getUsername(): string {
         return config.username || 'testuser';
-      },
+      }
 
       getPassword(): string {
         return config.password || 'testpassword';
-      },
+      }
 
       getDatabase(): string {
         return config.database || 'openbadges_test';
       }
-    };
+    }
+
+    return new PostgresContainerImpl();
   } catch (error) {
     // If the library is not installed, return a mock container
     logger.warn('testcontainers library not found, using mock container', {
