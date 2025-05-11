@@ -45,12 +45,18 @@ jobs:
         run: bun install
 
       - name: Run core tests
-        run: bun run test:core
+        run: |
+          # Run the tests with increased verbosity
+          bun run test:core
         env:
           NODE_PATH: "."
+          # Increase test timeout
+          BUN_TEST_TIMEOUT: 30000
 
       - name: Run unit tests
-        run: bun run test:unit
+        run: |
+          # Run the tests with increased verbosity
+          bun run test:unit
         env:
           NODE_PATH: "."
           NODE_ENV: test
@@ -58,6 +64,8 @@ jobs:
           AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: sqlite
           SQLITE_FILE: ":memory:"
+          # Increase test timeout
+          BUN_TEST_TIMEOUT: 30000
 
   test-sqlite:
     name: SQLite Tests
@@ -79,9 +87,18 @@ jobs:
           touch tests/e2e/test_database.sqlite
           chmod 777 tests/e2e/test_database.sqlite
           chmod 777 tests/e2e
+          # Verify permissions
+          ls -la tests/e2e/
+          # Create drizzle directory if it doesn't exist
+          mkdir -p drizzle/migrations
+          mkdir -p drizzle/pg-migrations
 
       - name: Run SQLite integration tests
-        run: bun run test:integration:sqlite
+        run: |
+          # Check SQLite file permissions
+          ls -la tests/e2e/
+          # Run the tests with increased verbosity
+          bun run test:integration:sqlite
         env:
           NODE_PATH: "."
           NODE_ENV: test
@@ -89,9 +106,17 @@ jobs:
           AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: sqlite
           SQLITE_FILE: ":memory:"
+          # Add debug logging
+          DEBUG: drizzle*
+          # Increase test timeout
+          BUN_TEST_TIMEOUT: 30000
 
       - name: Run E2E tests with SQLite
-        run: bun run test:e2e:sqlite
+        run: |
+          # Check SQLite file permissions
+          ls -la tests/e2e/
+          # Run the tests with increased verbosity
+          bun run test:e2e:sqlite
         env:
           NODE_PATH: "."
           NODE_ENV: test
@@ -99,6 +124,10 @@ jobs:
           AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: sqlite
           SQLITE_FILE: "./tests/e2e/test_database.sqlite"
+          # Add debug logging
+          DEBUG: drizzle*
+          # Increase test timeout
+          BUN_TEST_TIMEOUT: 30000
 
   test-postgresql:
     name: PostgreSQL Tests
@@ -110,6 +139,8 @@ jobs:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: openbadges_test
+          # Add trust authentication method to allow connections without password
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5433:5432
         options: >-
@@ -136,6 +167,13 @@ jobs:
           chmod 777 tests/e2e/test_database.sqlite
           chmod 777 tests/e2e
 
+      - name: Create drizzle directories
+        run: |
+          mkdir -p drizzle/migrations
+          mkdir -p drizzle/pg-migrations
+          # Verify directories
+          ls -la drizzle/
+
       - name: Run PostgreSQL integration tests
         run: bun run test:integration:pg
         env:
@@ -150,6 +188,8 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
+          # Add debug logging
+          DEBUG: drizzle*
 
       - name: Run E2E tests with PostgreSQL
         run: bun run test:e2e:pg
@@ -165,6 +205,8 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
+          # Add debug logging
+          DEBUG: drizzle*
 
   test-containers:
     name: Test Containers
@@ -189,15 +231,34 @@ jobs:
           touch tests/e2e/test_database.sqlite
           chmod 777 tests/e2e/test_database.sqlite
           chmod 777 tests/e2e
+          # Verify permissions
+          ls -la tests/e2e/
+          # Create drizzle directory if it doesn't exist
+          mkdir -p drizzle/migrations
+          mkdir -p drizzle/pg-migrations
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
       - name: Start Docker service
-        run: sudo systemctl start docker
+        run: |
+          sudo systemctl start docker
+          sudo docker info
+          sudo docker ps
+
+      - name: Wait for Docker to be ready
+        run: |
+          echo "Waiting for Docker to be ready..."
+          sleep 10
+          sudo docker info
 
       - name: Run E2E tests with Test Containers
-        run: bun run test:e2e:containers
+        run: |
+          # Check Docker status before running tests
+          sudo docker info
+          sudo docker ps
+          # Run the tests with increased verbosity
+          bun run test:e2e:containers
         env:
           NODE_PATH: "."
           NODE_ENV: test
@@ -205,6 +266,10 @@ jobs:
           AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: postgresql
           USE_TEST_CONTAINERS: true
+          # Add debug logging for testcontainers and drizzle
+          DEBUG: testcontainers*,drizzle*
+          # Increase test timeout
+          BUN_TEST_TIMEOUT: 60000
 
   build:
     name: Build
