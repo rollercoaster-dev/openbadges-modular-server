@@ -37,6 +37,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+test/e2e/test_database.sqlite
+test/e2e/test_database.sqlite-shm
+test/e2e/test_database.sqlite-wal
 
 uploads/*
 
