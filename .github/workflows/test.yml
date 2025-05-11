@@ -10,6 +10,7 @@ on:
 # Limit permissions of the GITHUB_TOKEN
 permissions:
   contents: read
+  security-events: write # Required for CodeQL
 
 jobs:
   lint:
@@ -52,6 +53,11 @@ jobs:
         run: bun run test:unit
         env:
           NODE_PATH: "."
+          NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
+          DB_TYPE: sqlite
+          SQLITE_FILE: ":memory:"
 
   test-sqlite:
     name: SQLite Tests
@@ -74,18 +80,21 @@ jobs:
         run: bun run test:integration:sqlite
         env:
           NODE_PATH: "."
+          NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: sqlite
           SQLITE_FILE: ":memory:"
-          NODE_ENV: test
 
       - name: Run E2E tests with SQLite
         run: bun run test:e2e:sqlite
         env:
           NODE_PATH: "."
+          NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: sqlite
           SQLITE_FILE: "./tests/e2e/test_database.sqlite"
-          NODE_ENV: test
-          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
 
   test-postgresql:
     name: PostgreSQL Tests
@@ -121,6 +130,8 @@ jobs:
         env:
           NODE_PATH: "."
           NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: postgresql
           DATABASE_URL: postgresql://testuser:testpassword@localhost:5433/openbadges_test
           POSTGRES_USER: testuser
@@ -134,6 +145,8 @@ jobs:
         env:
           NODE_PATH: "."
           NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: postgresql
           DATABASE_URL: postgresql://testuser:testpassword@localhost:5433/openbadges_test
           POSTGRES_USER: testuser
@@ -141,7 +154,6 @@ jobs:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5433
           POSTGRES_DB: openbadges_test
-          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
 
   test-containers:
     name: Test Containers
@@ -171,9 +183,10 @@ jobs:
         env:
           NODE_PATH: "."
           NODE_ENV: test
+          AUTH_DISABLE_RBAC: true
+          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
           DB_TYPE: postgresql
           USE_TEST_CONTAINERS: true
-          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Test API Key
 
   build:
     name: Build
