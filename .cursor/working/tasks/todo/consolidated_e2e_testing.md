@@ -17,7 +17,7 @@ High
 - Task 01: API Router Integration
 - Task 02: Security Middleware Migration
 
-## Current Status (Updated 2025-05-10)
+## Current Status (Updated 2025-05-11)
 
 This task has been partially implemented. Based on a review of the codebase and test execution, here's the current status:
 
@@ -34,23 +34,39 @@ This task has been partially implemented. Based on a review of the codebase and 
   - Verifies the badge
   - Validates correct context URLs, proof structure, and verification process
   - Includes proper test cleanup to ensure test resources are properly deleted
+- ✅ Fixed CI pipeline issues:
+  - Fixed PostgreSQL migration syntax errors (replaced ALTER TABLE IF NOT EXISTS with PL/pgSQL blocks)
+  - Improved SQLite file handling with better error handling and permissions
+  - Updated E2E tests to properly check for database availability
+  - Split GitHub Actions workflow into separate SQLite and PostgreSQL test jobs
+  - Updated PostgreSQL service configuration in CI
 
 ### Partially Completed / Needs Enhancement:
 - 🟨 Current tests verify API endpoints exist and respond (and basic create/cleanup for some), but **do not yet fully test complete data persistence and retrieval flows (e.g., detailed Create -> Read -> Update -> Delete -> Verify lifecycle for all fields and relationships).**
+- 🟨 CI pipeline reliability could be further improved with additional optimizations
 
 ### Remaining (Prioritized):
 1. **High Priority:**
+   - **CI Pipeline Optimization:**
+     - Add caching for Bun dependencies to speed up CI runs
+     - Implement retry mechanisms for flaky tests
+     - Add detailed logging for test failures to aid debugging
+     - Ensure proper cleanup of resources between test runs
+     - Add CI job to verify that migrations work correctly with both database types
    - **Enable existing tests:** Remove `.skip` from test cases and ensure they pass
    - **Enhance existing E2E tests to verify complete data flows:** Ensure tests for Issuer, BadgeClass, and Assertion APIs thoroughly validate creation, accurate retrieval (single and list), updates to various fields, and successful deletion with verification. This includes checking that all persisted data matches the input data and that relationships between entities are correctly handled.
 
 2. **Medium Priority:**
    - Add tests for error cases and edge conditions (e.g., invalid input data, unauthorized access attempts, concurrency issues if applicable).
-   - Integrate E2E tests into CI pipeline.
    - Improve test server startup/shutdown logic within the test files or global setup/teardown if further optimizations are needed.
+   - Add parallel test execution in CI to speed up the pipeline
+   - Implement test result reporting and visualization in CI
 
 3. **Lower Priority:**
    - Document E2E testing procedures for developers (how to run, how to write new tests, common pitfalls).
    - Optimize test performance and reliability further if they become slow or flaky.
+   - Add test coverage reporting to CI
+   - Implement automatic test retries for transient failures
 
 ## Acceptance Criteria
 
@@ -103,6 +119,33 @@ Based on the analysis of the current codebase, here's a detailed plan for implem
 - Clean up the database before and after each test
 - Use the Hono test client for API tests
 - Consider using a test framework like Playwright for browser-based tests
+
+### CI Pipeline Optimization Notes
+
+1. **Database Setup and Teardown:**
+   - Ensure PostgreSQL service is properly configured with health checks
+   - Verify database migrations run correctly before tests
+   - Implement proper cleanup between test runs to prevent test interference
+
+2. **Test Reliability:**
+   - Add retry mechanisms for flaky tests (especially network or database-related tests)
+   - Implement proper timeouts for async operations
+   - Add detailed logging for test failures
+
+3. **Performance Optimization:**
+   - Use dependency caching to speed up CI runs
+   - Consider running tests in parallel where possible
+   - Optimize test setup/teardown to minimize overhead
+
+4. **Resource Management:**
+   - Ensure proper cleanup of resources (files, database connections, etc.)
+   - Monitor resource usage during test runs
+   - Implement proper error handling for resource cleanup
+
+5. **Reporting and Monitoring:**
+   - Add test result reporting to CI
+   - Implement test coverage reporting
+   - Add performance monitoring for test runs
 
 ## Testing
 
