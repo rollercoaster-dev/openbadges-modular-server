@@ -76,7 +76,7 @@ describe('Authentication - E2E', () => {
 
     // If the status is 401 or 403, verify the response contains an error message
     if ([401, 403].includes(noAuthResponse.status)) {
-      const noAuthBody = await noAuthResponse.json().catch(() => ({}));
+      const noAuthBody = await noAuthResponse.json().catch(() => ({})) as Record<string, unknown>;
       expect(noAuthBody.error || noAuthBody.message).toBeDefined();
     }
   });
@@ -99,7 +99,7 @@ describe('Authentication - E2E', () => {
 
     // If the status is 401 or 403, verify the response contains an error message
     if ([401, 403].includes(invalidAuthResponse.status)) {
-      const invalidAuthBody = await invalidAuthResponse.json().catch(() => ({}));
+      const invalidAuthBody = await invalidAuthResponse.json().catch(() => ({})) as Record<string, unknown>;
       expect(invalidAuthBody.error || invalidAuthBody.message).toBeDefined();
     }
   });
@@ -146,7 +146,7 @@ describe('Authentication - E2E', () => {
     logger.info(`Health endpoint responded with status ${healthResponse.status}`);
 
     // Verify the response contains health information
-    const healthBody = await healthResponse.json().catch(() => ({}));
+    const healthBody = await healthResponse.json().catch(() => ({})) as Record<string, unknown>;
     expect(healthBody.status || healthBody.message).toBeDefined();
   });
 
@@ -174,7 +174,7 @@ describe('Authentication - E2E', () => {
 
     // If the status is 200, verify the response contains OpenAPI spec
     if (openApiResponse.status === 200) {
-      const openApiBody = await openApiResponse.json().catch(() => ({}));
+      const openApiBody = await openApiResponse.json().catch(() => ({})) as Record<string, unknown>;
       expect(openApiBody.openapi || openApiBody.swagger).toBeDefined();
     }
   });

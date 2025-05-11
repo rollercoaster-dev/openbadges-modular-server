@@ -15,7 +15,7 @@ import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared, OB2, OB3 } from 'openbadges-types';
 import { VerificationService } from '../../core/verification.service';
-import { VerificationStatus, VerificationErrorCode, createVerificationError } from '../../utils/types/verification-status';
+import { VerificationStatus, VerificationErrorCode, createVerificationError, createSuccessfulVerification } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
 import { CreateAssertionDto, UpdateAssertionDto, AssertionResponseDto } from '../dtos';
