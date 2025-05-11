@@ -1,5 +1,4 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+#!/bin/sh
 
 echo "🔍 Running pre-push checks..."
 
@@ -29,14 +28,16 @@ if [ -n "$ALL_FILES" ]; then
 
   if [ -n "$TEST_FILES" ]; then
     echo "Running changed test files with SQLite..."
-    echo "$TEST_FILES" | xargs DB_TYPE=sqlite bun test
+    export DB_TYPE=sqlite
+    echo "$TEST_FILES" | xargs bun test
     TEST_SPECIFIC_EXIT_CODE=$?
   fi
 fi
 
 # Also run a general test suite to ensure nothing is broken
 echo "Running general test suite with SQLite..."
-DB_TYPE=sqlite bun test
+export DB_TYPE=sqlite
+bun test
 TEST_EXIT_CODE=$?
 
 # Check if any of the commands failed
