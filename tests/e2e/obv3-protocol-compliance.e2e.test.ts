@@ -4,9 +4,9 @@ import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { hashData } from '@/utils/crypto/signature';
-import { EXAMPLE_BADGE_IMAGE_URL, EXAMPLE_ISSUER_URL, OBV3_CONTEXT_URL, VC_V2_CONTEXT_URL } from '@/constants/urls';
+import {   OBV3_CONTEXT_URL, VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { checkDatabaseConnectionIssue, validateOBv3Entity } from './utils/validation';
-import { createTestIssuerData, createTestBadgeClassData, createTestAssertionData } from './utils/test-data-generator';
+import { createTestIssuerData, createTestBadgeClassData } from './utils/test-data-generator';
 
 // Use a random port for testing to avoid conflicts
 const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
