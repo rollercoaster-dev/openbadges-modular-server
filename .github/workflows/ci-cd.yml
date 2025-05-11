@@ -5,6 +5,10 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]
 
+# Default permissions for all jobs
+permissions:
+  contents: read
+
 jobs:
   lint-and-typecheck:
     name: Lint and Type Check

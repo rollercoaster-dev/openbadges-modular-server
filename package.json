@@ -12,12 +12,13 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "test:core": "bun test --pattern \"!tests/infrastructure/database/**\"",
-    "test:sqlite": "bun test tests/infrastructure/database/modules/sqlite",
-    "test:pg": "NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun test tests/infrastructure/database/modules/postgresql",
+    "test:unit": "NODE_ENV=test bun test ./tests/unit",
+    "test:integration:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/integration",
+    "test:integration:pg": "NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun test ./tests/integration",
     "test:pg:coverage": "bun test --coverage tests/infrastructure/database/modules/postgresql",
     "test:pg:setup": "docker-compose -f docker-compose.test.yml up -d",
     "test:pg:teardown": "docker-compose -f docker-compose.test.yml down",
-    "test:pg:with-docker": "bun run test:pg:setup && bun run db:test:pg:migrate && bun run test:pg && bun run test:pg:teardown",
+    "test:pg:with-docker": "bun run test:pg:setup && bun run db:test:pg:migrate && bun run test:integration:pg && bun run test:pg:teardown",
     "db:generate": "drizzle-kit generate",
     "db:generate:pg": "DB_TYPE=postgresql drizzle-kit generate",
     "db:generate:sqlite": "DB_TYPE=sqlite drizzle-kit generate",
@@ -34,11 +35,14 @@
     "db:test:pg:migrate": "NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg && NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg",
     "test:e2e:pg:setup": "bun run db:test:pg:start && bun run db:test:pg:migrate && docker cp drizzle/pg-migrations/0000_strong_gideon.sql openbadges-modular-server-test-db-pg-1:/tmp/migration.sql && docker exec openbadges-modular-server-test-db-pg-1 psql -U testuser -d openbadges_test -f /tmp/migration.sql",
     "test:e2e:pg:run": "NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun test ./tests/e2e",
-    "test:e2e:pg": "bun run test:e2e:pg:setup && bun run test:e2e:pg:run ; bun run db:test:pg:stop",
+    "test:e2e:pg:docker": "bun run test:e2e:pg:setup && bun run test:e2e:pg:run ; bun run db:test:pg:stop",
     "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:migrate:sqlite",
     "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun test ./tests/e2e",
     "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/e2e",
-    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg"
+    "test:e2e:pg": "NODE_ENV=test DB_TYPE=postgresql bun test ./tests/e2e",
+    "test:e2e:containers": "NODE_ENV=test DB_TYPE=postgresql USE_TEST_CONTAINERS=true bun test ./tests/e2e",
+    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg",
+    "test:all": "bun run test:core && bun run test:unit && bun run test:integration:sqlite && bun run test:e2e:sqlite"
   },
   "lint-staged": {
     "*.ts": [
@@ -54,6 +58,7 @@
     "eslint": "^9.24.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",
+    "testcontainers": "^10.25.0",
     "tsc-files": "^1.1.4"
   },
   "peerDependencies": {

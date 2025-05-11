@@ -111,7 +111,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
         dbConfig.type, // Use the type from dbConfig, not from config.database
         {
           connectionString: dbConfig.connectionString,
-          sqliteFile: config.database.sqliteFile,
+          sqliteFile: process.env.SQLITE_DB_PATH || config.database.sqliteFile,
           sqliteBusyTimeout: config.database.sqliteBusyTimeout,
           sqliteSyncMode: config.database.sqliteSyncMode,
           sqliteCacheSize: config.database.sqliteCacheSize
@@ -128,7 +128,56 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           const { Database } = require('bun:sqlite');
 
           // Create SQLite database connection
-          const sqliteFile = config.database.sqliteFile || './test/e2e/test_database.sqlite';
+          let sqliteFile = process.env.SQLITE_DB_PATH || config.database.sqliteFile || './tests/e2e/test_database.sqlite';
+
+          // Ensure the directory exists
+          const dirPath = sqliteFile.substring(0, sqliteFile.lastIndexOf('/'));
+          if (dirPath && !fs.existsSync(dirPath)) {
+            logger.info(`Creating directory for SQLite database: ${dirPath}`);
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // Set directory permissions to ensure it's writable
+            try {
+              fs.chmodSync(dirPath, 0o777);
+              logger.info(`Set permissions on SQLite directory: ${dirPath}`);
+            } catch (error) {
+              logger.warn(`Failed to set permissions on SQLite directory: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+
+          // Ensure the file exists and is writable
+          if (!fs.existsSync(sqliteFile)) {
+            logger.info(`Creating empty SQLite database file: ${sqliteFile}`);
+            fs.writeFileSync(sqliteFile, '');
+          }
+
+          // Set permissions to ensure it's writable
+          try {
+            fs.chmodSync(sqliteFile, 0o777);
+            logger.info(`Set permissions on SQLite file: ${sqliteFile}`);
+
+            // Check if the file is writable
+            const stats = fs.statSync(sqliteFile);
+            const isWritable = stats.mode & 0o200; // Check write permission
+            logger.info(`SQLite file permissions: ${stats.mode.toString(8)}, writable: ${isWritable ? 'yes' : 'no'}`);
+
+            // Try to write to the file to verify permissions
+            fs.appendFileSync(sqliteFile, '');
+            logger.info('Successfully verified write access to SQLite file');
+          } catch (error) {
+            logger.error(`Failed to set permissions or write to SQLite file: ${error instanceof Error ? error.message : String(error)}`);
+
+            // Try an alternative approach for CI environments
+            try {
+              logger.info('Trying alternative approach for SQLite in CI environment');
+              // Use in-memory SQLite as a fallback
+              sqliteFile = ':memory:';
+              logger.info('Switched to in-memory SQLite database');
+            } catch (fallbackError) {
+              logger.error(`Failed to set up in-memory SQLite: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+            }
+          }
+
           const db = new Database(sqliteFile);
 
           // Apply the fixed migration SQL
@@ -163,11 +212,17 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
           try {
             // Add connection timeout to fail faster in CI environment
+            // Use longer timeouts in CI to handle potential network delays
+            const connectTimeout = process.env.CI === 'true' ? 30 : 10; // 30 seconds in CI, 10 seconds otherwise
+
+            logger.info(`Using PostgreSQL connection timeout: ${connectTimeout} seconds`);
+
             const client = postgres.default(connectionString, {
               max: 1,
-              connect_timeout: 5, // 5 seconds timeout
-              idle_timeout: 5,
-              max_lifetime: 30
+              connect_timeout: connectTimeout,
+              idle_timeout: connectTimeout,
+              max_lifetime: connectTimeout * 3
+              // postgres.js doesn't support retry options directly
             });
 
             // Apply the fixed migration SQL
@@ -223,6 +278,16 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
               error: error instanceof Error ? error.message : String(error),
               stack: error instanceof Error ? error.stack : undefined
             });
+
+            // Check if we're in CI environment
+            if (process.env.CI === 'true' && process.env.USE_TEST_CONTAINERS !== 'true') {
+              logger.warn('PostgreSQL connection failed in CI environment. Consider using test containers.');
+              // In CI, we want to fail fast if PostgreSQL is required but not available
+              if (process.env.REQUIRE_POSTGRESQL === 'true') {
+                throw new Error('PostgreSQL connection required but failed in CI environment');
+              }
+            }
+
             logger.warn('Continuing without PostgreSQL database - tests will be skipped');
             // Don't throw error, just continue without database
             // This allows tests to run in environments without PostgreSQL

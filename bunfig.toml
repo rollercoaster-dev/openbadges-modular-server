@@ -1,11 +1,11 @@
 [test]
 # Specifies the global setup file for tests.
 # This script runs once before all test files.
-globalSetup = "./test/e2e/setup/globalSetup.ts"
+globalSetup = "./tests/e2e/setup/globalSetup.ts"
 
 # Specifies the global teardown file for tests.
 # This script runs once after all test files have completed.
-globalTeardown = "./test/e2e/setup/globalTeardown.ts"
+globalTeardown = "./tests/e2e/setup/globalTeardown.ts"
 
 # Optional: Define a root directory for tests if they are not in the default location.
 # root = "./tests"

@@ -81,6 +81,9 @@ export class SqliteIssuerMapper {
         ? name.en || name[Object.keys(name)[0]] || ''
         : (name as string) || ''; // Cast source name part to string
 
+    // Get current timestamp for createdAt and updatedAt
+    const now = Date.now();
+
     // Map all relevant fields from the entity to the DB record format
     // Cast to any then back to inferred type as workaround for TS/Drizzle inference issues
     return {
@@ -91,8 +94,9 @@ export class SqliteIssuerMapper {
       description,
       image,
       publicKey: convertJson(publicKey, 'sqlite', 'to'),
-      additionalFields: convertJson(additionalFields, 'sqlite', 'to')
-      // Timestamps omitted, handled by repository
+      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
+      createdAt: now,
+      updatedAt: now
     } as unknown as typeof issuers.$inferInsert;
   }
 }

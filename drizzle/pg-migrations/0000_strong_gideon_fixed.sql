@@ -145,78 +145,204 @@ CREATE TABLE IF NOT EXISTS "user_roles" (
 --> statement-breakpoint
 
 -- Add foreign key constraints after all tables are created
-ALTER TABLE IF NOT EXISTS "api_keys" 
-  ADD CONSTRAINT IF NOT EXISTS "api_keys_user_id_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+DO $$
+BEGIN
+  -- api_keys foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'api_keys_user_id_users_id_fk'
+  ) THEN
+    ALTER TABLE "api_keys"
+      ADD CONSTRAINT "api_keys_user_id_users_id_fk"
+      FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "badge_classes" 
-  ADD CONSTRAINT IF NOT EXISTS "badge_classes_issuer_id_issuers_id_fk" 
-  FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  -- badge_classes foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'badge_classes_issuer_id_issuers_id_fk'
+  ) THEN
+    ALTER TABLE "badge_classes"
+      ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk"
+      FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "assertions_badge_class_id_badge_classes_id_fk" 
-  FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  -- assertions foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'assertions_badge_class_id_badge_classes_id_fk'
+  ) THEN
+    ALTER TABLE "assertions"
+      ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk"
+      FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "platform_users" 
-  ADD CONSTRAINT IF NOT EXISTS "platform_users_platform_id_platforms_id_fk" 
-  FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  -- platform_users foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'platform_users_platform_id_platforms_id_fk'
+  ) THEN
+    ALTER TABLE "platform_users"
+      ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk"
+      FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "user_assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "user_assertions_user_id_platform_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  -- user_assertions foreign keys
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'user_assertions_user_id_platform_users_id_fk'
+  ) THEN
+    ALTER TABLE "user_assertions"
+      ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk"
+      FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "user_assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "user_assertions_assertion_id_assertions_id_fk" 
-  FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'user_assertions_assertion_id_assertions_id_fk'
+  ) THEN
+    ALTER TABLE "user_assertions"
+      ADD CONSTRAINT "user_assertions_assertion_id_assertions_id_fk"
+      FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "user_roles" 
-  ADD CONSTRAINT IF NOT EXISTS "user_roles_user_id_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
-  ON DELETE cascade ON UPDATE no action;
---> statement-breakpoint
+  -- user_roles foreign keys
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'user_roles_user_id_users_id_fk'
+  ) THEN
+    ALTER TABLE "user_roles"
+      ADD CONSTRAINT "user_roles_user_id_users_id_fk"
+      FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
 
-ALTER TABLE IF NOT EXISTS "user_roles" 
-  ADD CONSTRAINT IF NOT EXISTS "user_roles_role_id_roles_id_fk" 
-  FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") 
-  ON DELETE cascade ON UPDATE no action;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'user_roles_role_id_roles_id_fk'
+  ) THEN
+    ALTER TABLE "user_roles"
+      ADD CONSTRAINT "user_roles_role_id_roles_id_fk"
+      FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id")
+      ON DELETE cascade ON UPDATE no action;
+  END IF;
+END
+$$;
 --> statement-breakpoint
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS "api_key_key_idx" ON "api_keys" USING btree ("key");
-CREATE INDEX IF NOT EXISTS "api_key_user_id_idx" ON "api_keys" USING btree ("user_id");
-CREATE INDEX IF NOT EXISTS "api_key_revoked_idx" ON "api_keys" USING btree ("revoked");
-CREATE INDEX IF NOT EXISTS "assertion_badge_class_idx" ON "assertions" USING btree ("badge_class_id");
-CREATE INDEX IF NOT EXISTS "assertion_issued_on_idx" ON "assertions" USING btree ("issued_on");
-CREATE INDEX IF NOT EXISTS "assertion_revoked_idx" ON "assertions" USING btree ("revoked");
-CREATE INDEX IF NOT EXISTS "assertion_expires_idx" ON "assertions" USING btree ("expires");
-CREATE INDEX IF NOT EXISTS "badge_class_issuer_idx" ON "badge_classes" USING btree ("issuer_id");
-CREATE INDEX IF NOT EXISTS "badge_class_name_idx" ON "badge_classes" USING btree ("name");
-CREATE INDEX IF NOT EXISTS "badge_class_created_at_idx" ON "badge_classes" USING btree ("created_at");
-CREATE INDEX IF NOT EXISTS "issuer_name_idx" ON "issuers" USING btree ("name");
-CREATE INDEX IF NOT EXISTS "issuer_url_idx" ON "issuers" USING btree ("url");
-CREATE INDEX IF NOT EXISTS "issuer_email_idx" ON "issuers" USING btree ("email");
-CREATE INDEX IF NOT EXISTS "issuer_created_at_idx" ON "issuers" USING btree ("created_at");
-CREATE INDEX IF NOT EXISTS "platform_user_idx" ON "platform_users" USING btree ("platform_id","external_user_id");
-CREATE INDEX IF NOT EXISTS "platform_user_email_idx" ON "platform_users" USING btree ("email");
-CREATE INDEX IF NOT EXISTS "platform_name_idx" ON "platforms" USING btree ("name");
-CREATE INDEX IF NOT EXISTS "platform_client_id_idx" ON "platforms" USING btree ("client_id");
-CREATE INDEX IF NOT EXISTS "role_name_idx" ON "roles" USING btree ("name");
-CREATE INDEX IF NOT EXISTS "user_assertion_idx" ON "user_assertions" USING btree ("user_id","assertion_id");
-CREATE INDEX IF NOT EXISTS "user_assertion_added_at_idx" ON "user_assertions" USING btree ("added_at");
-CREATE INDEX IF NOT EXISTS "user_role_user_id_idx" ON "user_roles" USING btree ("user_id");
-CREATE INDEX IF NOT EXISTS "user_role_role_id_idx" ON "user_roles" USING btree ("role_id");
-CREATE INDEX IF NOT EXISTS "user_role_user_id_role_id_idx" ON "user_roles" USING btree ("user_id","role_id");
-CREATE INDEX IF NOT EXISTS "user_username_idx" ON "users" USING btree ("username");
-CREATE INDEX IF NOT EXISTS "user_email_idx" ON "users" USING btree ("email");
+DO $$
+BEGIN
+  -- api_keys indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'api_key_key_idx') THEN
+    CREATE INDEX "api_key_key_idx" ON "api_keys" USING btree ("key");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'api_key_user_id_idx') THEN
+    CREATE INDEX "api_key_user_id_idx" ON "api_keys" USING btree ("user_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'api_key_revoked_idx') THEN
+    CREATE INDEX "api_key_revoked_idx" ON "api_keys" USING btree ("revoked");
+  END IF;
+
+  -- assertions indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'assertion_badge_class_idx') THEN
+    CREATE INDEX "assertion_badge_class_idx" ON "assertions" USING btree ("badge_class_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'assertion_issued_on_idx') THEN
+    CREATE INDEX "assertion_issued_on_idx" ON "assertions" USING btree ("issued_on");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'assertion_revoked_idx') THEN
+    CREATE INDEX "assertion_revoked_idx" ON "assertions" USING btree ("revoked");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'assertion_expires_idx') THEN
+    CREATE INDEX "assertion_expires_idx" ON "assertions" USING btree ("expires");
+  END IF;
+
+  -- badge_classes indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'badge_class_issuer_idx') THEN
+    CREATE INDEX "badge_class_issuer_idx" ON "badge_classes" USING btree ("issuer_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'badge_class_name_idx') THEN
+    CREATE INDEX "badge_class_name_idx" ON "badge_classes" USING btree ("name");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'badge_class_created_at_idx') THEN
+    CREATE INDEX "badge_class_created_at_idx" ON "badge_classes" USING btree ("created_at");
+  END IF;
+
+  -- issuers indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'issuer_name_idx') THEN
+    CREATE INDEX "issuer_name_idx" ON "issuers" USING btree ("name");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'issuer_url_idx') THEN
+    CREATE INDEX "issuer_url_idx" ON "issuers" USING btree ("url");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'issuer_email_idx') THEN
+    CREATE INDEX "issuer_email_idx" ON "issuers" USING btree ("email");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'issuer_created_at_idx') THEN
+    CREATE INDEX "issuer_created_at_idx" ON "issuers" USING btree ("created_at");
+  END IF;
+
+  -- platform_users indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'platform_user_idx') THEN
+    CREATE INDEX "platform_user_idx" ON "platform_users" USING btree ("platform_id","external_user_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'platform_user_email_idx') THEN
+    CREATE INDEX "platform_user_email_idx" ON "platform_users" USING btree ("email");
+  END IF;
+
+  -- platforms indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'platform_name_idx') THEN
+    CREATE INDEX "platform_name_idx" ON "platforms" USING btree ("name");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'platform_client_id_idx') THEN
+    CREATE INDEX "platform_client_id_idx" ON "platforms" USING btree ("client_id");
+  END IF;
+
+  -- roles indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'role_name_idx') THEN
+    CREATE INDEX "role_name_idx" ON "roles" USING btree ("name");
+  END IF;
+
+  -- user_assertions indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_assertion_idx') THEN
+    CREATE INDEX "user_assertion_idx" ON "user_assertions" USING btree ("user_id","assertion_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_assertion_added_at_idx') THEN
+    CREATE INDEX "user_assertion_added_at_idx" ON "user_assertions" USING btree ("added_at");
+  END IF;
+
+  -- user_roles indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_role_user_id_idx') THEN
+    CREATE INDEX "user_role_user_id_idx" ON "user_roles" USING btree ("user_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_role_role_id_idx') THEN
+    CREATE INDEX "user_role_role_id_idx" ON "user_roles" USING btree ("role_id");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_role_user_id_role_id_idx') THEN
+    CREATE INDEX "user_role_user_id_role_id_idx" ON "user_roles" USING btree ("user_id","role_id");
+  END IF;
+
+  -- users indexes
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_username_idx') THEN
+    CREATE INDEX "user_username_idx" ON "users" USING btree ("username");
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'user_email_idx') THEN
+    CREATE INDEX "user_email_idx" ON "users" USING btree ("email");
+  END IF;
+END
+$$;
