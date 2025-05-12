@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   # Core tests that don't depend on specific databases
   core-tests:
@@ -80,9 +83,8 @@ jobs:
       - name: Run PostgreSQL tests
         run: bun test tests/infrastructure/database/modules/postgresql
         env:
-          # Use TEST_DATABASE_URL from secrets if available, otherwise use default
-          # This allows for configurable database connection in different environments
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL != '' && secrets.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/openbadges_test' }}
+          # Use a fixed database URL for CI
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: openbadges_test

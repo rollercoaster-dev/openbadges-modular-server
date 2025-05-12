@@ -50,8 +50,11 @@ jobs:
           # API Configuration
           API_BASE_URL=http://localhost:3001
           PORT=3001
+          NODE_ENV=test
+          NODE_PATH=.
 
           # Database Configuration
+          # Default to PostgreSQL for CI
           DB_TYPE=postgresql
           POSTGRES_HOST=localhost
           POSTGRES_PORT=5433
@@ -60,36 +63,88 @@ jobs:
           POSTGRES_DB=openbadges_test
           DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test
 
+          # SQLite Configuration
+          SQLITE_DB_PATH=tests/e2e/test_database.sqlite
+
           # Authentication Configuration
           AUTH_ENABLED=true
           AUTH_API_KEY_TEST=verysecretkeye2e:test-user:E2E Testing Key
+          AUTH_API_KEY_E2E=verysecretkeye2e:test-user:E2E Testing Key
           AUTH_PUBLIC_PATHS=/docs,/swagger,/health,/public,/v3/issuers/*/verify,/v3/badge-classes/*/verify,/v3/assertions/*/verify
           AUTH_DISABLE_RBAC=true
+
+          # Logging Configuration
+          LOG_LEVEL=debug
           EOF
 
+          # Display the created file for debugging
+          echo "Created .env.test file:"
+          cat .env.test
+
       - name: Wait for PostgreSQL to be ready
-        run: sleep 15 # Wait 15 seconds for DB to initialize
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          # Use pg_isready to check if PostgreSQL is accepting connections
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5433 -U testuser; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL to start... ($i/30)"
+            sleep 2
+          done
+          # Final check
+          pg_isready -h localhost -p 5433 -U testuser || (echo "PostgreSQL failed to start" && exit 1)
+
+      - name: Create SQLite directory
+        run: |
+          mkdir -p tests/e2e
+          chmod 777 tests/e2e
+          echo "Created directory for SQLite database"
 
       - name: Migrate PostgreSQL database
         run: |
+          echo "Running PostgreSQL migrations..."
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
+          echo "PostgreSQL migrations completed"
 
       - name: Wait a bit more before tests
         run: sleep 5 # Wait an additional 5 seconds before tests
 
+      - name: Debug environment
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory listing:"
+          ls -la
+          echo "Node path: $NODE_PATH"
+          echo "Environment variables:"
+          env | grep -E 'DB_|AUTH_|NODE_|API_'
+          echo "Test directory structure:"
+          ls -la tests/
+          ls -la tests/e2e/ || echo "tests/e2e directory not found"
+
       - name: Run E2E tests with PostgreSQL
-        run: NODE_ENV=test bun test tests/e2e
+        run: |
+          echo "Running E2E tests with PostgreSQL..."
+          NODE_ENV=test NODE_PATH="." DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test AUTH_API_KEY_TEST=verysecretkeye2e:test-user:E2E\ Testing\ Key bun test tests/e2e
         env:
           DB_TYPE: postgresql
           DATABASE_URL: postgresql://testuser:testpassword@localhost:5433/openbadges_test
-          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Testing Key
+          AUTH_API_KEY_TEST: "verysecretkeye2e:test-user:E2E Testing Key"
           NODE_PATH: "."
+          NODE_ENV: "test"
 
       - name: Run E2E tests with SQLite
-        run: NODE_ENV=test bun test tests/e2e
+        run: |
+          echo "Running E2E tests with SQLite..."
+          # Create a specific SQLite file for testing
+          touch tests/e2e/test_database.sqlite
+          chmod 666 tests/e2e/test_database.sqlite
+          NODE_ENV=test NODE_PATH="." DB_TYPE=sqlite SQLITE_DB_PATH=tests/e2e/test_database.sqlite AUTH_API_KEY_TEST=verysecretkeye2e:test-user:E2E\ Testing\ Key bun test tests/e2e
         env:
           DB_TYPE: sqlite
-          SQLITE_DB_PATH: ':memory:'
-          AUTH_API_KEY_TEST: verysecretkeye2e:test-user:E2E Testing Key
+          SQLITE_DB_PATH: "tests/e2e/test_database.sqlite"
+          AUTH_API_KEY_TEST: "verysecretkeye2e:test-user:E2E Testing Key"
           NODE_PATH: "."
+          NODE_ENV: "test"
