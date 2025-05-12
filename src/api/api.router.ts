@@ -202,9 +202,10 @@ function createVersionedRouter(
   });
 
   router.put('/issuers/:id', validateIssuerMiddleware(), async (c) => {
-    let body: UpdateIssuerDto | undefined;
     const id = c.req.param('id');
+    let body: UpdateIssuerDto | undefined;
     try {
+      // Read the body once at the beginning
       body = await c.req.json<UpdateIssuerDto>();
       const result = await issuerController.updateIssuer(id, body, version);
       if (!result) {
@@ -213,6 +214,7 @@ function createVersionedRouter(
       return c.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Use the already parsed body for logging
       if (message.includes('Invalid IRI')) {
         logger.error('PUT /issuers/:id invalid IRI', { error: message, id, body });
         return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
