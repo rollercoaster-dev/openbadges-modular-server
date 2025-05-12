@@ -1,4 +1,6 @@
 import { MiddlewareHandler } from 'hono';
+import type { Context } from 'hono'; // Import Context for handleNotFound
+import type { ContentfulStatusCode } from 'hono/utils/http-status'; // Import ContentfulStatusCode
 import { logger } from '../logging/logger.service';
 import { getRequestId } from '../logging/request-context.middleware';
 import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
@@ -61,7 +63,7 @@ export function createErrorHandlerMiddleware(): MiddlewareHandler {
           // Include request ID for correlation with logs
           requestId
         }
-      }, statusCode);
+      }, statusCode as ContentfulStatusCode); // Cast statusCode to ContentfulStatusCode
     }
   };
 }
@@ -71,7 +73,7 @@ export function createErrorHandlerMiddleware(): MiddlewareHandler {
  *
  * This function is specifically designed to work with Hono's notFound handler
  */
-export function handleNotFound(c: import('hono').Context): Response {
+export function handleNotFound(c: Context): Response { // Use imported Context type
   const path = new URL(c.req.url).pathname;
   const requestId = getRequestId(c);
 
