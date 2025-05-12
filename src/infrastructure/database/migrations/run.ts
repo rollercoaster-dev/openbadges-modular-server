@@ -201,10 +201,8 @@ async function runPostgresMigrations() {
 
         for (const statement of statements) {
           try {
-            // Replace SQLite-specific syntax with PostgreSQL syntax
-            const pgStatement = statement
-              .replace(/INTEGER/g, 'INTEGER')
-              .replace(/TEXT/g, 'TEXT');
+            // Use the statement as is - no need to replace types
+            const pgStatement = statement;
 
             await client.unsafe(pgStatement + ';');
           } catch (stmtError) {
