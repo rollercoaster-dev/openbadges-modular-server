@@ -157,14 +157,16 @@ function createVersionedRouter(
   // Issuer routes
   // Robust Issuer CRUD routes with error handling and logging
   router.post('/issuers', validateIssuerMiddleware(), async (c) => {
+    let body: CreateIssuerDto | undefined;
     try {
-      const body = await c.req.json();
-      const result = await issuerController.createIssuer(body as CreateIssuerDto, version);
+      body = await c.req.json<CreateIssuerDto>();
+      const result = await issuerController.createIssuer(body, version);
       return c.json(result, 201);
     } catch (error) {
-      logger.error('POST /issuers failed', { error: error instanceof Error ? error.message : String(error), body: await c.req.json() });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('POST /issuers failed', { error: errorMessage, body });
       if (error instanceof Error && error.message.includes('permission')) {
-        return c.json({ error: 'Forbidden', message: error.message }, 403);
+        return c.json({ error: 'Forbidden', message: errorMessage }, 403);
       }
       return c.json({ error: 'Bad Request', message: error instanceof Error ? error.message : String(error) }, 400);
     }
@@ -200,10 +202,11 @@ function createVersionedRouter(
   });
 
   router.put('/issuers/:id', validateIssuerMiddleware(), async (c) => {
+    let body: UpdateIssuerDto | undefined;
+    const id = c.req.param('id');
     try {
-      const id = c.req.param('id');
-      const body = await c.req.json();
-      const result = await issuerController.updateIssuer(id, body as UpdateIssuerDto, version);
+      body = await c.req.json<UpdateIssuerDto>();
+      const result = await issuerController.updateIssuer(id, body, version);
       if (!result) {
         return c.json({ error: 'Not Found', message: 'Issuer not found' }, 404);
       }
@@ -211,14 +214,14 @@ function createVersionedRouter(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('Invalid IRI')) {
-        logger.error('PUT /issuers/:id invalid IRI', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        logger.error('PUT /issuers/:id invalid IRI', { error: message, id, body });
         return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
       }
       if (message.includes('permission')) {
-        logger.error('PUT /issuers/:id forbidden', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        logger.error('PUT /issuers/:id forbidden', { error: message, id, body });
         return c.json({ error: 'Forbidden', message }, 403);
       }
-      logger.error('PUT /issuers/:id failed', { error: message, id: c.req.param('id'), body: await c.req.json() });
+      logger.error('PUT /issuers/:id failed', { error: message, id, body });
       return c.json({ error: 'Internal Server Error', message }, 500);
     }
   });
