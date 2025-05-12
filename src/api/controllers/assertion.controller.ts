@@ -159,7 +159,7 @@ export class AssertionController {
       // Validate that the badge class exists before creating the assertion
       const badgeClassId = mappedData.badgeClass;
       if (!badgeClassId) {
-        throw new Error('Badge class ID is required');
+        throw new BadRequestError('Badge class ID is required');
       }
 
       const badgeClass = await this.badgeClassRepository.findById(badgeClassId);

@@ -253,9 +253,15 @@ function createVersionedRouter(
 
   // Badge class routes
   router.post('/badge-classes', validateBadgeClassMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+      const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /badge-classes failed', { error: message });
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.get('/badge-classes', async (c) => {
@@ -277,9 +283,18 @@ function createVersionedRouter(
 
   router.put('/badge-classes/:id', validateBadgeClassMiddleware(), async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Badge class not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('PUT /badge-classes/:id failed', { error: message, id });
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.delete('/badge-classes/:id', async (c) => {
@@ -332,17 +347,38 @@ function createVersionedRouter(
 
   router.put('/assertions/:id', validateAssertionMiddleware(), async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('PUT /assertions/:id failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.post('/assertions/:id/revoke', async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
-    const result = await assertionController.revokeAssertion(id, reason);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
+      const result = await assertionController.revokeAssertion(id, reason);
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /assertions/:id/revoke failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   // Verification routes
@@ -363,9 +399,21 @@ function createVersionedRouter(
 
   router.post('/assertions/:id/sign', async (c) => {
     const id = c.req.param('id');
-    const keyId = c.req.query('keyId') || 'default';
-    const result = await assertionController.signAssertion(id, keyId as string, version);
-    return c.json(result);
+    try {
+      const keyId = c.req.query('keyId') || 'default';
+      const result = await assertionController.signAssertion(id, keyId as string, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /assertions/:id/sign failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   // Public key routes
