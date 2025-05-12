@@ -64,10 +64,16 @@ jobs:
           AUTH_DISABLE_RBAC=true
           EOF
       
+      - name: Wait for PostgreSQL to be ready
+        run: sleep 15 # Wait 15 seconds for DB to initialize
+      
       - name: Migrate PostgreSQL database
         run: |
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
+      
+      - name: Wait a bit more before tests
+        run: sleep 5 # Wait an additional 5 seconds before tests
       
       - name: Run E2E tests with PostgreSQL
         run: NODE_ENV=test bun test tests/e2e
