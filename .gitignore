@@ -45,3 +45,6 @@ keys/
 test-keys/
 
 .eslintrc.js
+
+# Cursor editor cache
+.cursor/working/agent/memory/
