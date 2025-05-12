@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { logger } from '@/utils/logging/logger.service';
+import { IssuerResponseDto } from '@/api/dtos'; // Add DTO import
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 import { TestDataHelper } from './helpers/test-data.helper';
 import { resetDatabase } from './helpers/database-reset.helper';
@@ -58,11 +59,11 @@ describe('Issuer API - E2E', () => {
 
       // Verify response
       expect(res.status).toBe(201);
-      const body = await res.json();
+      const body = await res.json() as IssuerResponseDto;
       expect(body).toBeDefined();
       expect(body.id).toBeDefined();
       expect(body.name).toBe(issuerData.name);
-      expect(body.url).toBe(issuerData.url);
+      expect(String(body.url)).toBe(issuerData.url); // Convert IRI to string for comparison
       expect(body.email).toBe(issuerData.email);
       expect(body.description).toBe(issuerData.description);
       expect(body.type).toBe('Issuer');
@@ -94,7 +95,7 @@ describe('Issuer API - E2E', () => {
 
       // Verify response
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as { error: string };
       expect(body.error).toBeDefined();
     });
 
@@ -119,7 +120,7 @@ describe('Issuer API - E2E', () => {
 
       // Verify response
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as { error: string };
       expect(body.error).toBeDefined();
     });
   });
@@ -137,18 +138,19 @@ describe('Issuer API - E2E', () => {
 
       // Verify response
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as IssuerResponseDto;
       expect(body).toBeDefined();
-      expect(body.id).toBe(issuerId);
+      expect(String(body.id)).toBe(issuerId); // Convert IRI to string for comparison
       expect(body.name).toBeDefined();
-      expect(body.url).toBeDefined();
+      expect(body.url).toBeDefined(); // URL is likely an IRI too, but not directly compared here
       expect(body.email).toBeDefined();
       expect(body.type).toBe('Issuer');
     });
 
     it('should return 404 for non-existent issuer', async () => {
-      // Execute test with non-existent ID
-      const res = await fetch(`${ISSUERS_ENDPOINT}/nonexistent-id-12345`, {
+      // Execute test with non-existent ID (using a valid UUID format)
+      const nonexistentId = '00000000-0000-4000-a000-000000000002'; // A valid UUID that won't exist
+      const res = await fetch(`${ISSUERS_ENDPOINT}/${nonexistentId}`, {
         method: 'GET',
         headers: { 'X-API-Key': API_KEY }
       });
@@ -170,12 +172,12 @@ describe('Issuer API - E2E', () => {
 
       // Verify response
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as IssuerResponseDto[];
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBeGreaterThanOrEqual(2);
       
       // Verify both created issuers are in the list
-      const ids = body.map((issuer: any) => issuer.id);
+      const ids = body.map((issuer: IssuerResponseDto) => String(issuer.id)); // Convert IRI to string
       expect(ids).toContain(issuerId1);
       expect(ids).toContain(issuerId2);
     });
@@ -195,7 +197,7 @@ describe('Issuer API - E2E', () => {
 
       // Execute test
       const res = await fetch(`${ISSUERS_ENDPOINT}/${issuerId}`, {
-        method: 'PATCH',
+        method: 'PUT', // Standardized tests should also use PUT for full updates if PATCH is not supported
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': API_KEY
@@ -213,9 +215,9 @@ describe('Issuer API - E2E', () => {
       });
 
       expect(getRes.status).toBe(200);
-      const body = await getRes.json();
+      const body = await getRes.json() as IssuerResponseDto;
       expect(body.name).toBe(updateData.name);
-      expect(body.url).toBe(updateData.url);
+      expect(String(body.url)).toBe(updateData.url); // Convert IRI to string for comparison
       expect(body.description).toBe(updateData.description);
     });
 
@@ -226,9 +228,10 @@ describe('Issuer API - E2E', () => {
         url: 'https://updated.example.com'
       };
 
-      // Execute test with non-existent ID
-      const res = await fetch(`${ISSUERS_ENDPOINT}/nonexistent-id-12345`, {
-        method: 'PATCH',
+      // Execute test with non-existent ID (using a valid UUID format)
+      const nonexistentId = '00000000-0000-4000-a000-000000000000'; // A valid UUID that won't exist
+      const res = await fetch(`${ISSUERS_ENDPOINT}/${nonexistentId}`, {
+        method: 'PUT', // API uses PUT for updates
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': API_KEY
@@ -265,8 +268,9 @@ describe('Issuer API - E2E', () => {
     });
 
     it('should return 404 when deleting non-existent issuer', async () => {
-      // Execute test with non-existent ID
-      const res = await fetch(`${ISSUERS_ENDPOINT}/nonexistent-id-12345`, {
+      // Execute test with non-existent ID (using a valid UUID format)
+      const nonexistentId = '00000000-0000-4000-a000-000000000001'; // A valid UUID that won't exist
+      const res = await fetch(`${ISSUERS_ENDPOINT}/${nonexistentId}`, {
         method: 'DELETE',
         headers: { 'X-API-Key': API_KEY }
       });

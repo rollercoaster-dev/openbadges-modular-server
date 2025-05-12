@@ -61,7 +61,7 @@ describe('Assertion API - E2E', () => {
 
   // No resources to clean up in this simplified test
 
-  it.skip('should verify assertion API endpoints', async () => {
+  it('should verify assertion API endpoints', async () => {
     // Test the assertions endpoint
     let assertionsResponse: Response;
     try {
@@ -102,7 +102,7 @@ expect(assertionsResponse.status).toBe(200);
             hashed: true,
             salt: 'test'
           },
-          badge: 'test-badge-class-id',
+          badge: '00000000-0000-4000-a000-000000000004', // A valid UUID format
           issuedOn: new Date().toISOString()
         })
       });
@@ -120,7 +120,7 @@ expect(assertionPostResponse.status).toBe(400);
     logger.info(`Assertion POST endpoint responded with status ${assertionPostResponse.status}`);
 
     // Test the verification endpoint with a dummy assertion ID
-    const dummyAssertionId = 'test-assertion-id';
+    const dummyAssertionId = '00000000-0000-4000-a000-000000000005'; // A valid UUID format
     let verifyResponse: Response;
     try {
       verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {

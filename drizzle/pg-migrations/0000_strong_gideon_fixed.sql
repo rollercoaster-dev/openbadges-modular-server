@@ -145,50 +145,50 @@ CREATE TABLE IF NOT EXISTS "user_roles" (
 --> statement-breakpoint
 
 -- Add foreign key constraints after all tables are created
-ALTER TABLE IF NOT EXISTS "api_keys" 
-  ADD CONSTRAINT IF NOT EXISTS "api_keys_user_id_users_id_fk" 
+ALTER TABLE "api_keys" 
+  ADD CONSTRAINT "api_keys_user_id_users_id_fk" 
   FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "badge_classes" 
-  ADD CONSTRAINT IF NOT EXISTS "badge_classes_issuer_id_issuers_id_fk" 
+ALTER TABLE "badge_classes" 
+  ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk" 
   FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "assertions_badge_class_id_badge_classes_id_fk" 
+ALTER TABLE "assertions" 
+  ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk" 
   FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "platform_users" 
-  ADD CONSTRAINT IF NOT EXISTS "platform_users_platform_id_platforms_id_fk" 
+ALTER TABLE "platform_users" 
+  ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk" 
   FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "user_assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "user_assertions_user_id_platform_users_id_fk" 
+ALTER TABLE "user_assertions" 
+  ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk" 
   FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "user_assertions" 
-  ADD CONSTRAINT IF NOT EXISTS "user_assertions_assertion_id_assertions_id_fk" 
+ALTER TABLE "user_assertions" 
+  ADD CONSTRAINT "user_assertions_assertion_id_assertions_id_fk" 
   FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "user_roles" 
-  ADD CONSTRAINT IF NOT EXISTS "user_roles_user_id_users_id_fk" 
+ALTER TABLE "user_roles" 
+  ADD CONSTRAINT "user_roles_user_id_users_id_fk" 
   FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE IF NOT EXISTS "user_roles" 
-  ADD CONSTRAINT IF NOT EXISTS "user_roles_role_id_roles_id_fk" 
+ALTER TABLE "user_roles" 
+  ADD CONSTRAINT "user_roles_role_id_roles_id_fk" 
   FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") 
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint

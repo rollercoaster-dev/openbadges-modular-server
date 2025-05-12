@@ -285,10 +285,27 @@ function createVersionedRouter(
 
   // Assertion routes
   router.post('/assertions', validateAssertionMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
-    const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+      const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
+      const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
+      return c.json(result, 201);
+    } catch (error) {
+      logger.error('POST /assertions failed', { error: error instanceof Error ? error.message : String(error) });
+
+      // Handle BadRequestError specifically
+      if (error instanceof Error && (error.name === 'BadRequestError' || error.message.includes('does not exist'))) {
+        return c.json({ error: 'Bad Request', message: error.message }, 400);
+      }
+
+      // Handle permission errors
+      if (error instanceof Error && error.message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message: error.message }, 403);
+      }
+
+      // Default error handling
+      return c.json({ error: 'Internal Server Error', message: error instanceof Error ? error.message : String(error) }, 500);
+    }
   });
 
   router.get('/assertions', async (c) => {

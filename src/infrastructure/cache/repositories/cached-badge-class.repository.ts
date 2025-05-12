@@ -137,6 +137,17 @@ export class CachedBadgeClassRepository extends CacheRepositoryWrapper<BadgeClas
    * @returns The updated badge class if found, null otherwise
    */
   async update(id: Shared.IRI, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
+    // Invalidate the cache for the ID before updating
+    // This ensures we don't have stale data even if the ID changes
+    this.cache.delete(this.generateIdKey(id as string));
+    this.invalidateCollections();
+
+    // Get the badge class before update to get the issuer ID
+    const existingBadgeClass = await this.findById(id);
+    if (existingBadgeClass && existingBadgeClass['issuerId']) {
+      this.cache.delete(`issuer:${existingBadgeClass['issuerId']}`);
+    }
+
     const result = await this.repository.update(id, badgeClass);
 
     // Invalidate cache after update

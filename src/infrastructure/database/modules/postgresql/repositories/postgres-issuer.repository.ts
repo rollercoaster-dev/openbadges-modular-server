@@ -84,9 +84,11 @@ export class PostgresIssuerRepository implements IssuerRepository {
 
     // Create a merged object with updated properties
     // Spread existing properties first, then override with update properties
+    // Ensure we preserve the original ID
     const mergedProps: Partial<Issuer> = {
       ...existingIssuer,
-      ...issuer
+      ...issuer,
+      id: existingIssuer.id // Ensure we keep the original ID
     };
 
     // Convert to database record

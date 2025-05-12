@@ -24,12 +24,14 @@ export const IssuerBaseSchema = z.object({
 // Schema for CreateIssuerOB2Dto
 export const CreateIssuerOB2Schema = IssuerBaseSchema.extend({
   type: z.union([z.string(), z.array(z.string())]).optional(),
+  '@context': z.string().optional(), // Allow @context field for OB2
 }).strict("Unrecognized fields in OB2 Issuer data");
 
 // Schema for CreateIssuerOB3Dto
 export const CreateIssuerOB3Schema = IssuerBaseSchema.extend({
   type: z.string().optional(), // Typically string in OB3
   id: z.string().optional(),   // Allow client-suggested ID
+  '@context': z.string().optional(), // Allow @context field for OB3
 }).strict("Unrecognized fields in OB3 Issuer data");
 
 // Union schema for CreateIssuerDto

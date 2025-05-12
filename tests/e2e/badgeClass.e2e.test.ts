@@ -63,7 +63,7 @@ describe('Badge Class API - E2E', () => {
 
   // No resources to clean up in this simplified test
 
-  it.skip('should verify badge class API endpoints', async () => {
+  it('should verify badge class API endpoints', async () => {
     // Test the badge classes endpoint
     let badgeClassesResponse: Response;
     try {
@@ -100,7 +100,7 @@ expect(badgeClassesResponse.status).toBe(200);
           type: 'BadgeClass',
           name: 'Test Badge Class',
           description: 'A test badge class',
-          issuer: 'test-issuer-id',
+          issuer: '00000000-0000-4000-a000-000000000003', // A valid UUID format
           criteria: {
             narrative: 'Complete the test'
           }

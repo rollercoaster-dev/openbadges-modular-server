@@ -276,7 +276,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           type: 'BadgeClass',
           name: 'Test Badge Class',
           description: 'A test badge class',
-          issuer: 'test-issuer-id',
+          issuer: '00000000-0000-4000-a000-000000000006', // A valid UUID format
           criteria: {
             narrative: 'Complete the test'
           }
@@ -317,7 +317,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
             hashed: true,
             salt: 'test'
           },
-          badge: 'test-badge-class-id',
+          badge: '00000000-0000-4000-a000-000000000007', // A valid UUID format
           issuedOn: new Date().toISOString()
         })
       });
@@ -339,7 +339,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
   it('should verify OpenBadges v3.0 verification endpoint', async () => {
     // Test the verification endpoint with a dummy assertion ID
-    const dummyAssertionId = 'test-assertion-id';
+    const dummyAssertionId = '00000000-0000-4000-a000-000000000008'; // A valid UUID format
     let verifyResponse: Response;
     try {
       verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {

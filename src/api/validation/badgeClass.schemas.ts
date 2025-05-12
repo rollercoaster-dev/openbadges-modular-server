@@ -40,6 +40,7 @@ export const BadgeClassBaseSchema = z.object({
 // Schema for CreateBadgeClassOB2Dto
 export const CreateBadgeClassOB2Schema = BadgeClassBaseSchema.extend({
   type: z.union([z.string(), z.array(z.string())]).optional(),
+  '@context': z.string().optional(), // Allow @context field for OB2
 }).strict("Unrecognized fields in OB2 BadgeClass data");
 
 // Schema for CreateBadgeClassOB3Dto
@@ -47,6 +48,7 @@ export const CreateBadgeClassOB3Schema = BadgeClassBaseSchema.extend({
   type: z.string().optional(), // Typically string in OB3
   id: z.string().optional(),   // Allow client-suggested ID
   achievementType: z.string().optional(),
+  '@context': z.string().optional(), // Allow @context field for OB3
 }).strict("Unrecognized fields in OB3 BadgeClass/Achievement data");
 
 // Union schema for CreateBadgeClassDto

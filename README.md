@@ -136,6 +136,8 @@ The API provides interactive documentation through Swagger UI:
 
 - [API Documentation](./docs/api-documentation.md) - Detailed documentation of all API endpoints
 - [Database Integration Guide](./docs/database-integration-guide.md) - Comprehensive guide for adding support for additional database systems
+- [E2E Testing Guide](./docs/e2e-testing-guide.md) - Guide for running and writing E2E tests
+- [Multidatabase Testing Guide](./docs/multidatabase-testing-guide.md) - Detailed guide for the multidatabase testing setup
 - [Logging System](./docs/logging.md) - Documentation for the neuro-friendly structured logging system
 
 ## Architecture
@@ -199,6 +201,19 @@ bun run test:pg
 bun run test:pg:with-docker
 ```
 
+Run E2E tests:
+
+```bash
+# Run E2E tests with SQLite
+bun run test:e2e:sqlite
+
+# Run E2E tests with PostgreSQL
+bun run test:e2e:pg
+
+# Run E2E tests with both SQLite and PostgreSQL
+bun run test:e2e
+```
+
 Run tests with coverage:
 
 ```bash
@@ -209,7 +224,10 @@ The test suite includes:
 
 - Unit tests for domain entities
 - Integration tests for repositories (for each supported database)
+- E2E tests for API endpoints (for each supported database)
 - Validation tests for Open Badges compliance
+
+See the [E2E Testing Guide](./docs/e2e-testing-guide.md) and [Multidatabase Testing Guide](./docs/multidatabase-testing-guide.md) for more information on running and writing tests.
 
 ### Linting and Type Checking
 

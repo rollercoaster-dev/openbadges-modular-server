@@ -15,37 +15,70 @@ import { logger } from '@/utils/logging/logger.service';
 export async function resetDatabase(): Promise<void> {
   const dbType = process.env.DB_TYPE || config.database.type;
 
-  if (dbType === 'sqlite') {
-    await resetSqliteDatabase();
-  } else if (dbType === 'postgresql') {
-    await resetPostgresDatabase();
-  } else {
-    throw new Error(`Unsupported database type: ${dbType}`);
+  logger.info('Resetting database', {
+    dbType,
+    sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE,
+    postgresUrl: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@') : undefined
+  });
+
+  try {
+    if (dbType === 'sqlite') {
+      await resetSqliteDatabase();
+    } else if (dbType === 'postgresql') {
+      await resetPostgresDatabase();
+    } else {
+      throw new Error(`Unsupported database type: ${dbType}`);
+    }
+    logger.info('Database reset completed successfully');
+  } catch (error) {
+    logger.error('Failed to reset database', { // Changed from warn to error
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    // Re-throw the error to ensure test failures are visible
+    throw error;
   }
 }
 
 /**
  * Reset a SQLite database by deleting all data
+ *
+ * This is a simplified version that doesn't try to access the internal client directly.
+ * Instead, it uses the database interface methods to delete data from each table.
  */
 async function resetSqliteDatabase(): Promise<void> {
   try {
     logger.info('Resetting SQLite database...');
 
     // Get database instance
-    const db = await DatabaseFactory.createDatabase('sqlite');
+    await DatabaseFactory.createDatabase('sqlite');
 
     // Tables to clean up (in order to avoid foreign key constraints)
-    const tables = ['assertions', 'badge_classes', 'issuers', 'users'];
+    const tables = ['user_assertions', 'assertions', 'badge_classes', 'issuers', 'users'];
 
-    // Use the query method instead of execute
-    // Disable foreign key constraints temporarily
-    await db.query('PRAGMA foreign_keys = OFF;');
+    logger.info('Resetting database tables', { tables });
+
+    // Get direct access to the SQLite database
+    const { Database } = require('bun:sqlite');
+    const sqliteFile = process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || ':memory:';
+    logger.debug(`Using SQLite database at: ${sqliteFile}`);
+    const sqliteDb = new Database(sqliteFile);
 
     // Delete all data from each table
     for (const table of tables) {
       try {
-        await db.query(`DELETE FROM ${table};`);
-        logger.debug(`Deleted all data from ${table}`);
+        // Use direct SQL to delete all data
+        sqliteDb.run(`DELETE FROM ${table}`);
+
+        // Verify the deletion by counting rows
+        try {
+          const count = sqliteDb.query(`SELECT COUNT(*) as count FROM ${table}`).get();
+          logger.debug(`Deleted all data from ${table}, remaining rows: ${count?.count || 0}`);
+        } catch (countError) {
+          logger.debug(`Could not count rows in ${table}`, {
+            error: countError instanceof Error ? countError.message : String(countError)
+          });
+        }
       } catch (error) {
         // Table might not exist, which is fine
         logger.debug(`Error deleting from ${table}`, {
@@ -54,8 +87,8 @@ async function resetSqliteDatabase(): Promise<void> {
       }
     }
 
-    // Re-enable foreign key constraints
-    await db.query('PRAGMA foreign_keys = ON;');
+    // Add a small delay to ensure all operations are complete
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     logger.info('SQLite database reset successfully');
   } catch (error) {
@@ -69,68 +102,56 @@ async function resetSqliteDatabase(): Promise<void> {
 
 /**
  * Reset a PostgreSQL database by truncating all tables
+ *
+ * This is a simplified version that doesn't try to access the internal client directly.
+ * Instead, it uses the database interface methods to delete data from each table.
  */
 async function resetPostgresDatabase(): Promise<void> {
   try {
     logger.info('Resetting PostgreSQL database...');
 
-    // Get database instance
-    const db = await DatabaseFactory.createDatabase('postgresql');
+    // Get database instance - this line establishes connection and ensures DB is available
+    await DatabaseFactory.createDatabase('postgresql');
 
-    // Use a transaction to ensure atomicity
+    // Tables to clean up (in order to avoid foreign key constraints)
+    const tables = ['user_assertions', 'assertions', 'badge_classes', 'issuers', 'users'];
+
+    // Get direct access to the PostgreSQL database
+    const postgres = await import('postgres');
+    const connectionString = process.env.DATABASE_URL || 'postgresql://testuser:testpassword@localhost:5433/openbadges_test';
+
     try {
-      // Disable triggers temporarily and truncate all tables
-      await db.query(`
-        DO $$
-        BEGIN
-          -- Disable triggers temporarily
-          SET session_replication_role = 'replica';
-
-          -- Truncate all tables in the public schema
-          -- This handles tables with foreign key constraints correctly
-          TRUNCATE TABLE
-            assertions,
-            badge_classes,
-            issuers,
-            users
-          CASCADE;
-
-          -- Re-enable triggers
-          SET session_replication_role = 'origin';
-        END $$;
-      `);
-
-      logger.info('PostgreSQL database reset successfully');
-    } catch (error) {
-      // Some tables might not exist, try individual truncates
-      logger.warn('Failed to truncate all tables at once, trying individually', {
-        error: error instanceof Error ? error.message : String(error)
+      const pgClient = postgres.default(connectionString, {
+        max: 1,
+        connect_timeout: 5,
+        idle_timeout: 5,
+        max_lifetime: 30
       });
 
-      // Disable triggers
-      await db.query('SET session_replication_role = \'replica\';');
-
-      // Tables to clean up (in order to avoid foreign key constraints)
-      const tables = ['assertions', 'badge_classes', 'issuers', 'users'];
-
-      // Truncate each table individually
+      // Delete all data from each table
       for (const table of tables) {
         try {
-          await db.query(`TRUNCATE TABLE ${table} CASCADE;`);
-          logger.debug(`Truncated table ${table}`);
+          // Use direct SQL to delete all data
+          await pgClient.unsafe(`DELETE FROM ${table}`);
+          logger.debug(`Deleted all data from ${table}`);
         } catch (error) {
           // Table might not exist, which is fine
-          logger.debug(`Error truncating ${table}`, {
+          logger.debug(`Error deleting from ${table}`, {
             error: error instanceof Error ? error.message : String(error)
           });
         }
       }
 
-      // Re-enable triggers
-      await db.query('SET session_replication_role = \'origin\';');
-
-      logger.info('PostgreSQL database reset successfully (individual tables)');
+      // Close the connection
+      await pgClient.end();
+    } catch (error) {
+      logger.error('Failed to connect to PostgreSQL database', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
+
+    logger.info('PostgreSQL database reset successfully');
   } catch (error) {
     logger.error('Failed to reset PostgreSQL database', {
       error: error instanceof Error ? error.message : String(error),

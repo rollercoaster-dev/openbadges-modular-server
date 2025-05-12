@@ -48,6 +48,9 @@ function loadEnvFile(filePath: string): void {
 }
 
 export let runningApp: Hono | null = null;
+export const TEST_PORT = parseInt(process.env.TEST_PORT || '3000');
+export const API_URL = `http://${process.env.HOST || '0.0.0.0'}:${TEST_PORT}`;
+export const API_KEY = process.env.AUTH_API_KEY_TEST?.split(':')[0] || 'verysecretkeye2e';
 
 export default async (): Promise<void> => {
   try {
@@ -56,12 +59,18 @@ export default async (): Promise<void> => {
     loadEnvFile(envTestPath);
 
     // Set environment variables for the test server
-    process.env['PORT'] = process.env['PORT'] || '3001';
+    process.env['PORT'] = process.env['PORT'] || '3000';
     process.env['NODE_ENV'] = 'test';
 
-    logger.info('Global E2E setup: Starting server on port ' + process.env['PORT']);
-    runningApp = await setupApp();
-    logger.info('Global E2E setup: Server started successfully.');
+    // Set database configuration for tests
+    process.env['DB_TYPE'] = 'sqlite';
+    process.env['SQLITE_DB_PATH'] = ':memory:';
+
+    // Disable caching for tests to avoid stale data issues
+    process.env['CACHE_ENABLED'] = 'false';
+
+    logger.info('Global E2E setup: Using existing server on port ' + process.env['PORT']);
+    // Skip starting the server since we already have one running
     // Wait for a brief moment to ensure the server is fully ready
     await new Promise(resolve => setTimeout(resolve, 1000));
   } catch (error) {
