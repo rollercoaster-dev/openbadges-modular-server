@@ -19,6 +19,22 @@ import { logger } from '@/utils/logging/logger.service';
 import { createRequestContextMiddleware } from '@/utils/logging/request-context.middleware';
 import { initializeAuthentication } from '@/auth/auth.initializer';
 import { createAuthMiddleware, createAuthDebugMiddleware } from '@/auth/middleware/auth.middleware';
+import { isPostgresAvailable } from '../helpers/database-availability';
+
+// Check if PostgreSQL is available when DB_TYPE is postgresql
+const pgConnectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/openbadges_test';
+const checkPgAvailability = async (): Promise<void> => {
+  if (process.env.DB_TYPE === 'postgresql') {
+    const isPgAvailable = await isPostgresAvailable(pgConnectionString);
+    if (!isPgAvailable) {
+      logger.warn('PostgreSQL is not available, skipping PostgreSQL E2E tests');
+      process.exit(0); // Exit gracefully
+    }
+  }
+};
+
+// Run the check before any tests
+checkPgAvailability();
 
 // Create a function to create a new Hono app instance
 function createApp() {

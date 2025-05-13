@@ -54,7 +54,18 @@ async function resetSqliteDatabase(): Promise<void> {
     await DatabaseFactory.createDatabase('sqlite');
 
     // Tables to clean up (in order to avoid foreign key constraints)
-    const tables = ['user_assertions', 'assertions', 'badge_classes', 'issuers', 'users'];
+    const tables = [
+      'user_assertions',
+      'user_roles',
+      'platform_users',
+      'assertions',
+      'badge_classes',
+      'issuers',
+      'platforms',
+      'roles',
+      'api_keys',
+      'users'
+    ];
 
     logger.info('Resetting database tables', { tables });
 
@@ -63,6 +74,9 @@ async function resetSqliteDatabase(): Promise<void> {
     const sqliteFile = process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || ':memory:';
     logger.debug(`Using SQLite database at: ${sqliteFile}`);
     const sqliteDb = new Database(sqliteFile);
+
+    // Disable foreign key constraints temporarily
+    sqliteDb.run('PRAGMA foreign_keys = OFF');
 
     // Delete all data from each table
     for (const table of tables) {
@@ -86,6 +100,9 @@ async function resetSqliteDatabase(): Promise<void> {
         });
       }
     }
+
+    // Re-enable foreign key constraints
+    sqliteDb.run('PRAGMA foreign_keys = ON');
 
     // Add a small delay to ensure all operations are complete
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -114,19 +131,33 @@ async function resetPostgresDatabase(): Promise<void> {
     await DatabaseFactory.createDatabase('postgresql');
 
     // Tables to clean up (in order to avoid foreign key constraints)
-    const tables = ['user_assertions', 'assertions', 'badge_classes', 'issuers', 'users'];
+    const tables = [
+      'user_assertions',
+      'user_roles',
+      'platform_users',
+      'assertions',
+      'badge_classes',
+      'issuers',
+      'platforms',
+      'roles',
+      'api_keys',
+      'users'
+    ];
 
     // Get direct access to the PostgreSQL database
     const postgres = await import('postgres');
-    const connectionString = process.env.DATABASE_URL || 'postgresql://testuser:testpassword@localhost:5433/openbadges_test';
+    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/openbadges_test';
 
     try {
       const pgClient = postgres.default(connectionString, {
         max: 1,
-        connect_timeout: 5,
-        idle_timeout: 5,
-        max_lifetime: 30
+        connect_timeout: 10,
+        idle_timeout: 10,
+        max_lifetime: 60
       });
+
+      // Disable triggers to avoid foreign key constraint issues
+      await pgClient.unsafe(`SET session_replication_role = 'replica'`);
 
       // Delete all data from each table
       for (const table of tables) {
@@ -141,6 +172,9 @@ async function resetPostgresDatabase(): Promise<void> {
           });
         }
       }
+
+      // Re-enable triggers
+      await pgClient.unsafe(`SET session_replication_role = 'origin'`);
 
       // Close the connection
       await pgClient.end();

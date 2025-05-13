@@ -1,0 +1,113 @@
+name: Database Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  # Core tests that don't depend on specific databases
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Run core tests
+        run: bun test --pattern "!tests/infrastructure/database/**"
+        env:
+          NODE_PATH: "."
+
+  # SQLite-specific tests
+  sqlite-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Run SQLite tests
+        run: bun test tests/infrastructure/database/modules/sqlite
+        env:
+          NODE_PATH: "."
+
+  # PostgreSQL-specific tests
+  postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: openbadges_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Migrate PostgreSQL database
+        run: |
+          echo "Running PostgreSQL migrations..."
+          NODE_ENV=test DB_TYPE=postgresql bun run db:generate:pg
+          NODE_ENV=test DB_TYPE=postgresql bun run db:migrate:pg
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          DB_TYPE: postgresql
+          NODE_ENV: test
+
+      - name: Run PostgreSQL tests
+        run: bun test tests/infrastructure/database/modules/postgresql
+        env:
+          # Use a fixed database URL for CI
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/openbadges_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openbadges_test
+          NODE_PATH: "."
+
+  # Template for future database implementations (e.g., MongoDB)
+  # Uncomment and modify this section when adding a new database
+  #
+  # mongodb-tests:
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     mongodb:
+  #       image: mongo:6
+  #       ports:
+  #         - 27017:27017
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+  #     - name: Install dependencies
+  #       run: bun install
+  #     - name: Run MongoDB tests
+  #       run: bun test tests/infrastructure/database/modules/mongodb
+  #       env:
+  #         MONGODB_URL: mongodb://localhost:27017/openbadges_test
