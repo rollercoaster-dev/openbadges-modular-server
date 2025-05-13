@@ -31,6 +31,11 @@ export class SqliteIssuerRepository implements IssuerRepository {
       // Assume this returns a type compatible with issuers.$inferInsert
       const record = this.mapper.toPersistence(issuer as Issuer);
 
+      // Ensure timestamps are set
+      const now = Date.now();
+      record.createdAt = now;
+      record.updatedAt = now;
+
       const startTime = Date.now();
       // Directly pass the record to Drizzle, trusting it handles optional/PKs
       const result = await this.db.insert(issuers).values(record).returning();
@@ -111,13 +116,18 @@ export class SqliteIssuerRepository implements IssuerRepository {
       }
 
       // Create a merged entity using toPartial for type safety
+      // Preserve the original ID by explicitly setting it
       const mergedIssuer = Issuer.create({
-        ...existingIssuer.toPartial(), 
-        ...issuer 
+        ...existingIssuer.toPartial(),
+        ...issuer,
+        id: existingIssuer.id // Ensure we keep the original ID
       });
 
       // Convert to database record
       const record = this.mapper.toPersistence(mergedIssuer);
+
+      // Ensure updatedAt timestamp is set
+      record.updatedAt = Date.now();
 
       const startTime = Date.now();
       // Update in database

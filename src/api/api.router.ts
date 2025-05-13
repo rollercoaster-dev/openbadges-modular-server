@@ -157,14 +157,16 @@ function createVersionedRouter(
   // Issuer routes
   // Robust Issuer CRUD routes with error handling and logging
   router.post('/issuers', validateIssuerMiddleware(), async (c) => {
+    let body: CreateIssuerDto | undefined;
     try {
-      const body = await c.req.json();
-      const result = await issuerController.createIssuer(body as CreateIssuerDto, version);
+      body = await c.req.json<CreateIssuerDto>();
+      const result = await issuerController.createIssuer(body, version);
       return c.json(result, 201);
     } catch (error) {
-      logger.error('POST /issuers failed', { error: error instanceof Error ? error.message : String(error), body: await c.req.json() });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('POST /issuers failed', { error: errorMessage, body });
       if (error instanceof Error && error.message.includes('permission')) {
-        return c.json({ error: 'Forbidden', message: error.message }, 403);
+        return c.json({ error: 'Forbidden', message: errorMessage }, 403);
       }
       return c.json({ error: 'Bad Request', message: error instanceof Error ? error.message : String(error) }, 400);
     }
@@ -200,25 +202,28 @@ function createVersionedRouter(
   });
 
   router.put('/issuers/:id', validateIssuerMiddleware(), async (c) => {
+    const id = c.req.param('id');
+    let body: UpdateIssuerDto | undefined;
     try {
-      const id = c.req.param('id');
-      const body = await c.req.json();
-      const result = await issuerController.updateIssuer(id, body as UpdateIssuerDto, version);
+      // Read the body once at the beginning
+      body = await c.req.json<UpdateIssuerDto>();
+      const result = await issuerController.updateIssuer(id, body, version);
       if (!result) {
         return c.json({ error: 'Not Found', message: 'Issuer not found' }, 404);
       }
       return c.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Use the already parsed body for logging
       if (message.includes('Invalid IRI')) {
-        logger.error('PUT /issuers/:id invalid IRI', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        logger.error('PUT /issuers/:id invalid IRI', { error: message, id, body });
         return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
       }
       if (message.includes('permission')) {
-        logger.error('PUT /issuers/:id forbidden', { error: message, id: c.req.param('id'), body: await c.req.json() });
+        logger.error('PUT /issuers/:id forbidden', { error: message, id, body });
         return c.json({ error: 'Forbidden', message }, 403);
       }
-      logger.error('PUT /issuers/:id failed', { error: message, id: c.req.param('id'), body: await c.req.json() });
+      logger.error('PUT /issuers/:id failed', { error: message, id, body });
       return c.json({ error: 'Internal Server Error', message }, 500);
     }
   });
@@ -248,9 +253,15 @@ function createVersionedRouter(
 
   // Badge class routes
   router.post('/badge-classes', validateBadgeClassMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+      const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /badge-classes failed', { error: message });
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.get('/badge-classes', async (c) => {
@@ -272,9 +283,18 @@ function createVersionedRouter(
 
   router.put('/badge-classes/:id', validateBadgeClassMiddleware(), async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Badge class not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('PUT /badge-classes/:id failed', { error: message, id });
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.delete('/badge-classes/:id', async (c) => {
@@ -285,10 +305,27 @@ function createVersionedRouter(
 
   // Assertion routes
   router.post('/assertions', validateAssertionMiddleware(), async (c) => {
-    const body = await c.req.json();
-    const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
-    const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
-    return c.json(result, 201);
+    try {
+      const body = await c.req.json();
+      const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
+      const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
+      return c.json(result, 201);
+    } catch (error) {
+      logger.error('POST /assertions failed', { error: error instanceof Error ? error.message : String(error) });
+
+      // Handle BadRequestError specifically
+      if (error instanceof Error && (error.name === 'BadRequestError' || error.message.includes('does not exist'))) {
+        return c.json({ error: 'Bad Request', message: error.message }, 400);
+      }
+
+      // Handle permission errors
+      if (error instanceof Error && error.message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message: error.message }, 403);
+      }
+
+      // Default error handling
+      return c.json({ error: 'Internal Server Error', message: error instanceof Error ? error.message : String(error) }, 500);
+    }
   });
 
   router.get('/assertions', async (c) => {
@@ -310,17 +347,38 @@ function createVersionedRouter(
 
   router.put('/assertions/:id', validateAssertionMiddleware(), async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('PUT /assertions/:id failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   router.post('/assertions/:id/revoke', async (c) => {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
-    const result = await assertionController.revokeAssertion(id, reason);
-    return c.json(result);
+    try {
+      const body = await c.req.json();
+      const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
+      const result = await assertionController.revokeAssertion(id, reason);
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /assertions/:id/revoke failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   // Verification routes
@@ -341,9 +399,21 @@ function createVersionedRouter(
 
   router.post('/assertions/:id/sign', async (c) => {
     const id = c.req.param('id');
-    const keyId = c.req.query('keyId') || 'default';
-    const result = await assertionController.signAssertion(id, keyId as string, version);
-    return c.json(result);
+    try {
+      const keyId = c.req.query('keyId') || 'default';
+      const result = await assertionController.signAssertion(id, keyId as string, version);
+      if (!result) {
+        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('POST /assertions/:id/sign failed', { error: message, id });
+      if (message.includes('permission')) {
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      return c.json({ error: 'Bad Request', message }, 400);
+    }
   });
 
   // Public key routes

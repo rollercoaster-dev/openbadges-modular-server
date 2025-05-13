@@ -2,10 +2,9 @@
 
 A stateless, modular Open Badges API with support for both Open Badges 2.0 and 3.0 specifications.
 
+[![Unified CI Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci.yml)
 [![CI/CD Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml)
-[![Core Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=core-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
-[![SQLite Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=sqlite-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
-[![PostgreSQL Tests](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml/badge.svg?job=postgres-tests)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/database-tests.yml)
+[![CodeQL](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/codeql.yml)
 
 ## Features
 
@@ -136,6 +135,9 @@ The API provides interactive documentation through Swagger UI:
 
 - [API Documentation](./docs/api-documentation.md) - Detailed documentation of all API endpoints
 - [Database Integration Guide](./docs/database-integration-guide.md) - Comprehensive guide for adding support for additional database systems
+- [E2E Testing Guide](./docs/e2e-testing-guide.md) - Guide for running and writing E2E tests
+- [Multidatabase Testing Guide](./docs/multidatabase-testing-guide.md) - Detailed guide for the multidatabase testing setup
+- [CI Pipeline Guide](./docs/ci-pipeline-guide.md) - Guide to the CI pipeline structure and troubleshooting
 - [Logging System](./docs/logging.md) - Documentation for the neuro-friendly structured logging system
 
 ## Architecture
@@ -199,6 +201,19 @@ bun run test:pg
 bun run test:pg:with-docker
 ```
 
+Run E2E tests:
+
+```bash
+# Run E2E tests with SQLite
+bun run test:e2e:sqlite
+
+# Run E2E tests with PostgreSQL
+bun run test:e2e:pg
+
+# Run E2E tests with both SQLite and PostgreSQL
+bun run test:e2e
+```
+
 Run tests with coverage:
 
 ```bash
@@ -209,7 +224,10 @@ The test suite includes:
 
 - Unit tests for domain entities
 - Integration tests for repositories (for each supported database)
+- E2E tests for API endpoints (for each supported database)
 - Validation tests for Open Badges compliance
+
+See the [E2E Testing Guide](./docs/e2e-testing-guide.md) and [Multidatabase Testing Guide](./docs/multidatabase-testing-guide.md) for more information on running and writing tests.
 
 ### Linting and Type Checking
 
@@ -243,20 +261,29 @@ bun run build
 
 The project uses GitHub Actions for continuous integration and deployment:
 
-1. **CI Pipeline**: Runs on all branches and pull requests
+1. **Unified CI Pipeline**: Runs on all branches and pull requests
    - **Lint and Type Check**: Ensures code quality and type safety
-   - **Tests**: Runs the test suite with coverage reporting
+   - **Unit and Integration Tests**: Runs core tests with PostgreSQL
+   - **E2E Tests**: Runs end-to-end tests with both PostgreSQL and SQLite
+   - All tests run sequentially to avoid resource conflicts
 
-2. **Database Tests Pipeline**: Runs database-specific tests in parallel
-   - **Core Tests**: Tests that don't depend on specific databases
-   - **SQLite Tests**: Tests specific to SQLite
-   - **PostgreSQL Tests**: Tests specific to PostgreSQL
-
-3. **CI/CD Pipeline**: Runs only on release tags (v*)
+2. **CI/CD Pipeline**: Runs only on release tags (v*)
    - **Lint and Type Check**: Ensures code quality and type safety
    - **Tests**: Runs the test suite with coverage reporting
    - **Build and Push**: Builds and pushes the Docker image to GitHub Container Registry
    - **Deploy**: Deploys to Kubernetes when a new version is tagged
+
+3. **CodeQL Analysis**: Security scanning for code vulnerabilities
+
+### CI Pipeline Structure
+
+The CI pipeline is designed to be efficient and reliable:
+
+1. First, it runs linting and type checking to catch basic errors
+2. Then it runs unit and integration tests with PostgreSQL
+3. Finally, it runs E2E tests with both PostgreSQL and SQLite
+
+If any test fails, the pipeline will report detailed information about the failure. The pipeline is designed to be resilient, with proper database setup and teardown between test runs.
 
 To create a new release:
 

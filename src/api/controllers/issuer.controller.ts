@@ -15,6 +15,7 @@ import { CreateIssuerSchema, UpdateIssuerSchema } from '../validation/issuer.sch
 import { logger } from '../../utils/logging/logger.service';
 import { z } from 'zod';
 import { UserPermission } from '../../domains/user/user.entity';
+import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
 
 // Define types inferred from Zod schemas
 type ValidatedCreateIssuerData = z.infer<typeof CreateIssuerSchema>;
@@ -85,7 +86,7 @@ export class IssuerController {
     // Check if user has permission to create issuers
     if (user && !this.hasPermission(user, UserPermission.CREATE_ISSUER)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an issuer without permission`);
-      throw new Error('Insufficient permissions to create issuer');
+      throw new BadRequestError('Insufficient permissions to create issuer');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -128,7 +129,7 @@ export class IssuerController {
     try {
       iri = toIssuerId(id) as Shared.IRI;
     } catch (_e) {
-      throw new Error('Invalid IRI');
+      throw new BadRequestError('Invalid IRI');
     }
     const issuer = await this.issuerRepository.findById(iri);
     if (!issuer) {
@@ -149,13 +150,13 @@ export class IssuerController {
     // Check if user has permission to update issuers
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ISSUER)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update issuer ${id} without permission`);
-      throw new Error('Insufficient permissions to update issuer');
+      throw new BadRequestError('Insufficient permissions to update issuer');
     }
     let iri: Shared.IRI;
     try {
       iri = toIssuerId(id) as Shared.IRI;
     } catch (_e) {
-      throw new Error('Invalid IRI');
+      throw new BadRequestError('Invalid IRI');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -187,13 +188,13 @@ export class IssuerController {
     // Check if user has permission to delete issuers
     if (user && !this.hasPermission(user, UserPermission.DELETE_ISSUER)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to delete issuer ${id} without permission`);
-      throw new Error('Insufficient permissions to delete issuer');
+      throw new BadRequestError('Insufficient permissions to delete issuer');
     }
     let iri: Shared.IRI;
     try {
       iri = toIssuerId(id) as Shared.IRI;
     } catch (_e) {
-      throw new Error('Invalid IRI');
+      throw new BadRequestError('Invalid IRI');
     }
     return await this.issuerRepository.delete(iri);
   }

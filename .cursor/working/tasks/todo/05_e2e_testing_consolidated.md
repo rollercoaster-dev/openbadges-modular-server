@@ -5,26 +5,61 @@
 ## 1. Goal & Context
 - **Objective:** Establish robust end-to-end (E2E) testing to validate the full API stack, including HTTP endpoints, database, and integration flows.
 - **Branch:** `feat/e2e-testing`
-- **Status:** [ In Progress]
+- **Status:** [In Progress]
+- **Priority:** High
+- **Effort Estimate:** 2-3 days
 
 ### Background
 Current testing is focused on unit and integration tests. E2E tests are needed to ensure the system works as expected from the perspective of a real client, catching issues that lower-level tests may miss.
 
-## 2. Steps
+### Dependencies
+- Task 01: API Router Integration (COMPLETED)
+- Task 02: Security Middleware Migration
+
+## 2. Acceptance Criteria
+1. End-to-end tests are implemented for all core functionality
+2. End-to-end tests are implemented for backpack functionality
+3. End-to-end tests are implemented for user management
+4. End-to-end tests are implemented for authentication
+5. All tests pass consistently
+6. Tests are documented and maintainable
+7. E2E tests cover all major API flows
+8. E2E tests run successfully in CI
+9. Documentation is updated
+
+## 3. Steps
 - [x] Select an E2E testing tool (e.g., Playwright, Supertest, or curl scripts)
 - [x] Set up a dedicated E2E test environment (SQLite and Docker/Postgres)
 - [~] Write E2E tests for critical user flows (issuer, badge, assertion CRUD, verification, revocation) - *Partially completed*
   - [x] Basic API endpoint tests for Issuer, BadgeClass, and Assertion
   - [x] Comprehensive OBv3 compliance test (full badge issuance flow with verification)
   - [ ] Complete CRUD lifecycle tests for all entities
+- [ ] Implement tests for backpack functionality
+  - [ ] Create tests for platform registration
+  - [ ] Create tests for user registration
+  - [ ] Create tests for assertion storage
+  - [ ] Create tests for backpack retrieval
+- [ ] Implement tests for user management
+  - [ ] Create tests for user registration
+  - [ ] Create tests for user authentication
+  - [ ] Create tests for user profile management
+  - [ ] Create tests for user permissions
+- [ ] Implement tests for authentication
+  - [ ] Create tests for API key authentication
+  - [ ] Create tests for JWT authentication
+  - [ ] Create tests for OAuth2 authentication (if implemented)
+  - [ ] Create tests for authorization
 - [ ] Add E2E tests for error cases and edge conditions
+  - [ ] Create tests for invalid input
+  - [ ] Create tests for unauthorized access
+  - [ ] Create tests for server errors
+  - [ ] Create tests for edge cases
 - [ ] Integrate E2E tests into CI pipeline
 - [ ] Document how to run E2E tests locally and in CI
-
-## 3. Definition of Done
-- [ ] E2E tests cover all major API flows
-- [ ] E2E tests run successfully in CI
-- [ ] Documentation is updated
+  - [ ] Document the test setup and configuration
+  - [ ] Document the test fixtures and helpers
+  - [ ] Document the test cases and expected results
+  - [ ] Document how to run the tests
 
 ## 4. Current Status (Updated 2025-05-07 by David)
 
@@ -33,26 +68,26 @@ This task has been partially implemented. Based on a review of the codebase and 
 ### Completed:
 - ✅ Selected E2E testing tools: Bun Test as the test runner and native fetch API for HTTP requests
 - ✅ Set up a dedicated E2E test environment with both SQLite and PostgreSQL support
-  - Created `test/e2e` directory structure with test files
+  - Created `tests/e2e` directory structure with test files
   - Created `docker-compose.test.yml` for PostgreSQL testing
   - Added bun scripts (in `package.json`) for running E2E tests with both database types
   - **Note:** The documented `.env.test` file was not found at the project root. Environment configuration for tests appears to be primarily managed via `NODE_ENV` and `DB_TYPE` variables in `package.json` scripts.
-- ✅ Implemented global setup/teardown for E2E tests in `bunfig.toml` (`test/e2e/setup/globalSetup.ts`, `test/e2e/setup/globalTeardown.ts`)
+- ✅ Implemented global setup/teardown for E2E tests in `bunfig.toml` (`tests/e2e/setup/globalSetup.ts`, `tests/e2e/setup/globalTeardown.ts`)
 - ✅ Created basic E2E tests for critical API endpoints (OpenBadges compliance, Issuer, Badge Class, Assertion, Authentication)
 - ✅ **RESOLVED:** PostgreSQL E2E test setup issue with `rd-logger` dependency. Both SQLite and PostgreSQL E2E tests (`bun run test:e2e:sqlite` and `bun run test:e2e:pg`) now complete successfully.
-- ✅ Created comprehensive OBv3 compliance E2E test in `test/e2e/obv3-compliance.e2e.test.ts` that:
+- ✅ Created comprehensive OBv3 compliance E2E test in `tests/e2e/obv3-compliance.e2e.test.ts` that:
   - Creates a complete badge (issuer, badge class, assertion)
   - Verifies the badge
   - Validates correct context URLs, proof structure, and verification process
   - Includes proper test cleanup to ensure test resources are properly deleted
 
 ### Partially Completed / Needs Enhancement:
-- 🟨 Current tests verify API endpoints exist and respond (and basic create/cleanup for some), but **do not yet fully test complete data persistence and retrieval flows (e.g., detailed Create -> Read -> Update -> Delete -> Verify lifecycle for all fields and relationships).** This was confirmed by reviewing `test/e2e/issuer.e2e.test.ts`.
+- 🟨 Current tests verify API endpoints exist and respond (and basic create/cleanup for some), but **do not yet fully test complete data persistence and retrieval flows (e.g., detailed Create -> Read -> Update -> Delete -> Verify lifecycle for all fields and relationships).** This was confirmed by reviewing `tests/e2e/issuer.e2e.test.ts`.
 
 ### Remaining (Prioritized - Updated):
 1. **High Priority:**
    - **Enhance existing E2E tests to verify complete data flows:** Ensure tests for Issuer, BadgeClass, and Assertion APIs thoroughly validate creation, accurate retrieval (single and list), updates to various fields, and successful deletion with verification. This includes checking that all persisted data matches the input data and that relationships between entities are correctly handled.
-   - ✅ **Add more comprehensive verification tests:** The new `test/e2e/obv3-compliance.e2e.test.ts` test now provides comprehensive validation of Open Badges 3.0 compliance, including verification of badges.
+   - ✅ **Add more comprehensive verification tests:** The new `tests/e2e/obv3-compliance.e2e.test.ts` test now provides comprehensive validation of Open Badges 3.0 compliance, including verification of badges.
 
 2. **Medium Priority:**
    - Add tests for error cases and edge conditions (e.g., invalid input data, unauthorized access attempts, concurrency issues if applicable).
@@ -78,12 +113,90 @@ This task has been partially implemented. Based on a review of the codebase and 
 2. **Implement Error Case and Edge Condition Tests:**
    - Once CRUD tests are robust, add tests for scenarios like submitting incomplete data, invalid data types, requests to non-existent resources, etc.
 
-## 5. Parking Lot
+## 5. Technical Notes
+
+- Use the existing test setup in `tests/e2e/setup-test-app.ts`
+- Use random ports to avoid conflicts
+- Clean up the database before and after each test
+- Use the Hono test client for API tests
+- Consider using a test framework like Playwright for browser-based tests
+
+## 6. Related Files
+
+- `tests/e2e/setup-test-app.ts`
+- `tests/e2e/assertion.e2e.test.ts`
+- `tests/e2e/auth.e2e.test.ts`
+- `tests/e2e/badgeClass.e2e.test.ts`
+- `tests/e2e/issuer.e2e.test.ts`
+- `tests/e2e/obv3-compliance.e2e.test.ts`
+- `tests/e2e/openBadgesCompliance.e2e.test.ts`
+- `tests/e2e/setup/globalSetup.ts`
+- `tests/e2e/setup/globalTeardown.ts`
+
+## 7. E2E Testing Best Practices Implementation
+
+Based on research of current setup and industry best practices, the following improvements should be implemented:
+
+### 7.1 Server and Database Initialization
+
+**Goal**: Centralize server and database setup to improve efficiency and reliability.
+
+**Implementation Steps**:
+1. Refactor global setup/teardown to start the server once per test suite
+2. Implement proper database state management between tests
+3. Ensure consistent environment variable handling
+
+### 7.2 Test Data Management
+
+**Goal**: Create a consistent approach to test data creation and cleanup.
+
+**Implementation Steps**:
+1. Create a TestDataHelper class to manage test data creation
+2. Implement automatic tracking of created entities for cleanup
+3. Add helper methods for common test data scenarios
+
+### 7.3 Database Reset Between Tests
+
+**Goal**: Ensure tests run in isolation with a clean database state.
+
+**Implementation Steps**:
+1. Implement database reset mechanism for both SQLite and PostgreSQL
+2. Add transaction support for test isolation
+3. Create utility functions to reset database state between test files
+
+### 7.4 Standardized Test Structure
+
+**Goal**: Improve test readability and maintainability with consistent patterns.
+
+**Implementation Steps**:
+1. Refactor existing tests to follow a consistent pattern
+2. Use descriptive test names and proper grouping
+3. Implement proper setup/teardown at test and suite levels
+
+### 7.5 CI Configuration Improvements
+
+**Goal**: Ensure tests run consistently in CI environments.
+
+**Implementation Steps**:
+1. Standardize database configuration across all CI workflows
+2. Create separate workflow for E2E tests
+3. Implement proper environment variable handling in CI
+
+### 7.6 Documentation
+
+**Goal**: Provide comprehensive documentation for the test setup.
+
+**Implementation Steps**:
+1. Document test structure and organization
+2. Create guide for running tests locally
+3. Document CI test execution process
+
+## 8. Parking Lot
 - Explore browser-based E2E tests for Swagger UI
 - Consider E2E tests for authentication and security flows
 - Investigate visual regression testing for any UI components
 
-## E2E Testing Plan for Openbadges Modular Server
+## 9. E2E Testing Plan for Openbadges Modular Server
 
 This plan outlines high-level End-to-End (E2E) test scenarios for the `openbadges-modular-server`, focusing on core functionalities as defined by the Open Badges v2.0 and v3.0 specifications.
 
@@ -106,9 +219,9 @@ This plan outlines high-level End-to-End (E2E) test scenarios for the `openbadge
 This section details the configuration and components of the End-to-End testing environment.
 
 **1. Directory Structure:**
-*   `test/e2e/`: Root directory for all E2E test files (e.g., `*.test.ts`).
-*   `test/e2e/helpers/`: (Optional) For utility functions and helper classes specific to E2E tests.
-*   `test/e2e/config/`: (Optional) For any E2E test-specific configuration files.
+*   `tests/e2e/`: Root directory for all E2E test files (e.g., `*.test.ts`).
+*   `tests/e2e/helpers/`: (Optional) For utility functions and helper classes specific to E2E tests.
+*   `tests/e2e/config/`: (Optional) For any E2E test-specific configuration files.
 *   Note: An empty `.gitkeep` file was initially planned for these directories but encountered issues. Directories will be created when the first files are added to them.
 
 **2. Test Databases:**
@@ -132,7 +245,7 @@ The E2E tests are designed to run against both PostgreSQL and SQLite databases.
 
 *   **SQLite:**
     *   **Type:** File-based.
-    *   **Location:** The test database file will be created at `test/e2e/test_database.sqlite`.
+    *   **Location:** The test database file will be created at `tests/e2e/test_database.sqlite`.
     *   **Configuration:** The path is primarily managed by the `SQLITE_DB_PATH` environment variable, set in `.env.test` and used by `package.json` scripts and `drizzle.config.ts`.
 
 **3. Environment Configuration File (`.env.test`):**
@@ -142,7 +255,7 @@ The E2E tests are designed to run against both PostgreSQL and SQLite databases.
     *   `API_BASE_URL=http://localhost:3000` (Example: Ensure this points to your running test server)
     *   `DB_TYPE=postgresql` or `DB_TYPE=sqlite` (Used by `drizzle.config.ts` and application logic to switch DB dialect)
     *   PostgreSQL connection details (see above).
-    *   `SQLITE_DB_PATH=./test/e2e/test_database.sqlite`
+    *   `SQLITE_DB_PATH=./tests/e2e/test_database.sqlite`
 *   **Security:** This file **should be added to `.gitignore`** to prevent committing local test configurations or sensitive credentials if any are added in the future.
 
 **4. Drizzle ORM Configuration (`drizzle.config.ts`):**
@@ -273,7 +386,7 @@ The following scripts have been added to manage and run E2E tests:
         *   _Expected Outcome:_ Request fails (e.g., 403 Forbidden status).
 
 7.  **Open Badges Specification Compliance (Cross-cutting)**
-    *   **Explicitly Tested:** The `test/e2e/obv3-compliance.e2e.test.ts` test file now provides comprehensive validation of Open Badges 3.0 compliance, including:
+    *   **Explicitly Tested:** The `tests/e2e/obv3-compliance.e2e.test.ts` test file now provides comprehensive validation of Open Badges 3.0 compliance, including:
         * Creating a complete badge (issuer, badge class, assertion)
         * Verifying the badge
         * Validating correct context URLs (`https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json` and `https://www.w3.org/ns/credentials/v2`)

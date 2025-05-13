@@ -55,6 +55,7 @@ export const AssertionBaseSchema = z.object({
 // Schema for CreateAssertionOB2Dto
 export const CreateAssertionOB2Schema = AssertionBaseSchema.extend({
   type: z.union([z.string(), z.array(z.string())]).optional(),
+  '@context': z.string().optional(), // Allow @context field for OB2
 }).strict("Unrecognized fields in OB2 assertion data");
 
 // Schema for CreateAssertionOB3Dto
@@ -62,6 +63,7 @@ export const CreateAssertionOB3Schema = AssertionBaseSchema.extend({
   type: z.string().optional(), // Typically string in OB3
   id: z.string().optional(), // Allow client-suggested ID
   credentialSubject: z.record(z.unknown()).optional(), // Allow flexible credentialSubject
+  '@context': z.string().optional(), // Allow @context field for OB3
 }).strict("Unrecognized fields in OB3 assertion data");
 
 // Union schema for CreateAssertionDto

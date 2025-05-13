@@ -5,11 +5,6 @@
  * that don't rely on external dependencies like rd-logger.
  */
 
-// Simple implementation of SensitiveValue
-const SensitiveValue = {
-  from: (value: string) => `[REDACTED:${typeof value}]`
-};
-
 // Helper function to determine PostgreSQL connection string
 export const determinePostgresConnectionString = (): string => {
   // Priority 1: Explicit DATABASE_URL from environment
@@ -27,12 +22,12 @@ export const determinePostgresConnectionString = (): string => {
   if (host && user && password && dbName) {
     if (process.env['DB_TYPE'] === 'postgresql' ||
         (!process.env['DB_TYPE'] && host.toLowerCase() !== 'sqlite.db' && !dbName.toLowerCase().endsWith('.sqlite'))) {
-      return `postgresql://${user}:${SensitiveValue.from(password)}@${host}:${port}/${dbName}`;
+      return `postgresql://${user}:${password}@${host}:${port}/${dbName}`;
     }
   }
 
   // Priority 3: Default connection string
-  return `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges`;
+  return `postgres://postgres:postgres@localhost:5432/openbadges`;
 };
 
 // Simplified database config

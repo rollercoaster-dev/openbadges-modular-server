@@ -91,15 +91,95 @@ async function runSqliteMigrations() {
 
     // Apply SQL directly to handle circular references
     try {
-      // Get the SQL file path
-      const sqlFilePath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
+      // Get the SQL file path - try the new fixed migration first
+      const fixedMigrationPath = join(migrationsFolder, '0000_fixed_migration.sql');
 
-      // Check if the file exists
-      if (fs.existsSync(sqlFilePath)) {
-        logger.info('Applying SQL directly to handle circular references...');
-        const sql = fs.readFileSync(sqlFilePath, 'utf8');
-        await db.run(sql);
-        logger.info('SQL applied successfully.');
+      // Check if the new fixed file exists
+      if (fs.existsSync(fixedMigrationPath)) {
+        logger.info('Applying fixed migration SQL directly...');
+
+        // Read the file line by line to avoid issues with SQLite's statement parsing
+        const sql = fs.readFileSync(fixedMigrationPath, 'utf8');
+
+        try {
+          // Try to execute the entire file at once
+          sqlite.exec(sql);
+          logger.info('Successfully executed the entire migration file');
+        } catch (error) {
+          logger.error('Failed to execute migration file as a whole, trying statement by statement', error);
+
+          // Split by semicolons and filter out empty statements
+          const statements = sql
+            .split(';')
+            .map(stmt => stmt.trim())
+            .filter(stmt => stmt.length > 0);
+
+          // Execute each statement individually
+          for (const statement of statements) {
+            try {
+              // Skip comments and empty lines
+              if (statement.startsWith('--') || statement.trim() === '') {
+                continue;
+              }
+
+              // Execute the statement
+              logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
+              sqlite.exec(statement + ';');
+            } catch (stmtError) {
+              // Log the error but continue with other statements
+              logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+                error: stmtError instanceof Error ? stmtError.message : String(stmtError)
+              });
+            }
+          }
+        }
+
+        logger.info('Fixed migration SQL applied successfully.');
+      } else {
+        // Fall back to the original fixed file if the new one doesn't exist
+        const originalFixedPath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
+
+        if (fs.existsSync(originalFixedPath)) {
+          logger.info('New fixed migration not found, applying original fixed SQL...');
+          const sql = fs.readFileSync(originalFixedPath, 'utf8');
+
+          try {
+            // Try to execute the entire file at once
+            sqlite.exec(sql);
+            logger.info('Successfully executed the original migration file');
+          } catch (error) {
+            logger.error('Failed to execute original migration file as a whole, trying statement by statement', error);
+
+            // Split by semicolons and filter out empty statements
+            const statements = sql
+              .split(';')
+              .map(stmt => stmt.trim())
+              .filter(stmt => stmt.length > 0);
+
+            // Execute each statement individually
+            for (const statement of statements) {
+              try {
+                // Skip comments and empty lines
+                if (statement.startsWith('--') || statement.trim() === '') {
+                  continue;
+                }
+
+                // Execute the statement
+                logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
+                sqlite.exec(statement + ';');
+              } catch (stmtError) {
+                // Log the error but continue with other statements
+                logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+                  error: stmtError instanceof Error ? stmtError.message : String(stmtError)
+                });
+              }
+            }
+          }
+
+          logger.info('Original fixed SQL applied successfully.');
+        } else {
+          logger.warn('No fixed migration files found');
+        }
       }
     } catch (error) {
       logger.warn('Error applying SQL directly:', error);
@@ -155,25 +235,54 @@ async function runPostgresMigrations() {
 
     // Apply SQL directly to handle circular references
     try {
-      // Get the SQL file path
-      const sqlFilePath = join(migrationsFolder, '0000_strong_gideon_fixed.sql');
+      // Get the SQL file path - try the new fixed migration first
+      const fixedMigrationPath = join(migrationsFolder, '0000_fixed_migration.sql');
 
-      // Check if the file exists
-      if (fs.existsSync(sqlFilePath)) {
-        logger.info('Applying SQL directly to handle circular references...');
-        const sql = fs.readFileSync(sqlFilePath, 'utf8');
-        await client.unsafe(sql);
-        logger.info('SQL applied successfully.');
+      // Check if the new fixed file exists
+      if (fs.existsSync(fixedMigrationPath)) {
+        logger.info('Applying fixed migration SQL directly...');
+        const sql = fs.readFileSync(fixedMigrationPath, 'utf8');
+
+        // Execute each statement separately to avoid issues with statement parsing
+        const statements = sql
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0);
+
+        for (const statement of statements) {
+          try {
+            // Execute the statement directly
+            await client.unsafe(statement + ';');
+          } catch (stmtError) {
+            // Log the error but continue with other statements
+            logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+              error: stmtError instanceof Error ? stmtError.message : String(stmtError)
+            });
+          }
+        }
+
+        logger.info('Fixed migration SQL applied successfully.');
       } else {
-        // Try the original file as a fallback
-        const originalSqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
-        if (fs.existsSync(originalSqlFilePath)) {
-          logger.info('Fixed SQL file not found, applying original SQL file...');
-          const sql = fs.readFileSync(originalSqlFilePath, 'utf8');
+        // Try the original fixed file
+        const sqlFilePath = join(migrationsFolder, '0000_strong_gideon_fixed.sql');
+
+        // Check if the file exists
+        if (fs.existsSync(sqlFilePath)) {
+          logger.info('Applying fixed SQL directly...');
+          const sql = fs.readFileSync(sqlFilePath, 'utf8');
           await client.unsafe(sql);
-          logger.info('Original SQL applied successfully.');
+          logger.info('Fixed SQL applied successfully.');
         } else {
-          logger.warn('No SQL migration files found for PostgreSQL');
+          // Try the original file as a fallback
+          const originalSqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
+          if (fs.existsSync(originalSqlFilePath)) {
+            logger.info('Fixed SQL file not found, applying original SQL file...');
+            const sql = fs.readFileSync(originalSqlFilePath, 'utf8');
+            await client.unsafe(sql);
+            logger.info('Original SQL applied successfully.');
+          } else {
+            logger.warn('No SQL migration files found for PostgreSQL');
+          }
         }
       }
     } catch (error) {

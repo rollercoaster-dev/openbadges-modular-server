@@ -12,9 +12,12 @@ const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port betw
 process.env.TEST_PORT = TEST_PORT.toString();
 
 // Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
+const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 // const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
 const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+
+// Log the API URL for debugging
+logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
@@ -63,7 +66,7 @@ describe('Badge Class API - E2E', () => {
 
   // No resources to clean up in this simplified test
 
-  it.skip('should verify badge class API endpoints', async () => {
+  it('should verify badge class API endpoints', async () => {
     // Test the badge classes endpoint
     let badgeClassesResponse: Response;
     try {
@@ -100,7 +103,7 @@ expect(badgeClassesResponse.status).toBe(200);
           type: 'BadgeClass',
           name: 'Test Badge Class',
           description: 'A test badge class',
-          issuer: 'test-issuer-id',
+          issuer: '00000000-0000-4000-a000-000000000003', // A valid UUID format
           criteria: {
             narrative: 'Complete the test'
           }

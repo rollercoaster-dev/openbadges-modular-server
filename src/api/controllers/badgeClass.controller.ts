@@ -15,6 +15,7 @@ import { CreateBadgeClassSchema, UpdateBadgeClassSchema } from '../validation/ba
 import { logger } from '../../utils/logging/logger.service';
 import { z } from 'zod';
 import { UserPermission } from '../../domains/user/user.entity';
+import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
 
 // Define types inferred from Zod schemas
 type ValidatedCreateBadgeClassData = z.infer<typeof CreateBadgeClassSchema>;
@@ -98,7 +99,7 @@ export class BadgeClassController {
     // Check if user has permission to create badge classes
     if (user && !this.hasPermission(user, UserPermission.CREATE_BADGE_CLASS)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create a badge class without permission`);
-      throw new Error('Insufficient permissions to create badge class');
+      throw new BadRequestError('Insufficient permissions to create badge class');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -166,7 +167,7 @@ export class BadgeClassController {
     // Check if user has permission to update badge classes
     if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update badge class ${id} without permission`);
-      throw new Error('Insufficient permissions to update badge class');
+      throw new BadRequestError('Insufficient permissions to update badge class');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -198,7 +199,7 @@ export class BadgeClassController {
     // Check if user has permission to delete badge classes
     if (user && !this.hasPermission(user, UserPermission.DELETE_BADGE_CLASS)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to delete badge class ${id} without permission`);
-      throw new Error('Insufficient permissions to delete badge class');
+      throw new BadRequestError('Insufficient permissions to delete badge class');
     }
 
     return await this.badgeClassRepository.delete(toIRI(id) as Shared.IRI);

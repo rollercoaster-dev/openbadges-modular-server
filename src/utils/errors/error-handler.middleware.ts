@@ -1,6 +1,10 @@
 import { MiddlewareHandler } from 'hono';
+import type { Context } from 'hono'; // Import Context for handleNotFound
+import type { ContentfulStatusCode } from 'hono/utils/http-status'; // Import ContentfulStatusCode
 import { logger } from '../logging/logger.service';
 import { getRequestId } from '../logging/request-context.middleware';
+import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
+import { ValidationError } from './validation.errors';
 
 /**
  * Global error handler middleware
@@ -35,17 +39,31 @@ export function createErrorHandlerMiddleware(): MiddlewareHandler {
         });
       }
 
-      // In production, return a generic error message
+      // Determine the appropriate status code based on error type
+      let statusCode = 500;
+      let errorCode = 'INTERNAL_SERVER_ERROR';
+
+      // Handle specific error types
+      if (error instanceof BadRequestError || error instanceof ValidationError) {
+        statusCode = 400;
+        errorCode = 'BAD_REQUEST';
+      }
+
+      // In production, return a generic error message for 500 errors
       // In development, include more details for debugging
+      const errorMessage = statusCode === 500 && isProd
+        ? 'Internal Server Error'
+        : (error instanceof Error ? error.message : String(error));
+
       return c.json({
         error: {
-          message: isProd ? 'Internal Server Error' : (error instanceof Error ? error.message : String(error)),
-          code: 'INTERNAL_SERVER_ERROR',
-          status: 500,
+          message: errorMessage,
+          code: errorCode,
+          status: statusCode,
           // Include request ID for correlation with logs
           requestId
         }
-      }, 500);
+      }, statusCode as ContentfulStatusCode); // Cast statusCode to ContentfulStatusCode
     }
   };
 }
@@ -55,7 +73,7 @@ export function createErrorHandlerMiddleware(): MiddlewareHandler {
  *
  * This function is specifically designed to work with Hono's notFound handler
  */
-export function handleNotFound(c: import('hono').Context): Response {
+export function handleNotFound(c: Context): Response { // Use imported Context type
   const path = new URL(c.req.url).pathname;
   const requestId = getRequestId(c);
 

@@ -15,6 +15,7 @@ import { BadgeVersion } from '../../utils/version/badge-version';
 import { toIRI } from '../../utils/types/iri-utils';
 import { Shared, OB2, OB3 } from 'openbadges-types';
 import { VerificationService } from '../../core/verification.service';
+import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
 import { VerificationStatus, VerificationErrorCode, createVerificationError } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
 import { logger } from '../../utils/logging/logger.service';
@@ -132,7 +133,7 @@ export class AssertionController {
     // Check if user has permission to create assertions
     if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an assertion without permission`);
-      throw new Error('Insufficient permissions to create assertion');
+      throw new BadRequestError('Insufficient permissions to create assertion');
     }
     try {
       // Log the raw data for debugging
@@ -155,6 +156,19 @@ export class AssertionController {
         throw error; // Re-throw other mapping errors
       }
 
+      // Validate that the badge class exists before creating the assertion
+      const badgeClassId = mappedData.badgeClass;
+      if (!badgeClassId) {
+        throw new BadRequestError('Badge class ID is required');
+      }
+
+      const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
+      if (!badgeClass) {
+        logger.warn(`Attempted to create assertion for non-existent badge class: ${badgeClassId}`);
+        // Throw a BadRequestError instead of a generic Error to get a 400 status code
+        throw new BadRequestError(`Badge class with ID ${badgeClassId} does not exist`);
+      }
+
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
 
@@ -169,15 +183,13 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        const badgeClass = await this.badgeClassRepository.findById(createdAssertion.badgeClass);
-        if (badgeClass) {
-          // Handle both string and object issuer IDs
-          const issuerId = typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer as OB3.Issuer).id;
-          const issuer = await this.issuerRepository.findById(issuerId);
-          return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
-        }
+        // We already have the badge class from validation above
+        // Handle both string and object issuer IDs
+        const issuerId = typeof badgeClass.issuer === 'string'
+          ? badgeClass.issuer
+          : (badgeClass.issuer as OB3.Issuer).id;
+        const issuer = await this.issuerRepository.findById(issuerId);
+        return convertAssertionToJsonLd(createdAssertion, version, badgeClass, issuer);
       }
 
       return convertAssertionToJsonLd(createdAssertion, version);
@@ -282,7 +294,7 @@ export class AssertionController {
     // Check if user has permission to update assertions
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to update assertion');
+      throw new BadRequestError('Insufficient permissions to update assertion');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -330,7 +342,7 @@ export class AssertionController {
     // Check if user has permission to revoke assertions
     if (user && !this.hasPermission(user, UserPermission.REVOKE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to revoke assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to revoke assertion');
+      throw new BadRequestError('Insufficient permissions to revoke assertion');
     }
 
     const result = await this.assertionRepository.revoke(toIRI(id) as Shared.IRI, reason);
@@ -403,7 +415,7 @@ export class AssertionController {
     // Check if user has permission to sign assertions
     if (user && !this.hasPermission(user, UserPermission.SIGN_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to sign assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to sign assertion');
+      throw new BadRequestError('Insufficient permissions to sign assertion');
     }
     try {
       // Initialize the key service

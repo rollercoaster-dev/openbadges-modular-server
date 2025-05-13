@@ -5,21 +5,23 @@
  * LRU (Least Recently Used) cache implementation that's compatible with Bun.js.
  */
 
-// Import LRU module - using dynamic import since the module doesn't have proper TypeScript definitions
- 
-const lruModule = require('lru.min');
+// Import createLRU function from lru.min
+import { createLRU } from 'lru.min';
 
 // Define a more specific type for the LRU cache instance
 type LRUType = {
   get: (key: string) => unknown;
-  set: (key: string, value: unknown, maxAge?: number) => boolean;
+  set: (key: string, value: unknown) => void;
+  peek: (key: string) => unknown;
   has: (key: string) => boolean;
   delete: (key: string) => boolean;
-  remove?: (key: string) => void;
-  clear: () => boolean;
-  keys: () => string[];
+  clear: () => void;
+  keys: () => IterableIterator<string>;
   size: number;
 };
+
+
+
 import { CacheInterface, CacheStats } from './cache.interface';
 
 export interface CacheOptions {
@@ -46,6 +48,8 @@ export class CacheService implements CacheInterface {
   private cache: LRUType;
   private hits: number = 0;
   private misses: number = 0;
+  // Note: defaultTtl is kept for API compatibility but not used with lru.min
+  // @ts-ignore - This is intentionally unused but kept for future compatibility
   private defaultTtl: number;
 
   /**
@@ -53,15 +57,14 @@ export class CacheService implements CacheInterface {
    * @param options Cache options
    */
   constructor(options: CacheOptions = {}) {
-    const { max = 1000, ttl = 3600, updateAgeOnGet = true } = options;
+    const { max = 1000, ttl = 3600 } = options;
 
-    // Create a new LRU cache instance
-    // LRU.min exports a function, not a class constructor
-    // Call the function directly with properly typed options
-    this.cache = lruModule({
+    // Create a new LRU cache instance using the createLRU function
+    this.cache = createLRU({
       max,
-      updateAgeOnGet
-    }) as LRUType;
+      // Note: lru.min doesn't support updateAgeOnGet directly
+      // It always updates age on get by design
+    });
 
     this.defaultTtl = ttl;
   }
@@ -70,12 +73,15 @@ export class CacheService implements CacheInterface {
    * Stores a value in the cache
    * @param key The cache key
    * @param value The value to store
-   * @param ttl Time to live in seconds (optional)
+   * @param ttl Time to live in seconds (optional) - Note: lru.min doesn't support TTL directly
    * @returns True if the value was stored successfully
    */
-  set<T>(key: string, value: T, ttl?: number): boolean {
-    const maxAge = (ttl || this.defaultTtl) * 1000; // Convert to milliseconds
-    return this.cache.set(key, value, maxAge);
+  set<T>(key: string, value: T, _ttl?: number): boolean {
+    // Note: lru.min's createLRU doesn't support maxAge parameter
+    // We're ignoring ttl for now as the library doesn't support it
+    // If we needed to use ttl, we would use: const maxAge = (_ttl || this.defaultTtl) * 1000;
+    this.cache.set(key, value);
+    return true; // Always return true as the set operation doesn't return a value
   }
 
   /**
@@ -119,7 +125,7 @@ export class CacheService implements CacheInterface {
    */
   clear(): boolean {
     this.cache.clear();
-    return true;
+    return true; // Always return true as the clear operation doesn't return a value
   }
 
   /**
@@ -141,7 +147,8 @@ export class CacheService implements CacheInterface {
    * @returns Array of cache keys
    */
   keys(): string[] {
-    return this.cache.keys();
+    // Convert IterableIterator to array
+    return Array.from(this.cache.keys());
   }
 
   /**

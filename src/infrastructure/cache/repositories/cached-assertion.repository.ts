@@ -169,6 +169,25 @@ export class CachedAssertionRepository extends CacheRepositoryWrapper<Assertion,
    * @returns The updated assertion if found, null otherwise
    */
   async update(id: Shared.IRI, assertion: Partial<Assertion>): Promise<Assertion | null> {
+    // Invalidate the cache for the ID before updating
+    // This ensures we don't have stale data even if the ID changes
+    this.cache.delete(this.generateIdKey(id as string));
+    this.invalidateCollections();
+
+    // Get the assertion before update to get related IDs
+    const existingAssertion = await this.findById(id);
+    if (existingAssertion) {
+      // Invalidate badge class-related caches
+      if (existingAssertion['badgeClassId']) {
+        this.cache.delete(`badgeClass:${existingAssertion['badgeClassId']}`);
+      }
+
+      // Invalidate recipient-related caches
+      if (existingAssertion.recipient && existingAssertion.recipient.identity) {
+        this.cache.delete(`recipient:${existingAssertion.recipient.identity}`);
+      }
+    }
+
     const result = await this.repository.update(id, assertion);
 
     // Invalidate cache after update

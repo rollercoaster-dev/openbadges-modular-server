@@ -92,15 +92,21 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
 
 // Base URL for the API
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
+// Use a consistent port from environment variables or a default
+const TEST_PORT = parseInt(process.env.TEST_PORT || '3001');
 process.env.TEST_PORT = TEST_PORT.toString();
 
+// Log the port being used
+logger.info(`Using test port: ${TEST_PORT}`);
+
 // Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
+const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
 const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
+// Log the API URL for debugging
+logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
@@ -121,8 +127,29 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       const result = await setupTestApp();
       server = result.server;
       logger.info('E2E Test: Server started successfully');
-      // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer for the server to be fully ready in CI environments
+      const waitTime = process.env.CI === 'true' ? 5000 : 2000;
+      logger.info(`Waiting ${waitTime}ms for server to be fully ready...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+
+      // Verify server is ready by checking health endpoint
+      logger.info('Verifying server health...');
+      try {
+        const healthResponse = await fetch(`${API_URL}/health`);
+        if (healthResponse.ok) {
+          const health = await healthResponse.json();
+          logger.info('Server health check passed', { health });
+        } else {
+          logger.warn('Server health check failed', {
+            status: healthResponse.status,
+            statusText: healthResponse.statusText
+          });
+        }
+      } catch (error) {
+        logger.warn('Failed to check server health', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
@@ -276,7 +303,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           type: 'BadgeClass',
           name: 'Test Badge Class',
           description: 'A test badge class',
-          issuer: 'test-issuer-id',
+          issuer: '00000000-0000-4000-a000-000000000006', // A valid UUID format
           criteria: {
             narrative: 'Complete the test'
           }
@@ -317,7 +344,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
             hashed: true,
             salt: 'test'
           },
-          badge: 'test-badge-class-id',
+          badge: '00000000-0000-4000-a000-000000000007', // A valid UUID format
           issuedOn: new Date().toISOString()
         })
       });
@@ -339,7 +366,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
   it('should verify OpenBadges v3.0 verification endpoint', async () => {
     // Test the verification endpoint with a dummy assertion ID
-    const dummyAssertionId = 'test-assertion-id';
+    const dummyAssertionId = '00000000-0000-4000-a000-000000000008'; // A valid UUID format
     let verifyResponse: Response;
     try {
       verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {

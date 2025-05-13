@@ -1,6 +1,6 @@
 /**
  * Cached Issuer Repository
- * 
+ *
  * This class wraps an IssuerRepository implementation and adds caching functionality.
  * It caches issuer entities to improve read performance.
  */
@@ -26,10 +26,10 @@ export class CachedIssuerRepository extends CacheRepositoryWrapper<Issuer, Issue
    */
   async create(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
     const result = await this.repository.create(issuer);
-    
+
     // Invalidate cache after creation
     this.invalidateEntity(result);
-    
+
     return result;
   }
 
@@ -41,26 +41,26 @@ export class CachedIssuerRepository extends CacheRepositoryWrapper<Issuer, Issue
     if (!this.enabled) {
       return this.repository.findAll();
     }
-    
+
     const cacheKey = 'collection:all';
-    
+
     // Try to get from cache
     const cached = this.cache.get<Issuer[]>(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Get from repository
     const issuers = await this.repository.findAll();
-    
+
     // Cache the result
     this.cache.set(cacheKey, issuers);
-    
+
     // Also cache individual issuers
     for (const issuer of issuers) {
       this.cache.set(this.generateIdKey(issuer.id), issuer);
     }
-    
+
     return issuers;
   }
 
@@ -73,23 +73,23 @@ export class CachedIssuerRepository extends CacheRepositoryWrapper<Issuer, Issue
     if (!this.enabled) {
       return this.repository.findById(id);
     }
-    
+
     const cacheKey = this.generateIdKey(id as string);
-    
+
     // Try to get from cache
     const cached = this.cache.get<Issuer>(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Get from repository
     const issuer = await this.repository.findById(id);
-    
+
     // Cache the result (even if null)
     if (issuer) {
       this.cache.set(cacheKey, issuer);
     }
-    
+
     return issuer;
   }
 
@@ -100,13 +100,18 @@ export class CachedIssuerRepository extends CacheRepositoryWrapper<Issuer, Issue
    * @returns The updated issuer if found, null otherwise
    */
   async update(id: Shared.IRI, issuer: Partial<Issuer>): Promise<Issuer | null> {
+    // Invalidate the cache for the ID before updating
+    // This ensures we don't have stale data even if the ID changes
+    this.cache.delete(this.generateIdKey(id as string));
+    this.invalidateCollections();
+
     const result = await this.repository.update(id, issuer);
-    
-    // Invalidate cache after update
+
+    // Invalidate cache after update for the result entity
     if (result) {
       this.invalidateEntity(result);
     }
-    
+
     return result;
   }
 
@@ -117,13 +122,13 @@ export class CachedIssuerRepository extends CacheRepositoryWrapper<Issuer, Issue
    */
   async delete(id: Shared.IRI): Promise<boolean> {
     const result = await this.repository.delete(id);
-    
+
     // Invalidate cache after deletion
     if (result) {
       this.cache.delete(this.generateIdKey(id as string));
       this.invalidateCollections();
     }
-    
+
     return result;
   }
 

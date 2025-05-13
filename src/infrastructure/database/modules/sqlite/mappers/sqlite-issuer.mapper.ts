@@ -83,6 +83,7 @@ export class SqliteIssuerMapper {
 
     // Map all relevant fields from the entity to the DB record format
     // Cast to any then back to inferred type as workaround for TS/Drizzle inference issues
+    const now = Date.now();
     return {
       id: convertUuid(id, 'sqlite', 'to'),
       name: dbName,
@@ -91,8 +92,10 @@ export class SqliteIssuerMapper {
       description,
       image,
       publicKey: convertJson(publicKey, 'sqlite', 'to'),
-      additionalFields: convertJson(additionalFields, 'sqlite', 'to')
-      // Timestamps omitted, handled by repository
+      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
+      // Add timestamps
+      createdAt: now,
+      updatedAt: now
     } as unknown as typeof issuers.$inferInsert;
   }
 }
