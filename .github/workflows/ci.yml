@@ -45,7 +45,9 @@ jobs:
           DB_TYPE: sqlite
           SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite
           # Add any other necessary environment variables for tests
-        run: bun test --coverage --reporter=junit --outputFile=./test-results-sqlite.xml # Generate reports
+        run: |
+          bun test --coverage --junit
+          mv junit.xml ./test-results-sqlite.xml
 
       - name: Upload SQLite Test Results
         if: always()
@@ -125,7 +127,9 @@ jobs:
           DB_TYPE: postgresql
           DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
           # Add any other necessary environment variables for tests
-        run: bun test --coverage --reporter=junit --outputFile=./test-results-postgres.xml # Generate reports
+        run: |
+          bun test --coverage --junit
+          mv junit.xml ./test-results-postgres.xml
 
       - name: Upload PostgreSQL Test Results
         if: always()
