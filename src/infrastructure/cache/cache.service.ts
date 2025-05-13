@@ -50,6 +50,7 @@ export class CacheService implements CacheInterface {
   private misses: number = 0;
   // Note: defaultTtl is kept for API compatibility but not used with lru.min
   // Using _ prefix to indicate it's unused but kept for future compatibility
+  // @ts-ignore - This is intentionally unused but kept for future compatibility
   private _defaultTtl: number;
 
   /**
