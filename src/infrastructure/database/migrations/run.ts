@@ -97,16 +97,27 @@ async function runSqliteMigrations() {
       // Check if the new fixed file exists
       if (fs.existsSync(fixedMigrationPath)) {
         logger.info('Applying fixed migration SQL directly...');
+
+        // Read the file line by line to avoid issues with SQLite's statement parsing
         const sql = fs.readFileSync(fixedMigrationPath, 'utf8');
 
-        // Execute each statement separately to avoid issues with SQLite's statement parsing
+        // Split by semicolons and filter out empty statements
         const statements = sql
           .split(';')
           .map(stmt => stmt.trim())
           .filter(stmt => stmt.length > 0);
 
+        // Execute each statement in a transaction
+        sqlite.exec('BEGIN TRANSACTION;');
+
         for (const statement of statements) {
           try {
+            // Skip comments and empty lines
+            if (statement.startsWith('--') || statement.trim() === '') {
+              continue;
+            }
+
+            // Execute the statement
             sqlite.exec(statement + ';');
           } catch (stmtError) {
             // Log the error but continue with other statements
@@ -117,6 +128,9 @@ async function runSqliteMigrations() {
           }
         }
 
+        // Commit the transaction
+        sqlite.exec('COMMIT;');
+
         logger.info('Fixed migration SQL applied successfully.');
       } else {
         // Fall back to the original fixed file if the new one doesn't exist
@@ -125,7 +139,36 @@ async function runSqliteMigrations() {
         if (fs.existsSync(originalFixedPath)) {
           logger.info('New fixed migration not found, applying original fixed SQL...');
           const sql = fs.readFileSync(originalFixedPath, 'utf8');
-          await db.run(sql);
+
+          // Split by semicolons and filter out empty statements
+          const statements = sql
+            .split(';')
+            .map(stmt => stmt.trim())
+            .filter(stmt => stmt.length > 0);
+
+          // Execute each statement in a transaction
+          sqlite.exec('BEGIN TRANSACTION;');
+
+          for (const statement of statements) {
+            try {
+              // Skip comments and empty lines
+              if (statement.startsWith('--') || statement.trim() === '') {
+                continue;
+              }
+
+              // Execute the statement
+              sqlite.exec(statement + ';');
+            } catch (stmtError) {
+              // Log the error but continue with other statements
+              logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+                error: stmtError instanceof Error ? stmtError.message : String(stmtError)
+              });
+            }
+          }
+
+          // Commit the transaction
+          sqlite.exec('COMMIT;');
+
           logger.info('Original fixed SQL applied successfully.');
         } else {
           logger.warn('No fixed migration files found');
