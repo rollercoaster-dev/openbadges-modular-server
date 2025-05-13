@@ -156,33 +156,43 @@ async function resetPostgresDatabase(): Promise<void> {
         max_lifetime: 60
       });
 
-      // Disable triggers to avoid foreign key constraint issues
-      await pgClient.unsafe(`SET session_replication_role = 'replica'`);
+      try {
+        // Disable triggers to avoid foreign key constraint issues
+        await pgClient.unsafe(`SET session_replication_role = 'replica'`);
 
-      // Delete all data from each table
-      for (const table of tables) {
+        // Delete all data from each table
+        for (const table of tables) {
+          try {
+            // Use direct SQL to delete all data
+            await pgClient.unsafe(`DELETE FROM ${table}`);
+            logger.debug(`Deleted all data from ${table}`);
+          } catch (error) {
+            // Table might not exist, which is fine
+            logger.debug(`Error deleting from ${table}`, {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+        // Re-enable triggers
+        await pgClient.unsafe(`SET session_replication_role = 'origin'`);
+      } finally {
+        // Always close the connection, even if there's an error
         try {
-          // Use direct SQL to delete all data
-          await pgClient.unsafe(`DELETE FROM ${table}`);
-          logger.debug(`Deleted all data from ${table}`);
-        } catch (error) {
-          // Table might not exist, which is fine
-          logger.debug(`Error deleting from ${table}`, {
-            error: error instanceof Error ? error.message : String(error)
+          await pgClient.end();
+        } catch (closeError) {
+          logger.warn('Error closing PostgreSQL connection', {
+            error: closeError instanceof Error ? closeError.message : String(closeError)
           });
         }
       }
-
-      // Re-enable triggers
-      await pgClient.unsafe(`SET session_replication_role = 'origin'`);
-
-      // Close the connection
-      await pgClient.end();
     } catch (error) {
       logger.error('Failed to connect to PostgreSQL database', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
+      // Re-throw the error to ensure test failures are visible
+      throw error;
     }
 
     logger.info('PostgreSQL database reset successfully');

@@ -25,16 +25,31 @@ import { isPostgresAvailable } from '../helpers/database-availability';
 const pgConnectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/openbadges_test';
 const checkPgAvailability = async (): Promise<void> => {
   if (process.env.DB_TYPE === 'postgresql') {
-    const isPgAvailable = await isPostgresAvailable(pgConnectionString);
-    if (!isPgAvailable) {
-      logger.warn('PostgreSQL is not available, skipping PostgreSQL E2E tests');
+    try {
+      const isPgAvailable = await isPostgresAvailable(pgConnectionString);
+      if (!isPgAvailable) {
+        logger.warn('PostgreSQL is not available, skipping PostgreSQL E2E tests');
+        process.exit(0); // Exit gracefully
+      }
+    } catch (error) {
+      logger.error('Error checking PostgreSQL availability', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      logger.warn('Assuming PostgreSQL is not available, skipping PostgreSQL E2E tests');
       process.exit(0); // Exit gracefully
     }
   }
 };
 
 // Run the check before any tests
-checkPgAvailability();
+checkPgAvailability().catch(error => {
+  logger.error('Unhandled error in PostgreSQL availability check', {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined
+  });
+  process.exit(1); // Exit with error
+});
 
 // Create a function to create a new Hono app instance
 function createApp() {
