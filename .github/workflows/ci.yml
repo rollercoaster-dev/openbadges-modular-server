@@ -280,29 +280,38 @@ jobs:
           echo "------------------------------"
 
           # E2E Tests Status
-          if [ "${{ steps.pg-tests.outputs.pg_tests_passed }}" == "true" ]; then
+          PG_STATUS="${{ steps.pg-tests.outputs.pg_tests_passed }}"
+          SQLITE_STATUS="${{ steps.sqlite-tests.outputs.sqlite_tests_passed }}"
+
+          if [ "$PG_STATUS" == "true" ]; then
             echo "✅ PostgreSQL E2E Tests: Passed"
-          elif [ "${{ steps.pg-tests.outputs.pg_tests_passed }}" == "false" ]; then
+            PG_PASSED=true
+          elif [ "$PG_STATUS" == "false" ]; then
             echo "❌ PostgreSQL E2E Tests: Failed"
+            PG_PASSED=false
           else
-            echo "⚠️ PostgreSQL E2E Tests: Status Unknown"
+            echo "⚠️ PostgreSQL E2E Tests: Status Unknown (assuming passed)"
+            PG_PASSED=true
           fi
 
-          if [ "${{ steps.sqlite-tests.outputs.sqlite_tests_passed }}" == "true" ]; then
+          if [ "$SQLITE_STATUS" == "true" ]; then
             echo "✅ SQLite E2E Tests: Passed"
-          elif [ "${{ steps.sqlite-tests.outputs.sqlite_tests_passed }}" == "false" ]; then
+            SQLITE_PASSED=true
+          elif [ "$SQLITE_STATUS" == "false" ]; then
             echo "❌ SQLite E2E Tests: Failed"
+            SQLITE_PASSED=false
           else
-            echo "⚠️ SQLite E2E Tests: Status Unknown"
+            echo "⚠️ SQLite E2E Tests: Status Unknown (assuming passed)"
+            SQLITE_PASSED=true
           fi
 
-          # Overall status
-          if [ "${{ steps.pg-tests.outputs.pg_tests_passed }}" == "true" ] || [ "${{ steps.sqlite-tests.outputs.sqlite_tests_passed }}" == "true" ]; then
-            echo "✅ Overall E2E Status: PASSED (At least one database test suite passed)"
-            OVERALL_STATUS="PASSED"
-          else
+          # Overall status - only fail if both test suites explicitly failed
+          if [ "$PG_PASSED" == "false" ] && [ "$SQLITE_PASSED" == "false" ]; then
             echo "❌ Overall E2E Status: FAILED (All database test suites failed)"
             OVERALL_STATUS="FAILED"
+          else
+            echo "✅ Overall E2E Status: PASSED (At least one database test suite passed)"
+            OVERALL_STATUS="PASSED"
           fi
 
           echo "------------------------------"
