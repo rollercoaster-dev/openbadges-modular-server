@@ -49,7 +49,8 @@ export class CacheService implements CacheInterface {
   private hits: number = 0;
   private misses: number = 0;
   // Note: defaultTtl is kept for API compatibility but not used with lru.min
-  private defaultTtl: number;
+  // Using _ prefix to indicate it's unused but kept for future compatibility
+  private _defaultTtl: number;
 
   /**
    * Creates a new cache service
@@ -65,7 +66,7 @@ export class CacheService implements CacheInterface {
       // It always updates age on get by design
     });
 
-    this.defaultTtl = ttl;
+    this._defaultTtl = ttl;
   }
 
   /**
@@ -78,6 +79,7 @@ export class CacheService implements CacheInterface {
   set<T>(key: string, value: T, _ttl?: number): boolean {
     // Note: lru.min's createLRU doesn't support maxAge parameter
     // We're ignoring ttl for now as the library doesn't support it
+    // If we needed to use ttl, we would use: const maxAge = (_ttl || this._defaultTtl) * 1000;
     this.cache.set(key, value);
     return true; // Always return true as the set operation doesn't return a value
   }
