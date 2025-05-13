@@ -1,29 +1,27 @@
 declare module 'lru.min' {
   type LRUType = {
     get: (key: string) => unknown;
-    set: (key: string, value: unknown, maxAge?: number) => boolean;
+    set: (key: string, value: unknown) => void;
+    peek: (key: string) => unknown;
     has: (key: string) => boolean;
     delete: (key: string) => boolean;
-    remove?: (key: string) => void; // Optional, as some LRU implementations might have it
-    clear: () => boolean;
-    keys: () => string[];
-    size: number;
+    keys: () => IterableIterator<string>;
+    values: () => IterableIterator<unknown>;
+    entries: () => IterableIterator<[string, unknown]>;
+    forEach: (callback: (value: unknown, key: string) => void) => void;
+    evict: (number: number) => void;
+    clear: () => void;
+    resize: (newMax: number) => void;
+    readonly max: number;
+    readonly size: number;
+    readonly available: number;
   };
 
   type LRUConstructorOptions = {
     max: number;
-    updateAgeOnGet: boolean;
+    onEviction?: (key: string, value: unknown) => void;
   };
 
-  type LRUConstructor = (options: LRUConstructorOptions) => LRUType;
-
-  // Assume 'LRU' is the named export based on common conventions and to test against the CI error
-  export const LRU: LRUConstructor;
-
-  // If 'LRU' doesn't work, 'lru' would be the next common alternative:
-  // export const lru: LRUConstructor;
-
-  // If it were a default export (which CI suggests it's not for the .mjs file):
-  // const lruDefault: LRUConstructor;
-  // export default lruDefault;
+  // The actual export is 'createLRU', not 'LRU'
+  export const createLRU: (options: LRUConstructorOptions) => LRUType;
 }
