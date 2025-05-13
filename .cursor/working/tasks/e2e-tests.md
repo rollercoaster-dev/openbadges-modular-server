@@ -119,6 +119,10 @@ Most of the E2E tests are now passing with both SQLite and PostgreSQL databases.
 3. Fixed UUID format issues
 4. Added appropriate delays and error handling
 5. Made tests compatible with both database types
+6. Fixed PR warnings:
+   - Added permissions block to GitHub workflow files
+   - Fixed "Replacement of a substring with itself" warning in database migration code
+   - Updated controllers to use BadRequestError instead of generic Error for permission and validation errors
 
 ### Remaining Issues
 
@@ -133,6 +137,24 @@ There are still a few issues with the issuer tests:
    - Issues with finding the issuer after creation
    - Cache invalidation issues not fully resolved
    - Database transaction issues
+
+### Progress Made
+
+1. **Fixed PR Warnings**:
+   - Added permissions block to GitHub workflow files to address security concerns
+   - Fixed "Replacement of a substring with itself" warning in database migration code
+   - Updated controllers to use BadRequestError instead of generic Error for permission and validation errors
+   - All local tests are now passing with these changes
+
+2. **Improved Error Handling**:
+   - Replaced generic Error throws with BadRequestError for better HTTP status code handling
+   - Improved error messages to be more descriptive and helpful
+   - Ensured consistent error handling across all controllers
+
+3. **Enhanced CI Pipeline**:
+   - Fixed GitHub workflow configuration with proper permissions
+   - Improved database migration code for better compatibility
+   - Pushed changes to the repository for CI validation
 
 ### Next Steps
 
@@ -168,9 +190,13 @@ There are still a few issues with the issuer tests:
    - Database (SQLite for fast tests, PostgreSQL for production-like tests)
    - Cache settings (possibly disabled for tests)
 
-7. **Error Handling**: The server should return appropriate error codes (404 for not found vs 500 for server errors) to help diagnose issues.
+7. **Error Handling**: The server should return appropriate error codes (404 for not found vs 500 for server errors) to help diagnose issues. Using specific error classes like BadRequestError instead of generic Error ensures proper HTTP status codes.
 
-8. **Debugging Approach**: When debugging E2E tests, it's important to:
+8. **GitHub Workflow Configuration**: GitHub Actions workflows should include proper permissions blocks to address security concerns and prevent potential security vulnerabilities.
+
+9. **Code Quality Warnings**: Addressing code quality warnings like "Replacement of a substring with itself" is important for maintaining clean, efficient code and preventing potential bugs.
+
+10. **Debugging Approach**: When debugging E2E tests, it's important to:
    - Check server logs for authentication and database issues
    - Verify that the test environment matches the expected configuration
    - Look for inconsistencies between the test setup and the server configuration
