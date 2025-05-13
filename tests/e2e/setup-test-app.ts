@@ -43,6 +43,19 @@ function createApp() {
     })
   );
 
+  // Add a health check endpoint for tests
+  app.get('/health', (c) => {
+    return c.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      database: {
+        type: process.env.DB_TYPE || 'unknown',
+        connected: true
+      }
+    });
+  });
+
   return app;
 }
 

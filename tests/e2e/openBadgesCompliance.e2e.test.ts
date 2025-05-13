@@ -92,9 +92,12 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
 
 // Base URL for the API
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
+// Use a consistent port from environment variables or a default
+const TEST_PORT = parseInt(process.env.TEST_PORT || '3001');
 process.env.TEST_PORT = TEST_PORT.toString();
+
+// Log the port being used
+logger.info(`Using test port: ${TEST_PORT}`);
 
 // Base URL for the API
 const API_URL = `http://${config.server.host}:${TEST_PORT}`;
@@ -121,8 +124,29 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       const result = await setupTestApp();
       server = result.server;
       logger.info('E2E Test: Server started successfully');
-      // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer for the server to be fully ready in CI environments
+      const waitTime = process.env.CI === 'true' ? 5000 : 2000;
+      logger.info(`Waiting ${waitTime}ms for server to be fully ready...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+
+      // Verify server is ready by checking health endpoint
+      logger.info('Verifying server health...');
+      try {
+        const healthResponse = await fetch(`${API_URL}/health`);
+        if (healthResponse.ok) {
+          const health = await healthResponse.json();
+          logger.info('Server health check passed', { health });
+        } else {
+          logger.warn('Server health check failed', {
+            status: healthResponse.status,
+            statusText: healthResponse.statusText
+          });
+        }
+      } catch (error) {
+        logger.warn('Failed to check server health', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
