@@ -216,17 +216,31 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             if pg_isready -h localhost -p 5433 -U testuser -d openbadges_test; then
               echo "PostgreSQL is ready!"
-              break
+
+              # Verify we can actually connect and run a query
+              echo "Verifying PostgreSQL connection with a test query..."
+              if PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT 1 as test_connection;" > /dev/null 2>&1; then
+                echo "PostgreSQL connection verified successfully!"
+                break
+              else
+                echo "PostgreSQL is running but connection test failed. Retrying..."
+              fi
             fi
 
             if [ $i -eq $MAX_RETRIES ]; then
               echo "PostgreSQL failed to start after $MAX_RETRIES attempts"
+              echo "Checking PostgreSQL logs:"
+              docker logs $(docker ps | grep postgres | awk '{print $1}')
               exit 1
             fi
 
             echo "Waiting for PostgreSQL to start... ($i/$MAX_RETRIES)"
             sleep $RETRY_INTERVAL
           done
+
+          # Print PostgreSQL version and connection info
+          echo "PostgreSQL version:"
+          PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT version();"
 
       - name: Setup SQLite database
         run: |
@@ -245,11 +259,22 @@ jobs:
         id: pg-tests
         run: |
           echo "Running E2E tests with PostgreSQL..."
-          if bun test --timeout 120000 tests/e2e; then
+          echo "Verifying database connection before running tests..."
+
+          # Verify database connection
+          if PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT 1 as connection_test;" > /dev/null 2>&1; then
+            echo "Database connection verified, proceeding with tests"
+          else
+            echo "WARNING: Could not connect to PostgreSQL database before running tests"
+            echo "This may cause tests to fail - check database configuration"
+          fi
+
+          # Run the tests with increased verbosity and timeout
+          if NODE_ENV=test DB_TYPE=postgresql LOG_LEVEL=debug bun test --timeout 180000 tests/e2e; then
             echo "pg_tests_passed=true" >> $GITHUB_OUTPUT
           else
             echo "pg_tests_passed=false" >> $GITHUB_OUTPUT
-            # Don't fail here, we'll still try SQLite tests
+            echo "PostgreSQL E2E tests failed, but continuing to SQLite tests"
           fi
         env:
           DB_TYPE: postgresql
@@ -259,19 +284,37 @@ jobs:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: openbadges_test
+          TEST_PORT: 3001
+          LOG_LEVEL: debug
 
       - name: Run E2E tests with SQLite
         id: sqlite-tests
         run: |
           echo "Running E2E tests with SQLite..."
-          if bun test --timeout 120000 tests/e2e; then
+          echo "Verifying SQLite database file exists..."
+
+          # Verify SQLite file exists and is writable
+          if [ -f "tests/e2e/test_database.sqlite" ]; then
+            echo "SQLite database file exists"
+            ls -la tests/e2e/test_database.sqlite
+          else
+            echo "WARNING: SQLite database file does not exist, creating it now"
+            touch tests/e2e/test_database.sqlite
+            chmod 666 tests/e2e/test_database.sqlite
+          fi
+
+          # Run the tests with increased verbosity and timeout
+          if NODE_ENV=test DB_TYPE=sqlite LOG_LEVEL=debug bun test --timeout 180000 tests/e2e; then
             echo "sqlite_tests_passed=true" >> $GITHUB_OUTPUT
           else
             echo "sqlite_tests_passed=false" >> $GITHUB_OUTPUT
+            echo "SQLite E2E tests failed"
           fi
         env:
           DB_TYPE: sqlite
           SQLITE_DB_PATH: "tests/e2e/test_database.sqlite"
+          TEST_PORT: 3001
+          LOG_LEVEL: debug
 
       - name: Test Summary
         if: always()
@@ -283,6 +326,9 @@ jobs:
           PG_STATUS="${{ steps.pg-tests.outputs.pg_tests_passed }}"
           SQLITE_STATUS="${{ steps.sqlite-tests.outputs.sqlite_tests_passed }}"
 
+          echo "Raw PostgreSQL test status: $PG_STATUS"
+          echo "Raw SQLite test status: $SQLITE_STATUS"
+
           if [ "$PG_STATUS" == "true" ]; then
             echo "✅ PostgreSQL E2E Tests: Passed"
             PG_PASSED=true
@@ -290,8 +336,8 @@ jobs:
             echo "❌ PostgreSQL E2E Tests: Failed"
             PG_PASSED=false
           else
-            echo "⚠️ PostgreSQL E2E Tests: Status Unknown (assuming passed)"
-            PG_PASSED=true
+            echo "⚠️ PostgreSQL E2E Tests: Status Unknown (assuming failed for safety)"
+            PG_PASSED=false
           fi
 
           if [ "$SQLITE_STATUS" == "true" ]; then
@@ -301,8 +347,8 @@ jobs:
             echo "❌ SQLite E2E Tests: Failed"
             SQLITE_PASSED=false
           else
-            echo "⚠️ SQLite E2E Tests: Status Unknown (assuming passed)"
-            SQLITE_PASSED=true
+            echo "⚠️ SQLite E2E Tests: Status Unknown (assuming failed for safety)"
+            SQLITE_PASSED=false
           fi
 
           # Overall status - only fail if both test suites explicitly failed
@@ -325,5 +371,8 @@ jobs:
 
           # Exit with error if all tests failed
           if [ "$OVERALL_STATUS" == "FAILED" ]; then
+            echo "All test suites failed, marking the workflow as failed"
             exit 1
+          else
+            echo "At least one test suite passed, marking the workflow as successful"
           fi

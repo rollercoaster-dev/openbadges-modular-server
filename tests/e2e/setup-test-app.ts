@@ -61,7 +61,13 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
       sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || config.database.sqliteFile || ':memory:',
       sqliteBusyTimeout: config.database.sqliteBusyTimeout,
       sqliteSyncMode: config.database.sqliteSyncMode,
-      sqliteCacheSize: config.database.sqliteCacheSize
+      sqliteCacheSize: config.database.sqliteCacheSize,
+      // Add explicit user/password for PostgreSQL
+      postgresUser: process.env.POSTGRES_USER || 'testuser',
+      postgresPassword: process.env.POSTGRES_PASSWORD || 'testpassword',
+      postgresHost: process.env.POSTGRES_HOST || 'localhost',
+      postgresPort: process.env.POSTGRES_PORT || '5433',
+      postgresDb: process.env.POSTGRES_DB || 'openbadges_test'
     };
 
     // Enhanced logging for database configuration
@@ -159,16 +165,45 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
           const postgres = await import('postgres');
 
           // Create PostgreSQL connection
-          const connectionString = dbConfig.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges_test';
+          // Build connection string from components if not provided
+          let connectionString = dbConfig.connectionString;
+          if (!connectionString) {
+            // Construct connection string from individual components
+            const user = dbConfig.postgresUser;
+            const password = dbConfig.postgresPassword;
+            const host = dbConfig.postgresHost;
+            const port = dbConfig.postgresPort;
+            const database = dbConfig.postgresDb;
+
+            connectionString = `postgresql://${user}:${password}@${host}:${port}/${database}`;
+            logger.info('Built PostgreSQL connection string from components', {
+              user,
+              host,
+              port,
+              database,
+              // Don't log the password
+            });
+          }
+
           logger.info(`PostgreSQL connection string: ${connectionString.toString().replace(/:[^:@]+@/, ':***@')}`);
 
           try {
             // Add connection timeout to fail faster in CI environment
             const client = postgres.default(connectionString, {
               max: 1,
-              connect_timeout: 5, // 5 seconds timeout
+              connect_timeout: 10, // 10 seconds timeout
               idle_timeout: 5,
-              max_lifetime: 30
+              max_lifetime: 30,
+              // Add debug logging for connection issues
+              onnotice: (notice) => {
+                logger.debug('PostgreSQL notice', { notice });
+              },
+              debug: (connection, query, params, types) => {
+                logger.debug('PostgreSQL debug', {
+                  connection: connection.toString(),
+                  query: query.toString().substring(0, 100) + '...',
+                });
+              }
             });
 
             // Apply the fixed migration SQL
@@ -365,10 +400,22 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
     return { app, server };
 
   } catch (error) {
+    // More detailed error logging
     if (error instanceof Error) {
-      logger.logError('Failed to start test server', error);
+      logger.error('Failed to start test server', {
+        message: error.message,
+        stack: error.stack,
+        dbType: process.env.DB_TYPE || config.database.type,
+        dbUrl: process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':***@') || 'not set',
+        testPort: process.env.TEST_PORT || '3001',
+        isCI: process.env.CI === 'true',
+        nodeEnv: process.env.NODE_ENV
+      });
     } else {
-      logger.error('Failed to start test server', { message: String(error) });
+      logger.error('Failed to start test server with unknown error', {
+        error: String(error),
+        dbType: process.env.DB_TYPE || config.database.type
+      });
     }
 
     // Create a minimal app that will respond with 500 errors
