@@ -430,10 +430,12 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
 
     // Start the server with Bun
     const testPort = parseInt(process.env.TEST_PORT || '3001');
+    logger.info(`Starting test server on port ${testPort} with host ${config.server.host}`);
+
     const server = Bun.serve({
       fetch: app.fetch,
       port: testPort,
-      hostname: config.server.host,
+      hostname: config.server.host || '0.0.0.0', // Ensure we bind to all interfaces
       development: true,
     });
 
@@ -470,10 +472,12 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
     });
 
     const testPort = parseInt(process.env.TEST_PORT || '3001');
+    logger.info(`Starting minimal error server on port ${testPort} with host ${config.server.host || '0.0.0.0'}`);
+
     const server = Bun.serve({
       fetch: minimalApp.fetch,
       port: testPort,
-      hostname: config.server.host,
+      hostname: config.server.host || '0.0.0.0', // Ensure we bind to all interfaces
       development: true,
     });
 

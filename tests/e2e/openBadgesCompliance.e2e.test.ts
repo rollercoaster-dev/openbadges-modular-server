@@ -100,10 +100,13 @@ process.env.TEST_PORT = TEST_PORT.toString();
 logger.info(`Using test port: ${TEST_PORT}`);
 
 // Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
+const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
 const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
+// Log the API URL for debugging
+logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';

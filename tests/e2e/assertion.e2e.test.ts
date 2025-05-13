@@ -10,10 +10,13 @@ const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port betw
 process.env.TEST_PORT = TEST_PORT.toString();
 
 // Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
+const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 // const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
 // const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`; // Not used in this simplified test
 const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
+// Log the API URL for debugging
+logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';

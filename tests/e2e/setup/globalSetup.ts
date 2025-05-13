@@ -49,6 +49,9 @@ function loadEnvFile(filePath: string): void {
 export let runningApp: Hono | null = null;
 export const TEST_PORT = parseInt(process.env.TEST_PORT || '3000');
 export const API_URL = `http://${process.env.HOST || '0.0.0.0'}:${TEST_PORT}`;
+
+// Log the API URL for debugging
+logger.info(`Global E2E setup: Using API URL: ${API_URL}`);
 export const API_KEY = process.env.AUTH_API_KEY_TEST?.split(':')[0] || 'verysecretkeye2e';
 
 export default async (): Promise<void> => {

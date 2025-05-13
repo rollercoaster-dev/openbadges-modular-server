@@ -5,8 +5,8 @@
  * LRU (Least Recently Used) cache implementation that's compatible with Bun.js.
  */
 
-// Import LRU module - using ESM import style for better Bun compatibility
-import lruImported from 'lru.min';
+// Import LRU module - using named ESM import for LRU constructor
+import { LRU as LruConstructorFunction } from 'lru.min';
 
 // Define a more specific type for the LRU cache instance
 type LRUType = {
@@ -23,12 +23,7 @@ type LRUType = {
 // Define a type for the LRU constructor function
 type LRUConstructor = (options: { max: number; updateAgeOnGet: boolean }) => LRUType;
 
-// Interface for the possible shapes of the imported lru.min module
-interface LruModuleWithOptions {
-  default?: LRUConstructor;
-  LRU?: LRUConstructor;
-  lru?: LRUConstructor;
-}
+
 
 import { CacheInterface, CacheStats } from './cache.interface';
 
@@ -69,46 +64,19 @@ export class CacheService implements CacheInterface {
     // LRU.min exports a function, not a class constructor
     // Call the function directly with properly typed options
     // Determine the correct LRU constructor function from the imported module.
-    let lruConstructor: LRUConstructor | undefined; // Allow undefined initially
-    const lruModuleChecked = lruImported as LruModuleWithOptions; // Use the interface for type-safe access
+    // We are now using a named import for LRU.
+    const lruConstructor: LRUConstructor = LruConstructorFunction;
 
-    if (typeof lruImported === 'function') {
-      // Case 1: lru.min is directly the constructor function
-      lruConstructor = lruImported as LRUConstructor;
-    } else if (lruModuleChecked && typeof lruModuleChecked.default === 'function') {
-      // Case 2: 'default' property is the constructor
-      lruConstructor = lruModuleChecked.default;
-    } else if (lruModuleChecked && typeof lruModuleChecked.LRU === 'function') {
-      // Case 3: 'LRU' property is the constructor
-      lruConstructor = lruModuleChecked.LRU;
-    } else if (lruModuleChecked && typeof lruModuleChecked.lru === 'function') {
-      // Case 4: 'lru' property is the constructor
-      lruConstructor = lruModuleChecked.lru;
-    }
-    else { // No suitable constructor found
-      let importTypeInfo = `lruImported type: ${typeof lruImported}.`;
-      if (lruImported && typeof lruImported === 'object') {
-        // Safely get keys if lruImported is an object
-        const objectKeys = Object.keys(lruImported as object);
-        importTypeInfo += ` Keys: ${objectKeys.join(', ')}.`;
-        // Check for 'default' property using the typed variable
-        if (lruModuleChecked.default) {
-          importTypeInfo += ` Type of 'default' property: ${typeof lruModuleChecked.default}.`;
-        } else {
-          importTypeInfo += ` 'default' property not found or not a function.`;
-        }
-      }
+    if (typeof lruConstructor !== 'function') {
+      // This check serves as a safeguard. If the named import 'LRU'
+      // was not a function, this would indicate a problem with the module's structure
+      // or the import statement itself.
       throw new TypeError(
-        `lru.min module could not be resolved to a callable LRU constructor. ${importTypeInfo}`
+        `The named import 'LRU' from 'lru.min' did not resolve to a function. Type: ${typeof LruConstructorFunction}`
       );
     }
 
-    if (!lruConstructor) {
-        // This path should ideally be unreachable if the previous else block throws.
-        throw new TypeError('LRU constructor could not be determined (logical error).');
-    }
-
-    this.cache = lruConstructor({ // lruConstructor is now LRUConstructor
+    this.cache = lruConstructor({
       max,
       updateAgeOnGet
     });

@@ -28,8 +28,11 @@ if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
 }
 
 // Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
+const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
+
+// Log the API URL for debugging
+logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints - use the one from environment variables
 const API_KEY = process.env.AUTH_API_KEY_E2E?.split(':')[0] || 'verysecretkeye2e';
