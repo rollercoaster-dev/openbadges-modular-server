@@ -143,26 +143,6 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: unit-and-integration-tests
-    services:
-      # Use the official PostgreSQL service container following GitHub best practices
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpassword
-          POSTGRES_DB: openbadges_test
-          # Disable host-based authentication for simplicity in tests
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          # Map the PostgreSQL port to a fixed port on the host
-          - 5433:5432
-        # Enhanced health checks to ensure PostgreSQL is fully ready
-        options: >-
-          --health-cmd "pg_isready -U testuser -d openbadges_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-          --health-start-period=10s
 
     steps:
       - name: Checkout repository
@@ -286,6 +266,42 @@ jobs:
         run: |
           echo "Running PostgreSQL migrations..."
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:generate:pg
+          NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
+
+      - name: Start PostgreSQL Docker container
+        run: |
+          echo "Starting PostgreSQL Docker container..."
+          docker-compose -f docker-compose.test.yml up -d
+
+          # Wait for PostgreSQL to be ready
+          echo "Waiting for PostgreSQL to be ready..."
+          MAX_RETRIES=30
+          RETRY_INTERVAL=2
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            if pg_isready -h localhost -p 5433 -U testuser -d openbadges_test; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+
+            if [ $i -eq $MAX_RETRIES ]; then
+              echo "PostgreSQL failed to start after $MAX_RETRIES attempts"
+              echo "Checking PostgreSQL logs:"
+              docker logs $(docker ps | grep postgres | awk '{print $1}')
+              exit 1
+            fi
+
+            echo "Waiting for PostgreSQL to start... ($i/$MAX_RETRIES)"
+            sleep $RETRY_INTERVAL
+          done
+
+          # Print PostgreSQL version and connection info
+          echo "PostgreSQL version:"
+          PGPASSWORD=testpassword psql -h localhost -p 5433 -U testuser -d openbadges_test -c "SELECT version();"
+
+      - name: Run database migrations
+        run: |
+          echo "Running PostgreSQL migrations..."
           NODE_ENV=test DB_TYPE=postgresql DATABASE_URL=postgresql://testuser:testpassword@localhost:5433/openbadges_test bun run db:migrate:pg
 
       - name: Run E2E tests with PostgreSQL
