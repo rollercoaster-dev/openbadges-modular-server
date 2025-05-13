@@ -20,6 +20,10 @@ type LRUType = {
   keys: () => string[];
   size: number;
 };
+
+// Define a type for the LRU constructor function
+type LRUConstructor = (options: { max: number; updateAgeOnGet: boolean }) => LRUType;
+
 import { CacheInterface, CacheStats } from './cache.interface';
 
 export interface CacheOptions {
@@ -58,7 +62,34 @@ export class CacheService implements CacheInterface {
     // Create a new LRU cache instance
     // LRU.min exports a function, not a class constructor
     // Call the function directly with properly typed options
-    this.cache = lruModule({
+    // Determine the correct LRU constructor function from the imported module.
+    // The error "lruModule is not a function... lruModule is an instance of Object"
+    // indicates that the original attempt (lruModule.default || lruModule) resulted in
+    // trying to call lruModule (the object) as a function, because lruModule.default was falsy.
+    let lruConstructor: LRUConstructor;
+
+    if (lruModule && typeof lruModule.lru === 'function') {
+      // Case 1: Exported as a named 'lru' property (e.g., module.exports = { lru: fn })
+      lruConstructor = lruModule.lru;
+    } else if (lruModule && typeof lruModule.LRU === 'function') {
+      // Case 2: Exported as a named 'LRU' property (common for packages like 'lru-cache')
+      lruConstructor = lruModule.LRU;
+    } else if (lruModule && typeof lruModule.default === 'function') {
+      // Case 3: Standard ESM default export accessed via .default (e.g., require('esm-module').default)
+      lruConstructor = lruModule.default;
+    } else if (typeof lruModule === 'function') {
+      // Case 4: Directly exported function (CJS style: module.exports = function() {})
+      // This is less likely given the error stating "lruModule is an instance of Object".
+      lruConstructor = lruModule as LRUConstructor;
+    } else {
+      // If no suitable constructor is found, throw a TypeError.
+      // The console.error was removed to satisfy linting rules. The TypeError provides sufficient indication of the issue.
+      throw new TypeError(
+        "lru.min module does not provide a callable LRU constructor in expected formats (.lru, .LRU, .default, or direct export)."
+      );
+    }
+    
+    this.cache = lruConstructor({
       max,
       updateAgeOnGet
     }) as LRUType;
