@@ -101,39 +101,12 @@ async function runSqliteMigrations() {
         // Read the file line by line to avoid issues with SQLite's statement parsing
         const sql = fs.readFileSync(fixedMigrationPath, 'utf8');
 
-        // Split by semicolons and filter out empty statements
-        const statements = sql
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0);
-
-        // Execute each statement individually without a transaction
-        for (const statement of statements) {
-          try {
-            // Skip comments and empty lines
-            if (statement.startsWith('--') || statement.trim() === '') {
-              continue;
-            }
-
-            // Execute the statement
-            logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
-            sqlite.exec(statement + ';');
-          } catch (stmtError) {
-            // Log the error but continue with other statements
-            logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
-              error: stmtError instanceof Error ? stmtError.message : String(stmtError)
-            });
-          }
-        }
-
-        logger.info('Fixed migration SQL applied successfully.');
-      } else {
-        // Fall back to the original fixed file if the new one doesn't exist
-        const originalFixedPath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
-
-        if (fs.existsSync(originalFixedPath)) {
-          logger.info('New fixed migration not found, applying original fixed SQL...');
-          const sql = fs.readFileSync(originalFixedPath, 'utf8');
+        try {
+          // Try to execute the entire file at once
+          sqlite.exec(sql);
+          logger.info('Successfully executed the entire migration file');
+        } catch (error) {
+          logger.error('Failed to execute migration file as a whole, trying statement by statement', error);
 
           // Split by semicolons and filter out empty statements
           const statements = sql
@@ -141,7 +114,7 @@ async function runSqliteMigrations() {
             .map(stmt => stmt.trim())
             .filter(stmt => stmt.length > 0);
 
-          // Execute each statement individually without a transaction
+          // Execute each statement individually
           for (const statement of statements) {
             try {
               // Skip comments and empty lines
@@ -154,9 +127,52 @@ async function runSqliteMigrations() {
               sqlite.exec(statement + ';');
             } catch (stmtError) {
               // Log the error but continue with other statements
-              logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+              logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
                 error: stmtError instanceof Error ? stmtError.message : String(stmtError)
               });
+            }
+          }
+        }
+
+        logger.info('Fixed migration SQL applied successfully.');
+      } else {
+        // Fall back to the original fixed file if the new one doesn't exist
+        const originalFixedPath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
+
+        if (fs.existsSync(originalFixedPath)) {
+          logger.info('New fixed migration not found, applying original fixed SQL...');
+          const sql = fs.readFileSync(originalFixedPath, 'utf8');
+
+          try {
+            // Try to execute the entire file at once
+            sqlite.exec(sql);
+            logger.info('Successfully executed the original migration file');
+          } catch (error) {
+            logger.error('Failed to execute original migration file as a whole, trying statement by statement', error);
+
+            // Split by semicolons and filter out empty statements
+            const statements = sql
+              .split(';')
+              .map(stmt => stmt.trim())
+              .filter(stmt => stmt.length > 0);
+
+            // Execute each statement individually
+            for (const statement of statements) {
+              try {
+                // Skip comments and empty lines
+                if (statement.startsWith('--') || statement.trim() === '') {
+                  continue;
+                }
+
+                // Execute the statement
+                logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
+                sqlite.exec(statement + ';');
+              } catch (stmtError) {
+                // Log the error but continue with other statements
+                logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
+                  error: stmtError instanceof Error ? stmtError.message : String(stmtError)
+                });
+              }
             }
           }
 
