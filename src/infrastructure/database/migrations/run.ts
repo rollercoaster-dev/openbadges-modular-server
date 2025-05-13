@@ -201,10 +201,8 @@ async function runPostgresMigrations() {
 
         for (const statement of statements) {
           try {
-            // Use the statement as is - no need to replace types
-            const pgStatement = statement;
-
-            await client.unsafe(pgStatement + ';');
+            // Execute the statement directly
+            await client.unsafe(statement + ';');
           } catch (stmtError) {
             // Log the error but continue with other statements
             logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {

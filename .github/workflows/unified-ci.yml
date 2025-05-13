@@ -7,6 +7,10 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]
 
+# Default permissions
+permissions:
+  contents: read
+
 # Global environment variables
 env:
   NODE_ENV: test
@@ -131,14 +135,14 @@ jobs:
           mkdir -p tests/e2e
           touch tests/e2e/test_database.sqlite
           chmod 666 tests/e2e/test_database.sqlite
-          
+
           # Verify SQLite file exists and has proper permissions
           ls -la tests/e2e/test_database.sqlite
-          
+
           # Run SQLite migrations
           NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:generate:sqlite
           NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:migrate:sqlite
-          
+
           # Verify SQLite database was created properly
           node -e "
             const fs = require('fs');
@@ -160,7 +164,7 @@ jobs:
     name: PostgreSQL Tests
     runs-on: ubuntu-latest
     needs: core-tests
-    
+
     # Service container for PostgreSQL
     services:
       postgres:
@@ -178,7 +182,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -291,7 +295,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

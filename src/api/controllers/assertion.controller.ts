@@ -133,7 +133,7 @@ export class AssertionController {
     // Check if user has permission to create assertions
     if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to create an assertion without permission`);
-      throw new Error('Insufficient permissions to create assertion');
+      throw new BadRequestError('Insufficient permissions to create assertion');
     }
     try {
       // Log the raw data for debugging
@@ -294,7 +294,7 @@ export class AssertionController {
     // Check if user has permission to update assertions
     if (user && !this.hasPermission(user, UserPermission.UPDATE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to update assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to update assertion');
+      throw new BadRequestError('Insufficient permissions to update assertion');
     }
     try {
       // Validate incoming data using Zod schema first!
@@ -342,7 +342,7 @@ export class AssertionController {
     // Check if user has permission to revoke assertions
     if (user && !this.hasPermission(user, UserPermission.REVOKE_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to revoke assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to revoke assertion');
+      throw new BadRequestError('Insufficient permissions to revoke assertion');
     }
 
     const result = await this.assertionRepository.revoke(toIRI(id) as Shared.IRI, reason);
@@ -415,7 +415,7 @@ export class AssertionController {
     // Check if user has permission to sign assertions
     if (user && !this.hasPermission(user, UserPermission.SIGN_ASSERTION)) {
       logger.warn(`User ${user.claims?.['sub'] || 'unknown'} attempted to sign assertion ${id} without permission`);
-      throw new Error('Insufficient permissions to sign assertion');
+      throw new BadRequestError('Insufficient permissions to sign assertion');
     }
     try {
       // Initialize the key service
