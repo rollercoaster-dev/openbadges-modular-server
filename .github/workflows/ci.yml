@@ -21,6 +21,14 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache # Standard cache path for Bun
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -37,7 +45,21 @@ jobs:
           DB_TYPE: sqlite
           SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite
           # Add any other necessary environment variables for tests
-        run: bun test # Assuming 'bun test' is your test command
+        run: bun test --coverage --reporter=junit --outputFile=./test-results-sqlite.xml # Generate reports
+
+      - name: Upload SQLite Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-sqlite
+          path: ./test-results-sqlite.xml
+
+      - name: Upload SQLite Coverage Report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-sqlite
+          path: ./coverage
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -67,6 +89,14 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache # Standard cache path for Bun
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -95,4 +125,18 @@ jobs:
           DB_TYPE: postgresql
           DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
           # Add any other necessary environment variables for tests
-        run: bun test # Assuming 'bun test' is your test command
+        run: bun test --coverage --reporter=junit --outputFile=./test-results-postgres.xml # Generate reports
+
+      - name: Upload PostgreSQL Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-postgres
+          path: ./test-results-postgres.xml
+
+      - name: Upload PostgreSQL Coverage Report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-postgres
+          path: ./coverage
