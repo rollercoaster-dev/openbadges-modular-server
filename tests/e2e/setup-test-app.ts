@@ -198,7 +198,7 @@ export async function setupTestApp(): Promise<{ app: Hono, server: unknown }> {
               onnotice: (notice) => {
                 logger.debug('PostgreSQL notice', { notice });
               },
-              debug: (connection, query, params, types) => {
+              debug: (connection, query, _params, _types) => {
                 logger.debug('PostgreSQL debug', {
                   connection: connection.toString(),
                   query: query.toString().substring(0, 100) + '...',
