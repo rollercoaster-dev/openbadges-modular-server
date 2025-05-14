@@ -1,18 +1,19 @@
 /**
  * API Documentation for Open Badges API
- * 
+ *
  * This file contains the OpenAPI/Swagger documentation for the API endpoints.
  */
 
 import { OpenAPIObject } from 'openapi3-ts/oas30';
 import { config } from '../config/config';
 import { EXAMPLE_EDU_EVIDENCE_URL, EXAMPLE_EDU_KEYS_URL, EXAMPLE_EDU_URL, GITHUB_REPO_URL, MIT_LICENSE_URL, OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
+import { getAppVersion } from '../utils/version/app-version';
 
 export const openApiConfig: OpenAPIObject = {
   openapi: '3.0.0',
   info: {
     title: 'Open Badges API',
-    version: '1.0.0',
+    version: getAppVersion().version,
     description: 'A stateless, modular Open Badges API adhering to the Open Badges 3.0 specification',
     contact: {
       name: 'Open Badges API Team',
@@ -41,9 +42,84 @@ export const openApiConfig: OpenAPIObject = {
     {
       name: 'Assertions',
       description: 'Operations related to badge assertions'
+    },
+    {
+      name: 'System',
+      description: 'System-level operations like health checks and version information'
     }
   ],
   paths: {
+    '/version': {
+      get: {
+        tags: ['System'],
+        summary: 'Get API version information',
+        description: 'Returns the current version of the API',
+        responses: {
+          '200': {
+            description: 'Successful operation',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    version: {
+                      type: 'string',
+                      description: 'Semantic version number',
+                      example: '1.0.0'
+                    },
+                    formatted: {
+                      type: 'string',
+                      description: 'Formatted version string with additional information',
+                      example: '1.0.0 (abc1234) built on 2023-06-15'
+                    },
+                    details: {
+                      type: 'object',
+                      properties: {
+                        major: {
+                          type: 'number',
+                          description: 'Major version number',
+                          example: 1
+                        },
+                        minor: {
+                          type: 'number',
+                          description: 'Minor version number',
+                          example: 0
+                        },
+                        patch: {
+                          type: 'number',
+                          description: 'Patch version number',
+                          example: 0
+                        },
+                        preRelease: {
+                          type: 'string',
+                          description: 'Pre-release identifier',
+                          example: 'beta.1'
+                        },
+                        buildMetadata: {
+                          type: 'string',
+                          description: 'Build metadata',
+                          example: 'build.123'
+                        },
+                        gitCommit: {
+                          type: 'string',
+                          description: 'Git commit hash',
+                          example: 'abc1234'
+                        },
+                        buildDate: {
+                          type: 'string',
+                          description: 'Build date',
+                          example: '2023-06-15'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/issuers': {
       post: {
         tags: ['Issuers'],

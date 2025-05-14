@@ -13,6 +13,7 @@ import { QueryLoggerService } from '../../infrastructure/database/utils/query-lo
 import { PreparedStatementManager } from '../../infrastructure/database/utils/prepared-statements';
 import { type DatabaseInterface } from '../../infrastructure/database/interfaces/database.interface';
 import { type CacheStats } from '../../infrastructure/cache/cache.interface';
+import { getAppVersion, formatVersion } from '../version/app-version';
 
 /**
  * Represents the health check result
@@ -97,8 +98,7 @@ export class HealthCheckService {
       queries: undefined as { enabled: boolean; stats?: Record<string, unknown>; slowQueries?: Array<{ query: string; duration: number; timestamp: string }>; preparedStatements?: Record<string, unknown> } | undefined,
       memory: this.getMemoryMetrics(),
       environment: process.env.NODE_ENV || 'development',
-      // TODO: Find a reliable way to get app version without JSON import issues or use a build-time variable
-      version: 'unknown'
+      version: formatVersion(getAppVersion())
     };
 
     // Check Database Connection

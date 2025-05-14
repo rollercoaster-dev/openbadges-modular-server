@@ -1,5 +1,6 @@
 {
   "name": "open-badges-api",
+  "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -38,7 +39,10 @@
     "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:migrate:sqlite",
     "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun test ./tests/e2e",
     "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/e2e",
-    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg"
+    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg",
+    "semantic-release": "semantic-release",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run"
   },
   "lint-staged": {
     "*.ts": [
@@ -46,6 +50,9 @@
     ]
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.2",
     "@types/bun": "latest",
     "@types/pg": "^8.11.13",
     "@typescript-eslint/eslint-plugin": "^8.30.1",
@@ -54,6 +61,7 @@
     "eslint": "^9.24.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",
+    "semantic-release": "^24.2.3",
     "tsc-files": "^1.1.4"
   },
   "peerDependencies": {

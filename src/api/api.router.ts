@@ -12,6 +12,7 @@ import { CreateIssuerDto, UpdateIssuerDto, CreateBadgeClassDto, UpdateBadgeClass
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
+import { VersionController } from './controllers/version.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
@@ -109,6 +110,13 @@ export async function createApiRouter(
   router.get('/health/deep', async (c) => {
     const result = await HealthCheckService.deepCheck();
     return c.json(result);
+  });
+
+  // Add version endpoint
+  router.get('/version', (c) => {
+    const versionController = new VersionController();
+    const versionInfo = versionController.getVersion();
+    return c.json(versionInfo);
   });
 
   // Validation middleware is applied per route
