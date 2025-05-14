@@ -73,131 +73,102 @@ Examples of permissions:
    - Server validates token and extracts user information
    - RBAC middleware checks if user has required roles/permissions
 
-## API Endpoints
+## API Authentication
 
-### Authentication Endpoints
+### Authenticating API Requests
 
-#### Login
+All API endpoints that require authentication should include the appropriate authentication header based on the method being used:
 
-```
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "usernameOrEmail": "user@example.com",
-  "password": "secure-password"
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "user-id",
-    "username": "username",
-    "email": "user@example.com",
-    "roles": ["user"]
-  }
-}
-```
-
-#### Register
+#### JWT Authentication
 
 ```
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "username": "newuser",
-  "email": "newuser@example.com",
-  "password": "secure-password",
-  "firstName": "New",
-  "lastName": "User"
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "user-id",
-    "username": "newuser",
-    "email": "newuser@example.com",
-    "roles": ["user"]
-  }
-}
-```
-
-#### Get Profile
-
-```
-GET /api/v1/auth/profile
+GET /v2/issuers
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "user": {
-    "id": "user-id",
-    "username": "username",
-    "email": "user@example.com",
-    "roles": ["user"],
-    "permissions": ["view:backpack", "manage:backpack"]
+#### API Key Authentication
+
+```
+GET /v2/issuers
+Authorization: ApiKey your-api-key
+```
+
+#### Basic Authentication
+
+```
+GET /v2/issuers
+Authorization: Basic base64(username:password)
+```
+
+### Authentication Response Codes
+
+- **200 OK**: Request successful
+- **401 Unauthorized**: Authentication required or failed
+- **403 Forbidden**: Authenticated but insufficient permissions
+
+### Authentication in E2E Tests
+
+For E2E tests, you can use the test API key defined in the environment variables:
+
+```typescript
+// In your test file
+const API_KEY = 'test-api-key';
+
+// Make authenticated request
+const response = await fetch(`${API_URL}/v2/issuers`, {
+  headers: {
+    'Authorization': `ApiKey ${API_KEY}`,
+    'Content-Type': 'application/json'
   }
-}
+});
 ```
 
 ## Configuration
 
-Authentication settings are configured in the server configuration file:
+Authentication settings are configured through environment variables and the server configuration:
+
+### Environment Variables
+
+```bash
+# JWT Configuration
+JWT_SECRET=your-secure-jwt-secret
+JWT_TOKEN_EXPIRY_SECONDS=3600
+JWT_ISSUER=openbadges-server
+
+# API Keys
+AUTH_API_KEY=your-api-key
+AUTH_API_KEY_TEST=test-api-key
+AUTH_API_KEY_E2E=e2e-test-api-key
+
+# Admin User
+ADMIN_USERNAME=admin
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=secure-admin-password
+```
+
+### Configuration File
+
+The authentication configuration is loaded in the server's config module:
 
 ```typescript
-// config.ts
+// src/config/config.ts
 export const config = {
   auth: {
-    enabled: true,
+    enabled: process.env.AUTH_ENABLED !== 'false',
     jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
     tokenExpirySeconds: parseInt(process.env.JWT_TOKEN_EXPIRY_SECONDS || '3600', 10),
     issuer: process.env.JWT_ISSUER || 'openbadges-server',
-    publicPaths: ['/api/v1/auth/login', '/api/v1/auth/register'],
-    adapters: {
-      apiKey: {
-        enabled: true,
-        keys: {
-          'service-1': {
-            key: 'api-key-1',
-            roles: ['service']
-          }
-        }
-      },
-      basicAuth: {
-        enabled: true,
-        credentials: {
-          'admin': {
-            password: 'hashed-password',
-            roles: ['admin']
-          }
-        }
-      },
-      oauth2: {
-        enabled: false,
-        jwksUri: 'https://example.com/.well-known/jwks.json',
-        issuer: 'https://example.com',
-        audience: 'api://openbadges'
-      }
+    apiKeys: {
+      main: process.env.AUTH_API_KEY || 'default-api-key-change-in-production',
+      test: process.env.AUTH_API_KEY_TEST || 'test-api-key',
+      e2e: process.env.AUTH_API_KEY_E2E || 'e2e-test-api-key'
     },
-    adminUser: {
-      enabled: true,
-      username: 'admin',
-      email: 'admin@example.com',
-      password: process.env.ADMIN_PASSWORD
-    }
+    // Public paths that don't require authentication
+    publicPaths: [
+      '/health',
+      '/docs',
+      '/swagger'
+    ]
   }
 };
 ```

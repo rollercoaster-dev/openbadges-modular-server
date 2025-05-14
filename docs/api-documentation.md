@@ -1,19 +1,35 @@
 # Open Badges API Documentation
 
-This document provides comprehensive documentation for the Open Badges API, which supports both Open Badges 2.0 and 3.0 specifications.
+This document provides comprehensive documentation for the Open Badges API, which currently implements the Open Badges 2.0 "hosted" specification with a planned roadmap for full Open Badges 3.0 implementation.
 
 ## Overview
 
-The Open Badges API is a stateless, modular API built using Bun and Elysia, with support for multiple database backends (initially PostgreSQL). The API follows Domain-Driven Design principles and provides endpoints for managing issuers, badge classes, and assertions according to both Open Badges 2.0 and 3.0 specifications.
+The Open Badges API is a stateless, modular API built using Bun and Hono, with support for multiple database backends (SQLite and PostgreSQL). The API follows Domain-Driven Design principles and provides endpoints for managing issuers, badge classes, and assertions according to the Open Badges 2.0 specification, with a planned roadmap for full Open Badges 3.0 implementation.
 
-## Dual-Version Support
+## Implementation Status
 
-The API provides full support for both Open Badges 2.0 and 3.0 specifications through:
+### Current Status: Open Badges 2.0 "Hosted" Implementation
+
+The current version provides a robust implementation of the Open Badges 2.0 specification for "hosted" badges, including:
+- Core entities (Issuer, BadgeClass, Assertion) structured according to the OB2 JSON-LD schema
+- Issuance workflow for creating issuers, defining badge classes, and issuing assertions
+- Hosted verification with proper verification objects and programmatic status checks
+- Complete data for display in client applications
+
+### Roadmap to Full Open Badges Implementation
+
+The project follows a phased roadmap toward full Open Badges 2.0 feature-completeness and subsequent Open Badges 3.0 implementation. For the detailed roadmap with specific tasks and success criteria, see the [OB3 Roadmap](./ob3-roadmap.md).
+
+## API Version Support
+
+The API provides versioned endpoints for both Open Badges 2.0 and 3.0 specifications through:
 
 1. **Versioned Endpoints**: Access version-specific endpoints via `/v2/...` or `/v3/...` paths
 2. **Unified Domain Model**: Core entities represent both specifications with version-specific serialization
 3. **Version Detection**: Automatic detection of badge version from JSON-LD context
 4. **Format Conversion**: Utilities for converting between 2.0 and 3.0 formats
+
+Note: While `/v3/...` endpoints are available, they are currently in development and may not fully implement all Open Badges 3.0 features. See the roadmap for implementation details.
 
 ## API Endpoints
 
@@ -48,9 +64,11 @@ All endpoints under the `/v2/` path return responses formatted according to the 
 - `POST /v2/assertions/:id/revoke` - Revoke an assertion
 - `GET /v2/assertions/:id/verify` - Verify an assertion
 
-### Version 3.0 Endpoints (Open Badges 3.0)
+### Version 3.0 Endpoints (Open Badges 3.0) - In Development
 
-All endpoints under the `/v3/` path return responses formatted according to the Open Badges 3.0 specification.
+All endpoints under the `/v3/` path are designed to return responses formatted according to the Open Badges 3.0 specification. These endpoints are currently in development and may not fully implement all Open Badges 3.0 features as outlined in the [OB3 Roadmap](./ob3-roadmap.md).
+
+The implementation of these endpoints will follow the phased approach described in the roadmap, with full Open Badges 3.0 compliance expected after completing all phases.
 
 #### Issuers
 
@@ -81,7 +99,9 @@ All endpoints under the `/v3/` path return responses formatted according to the 
 
 ### Default Endpoints
 
-For convenience, the API also provides default endpoints without version prefixes that use the Open Badges 3.0 format.
+For convenience, the API also provides default endpoints without version prefixes. Currently, these endpoints use the Open Badges 3.0 format structure but may not fully implement all Open Badges 3.0 features as the implementation progresses through the roadmap phases.
+
+As the Open Badges 3.0 implementation matures according to the roadmap, these default endpoints will be updated to fully comply with the Open Badges 3.0 specification.
 
 ## Data Models
 
@@ -227,7 +247,9 @@ A badge awarded to a recipient.
 
 > Note: The `badgeClass` field is an IRI (`Shared.IRI`).
 
-#### Open Badges 3.0 Format (Verifiable Credential)
+#### Open Badges 3.0 Format (Verifiable Credential) - Planned Implementation
+
+The following format represents the target Open Badges 3.0 implementation as outlined in the [OB3 Roadmap](./ob3-roadmap.md). This format will be fully implemented as the project progresses through the roadmap phases, particularly Phase 5 (OB 3.0 Core VC) and beyond.
 
 ```json
 {
@@ -262,6 +284,9 @@ A badge awarded to a recipient.
   "evidence": {
     "id": "https://example.org/evidence/1",
     "narrative": "The recipient completed all required tasks."
+  },
+  "proof": {
+    // Will be implemented in Phase 5 (OB 3.0 Core VC)
   }
 }
 ```
@@ -401,6 +426,57 @@ The API uses JWT for authentication and implements best practices for security, 
 ## Deployment
 
 The API can be deployed as a standalone service or integrated into an existing application. See the README for deployment instructions.
+
+## Open Badges 3.0 Implementation Roadmap
+
+The API follows a phased approach to implementing the Open Badges 3.0 specification. The roadmap is divided into the following phases:
+
+1. **OB 2.0 Feature-Complete**: Adding signed assertions, issuer public keys, and enhanced verification
+   - Generate JWS (RS256) for each assertion
+   - Expose issuer publicKey in profile
+
+2. **RevocationList**: Implementing revocation lists for signed badges
+   - Publish `/revocations/<issuer>.json` (using either a spec bitstring or array)
+   - Add revocationList link to issuer profile
+
+3. **Evidence & Alignment**: Supporting evidence objects and alignment arrays
+   - Accept evidence objects and alignment arrays on assertions/badge-class
+
+4. **Baked Images Helper**: Developing tools for baking PNG/SVG images with assertion URLs
+   - Develop CLI/endpoint to bake PNG/SVG images with assertion URL
+
+5. **OB 3.0 Core VC**: Wrapping assertions in Verifiable Credential envelopes
+   - Add VC envelope (with type, issuer, credentialSubject, issuanceDate)
+   - Move badge → embed in credentialSubject.achievement
+   - Generate proof (starting with JWS)
+   - Create new `/v3/assertions` returning VC-JSON
+
+6. **Issuer Identity & Keys**: Implementing JWKS and DID:web methodology for verifiable issuer identity
+   - Publish JWKS at `/.well-known/jwks.json` or adopt DID:web methodology
+   - Rotate keys via migration script
+   - Add verificationMethod DID URL to issuer object
+
+7. **Status & Revocation for OB 3**: Implementing VC-native revocation
+   - Implement StatusList2021 (bitstring, 16k entries)
+   - Add credentialStatus to every VC
+   - Set up a nightly job to rebuild lists
+
+8. **OB 3 Service Description & OAuth**: Implementing CLR/BadgeConnect 3.0 API
+   - Publish service JSON at `/.well-known/openbadges`
+   - Implement OAuth 2 client-credentials flow
+   - Add GET `/credentials` with pagination and filters
+
+9. **Compliance & Interop Tests**: Integrating conformance testing
+   - Integrate the OpenBadges Conformance Suite in CI
+   - Run vc-http-api test harness for proofs/status
+   - Perform fuzz tests for schema variants
+
+10. **Docs & Developer UX**: Providing comprehensive documentation for both versions
+    - Split documentation: "Using OB 2" vs "Using OB 3"
+    - Provide code samples in strict TypeScript
+    - Create a migration guide from `/v2` to `/v3`
+
+For the detailed roadmap with specific tasks and success criteria, see the [OB3 Roadmap](./ob3-roadmap.md).
 
 ## Contributing
 

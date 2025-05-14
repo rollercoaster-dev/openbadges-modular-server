@@ -1,25 +1,29 @@
 # Database Configuration
 
-This project supports both SQLite and PostgreSQL databases. The selection is determined by the `DB_TYPE` environment variable.
+This project supports both SQLite and PostgreSQL databases through a modular database architecture. The database type is determined by the `DB_TYPE` environment variable.
 
 ## Environment Variables
 
--   `DB_TYPE`: Specifies the database dialect.
-    -   Set to `sqlite` for SQLite (default).
+-   `DB_TYPE`: Specifies the database type.
+    -   Set to `sqlite` for SQLite (default, no additional setup required).
     -   Set to `postgresql` for PostgreSQL.
 
-### SQLite
+### SQLite Configuration
 
--   `SQLITE_FILE`: (Optional) Path to the SQLite database file. If not set, an in-memory database (`:memory:`) is used.
-    -   Example: `SQLITE_FILE=./local_database.sqlite`
+-   `SQLITE_DB_PATH`: (Optional) Path to the SQLite database file. If not set, an in-memory database (`:memory:`) is used for development or a file in the project directory for production.
+    -   Example: `SQLITE_DB_PATH=./data/database.sqlite`
 
-### PostgreSQL
+### PostgreSQL Configuration
 
 -   `DATABASE_URL`: **Required** when `DB_TYPE=postgresql`. The full connection string.
-    -   Format: `postgres://USER:PASSWORD@HOST:PORT/DATABASE_NAME`
-    -   Example: `DATABASE_URL=postgres://admin:secret@localhost:5432/openbadges_dev`
+    -   Format: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME`
+    -   Example: `DATABASE_URL=postgresql://postgres:password@localhost:5432/openbadges`
 
-For detailed PostgreSQL configuration, see [PostgreSQL Configuration Guide](./postgresql-configuration.md).
+-   `PG_HOST`: Alternative to DATABASE_URL - PostgreSQL host
+-   `PG_PORT`: Alternative to DATABASE_URL - PostgreSQL port (default: 5432)
+-   `PG_USER`: Alternative to DATABASE_URL - PostgreSQL username
+-   `PG_PASSWORD`: Alternative to DATABASE_URL - PostgreSQL password
+-   `PG_DATABASE`: Alternative to DATABASE_URL - PostgreSQL database name
 ### Optional Settings
 
 -   `DB_QUERY_LOGGING`: (Optional) Enable (`true`) or disable (`false`) logging of database queries. Defaults to `true`.
@@ -28,16 +32,16 @@ For detailed PostgreSQL configuration, see [PostgreSQL Configuration Guide](./po
 
 ## Setup and Migrations
 
-Refer to the `npm` scripts defined in `package.json` for database-specific tasks:
+Refer to the scripts defined in `package.json` for database-specific tasks:
 
 -   **Generate Migrations:**
-    -   PostgreSQL: `npm run db:generate:pg`
-    -   SQLite: `npm run db:generate:sqlite`
+    -   SQLite (default): `bun run db:generate`
+    -   PostgreSQL: `DB_TYPE=postgresql bun run db:generate`
 -   **Apply Migrations:**
-    -   PostgreSQL: `npm run db:migrate:pg`
-    -   SQLite: `npm run db:migrate:sqlite`
+    -   SQLite (default): `bun run db:migrate`
+    -   PostgreSQL: `DB_TYPE=postgresql bun run db:migrate`
 -   **Drizzle Studio (Database Browser):**
-    -   PostgreSQL: `npm run db:studio:pg`
-    -   SQLite: `npm run db:studio:sqlite`
+    -   SQLite (default): `bun run db:studio`
+    -   PostgreSQL: `DB_TYPE=postgresql bun run db:studio`
 
 Ensure the correct environment variables (`DB_TYPE`, `DATABASE_URL` or `SQLITE_FILE`) are set before running these commands.
