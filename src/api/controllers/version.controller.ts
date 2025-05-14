@@ -1,6 +1,6 @@
 /**
  * Version Controller
- * 
+ *
  * This controller provides endpoints for retrieving application version information.
  */
 
@@ -15,7 +15,20 @@ export class VersionController {
    * Gets the current application version
    * @returns The current application version information
    */
-  getVersion() {
+  getVersion(): {
+    version: string;
+    formatted: string;
+    details: {
+      major: number;
+      minor: number;
+      patch: number;
+      preRelease?: string;
+      buildMetadata?: string;
+      gitCommit?: string;
+      buildDate?: string;
+    };
+    error?: string;
+  } {
     try {
       const versionInfo = getAppVersion();
       return {
