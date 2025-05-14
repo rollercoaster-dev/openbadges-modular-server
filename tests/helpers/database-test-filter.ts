@@ -78,7 +78,7 @@ export async function isCurrentDatabaseType(dbType: string): Promise<boolean> {
  * @param dbType The database type to check ('sqlite' or 'postgresql')
  * @returns A describe function that only runs if the specified database is connected
  */
-export async function getDescribeForDatabase(dbType: string): Promise<any> {
+export async function getDescribeForDatabase(dbType: string): Promise<(label: string, fn: () => void) => void> {
   const isAvailable = await isCurrentDatabaseType(dbType);
 
   if (isAvailable) {
@@ -95,7 +95,7 @@ export async function getDescribeForDatabase(dbType: string): Promise<any> {
  * @param dbType The database type to check ('sqlite' or 'postgresql')
  * @returns An it function that only runs if the specified database is connected
  */
-export async function getItForDatabase(dbType: string): Promise<any> {
+export async function getItForDatabase(dbType: string): Promise<(label: string, fn: () => void | Promise<unknown>) => void> {
   const isAvailable = await isCurrentDatabaseType(dbType);
 
   if (isAvailable) {
