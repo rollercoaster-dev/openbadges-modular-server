@@ -2,13 +2,6 @@
 
 echo "🔍 Running pre-push checks..."
 
-# Get all staged and committed files that haven't been pushed yet
-CHANGED_FILES=$(git diff --name-only --cached --diff-filter=ACMR | grep "\.ts$" || true)
-COMMITTED_FILES=$(git diff --name-only origin/main...HEAD | grep "\.ts$" || true)
-
-# Combine the lists and remove duplicates
-ALL_FILES=$(echo "$CHANGED_FILES\n$COMMITTED_FILES" | sort | uniq | grep -v "^$")
-
 # Run linting on all TypeScript files
 echo "📝 Linting all TypeScript files..."
 bun run lint
@@ -21,25 +14,11 @@ TYPE_EXIT_CODE=$?
 
 # Run tests
 echo "🧪 Running tests..."
-
-# First check if we have any changes in test files
-if [ -n "$ALL_FILES" ]; then
-  TEST_FILES=$(echo "$ALL_FILES" | grep "\.test\.ts$" || true)
-
-  if [ -n "$TEST_FILES" ]; then
-    echo "Running changed test files..."
-    echo "$TEST_FILES" | xargs bun test
-    TEST_SPECIFIC_EXIT_CODE=$?
-  fi
-fi
-
-# Also run a general test suite to ensure nothing is broken
-echo "Running general test suite..."
 bun test
 TEST_EXIT_CODE=$?
 
 # Check if any of the commands failed
-if [ $LINT_EXIT_CODE -ne 0 ] || [ $TYPE_EXIT_CODE -ne 0 ] || [ $TEST_EXIT_CODE -ne 0 ] || [ "${TEST_SPECIFIC_EXIT_CODE:-0}" -ne 0 ]; then
+if [ $LINT_EXIT_CODE -ne 0 ] || [ $TYPE_EXIT_CODE -ne 0 ] || [ $TEST_EXIT_CODE -ne 0 ]; then
   echo "❌ Pre-push checks failed. Please fix the issues before pushing."
   exit 1
 fi
