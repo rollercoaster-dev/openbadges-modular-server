@@ -19,8 +19,15 @@ Releases are automatically created when code is merged to the `main` branch. The
    - Updates the `CHANGELOG.md` file
    - Creates a git tag for the release
    - Creates a GitHub release with release notes
+   - Triggers the Docker image build and push workflow (via the tag creation)
 
 > **Note**: The version field in `package.json` is managed automatically by semantic-release. You should never manually modify this value as it will be overwritten during the release process.
+
+### Docker Image Release
+
+When a new version is released, a Docker image is automatically built and pushed to the GitHub Container Registry. The image is tagged with the version number and is available at `ghcr.io/rollercoaster-dev/openbadges-modular-server:<version>`.
+
+The Docker image build is triggered by the creation of a tag by semantic-release. The tag follows the format `v<version>` (e.g., `v1.0.0`).
 
 ## Manual Releases
 
@@ -113,6 +120,20 @@ If a release is not created when you expect it to be, check:
 2. Are you on the `main` branch?
 3. Has there been any change since the last release?
 4. Check the GitHub Actions logs for errors.
+
+### NPM-Related Errors
+
+If you see errors related to NPM publishing, check:
+
+1. The `.releaserc.json` file should have the `@semantic-release/npm` plugin configured with `npmPublish: false`.
+2. The release workflow should have a dummy NPM token set in the environment variables.
+
+### Git Authentication Errors
+
+If you see errors related to Git authentication, check:
+
+1. The checkout action in the release workflow should have `persist-credentials: true`.
+2. The workflow should have the correct permissions set (`contents: write`, `issues: write`, `pull-requests: write`).
 
 ### Manual Release Failed
 
