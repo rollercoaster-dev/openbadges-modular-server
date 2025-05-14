@@ -25,9 +25,36 @@ Releases are automatically created when code is merged to the `main` branch. The
 
 ### Docker Image Release
 
-When a new version is released, a Docker image is automatically built and pushed to the GitHub Container Registry. The image is tagged with the version number and is available at `ghcr.io/rollercoaster-dev/openbadges-modular-server:<version>`.
+When a new version is released, a Docker image is automatically built and pushed to the GitHub Container Registry. The image is tagged with multiple version formats and is available at `ghcr.io/rollercoaster-dev/openbadges-modular-server:<tag>`.
 
-The Docker image build is triggered by the creation of a tag by semantic-release. The tag follows the format `v<version>` (e.g., `v1.0.0`).
+The Docker image build is triggered by the "release published" event from semantic-release. The workflow is defined in `.github/workflows/docker-build.yml`.
+
+#### Docker Image Tags
+
+Each release creates multiple tags for the Docker image:
+- Full semantic version (e.g., `v1.2.3`)
+- Major.minor version (e.g., `v1.2`)
+- Major version only (e.g., `v1`)
+
+This allows users to choose their preferred level of version pinning:
+```bash
+# Always use the exact version (most stable)
+docker pull ghcr.io/rollercoaster-dev/openbadges-modular-server:v1.2.3
+
+# Use the latest patch version of 1.2.x
+docker pull ghcr.io/rollercoaster-dev/openbadges-modular-server:v1.2
+
+# Use the latest minor and patch version of 1.x
+docker pull ghcr.io/rollercoaster-dev/openbadges-modular-server:v1
+```
+
+#### Manual Docker Builds
+
+You can also manually trigger a Docker build for any tag or branch using the GitHub Actions interface:
+1. Go to the Actions tab in GitHub
+2. Select the "Build and Push Docker Image" workflow
+3. Click "Run workflow"
+4. Enter the tag to build or leave empty for the latest release
 
 ## Manual Releases
 
@@ -127,13 +154,23 @@ If you see errors related to NPM publishing, check:
 
 1. The `.releaserc.json` file should have the `@semantic-release/npm` plugin configured with `npmPublish: false`.
 2. The release workflow should have a dummy NPM token set in the environment variables.
+3. A `.npmrc` file should be created in the workflow with a dummy token.
 
 ### Git Authentication Errors
 
 If you see errors related to Git authentication, check:
 
-1. The checkout action in the release workflow should have `persist-credentials: true`.
+1. The Git configuration in the workflow should be properly set up with user name and email.
 2. The workflow should have the correct permissions set (`contents: write`, `issues: write`, `pull-requests: write`).
+3. The Git credentials should be properly configured with the GITHUB_TOKEN.
+
+### Docker Build Errors
+
+If you see errors related to Docker image building, check:
+
+1. The Docker build workflow should have the `packages: write` permission.
+2. The Dockerfile should be valid and all required files should be included in the build context.
+3. The GitHub Container Registry should be properly configured for the repository.
 
 ### Manual Release Failed
 

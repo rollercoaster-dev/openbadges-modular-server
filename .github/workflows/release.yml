@@ -9,18 +9,31 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    # Define all necessary permissions
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: write      # Required for creating releases and tags
+      issues: write        # Required for commenting on issues
+      pull-requests: write # Required for commenting on PRs
+      packages: write      # Required for publishing Docker images
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          # Allow semantic-release to push changes back to the repository
-          persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0   # Required for semantic-release to analyze all commits
+          # We'll handle authentication manually
+          persist-credentials: false
+
+      # Set up Git identity for semantic-release commits
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Configure Git to use the GITHUB_TOKEN for authentication
+          git config --global credential.helper store
+          echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,10 +69,29 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Release
+      # Create a .npmrc file with a dummy token to satisfy semantic-release
+      - name: Create .npmrc file
+        run: |
+          echo "//registry.npmjs.org/:_authToken=dummy-npm-token" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+
+      # Run semantic-release with detailed debug information
+      - name: Release with Debug Info
         env:
-          # Use GH_TOKEN instead of GITHUB_TOKEN for better compatibility with semantic-release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Set a dummy NPM_TOKEN to satisfy semantic-release requirements
-          NPM_TOKEN: "dummy-token"
-        run: bun run semantic-release
+          NPM_TOKEN: "dummy-npm-token"
+        run: |
+          echo "============ Environment Information ============"
+          echo "Node version: $(node -v)"
+          echo "Bun version: $(bun -v)"
+          echo "Git version: $(git --version)"
+          echo "Current branch: $(git branch --show-current)"
+          echo "Remote repositories: $(git remote -v)"
+          echo "Working directory: $(pwd)"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "================================================"
+
+          # Run semantic-release with debug flag
+          bun run semantic-release --debug
