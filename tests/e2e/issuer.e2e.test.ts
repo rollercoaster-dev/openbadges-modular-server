@@ -27,6 +27,10 @@ if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
   process.env.SQLITE_DB_PATH = ':memory:';
 }
 
+// Note: We don't need to use the database-test-filter here because
+// the setup-test-app.ts file already checks if the database is available
+// and exits gracefully if it's not.
+
 // Base URL for the API
 const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
 const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;

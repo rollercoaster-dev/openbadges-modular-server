@@ -1,23 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
- 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+
+import { it, expect, beforeEach, afterEach, beforeAll, describe } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from '@/infrastructure/database/modules/sqlite/sqlite.database';
 import { Shared } from 'openbadges-types';
+import { describeSqlite as getDescribeSqlite } from '../../../../helpers/database-test-filter';
 
-let canRunSqlite = false;
-try {
-  // Try to import bun:sqlite and create a DB
-  const { Database } = await import('bun:sqlite');
-  const db = new Database(':memory:');
-  db.close();
-  canRunSqlite = true;
-} catch {
-  // Not available
-}
+// Define the describe function variable that will be initialized in beforeAll
+let describeSqlite: (label: string, fn: () => void) => void = describe.skip;
 
-const describeSqlite = canRunSqlite ? describe : describe.skip;
+// Initialize the describe function before running any tests
+beforeAll(async () => {
+  describeSqlite = await getDescribeSqlite();
+});
 
 describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
   // Create a new database for each test to avoid connection issues

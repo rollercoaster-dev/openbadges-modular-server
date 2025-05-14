@@ -21,15 +21,15 @@ import { Assertion } from '@/domains/assertion/assertion.entity';
 import * as schema from '@/infrastructure/database/modules/postgresql/schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@/utils/logging/logger.service';
+import { describePostgres as getDescribePostgres } from '../../../../helpers/database-test-filter';
 
-// Import the test helper
-import { isDatabaseAvailable } from './postgres-test-helper';
+// Define the describe function variable that will be initialized in beforeAll
+let describePg: (label: string, fn: () => void) => void = describe.skip;
 
-// Check if PostgreSQL is available
-const canConnect = await isDatabaseAvailable();
-
-// Use describe.skip if PostgreSQL is not available
-const describePg = canConnect ? describe : describe.skip;
+// Initialize the describe function before running any tests
+beforeAll(async () => {
+  describePg = await getDescribePostgres();
+});
 
 // Get the database connection string from the test helper
 import { DEFAULT_TEST_CONNECTION_STRING } from './postgres-test-helper';
