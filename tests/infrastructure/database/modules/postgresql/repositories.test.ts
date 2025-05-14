@@ -23,10 +23,13 @@ import { Shared } from 'openbadges-types';
 import { logger } from '@/utils/logging/logger.service';
 import { describePostgres as getDescribePostgres } from '../../../../helpers/database-test-filter';
 
-// Use an immediately-invoked async function to get the describePostgres function
-const describePg = await (async () => {
-  return await getDescribePostgres();
-})();
+// Define the describe function variable that will be initialized in beforeAll
+let describePg: (label: string, fn: () => void) => void = describe.skip;
+
+// Initialize the describe function before running any tests
+beforeAll(async () => {
+  describePg = await getDescribePostgres();
+});
 
 // Get the database connection string from the test helper
 import { DEFAULT_TEST_CONNECTION_STRING } from './postgres-test-helper';
