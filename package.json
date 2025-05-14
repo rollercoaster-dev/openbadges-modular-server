@@ -1,5 +1,6 @@
 {
   "name": "open-badges-api",
+  "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -27,6 +28,12 @@
     "db:studio": "drizzle-kit studio",
     "db:studio:pg": "DB_TYPE=postgresql drizzle-kit studio",
     "db:studio:sqlite": "DB_TYPE=sqlite drizzle-kit studio",
+    "release:manual": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+    "release:local": "semantic-release --no-ci",
+    "release:major": "semantic-release --no-ci --branch main --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator,@semantic-release/changelog,@semantic-release/npm,@semantic-release/git,@semantic-release/github --analyze-commits '{\"preset\":\"angular\",\"releaseRules\":[{\"type\":\"*\",\"release\":\"major\"}]}'",
+    "release:minor": "semantic-release --no-ci --branch main --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator,@semantic-release/changelog,@semantic-release/npm,@semantic-release/git,@semantic-release/github --analyze-commits '{\"preset\":\"angular\",\"releaseRules\":[{\"type\":\"*\",\"release\":\"minor\"}]}'",
+    "release:patch": "semantic-release --no-ci --branch main --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator,@semantic-release/changelog,@semantic-release/npm,@semantic-release/git,@semantic-release/github --analyze-commits '{\"preset\":\"angular\",\"releaseRules\":[{\"type\":\"*\",\"release\":\"patch\"}]}'",
     "build": "bun build src/index.ts --target bun --outdir dist",
     "prepare": "husky",
     "db:test:pg:start": "docker compose -f docker-compose.test.yml up -d --wait",
@@ -38,7 +45,8 @@
     "db:test:sqlite:migrate": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:generate:sqlite && NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun run db:migrate:sqlite",
     "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun test ./tests/e2e",
     "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/e2e",
-    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg"
+    "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg",
+    "semantic-release": "semantic-release"
   },
   "lint-staged": {
     "*.ts": [
@@ -46,6 +54,9 @@
     ]
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.2",
     "@types/bun": "latest",
     "@types/pg": "^8.11.13",
     "@typescript-eslint/eslint-plugin": "^8.30.1",
@@ -54,6 +65,7 @@
     "eslint": "^9.24.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",
+    "semantic-release": "^24.2.3",
     "tsc-files": "^1.1.4"
   },
   "peerDependencies": {
