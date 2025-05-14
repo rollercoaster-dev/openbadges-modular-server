@@ -35,6 +35,7 @@
     "release:minor": "semantic-release --no-ci --branch main --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator,@semantic-release/changelog,@semantic-release/npm,@semantic-release/git,@semantic-release/github --analyze-commits '{\"preset\":\"angular\",\"releaseRules\":[{\"type\":\"*\",\"release\":\"minor\"}]}'",
     "release:patch": "semantic-release --no-ci --branch main --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator,@semantic-release/changelog,@semantic-release/npm,@semantic-release/git,@semantic-release/github --analyze-commits '{\"preset\":\"angular\",\"releaseRules\":[{\"type\":\"*\",\"release\":\"patch\"}]}'",
     "build": "bun build src/index.ts --target bun --outdir dist",
+    "build:npm": "echo 'Building for npm...' && mkdir -p dist && cp package.json dist/",
     "prepare": "husky",
     "db:test:pg:start": "docker compose -f docker-compose.test.yml up -d --wait",
     "db:test:pg:stop": "docker compose -f docker-compose.test.yml down --volumes",

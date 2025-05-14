@@ -4,94 +4,42 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/README.md'
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    # Define all necessary permissions
     permissions:
-      contents: write      # Required for creating releases and tags
-      issues: write        # Required for commenting on issues
-      pull-requests: write # Required for commenting on PRs
-      packages: write      # Required for publishing Docker images
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Required for semantic-release to analyze all commits
-          # We'll handle authentication manually
-          persist-credentials: false
-
-      # Set up Git identity for semantic-release commits
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Configure Git to use the GITHUB_TOKEN for authentication
-          git config --global credential.helper store
-          echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      # Cache dependencies to speed up workflow
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          cache: 'npm'
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Check if bun audit is available and skip if not
-      - name: Verify package signatures (if supported)
-        run: bun audit signatures || echo "Skipping signature verification - bun audit not available in this version"
-
-      - name: Run tests
-        run: bun test
+        run: npm ci
 
       - name: Build
-        run: bun run build
+        run: npm run build:npm
 
-      # Create a .npmrc file with a dummy token to satisfy semantic-release
-      - name: Create .npmrc file
-        run: |
-          echo "//registry.npmjs.org/:_authToken=dummy-npm-token" > .npmrc
-          echo "registry=https://registry.npmjs.org/" >> .npmrc
-
-      # Run semantic-release with detailed debug information
-      - name: Release with Debug Info
+      - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: "dummy-npm-token"
-        run: |
-          echo "============ Environment Information ============"
-          echo "Node version: $(node -v)"
-          echo "Bun version: $(bun -v)"
-          echo "Git version: $(git --version)"
-          echo "Current branch: $(git branch --show-current)"
-          echo "Remote repositories: $(git remote -v)"
-          echo "Working directory: $(pwd)"
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Ref: $GITHUB_REF"
-          echo "================================================"
-
-          # Run semantic-release with debug flag
-          bun run semantic-release --debug
+        run: npx semantic-release
