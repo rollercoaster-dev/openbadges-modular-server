@@ -24,22 +24,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '20'
-          cache: 'npm'
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
-      - name: Build
-        run: npm run build:npm
+      - name: Create .npmrc file
+        run: |
+          echo "//registry.npmjs.org/:_authToken=dummy-npm-token" > .npmrc
 
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: "dummy-npm-token"
-        run: npx semantic-release
+        run: bun x semantic-release
