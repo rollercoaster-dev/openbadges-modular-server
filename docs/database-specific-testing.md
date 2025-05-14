@@ -23,31 +23,35 @@ This ensures that:
 ### Basic Usage
 
 ```typescript
-import { 
-  describeSqlite, 
-  describePostgres 
+import { describe, beforeAll } from 'bun:test';
+import {
+  describeSqlite,
+  describePostgres
 } from '../helpers/database-test-filter';
 
-// Use an immediately-invoked async function to allow await in the top level
-(async () => {
-  // Get database-specific describe functions
-  const describeSqliteTests = await describeSqlite();
-  const describePostgresTests = await describePostgres();
+// Variables to hold the database-specific test functions
+let describeSqliteTests: (label: string, fn: () => void) => void = describe.skip;
+let describePostgresTests: (label: string, fn: () => void) => void = describe.skip;
 
-  // SQLite-specific tests
-  describeSqliteTests('SQLite-Specific Tests', () => {
-    it('should run only when SQLite is connected', () => {
-      // This test only runs when SQLite is connected
-    });
-  });
+// Initialize the test functions before running any tests
+beforeAll(async () => {
+  describeSqliteTests = await describeSqlite();
+  describePostgresTests = await describePostgres();
+});
 
-  // PostgreSQL-specific tests
-  describePostgresTests('PostgreSQL-Specific Tests', () => {
-    it('should run only when PostgreSQL is connected', () => {
-      // This test only runs when PostgreSQL is connected
-    });
+// SQLite-specific tests
+describeSqliteTests('SQLite-Specific Tests', () => {
+  it('should run only when SQLite is connected', () => {
+    // This test only runs when SQLite is connected
   });
-})();
+});
+
+// PostgreSQL-specific tests
+describePostgresTests('PostgreSQL-Specific Tests', () => {
+  it('should run only when PostgreSQL is connected', () => {
+    // This test only runs when PostgreSQL is connected
+  });
+});
 ```
 
 ### Individual Test Cases
@@ -55,34 +59,38 @@ import {
 You can also conditionally run individual test cases:
 
 ```typescript
-import { 
-  itSqlite, 
-  itPostgres 
+import { describe, it, beforeAll } from 'bun:test';
+import {
+  itSqlite,
+  itPostgres
 } from '../helpers/database-test-filter';
 
-// Use an immediately-invoked async function to allow await in the top level
-(async () => {
-  // Get database-specific it functions
-  const itSqliteTest = await itSqlite();
-  const itPostgresTest = await itPostgres();
+// Variables to hold the database-specific test functions
+let itSqliteTest: (label: string, fn: () => void | Promise<unknown>) => void = it.skip;
+let itPostgresTest: (label: string, fn: () => void | Promise<unknown>) => void = it.skip;
 
-  describe('Mixed Database Tests', () => {
-    // This test only runs for SQLite
-    itSqliteTest('should run only for SQLite', () => {
-      // SQLite-specific test
-    });
+// Initialize the test functions before running any tests
+beforeAll(async () => {
+  itSqliteTest = await itSqlite();
+  itPostgresTest = await itPostgres();
+});
 
-    // This test only runs for PostgreSQL
-    itPostgresTest('should run only for PostgreSQL', () => {
-      // PostgreSQL-specific test
-    });
-
-    // This test runs for all database types
-    it('should run for all database types', () => {
-      // Database-agnostic test
-    });
+describe('Mixed Database Tests', () => {
+  // This test only runs for SQLite
+  itSqliteTest('should run only for SQLite', () => {
+    // SQLite-specific test
   });
-})();
+
+  // This test only runs for PostgreSQL
+  itPostgresTest('should run only for PostgreSQL', () => {
+    // PostgreSQL-specific test
+  });
+
+  // This test runs for all database types
+  it('should run for all database types', () => {
+    // Database-agnostic test
+  });
+});
 ```
 
 ## API Reference
