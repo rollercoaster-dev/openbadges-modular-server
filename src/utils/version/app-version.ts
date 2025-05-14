@@ -34,7 +34,7 @@ export function parseVersion(version: string): VersionInfo {
   const match = version.match(semverPattern);
 
   if (!match) {
-    logger.warn(`Invalid version format: ${version}. Using default values.`);
+    logger.warn(`Invalid version format: ${version}. Expected format: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILDMETADATA]. Using default values.`);
     return {
       version,
       major: 0,

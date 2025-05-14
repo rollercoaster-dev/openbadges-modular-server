@@ -15,10 +15,12 @@ Releases are automatically created when code is merged to the `main` branch. The
    - `feat:` commits trigger a minor release (1.0.0 → 1.1.0)
    - `feat!:`, `fix!:`, or commits with `BREAKING CHANGE:` in the body trigger a major release (1.0.0 → 2.0.0)
 4. semantic-release then:
-   - Updates the version in `package.json`
+   - Updates the version in `package.json` (the initial "1.0.0" value is just a placeholder that will be automatically updated)
    - Updates the `CHANGELOG.md` file
    - Creates a git tag for the release
    - Creates a GitHub release with release notes
+
+> **Note**: The version field in `package.json` is managed automatically by semantic-release. You should never manually modify this value as it will be overwritten during the release process.
 
 ## Manual Releases
 
