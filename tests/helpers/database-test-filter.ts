@@ -111,7 +111,7 @@ export async function getItForDatabase(dbType: string): Promise<(label: string, 
  * Get a describe function that only runs for SQLite
  * @returns A describe function that only runs if SQLite is connected
  */
-export async function describeSqlite(): Promise<typeof describe> {
+export async function describeSqlite(): Promise<(label: string, fn: () => void) => void> {
   return getDescribeForDatabase('sqlite');
 }
 
@@ -119,7 +119,7 @@ export async function describeSqlite(): Promise<typeof describe> {
  * Get a describe function that only runs for PostgreSQL
  * @returns A describe function that only runs if PostgreSQL is connected
  */
-export async function describePostgres(): Promise<typeof describe> {
+export async function describePostgres(): Promise<(label: string, fn: () => void) => void> {
   return getDescribeForDatabase('postgresql');
 }
 
@@ -127,7 +127,7 @@ export async function describePostgres(): Promise<typeof describe> {
  * Get an it function that only runs for SQLite
  * @returns An it function that only runs if SQLite is connected
  */
-export async function itSqlite(): Promise<typeof it> {
+export async function itSqlite(): Promise<(label: string, fn: () => void | Promise<unknown>) => void> {
   return getItForDatabase('sqlite');
 }
 
@@ -135,6 +135,6 @@ export async function itSqlite(): Promise<typeof it> {
  * Get an it function that only runs for PostgreSQL
  * @returns An it function that only runs if PostgreSQL is connected
  */
-export async function itPostgres(): Promise<typeof it> {
+export async function itPostgres(): Promise<(label: string, fn: () => void | Promise<unknown>) => void> {
   return getItForDatabase('postgresql');
 }
