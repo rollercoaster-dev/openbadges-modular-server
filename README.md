@@ -287,6 +287,15 @@ git push origin v1.0.0
 
 ## Docker Support
 
+### Multi-Architecture Support
+
+Our Docker images support multiple CPU architectures:
+
+- **linux/amd64**: For standard x86_64 servers and Intel-based desktops/laptops
+- **linux/arm64**: For Apple Silicon Macs (M1/M2/M3), AWS Graviton instances, and ARM-based servers
+
+This means the same image works natively on both Intel/AMD and ARM-based systems without emulation, providing better performance across all platforms. For detailed information, see our [Multi-Architecture Support Guide](./docs/multi-architecture-support.md).
+
 ### Quick Start with Docker Compose
 
 The easiest way to run the application with PostgreSQL:
@@ -302,7 +311,7 @@ This starts both the API server and a PostgreSQL database with proper configurat
 Official images are available from GitHub Container Registry:
 
 ```bash
-# Pull the latest image
+# Pull the latest image (Docker automatically selects the right architecture for your system)
 docker pull ghcr.io/rollercoaster-dev/openbadges-modular-server:main
 
 # Run with SQLite (no external database needed)
@@ -317,11 +326,21 @@ docker run -p 3000:3000 \
   ghcr.io/rollercoaster-dev/openbadges-modular-server:main
 ```
 
+### Verifying Image Architecture
+
+To verify which architecture variant you're running:
+
+```bash
+docker inspect --format '{{.Architecture}}' $(docker ps -q -f name=your-container-name)
+```
+
 ### Building Your Own Image
 
 ```bash
 docker build -t openbadges-modular-server .
 ```
+
+For building multi-architecture images locally, see our [Multi-Architecture Support Guide](./docs/multi-architecture-support.md).
 
 ## License
 

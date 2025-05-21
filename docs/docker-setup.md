@@ -10,6 +10,13 @@ The Open Badges API uses Docker and Docker Compose for containerization. The set
 2. **Database Service**: A PostgreSQL database service (optional)
 3. **Migrations Service**: A service that runs database migrations
 
+## Supported Architectures
+
+The Docker image supports the following architectures:
+
+- **linux/amd64**: For standard x86_64 servers and Intel-based desktops/laptops
+- **linux/arm64**: For Apple Silicon Macs (M1/M2/M3), AWS Graviton instances, and ARM-based servers
+
 ## Configuration
 
 ### Environment Variables
@@ -115,6 +122,16 @@ For production deployment, consider:
 4. Setting up monitoring
 5. Using a reverse proxy (e.g., Nginx) for SSL termination
 
+### Multi-Architecture Support
+
+The Docker image is built for multiple architectures (amd64 and arm64), which means:
+
+- It can run on both Intel/AMD and ARM-based servers (including AWS Graviton)
+- It works natively on Apple Silicon Macs (M1/M2/M3) for local development
+- No emulation is needed, resulting in better performance on all platforms
+
+When pulling the image, Docker automatically selects the appropriate architecture for your system.
+
 ## Troubleshooting
 
 ### Database Connection Issues
@@ -134,3 +151,12 @@ If migrations fail:
 2. Check that the database exists and is accessible
 3. Check that the migration files are correct
 4. Try running migrations manually
+
+### Architecture-Related Issues
+
+If you encounter issues related to the Docker image architecture:
+
+1. Check which architecture you're running with `docker info | grep Architecture`
+2. Verify the image supports your architecture with `docker manifest inspect ghcr.io/rollercoaster-dev/openbadges-modular-server:<tag>`
+3. If using Docker Compose, ensure you're using a recent version that supports multi-architecture images
+4. For Apple Silicon Macs, ensure you're using Docker Desktop 4.0 or later
