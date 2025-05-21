@@ -5,8 +5,8 @@
  * slow queries for performance optimization.
  */
 
-import { config } from '../../../config/config';
-import { logger } from '../../../utils/logging/logger.service';
+import { config } from '@/config/config';
+import { logger } from '@/utils/logging/logger.service';
 
 export interface QueryLogEntry {
   query: string;
@@ -18,7 +18,8 @@ export interface QueryLogEntry {
 
 export class QueryLoggerService {
   private static logs: QueryLogEntry[] = [];
-  private static slowQueryThreshold: number = config.database.slowQueryThreshold || 100; // ms
+  private static slowQueryThreshold: number =
+    config.database.slowQueryThreshold || 100; // ms
   private static enabled: boolean = config.database.queryLogging !== false;
   private static maxLogs: number = config.database.maxQueryLogs || 1000;
 
@@ -29,7 +30,12 @@ export class QueryLoggerService {
    * @param duration Query execution duration in milliseconds
    * @param database Database type (e.g., 'sqlite', 'postgresql')
    */
-  static logQuery(query: string, params: unknown[] | undefined, duration: number, database: string): void {
+  static logQuery(
+    query: string,
+    params: unknown[] | undefined,
+    duration: number,
+    database: string
+  ): void {
     if (!this.enabled) return;
 
     const entry: QueryLogEntry = {
@@ -37,7 +43,7 @@ export class QueryLoggerService {
       params,
       duration,
       timestamp: new Date().toISOString(),
-      database
+      database,
     };
 
     // Add to logs (with size limit)
@@ -52,17 +58,20 @@ export class QueryLoggerService {
         duration: `${duration}ms`,
         database,
         query,
-        params: params ? JSON.stringify(params) : undefined
+        params: params ? JSON.stringify(params) : undefined,
       });
     }
 
     // Log all queries in development mode
-    if (process.env.NODE_ENV === 'development' && process.env['DEBUG_QUERIES'] === 'true') {
+    if (
+      process.env.NODE_ENV === 'development' &&
+      process.env['DEBUG_QUERIES'] === 'true'
+    ) {
       logger.debug(`Database query executed`, {
         duration: `${duration}ms`,
         database,
         query,
-        params: params ? JSON.stringify(params) : undefined
+        params: params ? JSON.stringify(params) : undefined,
       });
     }
   }
@@ -82,7 +91,7 @@ export class QueryLoggerService {
    */
   static getSlowQueries(threshold?: number): QueryLogEntry[] {
     const actualThreshold = threshold || this.slowQueryThreshold;
-    return this.logs.filter(log => log.duration >= actualThreshold);
+    return this.logs.filter((log) => log.duration >= actualThreshold);
   }
 
   /**
@@ -125,16 +134,19 @@ export class QueryLoggerService {
         slowQueries: 0,
         averageDuration: 0,
         maxDuration: 0,
-        byDatabase: {}
+        byDatabase: {},
       };
     }
 
     const totalDuration = this.logs.reduce((sum, log) => sum + log.duration, 0);
-    const maxDuration = Math.max(...this.logs.map(log => log.duration));
-    const slowQueries = this.logs.filter(log => log.duration >= this.slowQueryThreshold).length;
+    const maxDuration = Math.max(...this.logs.map((log) => log.duration));
+    const slowQueries = this.logs.filter(
+      (log) => log.duration >= this.slowQueryThreshold
+    ).length;
 
     // Group by database
-    const byDatabase: Record<string, { count: number; totalDuration: number }> = {};
+    const byDatabase: Record<string, { count: number; totalDuration: number }> =
+      {};
     for (const log of this.logs) {
       if (!byDatabase[log.database]) {
         byDatabase[log.database] = { count: 0, totalDuration: 0 };
@@ -144,11 +156,14 @@ export class QueryLoggerService {
     }
 
     // Calculate average duration by database
-    const byDatabaseStats: Record<string, { count: number; avgDuration: number }> = {};
+    const byDatabaseStats: Record<
+      string,
+      { count: number; avgDuration: number }
+    > = {};
     for (const [db, stats] of Object.entries(byDatabase)) {
       byDatabaseStats[db] = {
         count: stats.count,
-        avgDuration: stats.totalDuration / stats.count
+        avgDuration: stats.totalDuration / stats.count,
       };
     }
 
@@ -157,7 +172,7 @@ export class QueryLoggerService {
       slowQueries,
       averageDuration: totalDuration / this.logs.length,
       maxDuration,
-      byDatabase: byDatabaseStats
+      byDatabase: byDatabaseStats,
     };
   }
 }

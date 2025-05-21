@@ -14,7 +14,7 @@ import postgres from 'postgres';
 import { config } from '../../../config/config';
 import { join, dirname } from 'path';
 import fs from 'fs';
-import { logger } from '../../../utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
@@ -92,7 +92,10 @@ async function runSqliteMigrations() {
     // Apply SQL directly to handle circular references
     try {
       // Get the SQL file path - try the new fixed migration first
-      const fixedMigrationPath = join(migrationsFolder, '0000_fixed_migration.sql');
+      const fixedMigrationPath = join(
+        migrationsFolder,
+        '0000_fixed_migration.sql'
+      );
 
       // Check if the new fixed file exists
       if (fs.existsSync(fixedMigrationPath)) {
@@ -106,13 +109,16 @@ async function runSqliteMigrations() {
           sqlite.exec(sql);
           logger.info('Successfully executed the entire migration file');
         } catch (error) {
-          logger.error('Failed to execute migration file as a whole, trying statement by statement', error);
+          logger.error(
+            'Failed to execute migration file as a whole, trying statement by statement',
+            error
+          );
 
           // Split by semicolons and filter out empty statements
           const statements = sql
             .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0);
+            .map((stmt) => stmt.trim())
+            .filter((stmt) => stmt.length > 0);
 
           // Execute each statement individually
           for (const statement of statements) {
@@ -123,13 +129,24 @@ async function runSqliteMigrations() {
               }
 
               // Execute the statement
-              logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
+              logger.info(
+                `Executing statement: ${statement.substring(0, 50)}...`
+              );
               sqlite.exec(statement + ';');
             } catch (stmtError) {
               // Log the error but continue with other statements
-              logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
-                error: stmtError instanceof Error ? stmtError.message : String(stmtError)
-              });
+              logger.error(
+                `Error executing SQL statement: ${statement.substring(
+                  0,
+                  100
+                )}...`,
+                {
+                  error:
+                    stmtError instanceof Error
+                      ? stmtError.message
+                      : String(stmtError),
+                }
+              );
             }
           }
         }
@@ -137,10 +154,15 @@ async function runSqliteMigrations() {
         logger.info('Fixed migration SQL applied successfully.');
       } else {
         // Fall back to the original fixed file if the new one doesn't exist
-        const originalFixedPath = join(migrationsFolder, '0000_oval_starbolt_fixed.sql');
+        const originalFixedPath = join(
+          migrationsFolder,
+          '0000_oval_starbolt_fixed.sql'
+        );
 
         if (fs.existsSync(originalFixedPath)) {
-          logger.info('New fixed migration not found, applying original fixed SQL...');
+          logger.info(
+            'New fixed migration not found, applying original fixed SQL...'
+          );
           const sql = fs.readFileSync(originalFixedPath, 'utf8');
 
           try {
@@ -148,13 +170,16 @@ async function runSqliteMigrations() {
             sqlite.exec(sql);
             logger.info('Successfully executed the original migration file');
           } catch (error) {
-            logger.error('Failed to execute original migration file as a whole, trying statement by statement', error);
+            logger.error(
+              'Failed to execute original migration file as a whole, trying statement by statement',
+              error
+            );
 
             // Split by semicolons and filter out empty statements
             const statements = sql
               .split(';')
-              .map(stmt => stmt.trim())
-              .filter(stmt => stmt.length > 0);
+              .map((stmt) => stmt.trim())
+              .filter((stmt) => stmt.length > 0);
 
             // Execute each statement individually
             for (const statement of statements) {
@@ -165,13 +190,24 @@ async function runSqliteMigrations() {
                 }
 
                 // Execute the statement
-                logger.info(`Executing statement: ${statement.substring(0, 50)}...`);
+                logger.info(
+                  `Executing statement: ${statement.substring(0, 50)}...`
+                );
                 sqlite.exec(statement + ';');
               } catch (stmtError) {
                 // Log the error but continue with other statements
-                logger.error(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
-                  error: stmtError instanceof Error ? stmtError.message : String(stmtError)
-                });
+                logger.error(
+                  `Error executing SQL statement: ${statement.substring(
+                    0,
+                    100
+                  )}...`,
+                  {
+                    error:
+                      stmtError instanceof Error
+                        ? stmtError.message
+                        : String(stmtError),
+                  }
+                );
               }
             }
           }
@@ -203,9 +239,13 @@ async function runPostgresMigrations() {
   logger.info('Running PostgreSQL migrations...');
 
   // Get PostgreSQL connection string
-  const connectionString = config.database.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
+  const connectionString =
+    config.database.connectionString ||
+    'postgres://postgres:postgres@localhost:5432/openbadges';
   // Log connection string with SensitiveValue to automatically mask the password
-  logger.info('PostgreSQL connection', { connectionString: SensitiveValue.from(connectionString) });
+  logger.info('PostgreSQL connection', {
+    connectionString: SensitiveValue.from(connectionString),
+  });
 
   try {
     // Create PostgreSQL connection
@@ -236,7 +276,10 @@ async function runPostgresMigrations() {
     // Apply SQL directly to handle circular references
     try {
       // Get the SQL file path - try the new fixed migration first
-      const fixedMigrationPath = join(migrationsFolder, '0000_fixed_migration.sql');
+      const fixedMigrationPath = join(
+        migrationsFolder,
+        '0000_fixed_migration.sql'
+      );
 
       // Check if the new fixed file exists
       if (fs.existsSync(fixedMigrationPath)) {
@@ -246,8 +289,8 @@ async function runPostgresMigrations() {
         // Execute each statement separately to avoid issues with statement parsing
         const statements = sql
           .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0);
+          .map((stmt) => stmt.trim())
+          .filter((stmt) => stmt.length > 0);
 
         for (const statement of statements) {
           try {
@@ -255,16 +298,28 @@ async function runPostgresMigrations() {
             await client.unsafe(statement + ';');
           } catch (stmtError) {
             // Log the error but continue with other statements
-            logger.warn(`Error executing SQL statement: ${statement.substring(0, 100)}...`, {
-              error: stmtError instanceof Error ? stmtError.message : String(stmtError)
-            });
+            logger.warn(
+              `Error executing SQL statement: ${statement.substring(
+                0,
+                100
+              )}...`,
+              {
+                error:
+                  stmtError instanceof Error
+                    ? stmtError.message
+                    : String(stmtError),
+              }
+            );
           }
         }
 
         logger.info('Fixed migration SQL applied successfully.');
       } else {
         // Try the original fixed file
-        const sqlFilePath = join(migrationsFolder, '0000_strong_gideon_fixed.sql');
+        const sqlFilePath = join(
+          migrationsFolder,
+          '0000_strong_gideon_fixed.sql'
+        );
 
         // Check if the file exists
         if (fs.existsSync(sqlFilePath)) {
@@ -274,9 +329,14 @@ async function runPostgresMigrations() {
           logger.info('Fixed SQL applied successfully.');
         } else {
           // Try the original file as a fallback
-          const originalSqlFilePath = join(migrationsFolder, '0000_strong_gideon.sql');
+          const originalSqlFilePath = join(
+            migrationsFolder,
+            '0000_strong_gideon.sql'
+          );
           if (fs.existsSync(originalSqlFilePath)) {
-            logger.info('Fixed SQL file not found, applying original SQL file...');
+            logger.info(
+              'Fixed SQL file not found, applying original SQL file...'
+            );
             const sql = fs.readFileSync(originalSqlFilePath, 'utf8');
             await client.unsafe(sql);
             logger.info('Original SQL applied successfully.');

@@ -1,13 +1,13 @@
 /**
  * Base Cache Repository Wrapper
- * 
+ *
  * This abstract class provides a base implementation for caching repository operations.
  * It wraps a repository instance and adds caching functionality.
  */
 
 import { CacheInterface } from '../cache.interface';
 import { CacheFactory } from '../cache.factory';
-import { config } from '../../../config/config';
+import { config } from '@/config/config';
 
 export abstract class CacheRepositoryWrapper<T, R> {
   protected repository: R;
@@ -40,14 +40,14 @@ export abstract class CacheRepositoryWrapper<T, R> {
    */
   protected invalidateEntity(entity: T): void {
     if (!this.enabled) return;
-    
+
     // Get the ID of the entity (implementation-specific)
     const id = this.getEntityId(entity);
     if (id) {
       // Invalidate by ID
       this.cache.delete(this.generateIdKey(id));
     }
-    
+
     // Invalidate any collection caches
     this.invalidateCollections();
   }
@@ -57,10 +57,12 @@ export abstract class CacheRepositoryWrapper<T, R> {
    */
   protected invalidateCollections(): void {
     if (!this.enabled) return;
-    
+
     // Find all keys that start with 'collection:'
-    const keys = this.cache.keys().filter(key => key.startsWith('collection:'));
-    
+    const keys = this.cache
+      .keys()
+      .filter((key) => key.startsWith('collection:'));
+
     // Delete all collection keys
     for (const key of keys) {
       this.cache.delete(key);
