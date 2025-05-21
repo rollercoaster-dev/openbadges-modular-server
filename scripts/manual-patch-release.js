@@ -32,7 +32,7 @@ console.log(`New version: ${newVersion}`);
 let currentVersionTagExists = false;
 try {
   const tagCheck = execSync(`git tag -l v${currentVersion}`).toString().trim();
-  currentVersionTagExists = tagCheck === `v${currentVersion}`;
+  currentVersionTagExists = tagCheck.split('\n').includes(`v${currentVersion}`);
 } catch (error) {
   // Tag doesn't exist
 }
