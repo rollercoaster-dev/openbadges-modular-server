@@ -51,6 +51,23 @@ fs.writeFileSync('./package.json', JSON.stringify(packageJson, null, 2) + '\n');
 console.log(`Updated package.json with new version: ${newVersion}`);
 
 // Commit the changes
+// Check for uncommitted changes first
+try {
+  const status = execSync('git status --porcelain').toString().trim();
+  if (status && !status.includes('package.json')) {
+    console.error('There are uncommitted changes in the working directory:');
+    console.error(status);
+    console.error('Please commit or stash them before running this script, or use --force to ignore.');
+    
+    if (!process.argv.includes('--force')) {
+      process.exit(1);
+    }
+  }
+} catch (error) {
+  console.error('Error checking git status:', error.message);
+  process.exit(1);
+}
+
 execSync('git add package.json');
 execSync(`git commit -m "chore(release): ${newVersion} [skip ci]"`);
 
