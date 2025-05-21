@@ -11,7 +11,17 @@ PLATFORMS="linux/amd64,linux/arm64"
 PUSH=false
 LOAD=true
 
-# Display help message
+# Prints usage instructions and available options for the multi-architecture Docker image build script.
+#
+# Outputs:
+#
+# * Help and usage information to STDOUT, including available command-line options and example invocations.
+#
+# Example:
+#
+# ```bash
+# show_help
+# ```
 function show_help {
   echo "Usage: $0 [options]"
   echo ""
