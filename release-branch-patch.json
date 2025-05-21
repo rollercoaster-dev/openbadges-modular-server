@@ -1,7 +1,7 @@
 {
   "branches": [
     {
-      "name": "release/v1.0.2",
+      "name": "release/v1.0.3",
       "prerelease": false
     },
     "main"
