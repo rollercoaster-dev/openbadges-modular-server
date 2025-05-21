@@ -1,8 +1,17 @@
-FROM oven/bun:1 as builder
+FROM --platform=$BUILDPLATFORM oven/bun:1 AS builder
+
+# Add build arguments for architecture-specific optimizations
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETARCH
+
+# Print build information for debugging
+RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM ($TARGETARCH)"
 
 WORKDIR /app
 
 # Install system dependencies for better-sqlite3
+# Use architecture-specific optimizations where possible
 RUN apt-get update && \
     apt-get install -y libsqlite3-dev python3 make g++ && \
     apt-get clean && \

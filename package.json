@@ -47,7 +47,10 @@
     "test:e2e:sqlite:run": "NODE_ENV=test DB_TYPE=sqlite SQLITE_DB_PATH=$(pwd)/tests/e2e/test_database.sqlite bun test ./tests/e2e",
     "test:e2e:sqlite": "NODE_ENV=test DB_TYPE=sqlite bun test ./tests/e2e",
     "test:e2e": "bun run test:e2e:sqlite && bun run test:e2e:pg",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "docker:build": "docker build -t openbadges-modular-server:local .",
+    "docker:build:multiarch": "./scripts/build-multiarch.sh",
+    "docker:build:multiarch:push": "./scripts/build-multiarch.sh --push --no-load"
   },
   "lint-staged": {
     "*.ts": [
