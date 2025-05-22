@@ -12,11 +12,10 @@ import { issuers } from '../schema';
 import { SqliteIssuerMapper } from '../mappers/sqlite-issuer.mapper';
 import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+// SensitiveValue import removed as it's not used in this file
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import {
   SqliteQueryMetrics,
-  RepositoryOperationResult,
   SqliteOperationContext,
 } from '../types/sqlite-database.types';
 

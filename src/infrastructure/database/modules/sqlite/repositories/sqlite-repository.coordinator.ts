@@ -17,7 +17,6 @@ import { logger } from '@utils/logging/logger.service';
 import {
   SqliteTransactionContext,
   SqliteOperationContext,
-  RepositoryOperationResult
 } from '../types/sqlite-database.types';
 
 /**
@@ -30,7 +29,9 @@ export class SqliteRepositoryCoordinator {
 
   constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.issuerRepository = new SqliteIssuerRepository(connectionManager);
-    this.badgeClassRepository = new SqliteBadgeClassRepository(connectionManager);
+    this.badgeClassRepository = new SqliteBadgeClassRepository(
+      connectionManager
+    );
     this.assertionRepository = new SqliteAssertionRepository(connectionManager);
   }
 
@@ -67,7 +68,9 @@ export class SqliteRepositoryCoordinator {
     badgeClass: BadgeClass;
     assertion: Assertion;
   }> {
-    const transactionContext = this.createTransactionContext('createBadgeEcosystem');
+    const transactionContext = this.createTransactionContext(
+      'createBadgeEcosystem'
+    );
 
     try {
       // Ensure connection
@@ -82,7 +85,7 @@ export class SqliteRepositoryCoordinator {
       // Create badge class with issuer reference
       const badgeClass = await this.badgeClassRepository.create({
         ...badgeClassData,
-        issuer: issuer.id
+        issuer: issuer.id,
       });
       transactionContext.operations.push(
         this.createOperationContext('CREATE BadgeClass', badgeClass.id)
@@ -91,7 +94,7 @@ export class SqliteRepositoryCoordinator {
       // Create assertion with badge class reference
       const assertion = await this.assertionRepository.create({
         ...assertionData,
-        badgeClass: badgeClass.id
+        badgeClass: badgeClass.id,
       });
       transactionContext.operations.push(
         this.createOperationContext('CREATE Assertion', assertion.id)
@@ -102,7 +105,7 @@ export class SqliteRepositoryCoordinator {
         issuerId: issuer.id,
         badgeClassId: badgeClass.id,
         assertionId: assertion.id,
-        duration: Date.now() - transactionContext.startTime
+        duration: Date.now() - transactionContext.startTime,
       });
 
       return { issuer, badgeClass, assertion };
@@ -111,7 +114,7 @@ export class SqliteRepositoryCoordinator {
         error: error instanceof Error ? error.message : String(error),
         transactionId: transactionContext.id,
         operations: transactionContext.operations.length,
-        duration: Date.now() - transactionContext.startTime
+        duration: Date.now() - transactionContext.startTime,
       });
       throw error;
     }
@@ -125,9 +128,10 @@ export class SqliteRepositoryCoordinator {
   ): Promise<BadgeClass> {
     try {
       // Validate that the issuer exists
-      const issuerId = typeof badgeClassData.issuer === 'string' 
-        ? badgeClassData.issuer as Shared.IRI
-        : badgeClassData.issuer.id;
+      const issuerId =
+        typeof badgeClassData.issuer === 'string'
+          ? (badgeClassData.issuer as Shared.IRI)
+          : badgeClassData.issuer.id;
 
       const issuer = await this.issuerRepository.findById(issuerId);
       if (!issuer) {
@@ -139,9 +143,10 @@ export class SqliteRepositoryCoordinator {
     } catch (error) {
       logger.error('Failed to create badge class with validation', {
         error: error instanceof Error ? error.message : String(error),
-        issuerId: typeof badgeClassData.issuer === 'string' 
-          ? badgeClassData.issuer 
-          : badgeClassData.issuer.id
+        issuerId:
+          typeof badgeClassData.issuer === 'string'
+            ? badgeClassData.issuer
+            : badgeClassData.issuer.id,
       });
       throw error;
     }
@@ -166,7 +171,7 @@ export class SqliteRepositoryCoordinator {
     } catch (error) {
       logger.error('Failed to create assertion with validation', {
         error: error instanceof Error ? error.message : String(error),
-        badgeClassId: assertionData.badgeClass
+        badgeClassId: assertionData.badgeClass,
       });
       throw error;
     }
@@ -180,17 +185,23 @@ export class SqliteRepositoryCoordinator {
     badgeClassesDeleted: number;
     assertionsDeleted: number;
   }> {
-    const transactionContext = this.createTransactionContext('deleteIssuerCascade');
+    const transactionContext = this.createTransactionContext(
+      'deleteIssuerCascade'
+    );
 
     try {
       // Get all badge classes for this issuer
-      const badgeClasses = await this.badgeClassRepository.findByIssuer(issuerId);
-      
+      const badgeClasses = await this.badgeClassRepository.findByIssuer(
+        issuerId
+      );
+
       let assertionsDeleted = 0;
-      
+
       // Delete all assertions for each badge class
       for (const badgeClass of badgeClasses) {
-        const assertions = await this.assertionRepository.findByBadgeClass(badgeClass.id);
+        const assertions = await this.assertionRepository.findByBadgeClass(
+          badgeClass.id
+        );
         for (const assertion of assertions) {
           await this.assertionRepository.delete(assertion.id);
           assertionsDeleted++;
@@ -213,7 +224,7 @@ export class SqliteRepositoryCoordinator {
         issuerDeleted,
         badgeClassesDeleted,
         assertionsDeleted,
-        duration: Date.now() - transactionContext.startTime
+        duration: Date.now() - transactionContext.startTime,
       });
 
       return { issuerDeleted, badgeClassesDeleted, assertionsDeleted };
@@ -222,7 +233,7 @@ export class SqliteRepositoryCoordinator {
         error: error instanceof Error ? error.message : String(error),
         transactionId: transactionContext.id,
         issuerId,
-        duration: Date.now() - transactionContext.startTime
+        duration: Date.now() - transactionContext.startTime,
       });
       throw error;
     }
@@ -242,14 +253,16 @@ export class SqliteRepositoryCoordinator {
   }> {
     try {
       // Check connection
-      const connectionHealthy = await this.connectionManager.performHealthCheck();
+      const connectionHealthy =
+        await this.connectionManager.performHealthCheck();
 
       // Test each repository with a simple query
       const issuerHealthy = await this.testRepositoryHealth('issuer');
       const badgeClassHealthy = await this.testRepositoryHealth('badgeClass');
       const assertionHealthy = await this.testRepositoryHealth('assertion');
 
-      const repositoriesHealthy = issuerHealthy && badgeClassHealthy && assertionHealthy;
+      const repositoriesHealthy =
+        issuerHealthy && badgeClassHealthy && assertionHealthy;
       const overall = connectionHealthy && repositoriesHealthy;
 
       return {
@@ -258,12 +271,12 @@ export class SqliteRepositoryCoordinator {
         repositories: {
           issuer: issuerHealthy,
           badgeClass: badgeClassHealthy,
-          assertion: assertionHealthy
-        }
+          assertion: assertionHealthy,
+        },
       };
     } catch (error) {
       logger.error('Health check failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return {
         overall: false,
@@ -271,8 +284,8 @@ export class SqliteRepositoryCoordinator {
         repositories: {
           issuer: false,
           badgeClass: false,
-          assertion: false
-        }
+          assertion: false,
+        },
       };
     }
   }
@@ -280,31 +293,38 @@ export class SqliteRepositoryCoordinator {
   /**
    * Creates a transaction context for coordinated operations
    */
-  private createTransactionContext(operation: string): SqliteTransactionContext {
+  private createTransactionContext(
+    _operation: string
+  ): SqliteTransactionContext {
     return {
       id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       startTime: Date.now(),
       operations: [],
-      rollbackOnError: true
+      rollbackOnError: true,
     };
   }
 
   /**
    * Creates an operation context for logging
    */
-  private createOperationContext(operation: string, entityId?: Shared.IRI): SqliteOperationContext {
+  private createOperationContext(
+    operation: string,
+    entityId?: Shared.IRI
+  ): SqliteOperationContext {
     return {
       operation,
       entityType: 'issuer', // This would be dynamic based on the operation
       entityId,
-      startTime: Date.now()
+      startTime: Date.now(),
     };
   }
 
   /**
    * Tests repository health by attempting a simple operation
    */
-  private async testRepositoryHealth(repositoryType: 'issuer' | 'badgeClass' | 'assertion'): Promise<boolean> {
+  private async testRepositoryHealth(
+    repositoryType: 'issuer' | 'badgeClass' | 'assertion'
+  ): Promise<boolean> {
     try {
       switch (repositoryType) {
         case 'issuer':

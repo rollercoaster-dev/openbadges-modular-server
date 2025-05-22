@@ -1,13 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import {
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-  beforeAll,
-  describe,
-} from 'bun:test';
+import { it, expect, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from '@/infrastructure/database/modules/sqlite/sqlite.database';
@@ -131,25 +124,27 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
 
   it('should handle connection retry logic', async () => {
     // Create a new database with a mock drizzle instance that fails on first connect
-    let connectAttempts = 0;
-    const mockClient = {
-      prepare: () => ({
-        get: () => {
-          connectAttempts++;
-          if (connectAttempts === 1) {
-            throw new Error('Simulated connection failure');
-          }
-          return { result: 1 };
-        },
-        run: () => {},
-      }),
-    };
+    // let connectAttempts = 0;
+    // Mock client for testing (not used in current implementation)
+    // const mockClient = {
+    //   prepare: () => ({
+    //     get: () => {
+    //       connectAttempts++;
+    //       if (connectAttempts === 1) {
+    //         throw new Error('Simulated connection failure');
+    //       }
+    //       return { result: 1 };
+    //     },
+    //     run: () => {},
+    //   }),
+    // };
 
-    const mockDb = {
-      session: {
-        client: mockClient,
-      },
-    };
+    // Mock database object (not used in current test implementation)
+    // const mockDb = {
+    //   session: {
+    //     client: mockClient,
+    //   },
+    // };
 
     // This test is now handled by the connection manager
     // For now, we'll just test that connection works

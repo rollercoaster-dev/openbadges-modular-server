@@ -44,8 +44,11 @@ describe('SqliteIssuerRepository', () => {
     });
 
     // Set the drizzle instance and connection state directly (for testing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (connectionManager as any).db = drizzleDb;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (connectionManager as any).client = db;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (connectionManager as any).connectionState = 'connected';
 
     // Initialize the repository

@@ -10,10 +10,8 @@ import { Shared } from 'openbadges-types';
 import { issuers } from '../schema';
 import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 import { logger } from '@utils/logging/logger.service';
-import {
-  SqliteIssuerRecord,
-  TypeConversionResult,
-} from '../types/sqlite-database.types';
+// Types are imported but not used directly in this file
+// They are available for future use if needed
 
 export class SqliteIssuerMapper {
   /**
