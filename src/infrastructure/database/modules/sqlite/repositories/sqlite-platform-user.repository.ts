@@ -6,8 +6,6 @@
  */
 
 import { eq, and } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
 import { PlatformUser } from '@domains/backpack/platform-user.entity';
 import type { PlatformUserRepository } from '@domains/backpack/platform-user.repository';
 import { Shared } from 'openbadges-types';
@@ -15,14 +13,21 @@ import { logger } from '@utils/logging/logger.service';
 import { platformUsers } from '../schema';
 import { SqlitePlatformUserMapper } from '../mappers/sqlite-platform-user.mapper';
 import { createId } from '@paralleldrive/cuid2';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 export class SqlitePlatformUserRepository implements PlatformUserRepository {
-  private db: ReturnType<typeof drizzle>;
   private mapper: SqlitePlatformUserMapper;
 
-  constructor(client: Database) {
-    this.db = drizzle(client);
+  constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.mapper = new SqlitePlatformUserMapper();
+  }
+
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase() {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
   }
 
   async create(user: Omit<PlatformUser, 'id'>): Promise<PlatformUser> {
@@ -35,17 +40,14 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       const record = this.mapper.toPersistence(newUser);
 
       // Insert into database
-      await this.db
-        .insert(platformUsers)
-        .values(record)
-        .returning();
+      await this.getDatabase().insert(platformUsers).values(record).returning();
 
       // Return the domain entity
       return newUser;
     } catch (error) {
       logger.error('Error creating platform user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        user
+        user,
       });
       throw error;
     }
@@ -54,7 +56,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
   async findById(id: Shared.IRI): Promise<PlatformUser | null> {
     try {
       // Query database using Drizzle ORM
-      const result = await this.db
+      const result = await this.getDatabase()
         .select()
         .from(platformUsers)
         .where(eq(platformUsers.id, id as string));
@@ -69,16 +71,19 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
     } catch (error) {
       logger.error('Error finding platform user by ID in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }
   }
 
-  async findByPlatformAndExternalId(platformId: Shared.IRI, externalUserId: string): Promise<PlatformUser | null> {
+  async findByPlatformAndExternalId(
+    platformId: Shared.IRI,
+    externalUserId: string
+  ): Promise<PlatformUser | null> {
     try {
       // Query database using Drizzle ORM
-      const result = await this.db
+      const result = await this.getDatabase()
         .select()
         .from(platformUsers)
         .where(
@@ -96,16 +101,22 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       // Convert database record to domain entity
       return this.mapper.toDomain(result[0]);
     } catch (error) {
-      logger.error('Error finding platform user by platform and external ID in SQLite repository', {
-        error: error instanceof Error ? error.stack : String(error),
-        platformId,
-        externalUserId
-      });
+      logger.error(
+        'Error finding platform user by platform and external ID in SQLite repository',
+        {
+          error: error instanceof Error ? error.stack : String(error),
+          platformId,
+          externalUserId,
+        }
+      );
       throw error;
     }
   }
 
-  async update(id: Shared.IRI, user: Partial<PlatformUser>): Promise<PlatformUser | null> {
+  async update(
+    id: Shared.IRI,
+    user: Partial<PlatformUser>
+  ): Promise<PlatformUser | null> {
     try {
       // Check if user exists
       const existingUser = await this.findById(id);
@@ -116,8 +127,8 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       // Create a merged entity with updated timestamp
       const mergedUser = PlatformUser.create({
         ...existingUser.toObject(),
-        ...user as Partial<PlatformUser>,
-        updatedAt: new Date()
+        ...(user as Partial<PlatformUser>),
+        updatedAt: new Date(),
       });
 
       // Convert domain entity to database record and create update object
@@ -125,7 +136,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       const updateData = this.mapper.toUpdateObject(record);
 
       // Update in database using Drizzle ORM
-      await this.db
+      await this.getDatabase()
         .update(platformUsers)
         .set(updateData)
         .where(eq(platformUsers.id, id as string))
@@ -137,7 +148,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
       logger.error('Error updating platform user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         id,
-        user
+        user,
       });
       throw error;
     }
@@ -146,7 +157,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
       // Delete from database using Drizzle ORM
-      const result = await this.db
+      const result = await this.getDatabase()
         .delete(platformUsers)
         .where(eq(platformUsers.id, id as string))
         .returning();
@@ -156,7 +167,7 @@ export class SqlitePlatformUserRepository implements PlatformUserRepository {
     } catch (error) {
       logger.error('Error deleting platform user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }

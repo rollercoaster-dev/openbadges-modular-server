@@ -181,7 +181,7 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = client.prepare(query).all(...params);
           } else {
@@ -217,7 +217,7 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // Determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = stmt.all(...params);
           } else {
@@ -266,7 +266,7 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = client.prepare(query).all(...params);
           } else {

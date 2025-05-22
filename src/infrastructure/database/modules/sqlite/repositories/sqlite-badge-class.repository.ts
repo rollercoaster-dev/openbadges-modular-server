@@ -187,6 +187,9 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
 
       // Convert to database record
       const record = this.mapper.toPersistence(mergedBadgeClass);
+      // Prevent overwriting immutable columns
+      delete (record as Partial<typeof record>).id;
+      delete (record as Partial<typeof record>).createdAt;
 
       // Update in database
       const startTime = Date.now();

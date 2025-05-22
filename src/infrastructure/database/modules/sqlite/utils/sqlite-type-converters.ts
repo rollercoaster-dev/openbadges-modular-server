@@ -417,11 +417,12 @@ export namespace SqliteTypeConverters {
 
   /**
    * Converts Date to SQLite timestamp (milliseconds)
+   * Returns null when date is undefined to prevent silent insertion of current timestamp
    */
   export function convertDateToTimestamp(
     date: Date | string | undefined
-  ): number {
-    if (!date) return Date.now();
+  ): number | null {
+    if (!date) return null;
 
     if (date instanceof Date) {
       return date.getTime();
@@ -439,13 +440,15 @@ export namespace SqliteTypeConverters {
       return parsed.getTime();
     }
 
-    return Date.now();
+    return null; // Return null for any other unexpected case
   }
 
   /**
    * Converts SQLite timestamp back to Date
+   * Returns undefined for null timestamps
    */
-  export function convertTimestampToDate(timestamp: number): Date {
+  export function convertTimestampToDate(timestamp: number | null): Date | undefined {
+    if (timestamp === null) return undefined;
     return new Date(timestamp);
   }
 

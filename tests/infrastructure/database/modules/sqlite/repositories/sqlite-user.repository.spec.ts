@@ -10,17 +10,18 @@ import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteUserRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-user.repository';
 import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
-import { User } from '@domains/user/user.entity';
-import { logger } from '@utils/logging/logger.service';
+import { UserRole, UserPermission } from '@domains/user/user.entity';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+import { Shared } from 'openbadges-types';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repository: SqliteUserRepository;
 let testDbInstance: Database;
 let connectionManager: SqliteConnectionManager;
 
-const MIGRATIONS_PATH = './drizzle/migrations'; // Adjust if your path differs
+const MIGRATIONS_PATH = getMigrationsPath();
 
 describe('SqliteUserRepository Integration', () => {
   beforeAll(async () => {
@@ -67,9 +68,9 @@ describe('SqliteUserRepository Integration', () => {
       passwordHash: 'hashed_password',
       firstName: 'Test',
       lastName: 'User',
-      roles: ['user'],
-      permissions: ['read:profile'],
-      isActive: true
+      roles: [UserRole.USER],
+      permissions: [UserPermission.VIEW_BACKPACK],
+      isActive: true,
     };
 
     // Create user
@@ -111,7 +112,9 @@ describe('SqliteUserRepository Integration', () => {
 
   it('should return null when finding a non-existent user by ID', async () => {
     // Find by non-existent ID
-    const foundUser = await repository.findById('urn:uuid:non-existent');
+    const foundUser = await repository.findById(
+      'urn:uuid:non-existent' as Shared.IRI
+    );
 
     // Verify null was returned
     expect(foundUser).toBeNull();
@@ -166,7 +169,7 @@ describe('SqliteUserRepository Integration', () => {
     const updateData = {
       firstName: 'Updated',
       lastName: 'User',
-      isActive: false
+      isActive: false,
     };
 
     // Update user
@@ -184,9 +187,12 @@ describe('SqliteUserRepository Integration', () => {
 
   it('should return null when updating a non-existent user', async () => {
     // Update non-existent user
-    const updatedUser = await repository.update('urn:uuid:non-existent', {
-      firstName: 'Updated'
-    });
+    const updatedUser = await repository.update(
+      'urn:uuid:non-existent' as Shared.IRI,
+      {
+        firstName: 'Updated',
+      }
+    );
 
     // Verify null was returned
     expect(updatedUser).toBeNull();
@@ -219,21 +225,21 @@ describe('SqliteUserRepository Integration', () => {
       email: 'user1@example.com',
       passwordHash: 'hash1',
       isActive: true,
-      roles: ['admin']
+      roles: [UserRole.ADMIN],
     });
     await repository.create({
       username: 'user2',
       email: 'user2@example.com',
       passwordHash: 'hash2',
       isActive: true,
-      roles: ['user']
+      roles: [UserRole.USER],
     });
     await repository.create({
       username: 'inactive',
       email: 'inactive@example.com',
       passwordHash: 'hash3',
       isActive: false,
-      roles: ['user']
+      roles: [UserRole.USER],
     });
 
     // Find by username
@@ -249,7 +255,7 @@ describe('SqliteUserRepository Integration', () => {
     expect(activeResults.length).toBe(2);
 
     // Find by role
-    const adminResults = await repository.findByQuery({ role: 'admin' });
+    const adminResults = await repository.findByQuery({ role: UserRole.ADMIN });
     expect(adminResults.length).toBe(1);
     expect(adminResults[0].username).toBe('user1');
 
@@ -257,14 +263,14 @@ describe('SqliteUserRepository Integration', () => {
     // but rather with OR logic, so combining isActive and role won't work as expected.
     // This would need a refactor of the repository implementation to fix.
     // For now, we'll adjust the test to match the current behavior.
-    const combinedResults = await repository.findByQuery({ 
+    const combinedResults = await repository.findByQuery({
       isActive: true,
-      role: 'user'
+      role: UserRole.USER,
     });
     // We should get all active users OR all users with 'user' role
     expect(combinedResults.length).toBe(3);
     // Verify the results contain both active users and users with 'user' role
-    const usernames = combinedResults.map(u => u.username);
+    const usernames = combinedResults.map((u) => u.username);
     expect(usernames).toContain('user1'); // active admin
     expect(usernames).toContain('user2'); // active user
     expect(usernames).toContain('inactive'); // inactive user (matched by role)
@@ -277,14 +283,14 @@ describe('SqliteUserRepository Integration', () => {
       email: 'count1@example.com',
       passwordHash: 'hash1',
       isActive: true,
-      roles: ['admin']
+      roles: [UserRole.ADMIN],
     });
     await repository.create({
       username: 'count2',
       email: 'count2@example.com',
       passwordHash: 'hash2',
       isActive: false,
-      roles: ['user']
+      roles: [UserRole.USER],
     });
 
     // Count all
@@ -296,7 +302,7 @@ describe('SqliteUserRepository Integration', () => {
     expect(activeCount).toBe(1);
 
     // Count by role
-    const adminCount = await repository.countByQuery({ role: 'admin' });
+    const adminCount = await repository.countByQuery({ role: UserRole.ADMIN });
     expect(adminCount).toBe(1);
   });
 

@@ -35,6 +35,9 @@ export class SqliteConnectionManager {
     this.client = client;
     this.db = drizzle(client);
     this.config = config;
+
+    // Apply SQLite configuration parameters using PRAGMA statements
+    this.applyConfigurationPragmas();
   }
 
   /**
@@ -148,6 +151,7 @@ export class SqliteConnectionManager {
 
   /**
    * Disconnects from the SQLite database
+   * Note: This method doesn't fully close the client to allow for reconnection
    */
   async disconnect(): Promise<void> {
     if (this.connectionState === 'disconnected') {
@@ -167,11 +171,8 @@ export class SqliteConnectionManager {
         });
       }
 
-      // Close the database connection
-      if (typeof this.client.close === 'function') {
-        this.client.close();
-      }
-
+      // Mark the connection as logically disconnected without closing the client
+      // This allows the client to be reused for reconnection
       this.connectionState = 'disconnected';
       this.connectionAttempts = 0;
       this.lastError = null;
@@ -185,6 +186,51 @@ export class SqliteConnectionManager {
         error instanceof Error ? error : new Error(String(error));
 
       logger.logError('Failed to disconnect SQLite database', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fully closes the database connection, invalidating the client
+   * Note: After calling this method, reconnect() will not work
+   * This should only be used when completely shutting down the application
+   */
+  async close(): Promise<void> {
+    if (this.connectionState === 'disconnected') {
+      return;
+    }
+
+    try {
+      // Perform WAL checkpoint to ensure all data is written
+      try {
+        this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
+      } catch (checkpointError) {
+        logger.warn('Error during WAL checkpoint', {
+          errorMessage:
+            checkpointError instanceof Error
+              ? checkpointError.message
+              : String(checkpointError),
+        });
+      }
+
+      // Actually close the database connection
+      if (typeof this.client.close === 'function') {
+        this.client.close();
+      }
+
+      this.connectionState = 'disconnected';
+      this.connectionAttempts = 0;
+      this.lastError = null;
+
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info('SQLite database fully closed');
+      }
+    } catch (error) {
+      this.connectionState = 'error';
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
+
+      logger.logError('Failed to fully close SQLite database', error);
       throw error;
     }
   }
@@ -317,6 +363,10 @@ export class SqliteConnectionManager {
       });
     }
 
+    // Reset the connection state to ensure we can attempt a fresh connection
+    this.connectionState = 'disconnected';
+    this.connectionPromise = null;
+
     await this.connect();
   }
 
@@ -339,5 +389,49 @@ export class SqliteConnectionManager {
       hasError: this.lastError !== null,
       lastError: this.lastError?.message,
     };
+  }
+
+  /**
+   * Applies SQLite configuration parameters using PRAGMA statements
+   * This method applies the configuration parameters from the config object to the SQLite client
+   */
+  private applyConfigurationPragmas(): void {
+    try {
+      // Apply busy timeout if provided
+      if (
+        typeof this.config.sqliteBusyTimeout === 'number' &&
+        this.config.sqliteBusyTimeout > 0
+      ) {
+        this.client.exec(
+          `PRAGMA busy_timeout = ${this.config.sqliteBusyTimeout};`
+        );
+      }
+
+      // Apply synchronous mode if provided
+      if (this.config.sqliteSyncMode) {
+        this.client.exec(`PRAGMA synchronous = ${this.config.sqliteSyncMode};`);
+      }
+
+      // Apply cache size if provided
+      if (
+        typeof this.config.sqliteCacheSize === 'number' &&
+        this.config.sqliteCacheSize > 0
+      ) {
+        this.client.exec(`PRAGMA cache_size = ${this.config.sqliteCacheSize};`);
+      }
+
+      // Log applied configurations in non-production environments
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info('SQLite configuration parameters applied:', {
+          busyTimeout: this.config.sqliteBusyTimeout,
+          syncMode: this.config.sqliteSyncMode,
+          cacheSize: this.config.sqliteCacheSize,
+        });
+      }
+    } catch (error) {
+      logger.warn('Error applying SQLite configuration parameters', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }

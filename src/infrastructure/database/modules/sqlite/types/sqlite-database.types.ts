@@ -23,6 +23,9 @@ export interface SqliteDatabaseClient {
 export interface SqliteConnectionConfig {
   maxConnectionAttempts: number;
   connectionRetryDelayMs: number;
+  sqliteBusyTimeout?: number;
+  sqliteSyncMode?: 'OFF' | 'NORMAL' | 'FULL';
+  sqliteCacheSize?: number;
 }
 
 /**

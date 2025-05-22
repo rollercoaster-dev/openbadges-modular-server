@@ -31,6 +31,9 @@ export class SqliteDatabase implements DatabaseInterface {
     const connectionConfig: SqliteConnectionConfig = {
       maxConnectionAttempts: config?.maxConnectionAttempts ?? 3,
       connectionRetryDelayMs: config?.connectionRetryDelayMs ?? 1000,
+      sqliteBusyTimeout: config?.sqliteBusyTimeout,
+      sqliteSyncMode: config?.sqliteSyncMode,
+      sqliteCacheSize: config?.sqliteCacheSize,
     };
 
     // Initialize connection manager and service

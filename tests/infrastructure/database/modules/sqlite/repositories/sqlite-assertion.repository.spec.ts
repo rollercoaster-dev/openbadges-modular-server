@@ -18,6 +18,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { assertions } from '@infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
 import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 
 // --- Test Setup ---
 let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -25,7 +26,7 @@ let repository: SqliteAssertionRepository;
 let testDbInstance: Database;
 let connectionManager: SqliteConnectionManager;
 
-const MIGRATIONS_PATH = './drizzle/migrations'; // Adjust if your path differs
+const MIGRATIONS_PATH = getMigrationsPath();
 
 describe('SqliteAssertionRepository Integration - Query Logging', () => {
   beforeAll(async () => {

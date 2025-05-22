@@ -57,7 +57,7 @@ export class SqliteModule implements DatabaseModuleInterface {
    * Creates and returns a DatabaseInterface instance for SQLite using bun:sqlite
    */
   async createDatabase(
-    config: Partial<SqliteModuleConfig>
+    config: Partial<SqliteModuleConfig> = {}
   ): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
     const filePath = config.sqliteFile?.trim() || ':memory:'; // Default to in-memory if no valid path provided
@@ -67,10 +67,13 @@ export class SqliteModule implements DatabaseModuleInterface {
     this.applySqliteOptimizations(client, config);
 
     // Wrap in our DatabaseInterface implementation
-    // Use the new configuration-based constructor with proper config
+    // Use the new configuration-based constructor with all config parameters
     const connectionConfig = {
       maxConnectionAttempts: config.maxConnectionAttempts ?? 3,
       connectionRetryDelayMs: config.connectionRetryDelayMs ?? 1000,
+      sqliteBusyTimeout: config.sqliteBusyTimeout,
+      sqliteSyncMode: config.sqliteSyncMode,
+      sqliteCacheSize: config.sqliteCacheSize,
     };
     const sqliteDb = new SqliteDatabase(client, connectionConfig);
     await sqliteDb.connect();

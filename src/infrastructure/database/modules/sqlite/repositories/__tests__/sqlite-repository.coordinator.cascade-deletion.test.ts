@@ -12,11 +12,9 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { SqliteRepositoryCoordinator } from '../sqlite-repository.coordinator';
 import { SqliteConnectionManager } from '../../connection/sqlite-connection.manager';
-import { Issuer } from '@domains/issuer/issuer.entity';
-import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
-import { Assertion } from '@domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 import * as schema from '../../schema';
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 
 describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
   let coordinator: SqliteRepositoryCoordinator;
@@ -41,8 +39,8 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
     // Run migrations to set up schema
     const db = drizzle(testDbInstance, { schema });
     try {
-      migrate(db, { migrationsFolder: './drizzle/migrations' });
-    } catch (error) {
+      migrate(db, { migrationsFolder: getMigrationsPath() });
+    } catch (_error) {
       // If migrations fail, create tables manually for testing
       // First enable foreign keys
       testDbInstance.exec('PRAGMA foreign_keys = ON;');
@@ -115,7 +113,7 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
       const badgeClassData = {
         name: 'Test Badge',
         description: 'A test badge class',
-        image: 'https://example.com/badge.png',
+        image: 'https://example.com/badge.png' as Shared.IRI,
         criteria: { narrative: 'Complete the test' },
       };
 
@@ -192,7 +190,7 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
       const badgeClass1 = await coordinator.getBadgeClassRepository().create({
         name: 'Badge 1',
         description: 'First badge',
-        image: 'https://example.com/badge1.png',
+        image: 'https://example.com/badge1.png' as Shared.IRI,
         criteria: { narrative: 'Complete task 1' },
         issuer: issuer.id,
       });
@@ -200,7 +198,7 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
       const badgeClass2 = await coordinator.getBadgeClassRepository().create({
         name: 'Badge 2',
         description: 'Second badge',
-        image: 'https://example.com/badge2.png',
+        image: 'https://example.com/badge2.png' as Shared.IRI,
         criteria: { narrative: 'Complete task 2' },
         issuer: issuer.id,
       });

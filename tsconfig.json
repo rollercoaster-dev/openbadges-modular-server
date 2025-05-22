@@ -15,6 +15,7 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
 
     // Path Aliases
     "baseUrl": ".",

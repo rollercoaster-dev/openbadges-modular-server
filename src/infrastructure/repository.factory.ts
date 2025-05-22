@@ -91,6 +91,13 @@ export class RepositoryFactory {
         {
           maxConnectionAttempts: 3,
           connectionRetryDelayMs: 1000,
+          sqliteBusyTimeout: config.sqliteBusyTimeout,
+          sqliteSyncMode: config.sqliteSyncMode as
+            | 'OFF'
+            | 'NORMAL'
+            | 'FULL'
+            | undefined,
+          sqliteCacheSize: config.sqliteCacheSize,
         }
       );
 
@@ -251,9 +258,9 @@ export class RepositoryFactory {
         throw new Error('SQLite connection manager not initialized');
       }
 
-      // Create the repository using the raw client from the shared connection manager
+      // Create the repository using the shared connection manager
       return new SqliteApiKeyRepository(
-        RepositoryFactory.sqliteConnectionManager.getClient()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 
@@ -278,9 +285,9 @@ export class RepositoryFactory {
         throw new Error('SQLite connection manager not initialized');
       }
 
-      // Create the repository using the raw client from the shared connection manager
+      // Create the repository using the shared connection manager
       return new SqlitePlatformRepository(
-        RepositoryFactory.sqliteConnectionManager.getClient()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 
@@ -305,9 +312,9 @@ export class RepositoryFactory {
         throw new Error('SQLite connection manager not initialized');
       }
 
-      // Create the repository using the raw client from the shared connection manager
+      // Create the repository using the shared connection manager
       return new SqlitePlatformUserRepository(
-        RepositoryFactory.sqliteConnectionManager.getClient()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 

@@ -6,23 +6,32 @@
  */
 
 // import { drizzle } from 'drizzle-orm/bun-sqlite'; // Will be used in future implementation
-import { Database } from 'bun:sqlite';
 import { ApiKey } from '@domains/auth/apiKey.entity';
 import type { ApiKeyRepository } from '@domains/auth/apiKey.repository';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 // These imports will be used in the full implementation
 // import { eq } from 'drizzle-orm';
 // import { apiKeys } from '../schema';
 
 export class SqliteApiKeyRepository implements ApiKeyRepository {
-  // Database client will be used in future implementation
-  constructor(_client: Database) {
-    // Store client for future use when implementation is added
+  constructor(private readonly connectionManager: SqliteConnectionManager) {
+    // Connection manager will be used when implementation is added
+  }
+
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase() {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
   }
 
   async create(apiKey: ApiKey): Promise<ApiKey> {
     try {
+      // Get database with connection validation
+      this.getDatabase();
       // Implementation will be added later
       return apiKey;
     } catch (error) {
@@ -71,7 +80,10 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
     }
   }
 
-  async update(_id: Shared.IRI, _data: Partial<ApiKey>): Promise<ApiKey | null> {
+  async update(
+    _id: Shared.IRI,
+    _data: Partial<ApiKey>
+  ): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
@@ -106,7 +118,10 @@ export class SqliteApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error updating API Key last used timestamp', error as Error);
+      logger.logError(
+        'Error updating API Key last used timestamp',
+        error as Error
+      );
       throw error;
     }
   }

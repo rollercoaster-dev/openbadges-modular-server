@@ -188,7 +188,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
       let issuerId: Shared.IRI | undefined;
 
       if (typeof badgeClass.issuer === 'string') {
-        issuerId = badgeClass.issuer;
+        issuerId = badgeClass.issuer as Shared.IRI;
       } else if (
         badgeClass.issuer &&
         typeof badgeClass.issuer === 'object' &&

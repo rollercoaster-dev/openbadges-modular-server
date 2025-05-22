@@ -7,10 +7,16 @@
 
 import { eq, or, like, sql } from 'drizzle-orm';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';
-import { UserRepository, UserCreateParams, UserUpdateParams, UserQueryParams } from '@domains/user/user.repository';
+import {
+  UserRepository,
+  UserCreateParams,
+  UserUpdateParams,
+  UserQueryParams,
+} from '@domains/user/user.repository';
 import { users } from '../schema';
 import { Shared } from 'openbadges-types';
-import { logger } from '@utils/logging/logger.service';
+import { logger, queryLogger } from '@utils/logging/logger.service';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { createId } from '@paralleldrive/cuid2';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
@@ -23,7 +29,7 @@ export class SqliteUserRepository implements UserRepository {
    * @param connectionManager SQLite connection manager
    */
   constructor(private readonly connectionManager: SqliteConnectionManager) {}
-  
+
   /**
    * Gets the database instance with connection validation
    */
@@ -31,17 +37,17 @@ export class SqliteUserRepository implements UserRepository {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
   }
-  
+
   /**
    * Create a mapper for this repository on demand
    * This allows access to the mapper for external components
    * while maintaining lazy initialization
    */
-  getMapper() {
-    // We don't have a dedicated mapper class for User yet, 
+  getMapper(): { toDomain: (record: Record<string, unknown>) => User } {
+    // We don't have a dedicated mapper class for User yet,
     // but this provides the interface for future implementation
     return {
-      toDomain: this.toDomain.bind(this)
+      toDomain: this.toDomain.bind(this),
     };
   }
 
@@ -58,30 +64,31 @@ export class SqliteUserRepository implements UserRepository {
       const obj = newUser.toObject();
 
       // Convert dates to integers for SQLite
-      const createdAt = obj.createdAt instanceof Date
-        ? obj.createdAt.getTime()
-        : Date.now();
-      const updatedAt = obj.updatedAt instanceof Date
-        ? obj.updatedAt.getTime()
-        : Date.now();
-      const lastLogin = obj.lastLogin instanceof Date
-        ? obj.lastLogin.getTime()
-        : null;
+      const createdAt =
+        obj.createdAt instanceof Date ? obj.createdAt.getTime() : Date.now();
+      const updatedAt =
+        obj.updatedAt instanceof Date ? obj.updatedAt.getTime() : Date.now();
+      const lastLogin =
+        obj.lastLogin instanceof Date ? obj.lastLogin.getTime() : null;
 
       // Log the password hash for debugging
-      logger.debug(`Creating user in SQLite repository with passwordHash: ${params.passwordHash ? 'yes' : 'no'}`);
+      logger.debug(
+        `Creating user in SQLite repository with passwordHash: ${
+          params.passwordHash ? 'yes' : 'no'
+        }`
+      );
 
       // Get database with connection validation
       const db = this.getDatabase();
-      
-      // Use transaction for atomicity
-      await db.transaction(async (tx) => {
-        // Insert into database
-        await tx.insert(users).values({
+
+      // Use transaction with returning() to fetch created record atomically
+      const startTime = Date.now();
+      const result = await db.transaction(async (tx) => {
+        const insertValues = {
           id: obj.id as string,
           username: obj.username as string,
           email: obj.email as string,
-          passwordHash: params.passwordHash || null,
+          passwordHash: params.passwordHash || undefined,
           firstName: obj.firstName as string | null,
           lastName: obj.lastName as string | null,
           roles: JSON.stringify(obj.roles),
@@ -90,22 +97,46 @@ export class SqliteUserRepository implements UserRepository {
           lastLogin,
           metadata: obj.metadata ? JSON.stringify(obj.metadata) : null,
           createdAt,
-          updatedAt
-        });
-      });
+          updatedAt,
+        };
 
-      // Verify the user was created with the password hash
-      const createdUser = await this.findById(id);
-      if (!createdUser) {
+        return await tx.insert(users).values(insertValues).returning();
+      });
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'INSERT User',
+        [
+          SensitiveValue.from({
+            id: obj.id,
+            username: obj.username,
+            email: obj.email,
+            passwordHash: params.passwordHash ? '[REDACTED]' : null,
+          }),
+        ],
+        duration,
+        'sqlite'
+      );
+
+      // Check if insert was successful
+      if (!result[0]) {
         throw new Error('User was not created properly');
       }
 
-      logger.debug(`User created in SQLite repository: ${createdUser.id} with passwordHash: ${createdUser.passwordHash ? 'yes' : 'no'}`);
+      // Convert database record back to domain entity
+      const createdUser = this.toDomain(result[0]);
+
+      logger.debug(
+        `User created in SQLite repository: ${
+          createdUser.id
+        } with passwordHash: ${createdUser.passwordHash ? 'yes' : 'no'}`
+      );
       return createdUser;
     } catch (error) {
       logger.error('Error creating user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -120,7 +151,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database
       const result = await db
         .select()
@@ -137,7 +168,7 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by ID in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }
@@ -152,7 +183,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database
       const result = await db
         .select()
@@ -169,7 +200,7 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by username in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        username
+        username,
       });
       throw error;
     }
@@ -184,7 +215,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database
       const result = await db
         .select()
@@ -201,7 +232,7 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by email in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        email
+        email,
       });
       throw error;
     }
@@ -224,47 +255,77 @@ export class SqliteUserRepository implements UserRepository {
       // Create a merged entity
       const mergedUser = User.create({
         ...existingUser.toObject(),
-        ...params as Partial<User>,
-        updatedAt: new Date()
+        ...(params as Partial<User>),
+        updatedAt: new Date(),
       });
       const obj = mergedUser.toObject();
 
       // Prepare update values
       const updateValues: Record<string, unknown> = {
-        updatedAt: (obj.updatedAt as Date).getTime()
+        updatedAt: (obj.updatedAt as Date).getTime(),
       };
 
       // Add optional fields if provided
-      if (params.username !== undefined) updateValues.username = params.username;
+      if (params.username !== undefined)
+        updateValues.username = params.username;
       if (params.email !== undefined) updateValues.email = params.email;
-      if (params.passwordHash !== undefined) updateValues.passwordHash = params.passwordHash;
-      if (params.firstName !== undefined) updateValues.firstName = params.firstName;
-      if (params.lastName !== undefined) updateValues.lastName = params.lastName;
-      if (params.roles !== undefined) updateValues.roles = JSON.stringify(params.roles);
-      if (params.permissions !== undefined) updateValues.permissions = JSON.stringify(params.permissions);
-      if (params.isActive !== undefined) updateValues.isActive = params.isActive ? 1 : 0;
+      if (params.passwordHash !== undefined)
+        updateValues.passwordHash = params.passwordHash;
+      if (params.firstName !== undefined)
+        updateValues.firstName = params.firstName;
+      if (params.lastName !== undefined)
+        updateValues.lastName = params.lastName;
+      if (params.roles !== undefined)
+        updateValues.roles = JSON.stringify(params.roles);
+      if (params.permissions !== undefined)
+        updateValues.permissions = JSON.stringify(params.permissions);
+      if (params.isActive !== undefined)
+        updateValues.isActive = params.isActive ? 1 : 0;
       if (params.lastLogin !== undefined) {
-        updateValues.lastLogin = params.lastLogin ? params.lastLogin.getTime() : null;
+        updateValues.lastLogin = params.lastLogin
+          ? params.lastLogin.getTime()
+          : null;
       }
       if (params.metadata !== undefined) {
-        updateValues.metadata = params.metadata ? JSON.stringify(params.metadata) : null;
+        updateValues.metadata = params.metadata
+          ? JSON.stringify(params.metadata)
+          : null;
       }
 
       // Get database with connection validation
       const db = this.getDatabase();
-      
-      // Update in database
-      await db
-        .update(users)
-        .set(updateValues)
-        .where(eq(users.id, id as string));
 
-      return mergedUser;
+      // Use transaction with returning() to fetch updated record atomically
+      const startTime = Date.now();
+      const result = await db.transaction(async (tx) => {
+        return await tx
+          .update(users)
+          .set(updateValues)
+          .where(eq(users.id, id as string))
+          .returning();
+      });
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'UPDATE User',
+        [id, SensitiveValue.from(updateValues)],
+        duration,
+        'sqlite'
+      );
+
+      // Check if update was successful
+      if (!result[0]) {
+        throw new Error('Failed to update user: no result returned');
+      }
+
+      // Convert database record back to domain entity
+      return this.toDomain(result[0]);
     } catch (error) {
       logger.error('Error updating user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         id,
-        params
+        params,
       });
       throw error;
     }
@@ -279,7 +340,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Delete from database
       const result = await db
         .delete(users)
@@ -291,7 +352,7 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error deleting user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }
@@ -306,7 +367,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Build query
       let query = db.select().from(users);
 
@@ -324,33 +385,31 @@ export class SqliteUserRepository implements UserRepository {
       if (params.role) {
         // For SQLite, we need to use a JSON string contains check
         // This is a simple implementation and might not be perfect for all cases
-        conditions.push(
-          like(users.roles, `%${params.role}%`)
-        );
+        conditions.push(like(users.roles, `%${params.role}%`));
       }
 
       // Apply filters if any
       if (conditions.length > 0) {
-        query = query.where(or(...conditions));
+        query = query.where(or(...conditions)) as typeof query;
       }
 
       // Apply pagination
       if (params.limit) {
-        query = query.limit(params.limit);
+        query = query.limit(params.limit) as typeof query;
       }
       if (params.offset) {
-        query = query.offset(params.offset);
+        query = query.offset(params.offset) as typeof query;
       }
 
       // Execute query
       const result = await query;
 
       // Convert database records to domain entities
-      return result.map(record => this.toDomain(record));
+      return result.map((record) => this.toDomain(record));
     } catch (error) {
       logger.error('Error finding users by query in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -365,7 +424,7 @@ export class SqliteUserRepository implements UserRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Build query
       let query = db.select({ count: sql`count(*)` }).from(users);
 
@@ -382,14 +441,12 @@ export class SqliteUserRepository implements UserRepository {
       }
       if (params.role) {
         // For SQLite, we need to use a JSON string contains check
-        conditions.push(
-          like(users.roles, `%${params.role}%`)
-        );
+        conditions.push(like(users.roles, `%${params.role}%`));
       }
 
       // Apply filters if any
       if (conditions.length > 0) {
-        query = query.where(or(...conditions));
+        query = query.where(or(...conditions)) as typeof query;
       }
 
       // Execute query
@@ -400,7 +457,7 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error counting users by query in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -413,30 +470,36 @@ export class SqliteUserRepository implements UserRepository {
    */
   private toDomain(record: Record<string, unknown>): User {
     // Parse JSON fields
-    const roles = typeof record.roles === 'string'
-      ? JSON.parse(record.roles as string) as UserRole[]
-      : record.roles as UserRole[];
+    const roles =
+      typeof record.roles === 'string'
+        ? (JSON.parse(record.roles as string) as UserRole[])
+        : (record.roles as UserRole[]);
 
-    const permissions = typeof record.permissions === 'string'
-      ? JSON.parse(record.permissions as string) as UserPermission[]
-      : record.permissions as UserPermission[];
+    const permissions =
+      typeof record.permissions === 'string'
+        ? (JSON.parse(record.permissions as string) as UserPermission[])
+        : (record.permissions as UserPermission[]);
 
-    const metadata = typeof record.metadata === 'string' && record.metadata
-      ? JSON.parse(record.metadata as string)
-      : record.metadata as Record<string, unknown> | undefined;
+    const metadata =
+      typeof record.metadata === 'string' && record.metadata
+        ? JSON.parse(record.metadata as string)
+        : (record.metadata as Record<string, unknown> | undefined);
 
     // Convert integer timestamps to Date objects
-    const createdAt = typeof record.createdAt === 'number'
-      ? new Date(record.createdAt)
-      : record.createdAt as Date;
+    const createdAt =
+      typeof record.createdAt === 'number'
+        ? new Date(record.createdAt)
+        : (record.createdAt as Date);
 
-    const updatedAt = typeof record.updatedAt === 'number'
-      ? new Date(record.updatedAt)
-      : record.updatedAt as Date;
+    const updatedAt =
+      typeof record.updatedAt === 'number'
+        ? new Date(record.updatedAt)
+        : (record.updatedAt as Date);
 
-    const lastLogin = typeof record.lastLogin === 'number'
-      ? new Date(record.lastLogin)
-      : record.lastLogin as Date | undefined;
+    const lastLogin =
+      typeof record.lastLogin === 'number'
+        ? new Date(record.lastLogin)
+        : (record.lastLogin as Date | undefined);
 
     // Create user entity
     return User.create({
@@ -452,7 +515,7 @@ export class SqliteUserRepository implements UserRepository {
       lastLogin,
       metadata,
       createdAt,
-      updatedAt
+      updatedAt,
     });
   }
 }

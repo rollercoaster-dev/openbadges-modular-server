@@ -11,7 +11,9 @@ import { toIRI } from '@utils/types/iri-utils';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
-const MIGRATIONS_FOLDER = 'drizzle/migrations';
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+
+const MIGRATIONS_FOLDER = getMigrationsPath();
 
 const mockIssuer = {
   id: `urn:uuid:${createId()}`,

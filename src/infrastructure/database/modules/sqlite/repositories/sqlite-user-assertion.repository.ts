@@ -11,11 +11,15 @@ import type { UserAssertionRepository } from '@domains/backpack/user-assertion.r
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { UserAssertionStatus } from '@domains/backpack/backpack.types';
-import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/backpack/repository.types';
+import {
+  UserAssertionCreateParams,
+  UserAssertionQueryParams,
+} from '@domains/backpack/repository.types';
 import { userAssertions } from '../schema';
 import { SqliteUserAssertionMapper } from '../mappers/sqlite-user-assertion.mapper';
 import { createId } from '@paralleldrive/cuid2';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
   private mapper: SqliteUserAssertionMapper;
@@ -23,7 +27,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.mapper = new SqliteUserAssertionMapper();
   }
-  
+
   /**
    * Gets the database instance with connection validation
    */
@@ -31,7 +35,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
   }
-  
+
   /**
    * Gets the mapper instance for external access
    */
@@ -45,11 +49,15 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
    * @returns A properly typed update object for Drizzle ORM
    */
   private constructDrizzleUpdateSet(record: Record<string, unknown>): {
-    [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
+    [key in
+      | typeof userAssertions.status.name
+      | typeof userAssertions.metadata.name]?: string;
   } {
     // Define a properly typed update object for Drizzle
     type DrizzleUpdateSet = {
-      [key in typeof userAssertions.status.name | typeof userAssertions.metadata.name]?: string;
+      [key in
+        | typeof userAssertions.status.name
+        | typeof userAssertions.metadata.name]?: string;
     };
 
     const updateSet: DrizzleUpdateSet = {};
@@ -59,18 +67,33 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     }
 
     if (record.metadata !== undefined) {
-      updateSet[userAssertions.metadata.name] = String(record.metadata);
+      // Use proper JSON conversion to prevent data loss
+      updateSet[userAssertions.metadata.name] =
+        typeof record.metadata === 'string'
+          ? record.metadata
+          : SqliteTypeConverters.safeJsonStringify(
+              record.metadata,
+              'metadata'
+            ) || '{}';
     }
 
     return updateSet;
   }
 
-  async addAssertion(userIdOrParams: Shared.IRI | UserAssertionCreateParams, assertionId?: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+  async addAssertion(
+    userIdOrParams: Shared.IRI | UserAssertionCreateParams,
+    assertionId?: Shared.IRI,
+    metadata?: Record<string, unknown>
+  ): Promise<UserAssertion> {
     try {
       // Handle params object
       if (typeof userIdOrParams !== 'string') {
         const params = userIdOrParams;
-        return this.createUserAssertion(params.userId, params.assertionId, params.metadata);
+        return this.createUserAssertion(
+          params.userId,
+          params.assertionId,
+          params.metadata
+        );
       }
 
       // Handle individual parameters
@@ -83,7 +106,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       logger.error('Error adding assertion to user in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         userIdOrParams,
-        assertionId
+        assertionId,
       });
       throw error;
     }
@@ -92,7 +115,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   /**
    * Internal method to create a user assertion
    */
-  private async createUserAssertion(userId: Shared.IRI, assertionId: Shared.IRI, metadata?: Record<string, unknown>): Promise<UserAssertion> {
+  private async createUserAssertion(
+    userId: Shared.IRI,
+    assertionId: Shared.IRI,
+    metadata?: Record<string, unknown>
+  ): Promise<UserAssertion> {
     try {
       // Create a new user assertion entity with a generated ID
       const id = createId() as Shared.IRI;
@@ -100,7 +127,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         id,
         userId,
         assertionId,
-        metadata
+        metadata,
       });
 
       // Convert domain entity to database record
@@ -108,7 +135,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Use transaction for atomicity
       await db.transaction(async (tx) => {
         // First check if the record already exists
@@ -121,25 +148,31 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
               eq(userAssertions.assertionId, assertionId as string)
             )
           );
-          
+
         if (existingRecord.length > 0) {
           // Record exists, update it
           const updateData: Record<string, unknown> = {};
-          
+
           // Extract fields to update from the record
           const extendedRecord = record as Record<string, unknown>;
-          
-          if ('status' in extendedRecord && extendedRecord.status !== undefined) {
+
+          if (
+            'status' in extendedRecord &&
+            extendedRecord.status !== undefined
+          ) {
             updateData.status = extendedRecord.status;
           }
-          
-          if ('metadata' in extendedRecord && extendedRecord.metadata !== undefined) {
+
+          if (
+            'metadata' in extendedRecord &&
+            extendedRecord.metadata !== undefined
+          ) {
             updateData.metadata = extendedRecord.metadata;
           }
-          
+
           // Use the helper method to construct the Drizzle update set
           const drizzleUpdateSet = this.constructDrizzleUpdateSet(updateData);
-          
+
           await tx
             .update(userAssertions)
             .set(drizzleUpdateSet)
@@ -151,9 +184,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
             );
         } else {
           // Record doesn't exist, insert it
-          await tx
-            .insert(userAssertions)
-            .values(record);
+          await tx.insert(userAssertions).values(record);
         }
       });
 
@@ -163,17 +194,20 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       logger.error('Error creating user assertion in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         userId,
-        assertionId
+        assertionId,
       });
       throw error;
     }
   }
 
-  async removeAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+  async removeAssertion(
+    userId: Shared.IRI,
+    assertionId: Shared.IRI
+  ): Promise<boolean> {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Delete from database using Drizzle ORM
       const result = await db
         .delete(userAssertions)
@@ -191,17 +225,21 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       logger.error('Error removing assertion from user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         userId,
-        assertionId
+        assertionId,
       });
       throw error;
     }
   }
 
-  async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
+  async updateStatus(
+    userId: Shared.IRI,
+    assertionId: Shared.IRI,
+    status: UserAssertionStatus
+  ): Promise<boolean> {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Update status in database using Drizzle ORM
       // Use the helper method to construct the Drizzle update set
       const drizzleUpdateSet = this.constructDrizzleUpdateSet({ status });
@@ -224,17 +262,20 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         error: error instanceof Error ? error.stack : String(error),
         userId,
         assertionId,
-        status
+        status,
       });
       throw error;
     }
   }
 
-  async getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
+  async getUserAssertions(
+    userId: Shared.IRI,
+    params?: UserAssertionQueryParams
+  ): Promise<UserAssertion[]> {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Build the where conditions
       const whereCondition = params?.status
         ? and(
@@ -250,7 +291,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       let query = db.select().from(userAssertions).where(whereCondition);
 
       // Execute the query with pagination if provided
-      let result;
+      let result: (typeof userAssertions.$inferSelect)[];
 
       // Apply pagination if provided
       if (params?.limit !== undefined) {
@@ -272,12 +313,14 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       }
 
       // Convert database records to domain entities
-      return result.map(record => this.mapper.toDomain(record));
+      return result.map((record: typeof userAssertions.$inferSelect) =>
+        this.mapper.toDomain(record)
+      );
     } catch (error) {
       logger.error('Error getting user assertions in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         userId,
-        params
+        params,
       });
       throw error;
     }
@@ -287,7 +330,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database using Drizzle ORM
       const result = await db
         .select()
@@ -295,21 +338,24 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         .where(eq(userAssertions.assertionId, assertionId as string));
 
       // Convert database records to domain entities
-      return result.map(record => this.mapper.toDomain(record));
+      return result.map((record) => this.mapper.toDomain(record));
     } catch (error) {
       logger.error('Error getting assertion users in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        assertionId
+        assertionId,
       });
       throw error;
     }
   }
 
-  async hasAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
+  async hasAssertion(
+    userId: Shared.IRI,
+    assertionId: Shared.IRI
+  ): Promise<boolean> {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database using Drizzle ORM
       const result = await db
         .select({ exists: sql`1` })
@@ -325,20 +371,26 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Return true if found
       return result.length > 0;
     } catch (error) {
-      logger.error('Error checking if user has assertion in SQLite repository', {
-        error: error instanceof Error ? error.stack : String(error),
-        userId,
-        assertionId
-      });
+      logger.error(
+        'Error checking if user has assertion in SQLite repository',
+        {
+          error: error instanceof Error ? error.stack : String(error),
+          userId,
+          assertionId,
+        }
+      );
       throw error;
     }
   }
 
-  async findByUserAndAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<UserAssertion | null> {
+  async findByUserAndAssertion(
+    userId: Shared.IRI,
+    assertionId: Shared.IRI
+  ): Promise<UserAssertion | null> {
     try {
       // Get database with connection validation
       const db = this.getDatabase();
-      
+
       // Query database using Drizzle ORM
       const result = await db
         .select()
@@ -358,11 +410,14 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Convert database record to domain entity
       return this.mapper.toDomain(result[0]);
     } catch (error) {
-      logger.error('Error finding user assertion by user and assertion ID in SQLite repository', {
-        error: error instanceof Error ? error.stack : String(error),
-        userId,
-        assertionId
-      });
+      logger.error(
+        'Error finding user assertion by user and assertion ID in SQLite repository',
+        {
+          error: error instanceof Error ? error.stack : String(error),
+          userId,
+          assertionId,
+        }
+      );
       throw error;
     }
   }
