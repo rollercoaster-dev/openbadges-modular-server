@@ -2,13 +2,18 @@
  * SQLite mapper for the Issuer domain entity
  *
  * This class implements the Data Mapper pattern for the Issuer entity,
- * handling the conversion between domain entities and database records.
+ * handling the conversion between domain entities and database records with enhanced type safety.
  */
 
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
-import { convertJson, convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { issuers } from '../schema';
+import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
+import { logger } from '@utils/logging/logger.service';
+import {
+  SqliteIssuerRecord,
+  TypeConversionResult,
+} from '../types/sqlite-database.types';
 
 export class SqliteIssuerMapper {
   /**
@@ -17,40 +22,67 @@ export class SqliteIssuerMapper {
    * @returns An Issuer domain entity
    */
   toDomain(record: typeof issuers.$inferSelect): Issuer {
-    if (!record) return null as unknown as Issuer;
+    if (!record) {
+      throw new Error(
+        'Cannot convert null or undefined record to Issuer domain entity'
+      );
+    }
 
-    // Extract the standard fields from the record
-    const {
-      id,
-      name,
-      url,
-      email,
-      description,
-      image,
-      publicKey, // Drizzle likely maps snake_case DB col to camelCase JS prop
-      additionalFields = '{}' // Default to empty JSON string if null from DB
-    } = record;
+    try {
+      // Extract the standard fields from the record
+      const {
+        id,
+        name,
+        url,
+        email,
+        description,
+        image,
+        publicKey,
+        additionalFields = '{}', // Default to empty JSON string if null from DB
+      } = record;
 
-    // Create and return the domain entity
-    const baseData = {
-      id: convertUuid(id, 'sqlite', 'from') as Shared.IRI,
-      name,
-      url: url as Shared.IRI,
-      email,
-      description,
-      image: typeof image === 'string' ? image as Shared.IRI : image,
-      // Cast to unknown first, then to Record to satisfy TS and Issuer.create
-      publicKey: convertJson(publicKey, 'sqlite', 'from') as unknown as Record<
-        string,
-        unknown
-      >
-    };
+      // Validate and convert ID
+      const idResult = SqliteTypeConverters.validateAndConvertIRI(id);
+      if (!idResult.success) {
+        throw new Error(`Invalid issuer ID: ${idResult.error}`);
+      }
 
-    // Handle additional fields separately for safer spreading
-    const convertedAdditional = convertJson(additionalFields, 'sqlite', 'from');
-    const safeAdditional = typeof convertedAdditional === 'object' && convertedAdditional !== null ? convertedAdditional : {};
+      // Convert image with type safety
+      const convertedImage = SqliteTypeConverters.convertImageFromString(image);
 
-    return Issuer.create({ ...baseData, ...safeAdditional });
+      // Convert public key with type safety
+      const convertedPublicKey = SqliteTypeConverters.safeJsonParse<
+        Record<string, unknown>
+      >(publicKey, 'publicKey');
+
+      // Handle additional fields with validation
+      const additionalFieldsResult =
+        SqliteTypeConverters.validateAdditionalFields(
+          SqliteTypeConverters.safeJsonParse<Record<string, unknown>>(
+            additionalFields,
+            'additionalFields'
+          ) || {}
+        );
+
+      // Create and return the domain entity
+      const baseData = {
+        id: idResult.data!,
+        name,
+        url: url as Shared.IRI,
+        email: email || undefined,
+        description: description || undefined,
+        image: convertedImage || undefined,
+        publicKey: convertedPublicKey || undefined,
+      };
+
+      return Issuer.create({ ...baseData, ...additionalFieldsResult.data });
+    } catch (error) {
+      logger.error('Error converting database record to Issuer domain entity', {
+        error: error instanceof Error ? error.message : String(error),
+        recordId: record.id,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -59,43 +91,66 @@ export class SqliteIssuerMapper {
    * @returns A database record conforming to the insert schema
    */
   toPersistence(entity: Issuer): typeof issuers.$inferInsert {
-    if (!entity) return null;
+    if (!entity) {
+      throw new Error(
+        'Cannot convert null or undefined entity to database record'
+      );
+    }
 
-    // Convert the entity to a plain object
-    const obj = entity.toObject();
+    try {
+      // Convert the entity to a plain object
+      const obj = entity.toObject();
 
-    // Extract the standard fields
-    const {
-      id,
-      name,
-      url,
-      email,
-      description,
-      image,
-      publicKey,
-      ...additionalFields
-    } = obj;
+      // Extract the standard fields
+      const {
+        id,
+        name,
+        url,
+        email,
+        description,
+        image,
+        publicKey,
+        ...additionalFields
+      } = obj;
 
-    // Ensure name is a string for the database
-    const dbName: string = typeof name === 'object' && name !== null
-        ? name.en || name[Object.keys(name)[0]] || ''
-        : (name as string) || ''; // Cast source name part to string
+      // Ensure name is a string for the database
+      const dbName: string =
+        typeof name === 'object' && name !== null
+          ? name.en || name[Object.keys(name)[0]] || ''
+          : (name as string) || '';
 
-    // Map all relevant fields from the entity to the DB record format
-    // Cast to any then back to inferred type as workaround for TS/Drizzle inference issues
-    const now = Date.now();
-    return {
-      id: convertUuid(id, 'sqlite', 'to'),
-      name: dbName,
-      url,
-      email,
-      description,
-      image,
-      publicKey: convertJson(publicKey, 'sqlite', 'to'),
-      additionalFields: convertJson(additionalFields, 'sqlite', 'to'),
-      // Add timestamps
-      createdAt: now,
-      updatedAt: now
-    } as unknown as typeof issuers.$inferInsert;
+      // Validate additional fields
+      const additionalFieldsResult =
+        SqliteTypeConverters.validateAdditionalFields(additionalFields);
+
+      // Create the database record with proper type safety
+      const now = Date.now();
+      const record: typeof issuers.$inferInsert = {
+        id: id as string, // ID is already validated in the entity
+        name: dbName,
+        url: url as string,
+        email: email || null,
+        description: description || null,
+        image: SqliteTypeConverters.convertImageToString(image),
+        publicKey: SqliteTypeConverters.safeJsonStringify(
+          publicKey,
+          'publicKey'
+        ),
+        additionalFields: SqliteTypeConverters.safeJsonStringify(
+          additionalFieldsResult.data,
+          'additionalFields'
+        ),
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      return record;
+    } catch (error) {
+      logger.error('Error converting Issuer domain entity to database record', {
+        error: error instanceof Error ? error.message : String(error),
+        entityId: entity.id,
+      });
+      throw error;
+    }
   }
 }

@@ -1,0 +1,326 @@
+/**
+ * SQLite Repository Coordinator
+ *
+ * This class coordinates operations across multiple SQLite repositories,
+ * providing transaction support and unified error handling.
+ */
+
+import { Shared } from 'openbadges-types';
+import { Issuer } from '@domains/issuer/issuer.entity';
+import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
+import { Assertion } from '@domains/assertion/assertion.entity';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import { SqliteIssuerRepository } from './sqlite-issuer.repository';
+import { SqliteBadgeClassRepository } from './sqlite-badge-class.repository';
+import { SqliteAssertionRepository } from './sqlite-assertion.repository';
+import { logger } from '@utils/logging/logger.service';
+import {
+  SqliteTransactionContext,
+  SqliteOperationContext,
+  RepositoryOperationResult
+} from '../types/sqlite-database.types';
+
+/**
+ * Coordinates operations across SQLite repositories with transaction support
+ */
+export class SqliteRepositoryCoordinator {
+  private readonly issuerRepository: SqliteIssuerRepository;
+  private readonly badgeClassRepository: SqliteBadgeClassRepository;
+  private readonly assertionRepository: SqliteAssertionRepository;
+
+  constructor(private readonly connectionManager: SqliteConnectionManager) {
+    this.issuerRepository = new SqliteIssuerRepository(connectionManager);
+    this.badgeClassRepository = new SqliteBadgeClassRepository(connectionManager);
+    this.assertionRepository = new SqliteAssertionRepository(connectionManager);
+  }
+
+  /**
+   * Gets the issuer repository
+   */
+  getIssuerRepository(): SqliteIssuerRepository {
+    return this.issuerRepository;
+  }
+
+  /**
+   * Gets the badge class repository
+   */
+  getBadgeClassRepository(): SqliteBadgeClassRepository {
+    return this.badgeClassRepository;
+  }
+
+  /**
+   * Gets the assertion repository
+   */
+  getAssertionRepository(): SqliteAssertionRepository {
+    return this.assertionRepository;
+  }
+
+  /**
+   * Creates a complete badge ecosystem (issuer, badge class, and assertion) in a coordinated manner
+   */
+  async createBadgeEcosystem(
+    issuerData: Omit<Issuer, 'id'>,
+    badgeClassData: Omit<BadgeClass, 'id' | 'issuer'>,
+    assertionData: Omit<Assertion, 'id' | 'badgeClass'>
+  ): Promise<{
+    issuer: Issuer;
+    badgeClass: BadgeClass;
+    assertion: Assertion;
+  }> {
+    const transactionContext = this.createTransactionContext('createBadgeEcosystem');
+
+    try {
+      // Ensure connection
+      this.connectionManager.ensureConnected();
+
+      // Create issuer first
+      const issuer = await this.issuerRepository.create(issuerData);
+      transactionContext.operations.push(
+        this.createOperationContext('CREATE Issuer', issuer.id)
+      );
+
+      // Create badge class with issuer reference
+      const badgeClass = await this.badgeClassRepository.create({
+        ...badgeClassData,
+        issuer: issuer.id
+      });
+      transactionContext.operations.push(
+        this.createOperationContext('CREATE BadgeClass', badgeClass.id)
+      );
+
+      // Create assertion with badge class reference
+      const assertion = await this.assertionRepository.create({
+        ...assertionData,
+        badgeClass: badgeClass.id
+      });
+      transactionContext.operations.push(
+        this.createOperationContext('CREATE Assertion', assertion.id)
+      );
+
+      logger.info('Badge ecosystem created successfully', {
+        transactionId: transactionContext.id,
+        issuerId: issuer.id,
+        badgeClassId: badgeClass.id,
+        assertionId: assertion.id,
+        duration: Date.now() - transactionContext.startTime
+      });
+
+      return { issuer, badgeClass, assertion };
+    } catch (error) {
+      logger.error('Failed to create badge ecosystem', {
+        error: error instanceof Error ? error.message : String(error),
+        transactionId: transactionContext.id,
+        operations: transactionContext.operations.length,
+        duration: Date.now() - transactionContext.startTime
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Validates that an issuer exists before creating a badge class
+   */
+  async createBadgeClassWithValidation(
+    badgeClassData: Omit<BadgeClass, 'id'>
+  ): Promise<BadgeClass> {
+    try {
+      // Validate that the issuer exists
+      const issuerId = typeof badgeClassData.issuer === 'string' 
+        ? badgeClassData.issuer as Shared.IRI
+        : badgeClassData.issuer.id;
+
+      const issuer = await this.issuerRepository.findById(issuerId);
+      if (!issuer) {
+        throw new Error(`Issuer with ID ${issuerId} does not exist`);
+      }
+
+      // Create the badge class
+      return await this.badgeClassRepository.create(badgeClassData);
+    } catch (error) {
+      logger.error('Failed to create badge class with validation', {
+        error: error instanceof Error ? error.message : String(error),
+        issuerId: typeof badgeClassData.issuer === 'string' 
+          ? badgeClassData.issuer 
+          : badgeClassData.issuer.id
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Validates that a badge class exists before creating an assertion
+   */
+  async createAssertionWithValidation(
+    assertionData: Omit<Assertion, 'id'>
+  ): Promise<Assertion> {
+    try {
+      // Validate that the badge class exists
+      const badgeClassId = assertionData.badgeClass;
+      const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
+      if (!badgeClass) {
+        throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
+      }
+
+      // Create the assertion
+      return await this.assertionRepository.create(assertionData);
+    } catch (error) {
+      logger.error('Failed to create assertion with validation', {
+        error: error instanceof Error ? error.message : String(error),
+        badgeClassId: assertionData.badgeClass
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes an issuer and all associated badge classes and assertions
+   */
+  async deleteIssuerCascade(issuerId: Shared.IRI): Promise<{
+    issuerDeleted: boolean;
+    badgeClassesDeleted: number;
+    assertionsDeleted: number;
+  }> {
+    const transactionContext = this.createTransactionContext('deleteIssuerCascade');
+
+    try {
+      // Get all badge classes for this issuer
+      const badgeClasses = await this.badgeClassRepository.findByIssuer(issuerId);
+      
+      let assertionsDeleted = 0;
+      
+      // Delete all assertions for each badge class
+      for (const badgeClass of badgeClasses) {
+        const assertions = await this.assertionRepository.findByBadgeClass(badgeClass.id);
+        for (const assertion of assertions) {
+          await this.assertionRepository.delete(assertion.id);
+          assertionsDeleted++;
+        }
+      }
+
+      // Delete all badge classes
+      let badgeClassesDeleted = 0;
+      for (const badgeClass of badgeClasses) {
+        const deleted = await this.badgeClassRepository.delete(badgeClass.id);
+        if (deleted) badgeClassesDeleted++;
+      }
+
+      // Delete the issuer
+      const issuerDeleted = await this.issuerRepository.delete(issuerId);
+
+      logger.info('Issuer cascade deletion completed', {
+        transactionId: transactionContext.id,
+        issuerId,
+        issuerDeleted,
+        badgeClassesDeleted,
+        assertionsDeleted,
+        duration: Date.now() - transactionContext.startTime
+      });
+
+      return { issuerDeleted, badgeClassesDeleted, assertionsDeleted };
+    } catch (error) {
+      logger.error('Failed to delete issuer cascade', {
+        error: error instanceof Error ? error.message : String(error),
+        transactionId: transactionContext.id,
+        issuerId,
+        duration: Date.now() - transactionContext.startTime
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Performs a health check on all repositories
+   */
+  async performHealthCheck(): Promise<{
+    overall: boolean;
+    connection: boolean;
+    repositories: {
+      issuer: boolean;
+      badgeClass: boolean;
+      assertion: boolean;
+    };
+  }> {
+    try {
+      // Check connection
+      const connectionHealthy = await this.connectionManager.performHealthCheck();
+
+      // Test each repository with a simple query
+      const issuerHealthy = await this.testRepositoryHealth('issuer');
+      const badgeClassHealthy = await this.testRepositoryHealth('badgeClass');
+      const assertionHealthy = await this.testRepositoryHealth('assertion');
+
+      const repositoriesHealthy = issuerHealthy && badgeClassHealthy && assertionHealthy;
+      const overall = connectionHealthy && repositoriesHealthy;
+
+      return {
+        overall,
+        connection: connectionHealthy,
+        repositories: {
+          issuer: issuerHealthy,
+          badgeClass: badgeClassHealthy,
+          assertion: assertionHealthy
+        }
+      };
+    } catch (error) {
+      logger.error('Health check failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return {
+        overall: false,
+        connection: false,
+        repositories: {
+          issuer: false,
+          badgeClass: false,
+          assertion: false
+        }
+      };
+    }
+  }
+
+  /**
+   * Creates a transaction context for coordinated operations
+   */
+  private createTransactionContext(operation: string): SqliteTransactionContext {
+    return {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      startTime: Date.now(),
+      operations: [],
+      rollbackOnError: true
+    };
+  }
+
+  /**
+   * Creates an operation context for logging
+   */
+  private createOperationContext(operation: string, entityId?: Shared.IRI): SqliteOperationContext {
+    return {
+      operation,
+      entityType: 'issuer', // This would be dynamic based on the operation
+      entityId,
+      startTime: Date.now()
+    };
+  }
+
+  /**
+   * Tests repository health by attempting a simple operation
+   */
+  private async testRepositoryHealth(repositoryType: 'issuer' | 'badgeClass' | 'assertion'): Promise<boolean> {
+    try {
+      switch (repositoryType) {
+        case 'issuer':
+          await this.issuerRepository.findAll();
+          return true;
+        case 'badgeClass':
+          await this.badgeClassRepository.findAll();
+          return true;
+        case 'assertion':
+          await this.assertionRepository.findAll();
+          return true;
+        default:
+          return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+}

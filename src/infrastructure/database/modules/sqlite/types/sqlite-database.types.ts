@@ -1,0 +1,218 @@
+/**
+ * SQLite Database Type Definitions
+ *
+ * This file provides strict type definitions for the SQLite database implementation,
+ * ensuring type safety throughout the database layer.
+ */
+
+import { Shared, OB2, OB3 } from 'openbadges-types';
+import { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import type { Database } from 'bun:sqlite';
+
+/**
+ * SQLite database client wrapper with type safety
+ */
+export interface SqliteDatabaseClient {
+  db: BunSQLiteDatabase;
+  client: Database;
+}
+
+/**
+ * Configuration for SQLite database connections
+ */
+export interface SqliteConnectionConfig {
+  maxConnectionAttempts: number;
+  connectionRetryDelayMs: number;
+}
+
+/**
+ * Connection state management
+ */
+export type SqliteConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+/**
+ * Database record types that match the schema exactly
+ */
+export interface SqliteIssuerRecord {
+  id: string;
+  name: string;
+  url: string;
+  email: string | null;
+  description: string | null;
+  image: string | null;
+  publicKey: string | null;
+  createdAt: number;
+  updatedAt: number;
+  additionalFields: string | null;
+}
+
+export interface SqliteBadgeClassRecord {
+  id: string;
+  issuerId: string;
+  name: string;
+  description: string;
+  image: string;
+  criteria: string;
+  alignment: string | null;
+  tags: string | null;
+  createdAt: number;
+  updatedAt: number;
+  additionalFields: string | null;
+}
+
+export interface SqliteAssertionRecord {
+  id: string;
+  badgeClassId: string;
+  recipient: string;
+  issuedOn: number;
+  expires: number | null;
+  evidence: string | null;
+  verification: string | null;
+  revoked: number | null;
+  revocationReason: string | null;
+  createdAt: number;
+  updatedAt: number;
+  additionalFields: string | null;
+}
+
+/**
+ * Type conversion result wrapper for safe operations
+ */
+export interface TypeConversionResult<T> {
+  success: boolean;
+  data: T | null;
+  error?: string;
+}
+
+/**
+ * Query performance metrics
+ */
+export interface SqliteQueryMetrics {
+  duration: number;
+  rowsAffected: number;
+  queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  tableName?: string;
+}
+
+/**
+ * Query result wrapper with metadata
+ */
+export interface SqliteQueryResult<T> {
+  data: T[];
+  metrics: SqliteQueryMetrics;
+}
+
+/**
+ * Image type union for OpenBadges compatibility
+ */
+export type OpenBadgesImageType = Shared.IRI | Shared.OB3ImageObject | OB2.Image | string;
+
+/**
+ * Recipient type union for OpenBadges compatibility
+ */
+export type OpenBadgesRecipientType = OB2.IdentityObject | OB3.CredentialSubject;
+
+/**
+ * Verification type union for OpenBadges compatibility
+ */
+export type OpenBadgesVerificationType = OB2.VerificationObject | OB3.Proof;
+
+/**
+ * Evidence type union for OpenBadges compatibility
+ */
+export type OpenBadgesEvidenceType = OB2.Evidence[] | OB3.Evidence[];
+
+/**
+ * Criteria type union for OpenBadges compatibility
+ */
+export type OpenBadgesCriteriaType = OB2.Criteria | OB3.Criteria;
+
+/**
+ * Alignment type union for OpenBadges compatibility
+ */
+export type OpenBadgesAlignmentType = OB2.AlignmentObject[] | OB3.Alignment[];
+
+/**
+ * Database operation context for logging and debugging
+ */
+export interface SqliteOperationContext {
+  operation: string;
+  entityType: 'issuer' | 'badgeClass' | 'assertion';
+  entityId?: Shared.IRI;
+  startTime: number;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Error types specific to SQLite operations
+ */
+export class SqliteConnectionError extends Error {
+  constructor(message: string, public readonly attempts: number) {
+    super(message);
+    this.name = 'SqliteConnectionError';
+  }
+}
+
+export class SqliteTypeConversionError extends Error {
+  constructor(message: string, public readonly value: unknown, public readonly targetType: string) {
+    super(message);
+    this.name = 'SqliteTypeConversionError';
+  }
+}
+
+export class SqliteValidationError extends Error {
+  constructor(message: string, public readonly field: string, public readonly value: unknown) {
+    super(message);
+    this.name = 'SqliteValidationError';
+  }
+}
+
+/**
+ * Repository operation result wrapper
+ */
+export interface RepositoryOperationResult<T> {
+  success: boolean;
+  data: T | null;
+  error?: Error;
+  metrics?: SqliteQueryMetrics;
+}
+
+/**
+ * Batch operation configuration
+ */
+export interface SqliteBatchOperationConfig {
+  batchSize: number;
+  maxConcurrency: number;
+  continueOnError: boolean;
+}
+
+/**
+ * Transaction context for coordinated operations
+ */
+export interface SqliteTransactionContext {
+  id: string;
+  startTime: number;
+  operations: SqliteOperationContext[];
+  rollbackOnError: boolean;
+}
+
+/**
+ * Database health check result
+ */
+export interface SqliteDatabaseHealth {
+  connected: boolean;
+  responseTime: number;
+  lastError?: Error;
+  connectionAttempts: number;
+  uptime: number;
+}
+
+/**
+ * Configuration for database monitoring
+ */
+export interface SqliteMonitoringConfig {
+  enableQueryLogging: boolean;
+  enablePerformanceMetrics: boolean;
+  slowQueryThreshold: number;
+  maxLoggedQueries: number;
+}
