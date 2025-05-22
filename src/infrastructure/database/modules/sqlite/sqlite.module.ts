@@ -5,6 +5,46 @@ import { SqliteDatabase } from './sqlite.database';
 import { logger } from '../../../../utils/logging/logger.service';
 // import { sql } from 'drizzle-orm';
 
+/**
+ * Configuration interface for SQLite module
+ */
+export interface SqliteModuleConfig {
+  /**
+   * Path to SQLite database file, or ":memory:" for in-memory database
+   */
+  sqliteFile: string;
+
+  /**
+   * Maximum number of connection attempts before failing
+   * @default 3
+   */
+  maxConnectionAttempts: number;
+
+  /**
+   * Delay in milliseconds between connection retry attempts
+   * @default 1000
+   */
+  connectionRetryDelayMs: number;
+
+  /**
+   * Busy timeout in milliseconds
+   * @default 5000
+   */
+  sqliteBusyTimeout: number;
+
+  /**
+   * Synchronous mode for SQLite ('OFF', 'NORMAL', 'FULL')
+   * @default 'NORMAL'
+   */
+  sqliteSyncMode: 'OFF' | 'NORMAL' | 'FULL';
+
+  /**
+   * Cache size for SQLite in pages
+   * @default 10000
+   */
+  sqliteCacheSize: number;
+}
+
 export class SqliteModule implements DatabaseModuleInterface {
   /**
    * Returns the name of this database module
@@ -17,18 +57,10 @@ export class SqliteModule implements DatabaseModuleInterface {
    * Creates and returns a DatabaseInterface instance for SQLite using bun:sqlite
    */
   async createDatabase(
-    config: Record<string, unknown>
+    config: Partial<SqliteModuleConfig>
   ): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
-    let filePath: string;
-    if (
-      typeof config['sqliteFile'] === 'string' &&
-      config['sqliteFile'].trim()
-    ) {
-      filePath = config['sqliteFile'];
-    } else {
-      filePath = ':memory:'; // Default to in-memory if no valid path provided
-    }
+    const filePath = config.sqliteFile?.trim() || ':memory:'; // Default to in-memory if no valid path provided
     const client = new Database(filePath);
 
     // Apply SQLite optimizations
@@ -37,14 +69,8 @@ export class SqliteModule implements DatabaseModuleInterface {
     // Wrap in our DatabaseInterface implementation
     // Use the new configuration-based constructor with proper config
     const connectionConfig = {
-      maxConnectionAttempts:
-        typeof config['maxConnectionAttempts'] === 'number'
-          ? config['maxConnectionAttempts']
-          : 3,
-      connectionRetryDelayMs:
-        typeof config['retryDelayMs'] === 'number'
-          ? config['retryDelayMs']
-          : 1000,
+      maxConnectionAttempts: config.maxConnectionAttempts ?? 3,
+      connectionRetryDelayMs: config.connectionRetryDelayMs ?? 1000,
     };
     const sqliteDb = new SqliteDatabase(client, connectionConfig);
     await sqliteDb.connect();
@@ -58,7 +84,7 @@ export class SqliteModule implements DatabaseModuleInterface {
    */
   private applySqliteOptimizations(
     client: Database,
-    config: Record<string, unknown>
+    config: Partial<SqliteModuleConfig>
   ): void {
     // Use WAL mode for better concurrency and performance
     // This allows reads and writes to happen concurrently
@@ -67,27 +93,20 @@ export class SqliteModule implements DatabaseModuleInterface {
     // Set busy timeout to avoid SQLITE_BUSY errors
     // This is the time in ms that SQLite will wait if the database is locked
     const busyTimeout =
-      typeof config['sqliteBusyTimeout'] === 'number' &&
-      config['sqliteBusyTimeout'] > 0
-        ? config['sqliteBusyTimeout']
+      config.sqliteBusyTimeout && config.sqliteBusyTimeout > 0
+        ? config.sqliteBusyTimeout
         : 5000;
     client.exec(`PRAGMA busy_timeout = ${busyTimeout};`);
 
     // Set synchronous mode to NORMAL for better performance
     // FULL is safer but slower, OFF is fastest but risks corruption on power loss
-    const validSyncModes = ['OFF', 'NORMAL', 'FULL'];
-    const syncMode =
-      typeof config['sqliteSyncMode'] === 'string' &&
-      validSyncModes.includes(config['sqliteSyncMode'])
-        ? config['sqliteSyncMode']
-        : 'NORMAL';
+    const syncMode = config.sqliteSyncMode || 'NORMAL';
     client.exec(`PRAGMA synchronous = ${syncMode};`);
 
     // Increase cache size for better performance (default is 2000 pages)
     const cacheSize =
-      typeof config['sqliteCacheSize'] === 'number' &&
-      config['sqliteCacheSize'] > 0
-        ? config['sqliteCacheSize']
+      config.sqliteCacheSize && config.sqliteCacheSize > 0
+        ? config.sqliteCacheSize
         : 10000;
     client.exec(`PRAGMA cache_size = ${cacheSize};`);
 

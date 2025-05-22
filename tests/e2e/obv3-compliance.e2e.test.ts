@@ -140,6 +140,92 @@ function validateOBv3Entity(
   }
 }
 
+// Helper function to check if a validation error is acceptable
+async function isAcceptableValidationError(
+  response: Response,
+  entityType: 'issuer' | 'badgeClass' | 'assertion'
+): Promise<boolean> {
+  // Only check if status code is 400
+  if (response.status !== 400) {
+    return false;
+  }
+
+  // Clone the response to avoid consuming it
+  const clonedResponse = response.clone();
+  
+  try {
+    // Try to parse error response
+    const errorResponse = await clonedResponse.json() as Record<string, unknown>;
+    
+    // Handle case where response format is unexpected
+    if (!errorResponse || typeof errorResponse !== 'object') {
+      logger.warn(`Invalid error response format for ${entityType}:`, { errorResponse });
+      return false;
+    }
+    
+    const errorMessage = (errorResponse.message || errorResponse.error || '') as string;
+    const errors = Array.isArray(errorResponse.errors) ? errorResponse.errors as string[] : [];
+    
+    // Log the error for debugging
+    logger.info(`Validation error for ${entityType}:`, { 
+      status: response.status, 
+      message: errorMessage, 
+      errors 
+    });
+
+    // Known acceptable validation errors for each entity type
+    const acceptableErrors: Record<string, string[]> = {
+      issuer: [
+        'url must be a valid URL', // URL format validation
+        'email must be an email', // Email format validation
+        'type is required', // Required field validation
+        'name must be a string', // Type validation
+        'validation failed', // Generic validation error
+      ],
+      badgeClass: [
+        'image must be a valid URL', // URL format validation
+        'criteria is required', // Required field validation
+        'type is required', // Required field validation
+        'issuer must be a valid Issuer reference', // Reference validation
+        'validation failed', // Generic validation error
+      ],
+      assertion: [
+        'recipient is required', // Required field validation
+        'badge is required', // Required field validation
+        'badge must be a valid BadgeClass reference', // Reference validation
+        'issuedOn must be a valid ISO 8601 date string', // Date format validation
+        'validation failed', // Generic validation error
+      ]
+    };
+
+    // Check if the error message contains any acceptable errors
+    const isAcceptable = acceptableErrors[entityType].some(acceptableError => 
+      (errorMessage && errorMessage.toLowerCase().includes(acceptableError.toLowerCase())) || 
+      errors.some(error => typeof error === 'string' && error.toLowerCase().includes(acceptableError.toLowerCase()))
+    );
+
+    if (!isAcceptable) {
+      logger.warn(`Unexpected validation error for ${entityType}:`, { 
+        errorMessage, 
+        errors,
+        acceptableErrors: acceptableErrors[entityType]
+      });
+    }
+    
+    return isAcceptable;
+  } catch (error) {
+    logger.warn(`Failed to parse validation error for ${entityType}:`, { error });
+    // Attempt to get the raw text for better diagnostics
+    try {
+      const rawText = await response.clone().text();
+      logger.warn(`Raw error response for ${entityType}:`, { rawText });
+    } catch (_textError) {
+      // Ignore if we can't get the text
+    }
+    return false;
+  }
+}
+
 describe('OpenBadges v3.0 Compliance - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
@@ -258,9 +344,21 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       return; // Skip the rest of the test
     }
 
-    // In CI, we might get a 400 error due to validation issues
-    // This is acceptable for this test since we're just checking if the endpoints are available
-    expect([201, 400].includes(issuerResponse.status)).toBe(true);
+    // If we got a 400 response, check if it's due to an acceptable validation error
+    if (issuerResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(issuerResponse, 'issuer');
+      if (!isAcceptableError) {
+        // If the error is not acceptable, fail the test with details
+        const errorText = await issuerResponse.clone().text();
+        throw new Error(`Unacceptable validation error for issuer: ${errorText}`);
+      }
+      // If it's an acceptable validation error, skip to the next test
+      logger.info('Skipping issuer test due to acceptable validation error');
+      return;
+    }
+    
+    // For success responses, continue with validation
+    expect(issuerResponse.status).toBe(201);
     const issuer = (await issuerResponse.json()) as Record<string, unknown>;
     expect(issuer).toBeDefined();
     expect(issuer.id).toBeDefined();
@@ -300,9 +398,21 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       return; // Skip the rest of the test
     }
 
-    // In CI, we might get a 400 error due to validation issues
-    // This is acceptable for this test since we're just checking if the endpoints are available
-    expect([201, 400].includes(badgeClassResponse.status)).toBe(true);
+    // If we got a 400 response, check if it's due to an acceptable validation error
+    if (badgeClassResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(badgeClassResponse, 'badgeClass');
+      if (!isAcceptableError) {
+        // If the error is not acceptable, fail the test with details
+        const errorText = await badgeClassResponse.clone().text();
+        throw new Error(`Unacceptable validation error for badge class: ${errorText}`);
+      }
+      // If it's an acceptable validation error, skip to the next test
+      logger.info('Skipping badge class test due to acceptable validation error');
+      return;
+    }
+    
+    // For success responses, continue with validation
+    expect(badgeClassResponse.status).toBe(201);
     const badgeClass = (await badgeClassResponse.json()) as Record<
       string,
       unknown
@@ -355,9 +465,21 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       return; // Skip the rest of the test
     }
 
-    // In CI, we might get a 400 error due to validation issues
-    // This is acceptable for this test since we're just checking if the endpoints are available
-    expect([201, 400].includes(assertionResponse.status)).toBe(true);
+    // If we got a 400 response, check if it's due to an acceptable validation error
+    if (assertionResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(assertionResponse, 'assertion');
+      if (!isAcceptableError) {
+        // If the error is not acceptable, fail the test with details
+        const errorText = await assertionResponse.clone().text();
+        throw new Error(`Unacceptable validation error for assertion: ${errorText}`);
+      }
+      // If it's an acceptable validation error, skip the rest of the test
+      logger.info('Skipping assertion test due to acceptable validation error');
+      return;
+    }
+    
+    // For success responses, continue with validation
+    expect(assertionResponse.status).toBe(201);
     const assertion = (await assertionResponse.json()) as Record<
       string,
       unknown
@@ -440,9 +562,25 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       return; // Skip the rest of the test
     }
 
-    // In CI, we might get a 404 error if the assertion doesn't exist
-    // This is acceptable for this test since we're just checking if the endpoints are available
-    expect([200, 404].includes(verifyResponse.status)).toBe(true);
+    // If we got a 404 response, check if we're missing the assertion resource
+    if (verifyResponse.status === 404) {
+      logger.warn('Assertion verification failed: Resource not found', {
+        assertionId: assertion.id,
+        status: verifyResponse.status,
+        responseText: await verifyResponse.clone().text()
+      });
+      
+      // This is only acceptable in CI environments, fail in development
+      if (process.env.CI !== 'true') {
+        throw new Error(`Assertion verification failed with 404 status. This should only happen in CI environments.`);
+      }
+      
+      logger.info('Skipping verification in CI environment due to 404 error');
+      return;
+    }
+    
+    // For success responses, continue with verification
+    expect(verifyResponse.status).toBe(200);
     const verifyResult = (await verifyResponse.json()) as Record<
       string,
       unknown

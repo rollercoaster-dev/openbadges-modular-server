@@ -184,13 +184,26 @@ export class SqliteDatabaseService implements DatabaseInterface {
           badgeClass
         );
 
+      // Extract issuer ID with proper type checking
+      let issuerId: Shared.IRI | undefined;
+      
+      if (typeof badgeClass.issuer === 'string') {
+        issuerId = badgeClass.issuer;
+      } else if (badgeClass.issuer && typeof badgeClass.issuer === 'object' && 'id' in badgeClass.issuer && badgeClass.issuer.id) {
+        issuerId = badgeClass.issuer.id as Shared.IRI;
+      }
+      
+      if (!issuerId) {
+        logger.warn('BadgeClass created with invalid or missing issuer ID', {
+          operation: context.operation,
+          badgeClassId: result.id
+        });
+      }
+
       logger.info('BadgeClass created successfully', {
         operation: context.operation,
         badgeClassId: result.id,
-        issuerId:
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer as { id: Shared.IRI }).id,
+        issuerId,
         duration: Date.now() - context.startTime,
       });
 

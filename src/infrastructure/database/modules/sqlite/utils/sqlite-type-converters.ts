@@ -96,11 +96,11 @@ export namespace SqliteTypeConverters {
     // Try to parse as JSON first
     try {
       const parsed = JSON.parse(imageStr);
-      // Validate that it's a proper image object
       if (typeof parsed === 'object' && parsed !== null) {
         return parsed as Shared.OB3ImageObject;
       }
-      return imageStr as Shared.IRI;
+      // parsed is primitive => return it, not the raw DB value
+      return parsed as Shared.IRI;
     } catch {
       // If parsing fails, treat as IRI string
       return imageStr as Shared.IRI;
@@ -227,11 +227,15 @@ export namespace SqliteTypeConverters {
       const parsed = JSON.parse(verificationStr);
       return parsed as OpenBadgesVerificationType;
     } catch (error) {
-      logger.warn('Failed to parse verification from string', {
+      logger.error('Failed to parse verification from string', {
         verificationStr,
         error,
       });
-      return null;
+      throw new SqliteTypeConversionError(
+        'Failed to parse verification object',
+        verificationStr,
+        'OpenBadgesVerificationType'
+      );
     }
   }
 
@@ -404,8 +408,11 @@ export namespace SqliteTypeConverters {
     if (typeof date === 'string') {
       const parsed = new Date(date);
       if (isNaN(parsed.getTime())) {
-        logger.warn('Invalid date string provided', { date });
-        return Date.now();
+        throw new SqliteValidationError(
+          'Invalid date string provided',
+          'date',
+          date
+        );
       }
       return parsed.getTime();
     }

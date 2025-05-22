@@ -18,6 +18,10 @@ import {
   SqliteQueryMetrics,
   SqliteOperationContext,
 } from '../types/sqlite-database.types';
+import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
+
+// Create compile-time type alias to avoid runtime import dependency
+type DrizzleDB = ReturnType<typeof DrizzleFn>;
 
 export class SqliteIssuerRepository implements IssuerRepository {
   private mapper: SqliteIssuerMapper;
@@ -27,11 +31,16 @@ export class SqliteIssuerRepository implements IssuerRepository {
   }
 
   /**
+   * Gets the mapper instance for external access
+   */
+  getMapper(): SqliteIssuerMapper {
+    return this.mapper;
+  }
+
+  /**
    * Gets the database instance with connection validation
    */
-  private getDatabase(): ReturnType<
-    typeof import('drizzle-orm/bun-sqlite').drizzle
-  > {
+  private getDatabase(): DrizzleDB {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
   }
@@ -88,7 +97,7 @@ export class SqliteIssuerRepository implements IssuerRepository {
       const db = this.getDatabase();
 
       // Use transaction to ensure atomicity between entity creation and database insertion
-      const result = await db.transaction(async (_tx) => {
+      const result = await db.transaction(async (tx) => {
         // Create a full issuer entity with generated ID for mapping
         const issuerWithId = Issuer.create(issuer);
 
@@ -101,7 +110,7 @@ export class SqliteIssuerRepository implements IssuerRepository {
         record.updatedAt = now;
 
         // Insert into database within the transaction
-        const insertResult = await db
+        const insertResult = await tx
           .insert(issuers)
           .values(record)
           .returning();
@@ -208,20 +217,18 @@ export class SqliteIssuerRepository implements IssuerRepository {
         id: existingIssuer.id, // Ensure we keep the original ID
       });
 
-      // Convert to database record
-      const record = this.mapper.toPersistence(mergedIssuer);
+      // Convert to database record but exclude id to avoid updating primary key
+      const { id: _discard, ...updatable } =
+        this.mapper.toPersistence(mergedIssuer);
 
       // Ensure updatedAt timestamp is set
-      record.updatedAt = Date.now();
+      updatable.updatedAt = Date.now();
 
-      // Update in database
       const result = await db
         .update(issuers)
-        .set(record)
+        .set(updatable)
         .where(eq(issuers.id, id as string))
         .returning();
-
-      // Log metrics
       this.logQueryMetrics(context, result.length);
 
       if (!result[0]) {

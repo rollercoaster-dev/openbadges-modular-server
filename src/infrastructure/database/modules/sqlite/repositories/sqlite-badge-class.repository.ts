@@ -23,6 +23,13 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
   }
 
   /**
+   * Gets the mapper instance for external access
+   */
+  getMapper(): SqliteBadgeClassMapper {
+    return this.mapper;
+  }
+
+  /**
    * Gets the database instance with connection validation
    */
   private getDatabase(): ReturnType<

@@ -76,7 +76,9 @@ export class SqliteIssuerMapper {
         publicKey: convertedPublicKey || undefined,
       };
 
-      return Issuer.create({ ...baseData, ...additionalFieldsResult.data });
+      // Spread `additionalFields` first so that validated base fields win,
+      // or exclude duplicate keys altogether.
+      return Issuer.create({ ...additionalFieldsResult.data, ...baseData });
     } catch (error) {
       logger.error('Error converting database record to Issuer domain entity', {
         error: error instanceof Error ? error.message : String(error),

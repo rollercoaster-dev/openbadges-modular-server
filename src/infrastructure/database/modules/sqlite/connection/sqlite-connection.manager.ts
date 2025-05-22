@@ -100,6 +100,7 @@ export class SqliteConnectionManager {
         if (isLastAttempt) {
           const errorMessage = `Failed to connect to SQLite database after ${attempt} attempts`;
           logger.logError(errorMessage, error, {
+            error: error instanceof Error ? error.message : String(error),
             attempts: attempt,
             maxAttempts: this.config.maxConnectionAttempts,
           });

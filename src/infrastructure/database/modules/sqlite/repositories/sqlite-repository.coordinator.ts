@@ -4,7 +4,7 @@
  * This class coordinates operations across multiple SQLite repositories,
  * providing transaction support and unified error handling.
  */
-
+import { eq } from 'drizzle-orm';
 import { Shared } from 'openbadges-types';
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
@@ -13,11 +13,18 @@ import { SqliteConnectionManager } from '../connection/sqlite-connection.manager
 import { SqliteIssuerRepository } from './sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './sqlite-assertion.repository';
+import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { logger } from '@utils/logging/logger.service';
 import {
   SqliteTransactionContext,
   SqliteOperationContext,
+  DrizzleTransaction,
 } from '../types/sqlite-database.types';
+import { issuers, badgeClasses, assertions } from '../schema';
+import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
+// We'll use a more pragmatic approach with proper JSDoc comments
 
 /**
  * Coordinates operations across SQLite repositories with transaction support
@@ -57,8 +64,9 @@ export class SqliteRepositoryCoordinator {
    */
   getAssertionRepository(): SqliteAssertionRepository {
     if (!this._assertionRepository) {
-      const client = this.connectionManager.getClient();
-      this._assertionRepository = new SqliteAssertionRepository(client);
+      this._assertionRepository = new SqliteAssertionRepository(
+        this.connectionManager
+      );
     }
     return this._assertionRepository;
   }
@@ -100,27 +108,36 @@ export class SqliteRepositoryCoordinator {
       // Use Drizzle's transaction helper for atomic operations
       const db = this.connectionManager.getDatabase();
 
-      const result = await db.transaction(async (_tx) => {
-        // Create issuer first
-        const issuer = await this.issuerRepository.create(issuerData);
+      const result = await db.transaction(async (tx) => {
+        // Create issuer first using helper method
+        const issuer = await this.createIssuerWithTransaction(issuerData, tx);
+
         transactionContext.operations.push(
           this.createOperationContext('CREATE Issuer', issuer.id)
         );
 
-        // Create badge class with issuer reference
-        const badgeClass = await this.badgeClassRepository.create({
-          ...badgeClassData,
-          issuer: issuer.id,
-        });
+        // Create badge class with issuer reference using helper method
+        const badgeClass = await this.createBadgeClassWithTransaction(
+          {
+            ...badgeClassData,
+            issuer: issuer.id,
+          },
+          tx
+        );
+
         transactionContext.operations.push(
           this.createOperationContext('CREATE BadgeClass', badgeClass.id)
         );
 
-        // Create assertion with badge class reference
-        const assertion = await this.assertionRepository.create({
-          ...assertionData,
-          badgeClass: badgeClass.id,
-        });
+        // Create assertion with badge class reference using helper method
+        const assertion = await this.createAssertionWithTransaction(
+          {
+            ...assertionData,
+            badgeClass: badgeClass.id,
+          },
+          tx
+        );
+
         transactionContext.operations.push(
           this.createOperationContext('CREATE Assertion', assertion.id)
         );
@@ -155,12 +172,24 @@ export class SqliteRepositoryCoordinator {
     badgeClassData: Omit<BadgeClass, 'id'>
   ): Promise<BadgeClass> {
     try {
-      // Validate that the issuer exists
-      const issuerId =
-        typeof badgeClassData.issuer === 'string'
-          ? (badgeClassData.issuer as Shared.IRI)
-          : ((badgeClassData.issuer as { id: Shared.IRI }).id as Shared.IRI);
+      // Extract issuer ID with proper type checking
+      let issuerId: Shared.IRI | undefined;
+      
+      if (typeof badgeClassData.issuer === 'string') {
+        issuerId = badgeClassData.issuer as Shared.IRI;
+      } else if (badgeClassData.issuer && 
+                typeof badgeClassData.issuer === 'object' && 
+                'id' in badgeClassData.issuer && 
+                badgeClassData.issuer.id) {
+        issuerId = badgeClassData.issuer.id as Shared.IRI;
+      }
+      
+      // Validate that we have a valid issuer ID
+      if (!issuerId) {
+        throw new Error('Invalid or missing issuer ID in badge class data');
+      }
 
+      // Validate that the issuer exists in the database
       const issuer = await this.issuerRepository.findById(issuerId);
       if (!issuer) {
         throw new Error(`Issuer with ID ${issuerId} does not exist`);
@@ -169,12 +198,22 @@ export class SqliteRepositoryCoordinator {
       // Create the badge class
       return await this.badgeClassRepository.create(badgeClassData);
     } catch (error) {
+      // Extract issuer ID safely for error logging
+      let issuerId: Shared.IRI | undefined;
+      
+      if (typeof badgeClassData.issuer === 'string') {
+        issuerId = badgeClassData.issuer as Shared.IRI;
+      } else if (badgeClassData.issuer && 
+                typeof badgeClassData.issuer === 'object' && 
+                'id' in badgeClassData.issuer && 
+                badgeClassData.issuer.id) {
+        issuerId = badgeClassData.issuer.id as Shared.IRI;
+      }
+      
       logger.error('Failed to create badge class with validation', {
         error: error instanceof Error ? error.message : String(error),
-        issuerId:
-          typeof badgeClassData.issuer === 'string'
-            ? badgeClassData.issuer
-            : (badgeClassData.issuer as { id: Shared.IRI }).id,
+        issuerId,
+        badgeClassData: SensitiveValue.from(badgeClassData)
       });
       throw error;
     }
@@ -206,7 +245,15 @@ export class SqliteRepositoryCoordinator {
   }
 
   /**
-   * Deletes an issuer and all associated badge classes and assertions
+   * Deletes an issuer and all associated badge classes and assertions atomically
+   *
+   * This method uses direct SQL operations within a transaction to ensure proper atomicity.
+   * The database schema has CASCADE DELETE constraints, so deleting the issuer will
+   * automatically cascade to badge classes and assertions, but we count them first
+   * for accurate reporting.
+   *
+   * @param issuerId The ID of the issuer to delete
+   * @returns Promise with deletion counts for each entity type
    */
   async deleteIssuerCascade(issuerId: Shared.IRI): Promise<{
     issuerDeleted: boolean;
@@ -224,34 +271,45 @@ export class SqliteRepositoryCoordinator {
       // Use Drizzle's transaction helper for atomic operations
       const db = this.connectionManager.getDatabase();
 
-      const result = await db.transaction(async (_tx) => {
-        // Get all badge classes for this issuer
-        const badgeClasses = await this.badgeClassRepository.findByIssuer(
-          issuerId
-        );
+      const result = await db.transaction(async (tx) => {
+        // First, count what will be deleted for accurate reporting
+        // Get all badge classes for this issuer using the transaction
+        const badgeClassResults = await tx
+          .select({ id: badgeClasses.id })
+          .from(badgeClasses)
+          .where(eq(badgeClasses.issuerId, issuerId as string));
 
+        const badgeClassIds = badgeClassResults.map((bc) => bc.id);
         let assertionsDeleted = 0;
 
-        // Delete all assertions for each badge class
-        for (const badgeClass of badgeClasses) {
-          const assertions = await this.assertionRepository.findByBadgeClass(
-            badgeClass.id
-          );
-          for (const assertion of assertions) {
-            await this.assertionRepository.delete(assertion.id);
-            assertionsDeleted++;
+        // Count assertions that will be deleted
+        if (badgeClassIds.length > 0) {
+          for (const badgeClassId of badgeClassIds) {
+            const assertionResults = await tx
+              .select({ id: assertions.id })
+              .from(assertions)
+              .where(eq(assertions.badgeClassId, badgeClassId));
+            assertionsDeleted += assertionResults.length;
           }
         }
 
-        // Delete all badge classes
-        let badgeClassesDeleted = 0;
-        for (const badgeClass of badgeClasses) {
-          const deleted = await this.badgeClassRepository.delete(badgeClass.id);
-          if (deleted) badgeClassesDeleted++;
-        }
+        // Now delete the issuer - this will cascade to badge classes and assertions
+        // due to the foreign key constraints with CASCADE DELETE
+        const issuerDeleteResult = await tx
+          .delete(issuers)
+          .where(eq(issuers.id, issuerId as string))
+          .returning();
 
-        // Delete the issuer
-        const issuerDeleted = await this.issuerRepository.delete(issuerId);
+        const issuerDeleted = issuerDeleteResult.length > 0;
+        const badgeClassesDeleted = badgeClassIds.length;
+
+        transactionContext.operations.push(
+          this.createOperationContext('DELETE Issuer CASCADE', issuerId),
+          this.createOperationContext(
+            `DELETE ${badgeClassesDeleted} BadgeClasses`
+          ),
+          this.createOperationContext(`DELETE ${assertionsDeleted} Assertions`)
+        );
 
         return { issuerDeleted, badgeClassesDeleted, assertionsDeleted };
       });
@@ -335,7 +393,7 @@ export class SqliteRepositoryCoordinator {
     _operation: string
   ): SqliteTransactionContext {
     return {
-      id: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      id: `tx_${Date.now()}_${randomUUID().substring(0, 8)}`,
       startTime: Date.now(),
       operations: [],
       rollbackOnError: true,
@@ -406,5 +464,125 @@ export class SqliteRepositoryCoordinator {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Creates an issuer within a transaction context
+   * @private
+   * @param issuerData The issuer data
+   * @param tx The transaction object from Drizzle
+   */
+  private async createIssuerWithTransaction(
+    issuerData: Omit<Issuer, 'id'>,
+    tx: DrizzleTransaction // Transaction object from Drizzle
+  ): Promise<Issuer> {
+    // Create a full issuer entity with generated ID
+    const issuerWithId = Issuer.create(issuerData);
+
+    // Get mapper from repository
+    const mapper = this.issuerRepository.getMapper();
+
+    // Convert domain entity to database record
+    const record = mapper.toPersistence(issuerWithId);
+
+    // Ensure timestamps are set
+    const now = Date.now();
+    record.createdAt = now;
+    record.updatedAt = now;
+
+    // Insert into database using the transaction
+    const insertResult = await tx.insert(issuers).values(record).returning();
+
+    if (!insertResult[0]) {
+      throw new Error(
+        'Failed to create issuer within transaction: no result returned'
+      );
+    }
+
+    // Convert database record back to domain entity
+    return mapper.toDomain(insertResult[0]);
+  }
+
+  /**
+   * Creates a badge class within a transaction context
+   * @private
+   * @param badgeClassData The badge class data
+   * @param tx The transaction object from Drizzle
+   */
+  private async createBadgeClassWithTransaction(
+    badgeClassData: Omit<BadgeClass, 'id'>,
+    tx: DrizzleTransaction // Transaction object from Drizzle
+  ): Promise<BadgeClass> {
+    // Create a full badge class entity with generated ID
+    const badgeClassWithId = BadgeClass.create(badgeClassData);
+
+    // Get mapper from repository
+    const mapper = this.badgeClassRepository.getMapper();
+
+    // Convert domain entity to database record
+    const record = mapper.toPersistence(badgeClassWithId);
+
+    // Ensure timestamps are set
+    const now = Date.now();
+    record.createdAt = now;
+    record.updatedAt = now;
+
+    // Insert into database using the transaction
+    const insertResult = await tx
+      .insert(badgeClasses)
+      .values(record)
+      .returning();
+
+    if (!insertResult[0]) {
+      throw new Error(
+        'Failed to create badge class within transaction: no result returned'
+      );
+    }
+
+    // Convert database record back to domain entity
+    return mapper.toDomain(insertResult[0]);
+  }
+
+  /**
+   * Creates an assertion within a transaction context
+   * @private
+   * @param assertionData The assertion data
+   * @param tx The transaction object from Drizzle
+   */
+  private async createAssertionWithTransaction(
+    assertionData: Omit<Assertion, 'id'>,
+    tx: DrizzleTransaction // Transaction object from Drizzle
+  ): Promise<Assertion> {
+    // Generate ID and create full assertion entity
+    const id = createId() as Shared.IRI;
+    const fullAssertion = Assertion.create({ ...assertionData, id });
+
+    // Get mapper from assertion repository if possible, or create a new one
+    let mapper: SqliteAssertionMapper;
+    if (this._assertionRepository) {
+      mapper = this._assertionRepository.getMapper();
+    } else {
+      mapper = new SqliteAssertionMapper();
+    }
+
+    // Convert domain entity to database record
+    const record = mapper.toPersistence(fullAssertion);
+
+    // Ensure timestamps are set
+    const now = Date.now();
+    record.createdAt = now;
+    record.updatedAt = now;
+
+    // Insert into database using the transaction
+    const insertResult = await tx.insert(assertions).values(record).returning();
+
+    if (!insertResult[0]) {
+      throw new Error(
+        'Failed to create assertion within transaction: no result returned'
+      );
+    }
+
+    // Convert database record back to domain entity
+    return mapper.toDomain(insertResult[0]);
   }
 }

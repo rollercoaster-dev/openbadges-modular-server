@@ -39,7 +39,7 @@ interface PreparedStatementCache {
 export class PreparedStatementManager {
   private static cache: PreparedStatementCache = {};
   private static enabled: boolean =
-    config.database.usePreparedStatements !== false;
+    config.database?.usePreparedStatements ?? true;
 
   /**
    * Prepares a statement for PostgreSQL
@@ -112,7 +112,7 @@ export class PreparedStatementManager {
             this.cache[name].lastUsed = Date.now();
           }
 
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(

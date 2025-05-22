@@ -234,3 +234,11 @@ export interface SqliteMonitoringConfig {
   slowQueryThreshold: number;
   maxLoggedQueries: number;
 }
+
+/**
+ * Type for Drizzle transactions - uses the actual SQLite transaction type
+ * This ensures compatibility with the real Drizzle transaction objects
+ */
+export type DrizzleTransaction = Parameters<
+  Parameters<BunSQLiteDatabase<Record<string, unknown>>['transaction']>[0]
+>[0];

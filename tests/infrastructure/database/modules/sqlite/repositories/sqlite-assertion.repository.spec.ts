@@ -1,7 +1,15 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+} from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteAssertionRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository';
+import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { Assertion } from '@domains/assertion/assertion.entity';
 import { queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Import SensitiveValue
@@ -15,11 +23,11 @@ import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Imp
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repository: SqliteAssertionRepository;
 let testDbInstance: Database;
+let connectionManager: SqliteConnectionManager;
 
 const MIGRATIONS_PATH = './drizzle/migrations'; // Adjust if your path differs
 
 describe('SqliteAssertionRepository Integration - Query Logging', () => {
-
   beforeAll(async () => {
     // Initialize in-memory SQLite database
     testDbInstance = new Database(':memory:');
@@ -32,13 +40,22 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
       // NOTE: This assumes your migrations folder is configured correctly
       // and drizzle-kit generated migrations are compatible with bun:sqlite
       migrate(db, { migrationsFolder: MIGRATIONS_PATH });
-    } catch (_error) { 
+    } catch (_error) {
       // Fail fast if migrations don't work
       throw new Error('SQLite migration failed, cannot run integration tests.');
     }
 
-    // Instantiate the real repository with the test database
-    repository = new SqliteAssertionRepository(testDbInstance);
+    // Create connection manager for the new pattern
+    connectionManager = new SqliteConnectionManager(testDbInstance, {
+      maxConnectionAttempts: 3,
+      connectionRetryDelayMs: 1000,
+    });
+
+    // Connect the connection manager
+    await connectionManager.connect();
+
+    // Instantiate the real repository with the connection manager
+    repository = new SqliteAssertionRepository(connectionManager);
   });
 
   beforeEach(async () => {
@@ -125,11 +142,12 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
   });
 
   it('should log query on findByRecipient', async () => {
-     const assertionData = createTestAssertionData();
+    const assertionData = createTestAssertionData();
     await repository.create(assertionData);
     queryLogger.clearLogs(); // Clear logs from setup
     // Type assertion needed as Assertion['recipient'] might be a union
-    const recipientId = (assertionData.recipient as OB2.IdentityObject).identity;
+    const recipientId = (assertionData.recipient as OB2.IdentityObject)
+      .identity;
 
     await repository.findByRecipient(recipientId);
 
@@ -207,7 +225,6 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     // Check that the parameter is an instance of SensitiveValue
     expect(logs[2].params?.[1]).toBeInstanceOf(SensitiveValue);
     expect(logs[2].database).toBe('sqlite');
-
   });
 
   it('should log query on verify (findById)', async () => {
@@ -225,5 +242,4 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(log.duration).toBeGreaterThanOrEqual(0);
     expect(log.params).toEqual([createdAssertion.id]);
   });
-
 });
