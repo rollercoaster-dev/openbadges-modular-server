@@ -3,6 +3,7 @@ import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { SqliteBadgeClassRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository';
+import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
@@ -37,6 +38,7 @@ const createTestDataObject = () => {
 describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>;
   let sqliteDb: Database;
+  let connectionManager: SqliteConnectionManager;
   let repository: SqliteBadgeClassRepository;
 
   beforeEach(async () => {
@@ -44,7 +46,14 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     db = drizzle(sqliteDb, { schema, logger: true });
     queryLogger.configure({ enabled: true });
     await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-    repository = new SqliteBadgeClassRepository(sqliteDb);
+
+    // Create connection manager and repository
+    connectionManager = new SqliteConnectionManager(sqliteDb, {
+      maxConnectionAttempts: 3,
+      connectionRetryDelayMs: 1000,
+    });
+    await connectionManager.connect();
+    repository = new SqliteBadgeClassRepository(connectionManager);
     queryLogger.clearLogs();
   });
 
@@ -116,17 +125,17 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     expect(findLog.params?.[0]).toBe(testBadgeData.id);
 
     const updateLog = logs[1];
-    expect(updateLog.query).toBe('UPDATE BadgeClass'); 
+    expect(updateLog.query).toBe('UPDATE BadgeClass');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
     expect(updateLog.params).toBeArrayOfSize(2);
     expect(updateLog.params?.[0]).toBe(testBadgeData.id);
-    
+
     // Check the second parameter (updated data)
     // The second parameter should be a SensitiveValue instance
     const sensitiveParam = updateLog.params?.[1];
     expect(sensitiveParam).toBeInstanceOf(SensitiveValue);
-    
+
     // Since SensitiveValue's value property is private, we can't directly access it
     // Instead, we'll verify the object has the expected string representation
     // The SensitiveValue class redacts its contents when converted to a string
