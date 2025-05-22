@@ -2,12 +2,10 @@
  * SQLite implementation of the BadgeClass repository
  *
  * This class implements the BadgeClassRepository interface using SQLite
- * and the Data Mapper pattern.
+ * and the Data Mapper pattern with enhanced type safety.
  */
 
 import { eq, InferInsertModel } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { badgeClasses } from '../schema';
@@ -15,27 +13,80 @@ import { SqliteBadgeClassMapper } from '../mappers/sqlite-badge-class.mapper';
 import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import {
+  SqliteQueryMetrics,
+  SqliteOperationContext,
+} from '../types/sqlite-database.types';
 
 export class SqliteBadgeClassRepository implements BadgeClassRepository {
-  private db: ReturnType<typeof drizzle>;
   private mapper: SqliteBadgeClassMapper;
 
-  constructor(client: Database) {
-    this.db = drizzle(client);
+  constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.mapper = new SqliteBadgeClassMapper();
+  }
+
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase(): ReturnType<
+    typeof import('drizzle-orm/bun-sqlite').drizzle
+  > {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
+  }
+
+  /**
+   * Creates operation context for logging and monitoring
+   */
+  private createOperationContext(
+    operation: string,
+    entityId?: Shared.IRI
+  ): SqliteOperationContext {
+    return {
+      operation,
+      entityType: 'badgeClass',
+      entityId,
+      startTime: Date.now(),
+    };
+  }
+
+  /**
+   * Logs query metrics for monitoring and debugging
+   */
+  private logQueryMetrics(
+    context: SqliteOperationContext,
+    resultCount: number
+  ): void {
+    const duration = Date.now() - context.startTime;
+    const metrics: SqliteQueryMetrics = {
+      operation: context.operation,
+      duration,
+      resultCount,
+      entityType: context.entityType,
+      entityId: context.entityId,
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug('BadgeClass repository operation completed', metrics);
+    }
   }
 
   async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
     try {
       // Instantiate entity first to ensure defaults
       const newEntity = BadgeClass.create(badgeClass);
-      
+
       // Convert domain entity to database record, indicating it's new
-      const record: InferInsertModel<typeof badgeClasses> = this.mapper.toPersistence(newEntity, true);
+      const record: InferInsertModel<typeof badgeClasses> =
+        this.mapper.toPersistence(newEntity, true);
 
       // Insert into database
       const startTime = Date.now();
-      const result = await this.db.insert(badgeClasses).values(record).returning();
+      const result = await this.db
+        .insert(badgeClasses)
+        .values(record)
+        .returning();
       const duration = Date.now() - startTime;
 
       // Log query
@@ -66,13 +117,18 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       const duration = Date.now() - startTime;
 
       // Log query
-      queryLogger.logQuery('SELECT All BadgeClasses', undefined, duration, 'sqlite');
+      queryLogger.logQuery(
+        'SELECT All BadgeClasses',
+        undefined,
+        duration,
+        'sqlite'
+      );
 
       // Convert database records to domain entities
-      return result.map(record => this.mapper.toDomain(record));
+      return result.map((record) => this.mapper.toDomain(record));
     } catch (error) {
       logger.error('Error finding all badge classes in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -82,7 +138,10 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       const startTime = Date.now();
       // Query database
-      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.id, id));
+      const result = await this.db
+        .select()
+        .from(badgeClasses)
+        .where(eq(badgeClasses.id, id));
       const duration = Date.now() - startTime;
 
       // Log query (assuming id is not sensitive)
@@ -98,7 +157,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     } catch (error) {
       logger.error('Error finding badge class by ID in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
-        id
+        id,
       });
       throw error;
     }
@@ -108,24 +167,38 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       const startTime = Date.now();
       // Query database
-      const result = await this.db.select().from(badgeClasses).where(eq(badgeClasses.issuerId, issuerId as string));
+      const result = await this.db
+        .select()
+        .from(badgeClasses)
+        .where(eq(badgeClasses.issuerId, issuerId as string));
       const duration = Date.now() - startTime;
 
       // Log query (assuming issuerId is not sensitive)
-      queryLogger.logQuery('SELECT BadgeClasses by Issuer', [issuerId], duration, 'sqlite');
+      queryLogger.logQuery(
+        'SELECT BadgeClasses by Issuer',
+        [issuerId],
+        duration,
+        'sqlite'
+      );
 
       // Convert database records to domain entities
-      return result.map(record => this.mapper.toDomain(record));
+      return result.map((record) => this.mapper.toDomain(record));
     } catch (error) {
-      logger.error('Error finding badge classes by issuer in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        issuerId
-      });
+      logger.error(
+        'Error finding badge classes by issuer in SQLite repository',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          issuerId,
+        }
+      );
       throw error;
     }
   }
 
-  async update(id: string, badgeClass: Partial<BadgeClass>): Promise<BadgeClass | null> {
+  async update(
+    id: string,
+    badgeClass: Partial<BadgeClass>
+  ): Promise<BadgeClass | null> {
     try {
       // Check if badge class exists
       const existingBadgeClass = await this.findById(id);
@@ -136,7 +209,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
       // Create a merged entity using the internal representation from toPartial()
       const partialExistingData = existingBadgeClass.toPartial();
       const updateData = badgeClass; // Already Partial<BadgeClass>
-      
+
       // Simple merge as both are Partial<BadgeClass>
       const mergedData: Partial<BadgeClass> = {
         ...partialExistingData,
@@ -150,7 +223,8 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
 
       // Update in database
       const startTime = Date.now();
-      const result = await this.db.update(badgeClasses)
+      const result = await this.db
+        .update(badgeClasses)
         .set(record)
         .where(eq(badgeClasses.id, id))
         .returning();
@@ -180,7 +254,10 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       // Delete from database
       const startTime = Date.now();
-      const result = await this.db.delete(badgeClasses).where(eq(badgeClasses.id, id)).returning();
+      const result = await this.db
+        .delete(badgeClasses)
+        .where(eq(badgeClasses.id, id))
+        .returning();
       const duration = Date.now() - startTime;
 
       // Log query (assuming id is not sensitive)
@@ -191,7 +268,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     } catch (error) {
       logger.error('Error deleting badge class in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
-        id
+        id,
       });
       throw error;
     }

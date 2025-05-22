@@ -1,8 +1,8 @@
 /**
  * PlatformUser entity representing a user from an external platform
  */
-import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 import { PlatformUserMetadata } from './backpack.types';
 
 export class PlatformUser {
@@ -30,7 +30,7 @@ export class PlatformUser {
   static create(data: Partial<PlatformUser>): PlatformUser {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set timestamps if not provided
@@ -58,7 +58,7 @@ export class PlatformUser {
       email: this.email,
       metadata: this.metadata,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 }

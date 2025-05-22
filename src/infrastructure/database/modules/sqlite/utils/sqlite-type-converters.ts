@@ -7,8 +7,8 @@
 
 import { Shared } from 'openbadges-types';
 // OB2 and OB3 imports available for future use if needed
-import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@utils/logging/logger.service';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 import {
   TypeConversionResult,
   OpenBadgesImageType,
@@ -26,11 +26,10 @@ import {
  */
 export namespace SqliteTypeConverters {
   /**
-   * Generates a new Shared.IRI with proper validation
+   * Generates a new Shared.IRI with proper URN prefix formatting
    */
   export function generateSharedIRI(): Shared.IRI {
-    const uuid = uuidv4();
-    return uuid as Shared.IRI;
+    return createOrGenerateIRI();
   }
 
   /**

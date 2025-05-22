@@ -6,17 +6,21 @@
  */
 
 import { OB2, OB3, Shared } from 'openbadges-types';
-import { v4 as uuidv4 } from 'uuid';
 import { IssuerData } from '../../utils/types/badge-data.types';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 /**
  * Issuer entity representing an organization or individual that issues badges
  * Compatible with both Open Badges 2.0 and 3.0
  */
-export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial<OB3.Issuer>, 'image'> {
+export class Issuer
+  implements
+    Omit<Partial<OB2.Profile>, 'image'>,
+    Omit<Partial<OB3.Issuer>, 'image'>
+{
   id: Shared.IRI;
   type: string = 'Issuer'; // Changed from 'Profile' to 'Issuer' for OBv3 compliance
   name: string | Shared.MultiLanguageString;
@@ -43,7 +47,7 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
   static create(data: Partial<Issuer>): Issuer {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default type if not provided
@@ -62,13 +66,21 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
   toObject(version: BadgeVersion = BadgeVersion.V3): OB2.Profile | OB3.Issuer {
     // For OB2, ensure name and description are strings
     let nameValue: string | Shared.MultiLanguageString = this.name;
-    let descriptionValue: string | Shared.MultiLanguageString = this.description || '';
+    let descriptionValue: string | Shared.MultiLanguageString =
+      this.description || '';
 
     if (version === BadgeVersion.V2) {
       // Convert MultiLanguageString to string for OB2
-      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
-      descriptionValue = typeof this.description === 'string' ? this.description :
-                        (this.description ? Object.values(this.description)[0] || '' : '');
+      nameValue =
+        typeof this.name === 'string'
+          ? this.name
+          : Object.values(this.name)[0] || '';
+      descriptionValue =
+        typeof this.description === 'string'
+          ? this.description
+          : this.description
+          ? Object.values(this.description)[0] || ''
+          : '';
     }
 
     // Create a base object with common properties
@@ -122,9 +134,16 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
 
     if (version === BadgeVersion.V2) {
       // For OB2, ensure name and description are strings
-      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
-      descriptionValue = typeof this.description === 'string' ? this.description :
-                        (this.description ? Object.values(this.description)[0] || '' : '');
+      nameValue =
+        typeof this.name === 'string'
+          ? this.name
+          : Object.values(this.name)[0] || '';
+      descriptionValue =
+        typeof this.description === 'string'
+          ? this.description
+          : this.description
+          ? Object.values(this.description)[0] || ''
+          : '';
     } else {
       // For OB3, we can use MultiLanguageString
       nameValue = this.name;
@@ -155,8 +174,14 @@ export class Issuer implements Omit<Partial<OB2.Profile>, 'image'>, Omit<Partial
       }
 
       // Ensure both required contexts are present
-      if (!jsonLd['@context'].includes('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json')) {
-        jsonLd['@context'].push('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
+      if (
+        !jsonLd['@context'].includes(
+          'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+        )
+      ) {
+        jsonLd['@context'].push(
+          'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+        );
       }
 
       if (!jsonLd['@context'].includes(VC_V2_CONTEXT_URL)) {

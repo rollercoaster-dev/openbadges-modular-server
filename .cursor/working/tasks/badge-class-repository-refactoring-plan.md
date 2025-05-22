@@ -2,132 +2,95 @@
 
 ## Overview
 
-This document outlines the plan to refactor the SQLite BadgeClass repository implementation to eliminate type safety violations and improve code organization, following the successful patterns established in the Issuer repository refactoring.
+This document outlines the plan to refactor the SQLite BadgeClass repository implementation to fix stale database client references and improve connection management, following the successful patterns established in the Issuer repository refactoring.
 
 ## Current Issues
 
-### Type Safety Violations in `sqlite-badge-class.repository.ts`
-- **@ts-ignore comments**: Bypassing TypeScript type checking
-- **Unsafe type casting**: Using `Record<string, unknown>` and `any` types
-- **Inconsistent error handling**: Mixed error handling patterns
-- **Direct database access**: Bypassing connection management layer
+### Stale Database Client References in `sqlite-badge-class.repository.ts`
+- **Raw Database client constructor**: Accepts `Database` client directly instead of `SqliteConnectionManager`
+- **Stale client references**: Repository stores drizzle instance once, causing issues after reconnects
+- **No connection validation**: Missing `ensureConnected()` calls before database operations
+- **Inconsistent with Issuer pattern**: Different approach compared to properly refactored Issuer repository
 
-### Code Organization Issues
-- **Mixed responsibilities**: Repository handling both data access and business logic
-- **Inconsistent patterns**: Different approaches compared to refactored Issuer repository
-- **Limited reusability**: Tightly coupled to specific implementation details
+### Repository Coordinator Issues in `sqlite-repository.coordinator.ts`
+- **Lazy initialization with raw client**: Gets raw client once and stores repository instance
+- **Stale references after reconnects**: BadgeClass repository becomes unusable after database reconnections
+- **Inconsistent patterns**: Issuer repository correctly uses SqliteConnectionManager, but BadgeClass doesn't
 
 ## Success Criteria
 
-### Type Safety ✅
-- [ ] Zero `@ts-ignore` comments
-- [ ] Zero `any` types
-- [ ] All return types explicitly defined
-- [ ] Proper use of `Shared.IRI` and other openbadges-types
+### Connection Management ✅
+- [ ] Repository uses `SqliteConnectionManager` instead of raw `Database` client
+- [ ] Fresh database client obtained for each operation via `getDatabase()`
+- [ ] Proper connection validation with `ensureConnected()` calls
+- [ ] No stale client references after database reconnections
 
-### Code Organization ✅
-- [ ] Single responsibility principle followed
-- [ ] Consistent with Issuer repository patterns
-- [ ] Proper separation of concerns
-- [ ] Reusable components
+### Pattern Consistency ✅
+- [ ] Follows exact same pattern as `SqliteIssuerRepository`
+- [ ] Repository coordinator passes `SqliteConnectionManager` to repositories
+- [ ] Consistent error handling and logging patterns
+- [ ] Same operation context and metrics logging approach
 
-### Performance ✅
-- [ ] No performance regression
-- [ ] Improved query efficiency through proper repository pattern
-- [ ] Better error handling with context
-- [ ] Proper resource management
+### Functionality ✅
+- [ ] All existing BadgeClass operations work correctly after reconnects
+- [ ] No performance regression from connection management changes
+- [ ] Proper error handling with connection context
+- [ ] Repository coordinator health checks work correctly
 
-### Maintainability ✅
-- [ ] Clear, documented code
-- [ ] Consistent coding patterns with Issuer repository
+### Code Quality ✅
+- [ ] Clean, documented code following established patterns
+- [ ] Consistent with Issuer repository implementation
 - [ ] Easy to extend and modify
 - [ ] Ready for comprehensive test coverage
 
 ## Implementation Plan
 
-### Phase 1: Enhance BadgeClass Mapper
-**File**: `src/infrastructure/database/modules/sqlite/mappers/sqlite-badge-class.mapper.ts`
-
-**Tasks**:
-1. **Review current implementation** against Issuer mapper patterns
-2. **Add comprehensive type safety**:
-   - Remove any `@ts-ignore` comments
-   - Add explicit return types
-   - Use proper OpenBadges types
-3. **Enhance error handling**:
-   - Add detailed error context
-   - Implement proper logging
-   - Handle edge cases gracefully
-4. **Add validation**:
-   - Input validation for all mapper methods
-   - Proper null/undefined handling
-   - Type-safe conversions
-
-**Expected Outcome**: Type-safe, well-documented BadgeClass mapper following Issuer patterns
-
-### Phase 2: Enhance BadgeClass Repository
+### Phase 1: Update BadgeClass Repository Constructor and Connection Management
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository.ts`
 
 **Tasks**:
-1. **Update constructor** to use `SqliteConnectionManager`
-2. **Implement type-safe database operations**:
-   - Remove all `@ts-ignore` comments
-   - Use proper type definitions
-   - Implement consistent error handling
-3. **Add comprehensive logging**:
-   - Operation start/end logging
-   - Performance metrics
-   - Error context
-4. **Enhance CRUD operations**:
-   - Consistent with Issuer repository patterns
-   - Proper validation and error handling
-   - Type-safe query building
+1. **Update constructor** to accept `SqliteConnectionManager` instead of raw `Database` client
+2. **Add `getDatabase()` method** following exact pattern from `SqliteIssuerRepository`
+3. **Update all database operations** to use `this.getDatabase()` instead of stored `this.db`
+4. **Add operation context and metrics logging** following Issuer repository patterns
+5. **Add proper connection validation** with `ensureConnected()` calls
 
-**Expected Outcome**: Fully type-safe BadgeClass repository with consistent patterns
+**Expected Outcome**: BadgeClass repository that gets fresh database clients for each operation
 
-### Phase 3: Update Repository Coordinator
+### Phase 2: Update Repository Coordinator
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-repository.coordinator.ts`
 
 **Tasks**:
-1. **Add BadgeClass operations** to coordinator
-2. **Implement cross-repository operations**:
-   - BadgeClass creation with Issuer validation
-   - Cascade operations for BadgeClass deletion
-   - Bulk operations for BadgeClass management
-3. **Add transaction support** for complex operations
-4. **Implement proper error handling** and rollback
+1. **Update `getBadgeClassRepository()` method** to pass `SqliteConnectionManager` instead of raw client
+2. **Remove lazy initialization caching** to ensure fresh repository instances or update pattern
+3. **Ensure consistent pattern** with how `SqliteIssuerRepository` is handled
+4. **Update all coordinator methods** that use BadgeClass repository
 
-**Expected Outcome**: Enhanced coordinator with BadgeClass support
+**Expected Outcome**: Repository coordinator that properly manages BadgeClass repository connections
 
-### Phase 4: Update Database Service
-**File**: `src/infrastructure/database/modules/sqlite/services/sqlite-database.service.ts`
-
-**Tasks**:
-1. **Add BadgeClass operations** to service layer
-2. **Implement proper delegation** to BadgeClass repository
-3. **Add coordinated operations**:
-   - Create BadgeClass with Issuer validation
-   - Update BadgeClass with proper validation
-   - Delete BadgeClass with cascade handling
-4. **Enhance error handling** and logging
-
-**Expected Outcome**: Complete BadgeClass support in service layer
-
-### Phase 5: Update Tests
-**Files**: 
+### Phase 3: Update Tests and Verify Functionality
+**Files**:
 - `tests/infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository.spec.ts`
-- `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts`
+- Any other tests that instantiate `SqliteBadgeClassRepository` directly
 
 **Tasks**:
-1. **Update repository tests** to use new architecture
-2. **Fix database integration tests** for BadgeClass operations
-3. **Add comprehensive test coverage**:
-   - All CRUD operations
-   - Error handling scenarios
-   - Edge cases and validation
-4. **Ensure test consistency** with Issuer test patterns
+1. **Update test setup** to use `SqliteConnectionManager` instead of raw `Database` client
+2. **Verify all existing functionality** works with new connection management
+3. **Test reconnection scenarios** to ensure stale client issues are resolved
+4. **Update any factory or service tests** that create BadgeClass repositories
 
-**Expected Outcome**: All BadgeClass tests passing with new architecture
+**Expected Outcome**: All BadgeClass tests passing with new connection management
+
+### Phase 4: Update Repository Factory (if needed)
+**File**: `src/infrastructure/repository.factory.ts`
+
+**Tasks**:
+1. **Review BadgeClass repository creation** in factory methods
+2. **Update to use SqliteConnectionManager** if factory creates BadgeClass repositories
+3. **Ensure consistency** with how Issuer repository is created
+4. **Test factory methods** work correctly with updated repositories
+
+**Expected Outcome**: Repository factory properly creates BadgeClass repositories with connection management
 
 ## File Structure After Refactoring
 
@@ -180,42 +143,41 @@ src/infrastructure/database/modules/sqlite/
 
 ## Timeline Estimate
 
-- **Phase 1 (Mapper Enhancement)**: 2-3 hours
-- **Phase 2 (Repository Refactoring)**: 3-4 hours  
-- **Phase 3 (Coordinator Update)**: 1-2 hours
-- **Phase 4 (Service Update)**: 1-2 hours
-- **Phase 5 (Test Updates)**: 2-3 hours
+- **Phase 1 (Repository Connection Management)**: 1-2 hours
+- **Phase 2 (Repository Coordinator Update)**: 1 hour
+- **Phase 3 (Test Updates)**: 1-2 hours
+- **Phase 4 (Repository Factory Update)**: 30 minutes
 
-**Total Estimated Time**: 9-14 hours
+**Total Estimated Time**: 3.5-5.5 hours
 
 ## Success Metrics
 
-### Code Quality
-- [ ] Zero TypeScript errors or warnings
-- [ ] All ESLint rules passing
-- [ ] 100% type safety (no `any` or `@ts-ignore`)
-- [ ] Consistent code patterns with Issuer repository
+### Connection Management
+- [ ] Repository uses `SqliteConnectionManager` correctly
+- [ ] No stale database client references after reconnections
+- [ ] All database operations get fresh clients
+- [ ] Consistent with Issuer repository patterns
 
 ### Functionality
-- [ ] All existing BadgeClass operations work correctly
-- [ ] New coordinated operations function properly
-- [ ] Proper error handling and logging
+- [ ] All existing BadgeClass operations work correctly after changes
+- [ ] Repository coordinator properly manages BadgeClass repository
+- [ ] Proper error handling and logging maintained
 - [ ] Performance maintained or improved
 
 ### Testing
-- [ ] All BadgeClass repository tests pass
+- [ ] All BadgeClass repository tests pass with new connection management
 - [ ] Integration tests pass
 - [ ] No regressions in existing functionality
-- [ ] Comprehensive test coverage
+- [ ] Reconnection scenarios work correctly
 
 ## Next Steps
 
-1. **Review current BadgeClass repository implementation**
-2. **Start with Phase 1: Mapper enhancement**
-3. **Follow Issuer repository patterns exactly**
-4. **Test thoroughly at each phase**
-5. **Document any BadgeClass-specific considerations**
+1. **Start with Phase 1: Update BadgeClass repository constructor and connection management**
+2. **Follow exact same pattern as SqliteIssuerRepository**
+3. **Update repository coordinator to pass SqliteConnectionManager**
+4. **Test thoroughly to ensure no stale client issues**
+5. **Verify all existing functionality works correctly**
 
 ---
 
-**Note**: This refactoring should follow the exact same patterns used successfully in the Issuer repository refactoring. The goal is consistency, type safety, and maintainability while preserving all existing functionality.
+**Note**: This refactoring focuses specifically on fixing the stale database client issue by ensuring repositories always get fresh database clients through SqliteConnectionManager, following the exact pattern successfully used in the Issuer repository.

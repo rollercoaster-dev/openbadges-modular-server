@@ -2,148 +2,95 @@
 
 ## Overview
 
-This document outlines the plan to refactor the SQLite Assertion repository implementation to eliminate type safety violations and improve code organization, following the successful patterns established in the Issuer repository refactoring.
+This document outlines the plan to refactor the SQLite Assertion repository implementation to fix stale database client references and improve connection management, following the successful patterns established in the Issuer repository refactoring.
 
 ## Current Issues
 
-### Type Safety Violations in `sqlite-assertion.repository.ts`
-- **@ts-ignore comments**: Bypassing TypeScript type checking
-- **Unsafe type casting**: Using `Record<string, unknown>` and `any` types
-- **Date handling issues**: Inconsistent date conversion and validation
-- **Complex business logic**: Mixed data access and business logic responsibilities
+### Stale Database Client References in `sqlite-assertion.repository.ts`
+- **Raw Database client constructor**: Accepts `Database` client directly instead of `SqliteConnectionManager`
+- **Stale client references**: Repository stores drizzle instance once, causing issues after reconnects
+- **No connection validation**: Missing `ensureConnected()` calls before database operations
+- **Inconsistent with Issuer pattern**: Different approach compared to properly refactored Issuer repository
 
-### Code Organization Issues
-- **Mixed responsibilities**: Repository handling both data access and complex business logic
-- **Inconsistent patterns**: Different approaches compared to refactored Issuer repository
-- **Complex date handling**: Manual date conversions without proper validation
-- **Limited reusability**: Tightly coupled to specific implementation details
+### Repository Coordinator Issues in `sqlite-repository.coordinator.ts`
+- **Lazy initialization with raw client**: Gets raw client once and stores repository instance
+- **Stale references after reconnects**: Assertion repository becomes unusable after database reconnections
+- **Inconsistent patterns**: Issuer repository correctly uses SqliteConnectionManager, but Assertion doesn't
 
 ## Success Criteria
 
-### Type Safety ✅
-- [ ] Zero `@ts-ignore` comments
-- [ ] Zero `any` types
-- [ ] All return types explicitly defined
-- [ ] Proper use of `Shared.IRI` and other openbadges-types
-- [ ] Type-safe date handling
+### Connection Management ✅
+- [ ] Repository uses `SqliteConnectionManager` instead of raw `Database` client
+- [ ] Fresh database client obtained for each operation via `getDatabase()`
+- [ ] Proper connection validation with `ensureConnected()` calls
+- [ ] No stale client references after database reconnections
 
-### Code Organization ✅
-- [ ] Single responsibility principle followed
-- [ ] Consistent with Issuer repository patterns
-- [ ] Proper separation of concerns
-- [ ] Reusable date conversion utilities
+### Pattern Consistency ✅
+- [ ] Follows exact same pattern as `SqliteIssuerRepository`
+- [ ] Repository coordinator passes `SqliteConnectionManager` to repositories
+- [ ] Consistent error handling and logging patterns
+- [ ] Same operation context and metrics logging approach
 
-### Performance ✅
-- [ ] No performance regression
-- [ ] Improved query efficiency through proper repository pattern
-- [ ] Better error handling with context
-- [ ] Optimized date operations
+### Functionality ✅
+- [ ] All existing Assertion operations work correctly after reconnects
+- [ ] No performance regression from connection management changes
+- [ ] Proper error handling with connection context
+- [ ] Repository coordinator health checks work correctly
 
-### Maintainability ✅
-- [ ] Clear, documented code
-- [ ] Consistent coding patterns with Issuer repository
+### Code Quality ✅
+- [ ] Clean, documented code following established patterns
+- [ ] Consistent with Issuer repository implementation
 - [ ] Easy to extend and modify
 - [ ] Ready for comprehensive test coverage
 
 ## Implementation Plan
 
-### Phase 1: Enhance Assertion Mapper
-**File**: `src/infrastructure/database/modules/sqlite/mappers/sqlite-assertion.mapper.ts`
-
-**Tasks**:
-1. **Review current implementation** against Issuer mapper patterns
-2. **Add comprehensive type safety**:
-   - Remove any `@ts-ignore` comments
-   - Add explicit return types
-   - Use proper OpenBadges types
-3. **Enhance date handling**:
-   - Use type-safe date converters from utils
-   - Proper ISO string validation
-   - Consistent date format handling
-4. **Add validation**:
-   - Input validation for all mapper methods
-   - Proper null/undefined handling
-   - Type-safe conversions
-
-**Expected Outcome**: Type-safe, well-documented Assertion mapper with proper date handling
-
-### Phase 2: Enhance Assertion Repository
+### Phase 1: Update Assertion Repository Constructor and Connection Management
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.ts`
 
 **Tasks**:
-1. **Update constructor** to use `SqliteConnectionManager`
-2. **Implement type-safe database operations**:
-   - Remove all `@ts-ignore` comments
-   - Use proper type definitions
-   - Implement consistent error handling
-3. **Enhance date operations**:
-   - Use type-safe date converters
-   - Proper timestamp handling
-   - Consistent date validation
-4. **Add comprehensive logging**:
-   - Operation start/end logging
-   - Performance metrics
-   - Error context
-5. **Enhance CRUD operations**:
-   - Consistent with Issuer repository patterns
-   - Proper validation and error handling
-   - Type-safe query building
+1. **Update constructor** to accept `SqliteConnectionManager` instead of raw `Database` client
+2. **Add `getDatabase()` method** following exact pattern from `SqliteIssuerRepository`
+3. **Update all database operations** to use `this.getDatabase()` instead of stored `this.db`
+4. **Add operation context and metrics logging** following Issuer repository patterns
+5. **Add proper connection validation** with `ensureConnected()` calls
 
-**Expected Outcome**: Fully type-safe Assertion repository with consistent patterns
+**Expected Outcome**: Assertion repository that gets fresh database clients for each operation
 
-### Phase 3: Update Repository Coordinator
+### Phase 2: Update Repository Coordinator
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-repository.coordinator.ts`
 
 **Tasks**:
-1. **Add Assertion operations** to coordinator
-2. **Implement cross-repository operations**:
-   - Assertion creation with BadgeClass validation
-   - Cascade operations for Assertion management
-   - Bulk operations for Assertion handling
-3. **Add complex business operations**:
-   - Revoke assertion with proper validation
-   - Verify assertion with comprehensive checks
-   - Bulk assertion operations
-4. **Add transaction support** for complex operations
-5. **Implement proper error handling** and rollback
+1. **Update `getAssertionRepository()` method** to pass `SqliteConnectionManager` instead of raw client
+2. **Remove lazy initialization caching** to ensure fresh repository instances or update pattern
+3. **Ensure consistent pattern** with how `SqliteIssuerRepository` is handled
+4. **Update all coordinator methods** that use Assertion repository
 
-**Expected Outcome**: Enhanced coordinator with Assertion support
+**Expected Outcome**: Repository coordinator that properly manages Assertion repository connections
 
-### Phase 4: Update Database Service
-**File**: `src/infrastructure/database/modules/sqlite/services/sqlite-database.service.ts`
-
-**Tasks**:
-1. **Add Assertion operations** to service layer
-2. **Implement proper delegation** to Assertion repository
-3. **Add coordinated operations**:
-   - Create Assertion with BadgeClass validation
-   - Update Assertion with proper validation
-   - Revoke Assertion with business logic
-   - Verify Assertion with comprehensive checks
-4. **Enhance error handling** and logging
-5. **Add utility operations**:
-   - Badge ecosystem creation (Issuer + BadgeClass + Assertion)
-   - Cascade deletion operations
-
-**Expected Outcome**: Complete Assertion support in service layer
-
-### Phase 5: Update Tests
-**Files**: 
+### Phase 3: Update Tests and Verify Functionality
+**Files**:
 - `tests/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.spec.ts`
-- `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts`
+- Any other tests that instantiate `SqliteAssertionRepository` directly
 
 **Tasks**:
-1. **Update repository tests** to use new architecture
-2. **Fix database integration tests** for Assertion operations
-3. **Add comprehensive test coverage**:
-   - All CRUD operations
-   - Date handling scenarios
-   - Revocation and verification
-   - Error handling scenarios
-   - Edge cases and validation
-4. **Ensure test consistency** with Issuer test patterns
+1. **Update test setup** to use `SqliteConnectionManager` instead of raw `Database` client
+2. **Verify all existing functionality** works with new connection management
+3. **Test reconnection scenarios** to ensure stale client issues are resolved
+4. **Update any factory or service tests** that create Assertion repositories
 
-**Expected Outcome**: All Assertion tests passing with new architecture
+**Expected Outcome**: All Assertion tests passing with new connection management
+
+### Phase 4: Update Repository Factory (if needed)
+**File**: `src/infrastructure/repository.factory.ts`
+
+**Tasks**:
+1. **Review Assertion repository creation** in factory methods
+2. **Update to use SqliteConnectionManager** if factory creates Assertion repositories
+3. **Ensure consistency** with how Issuer repository is created
+4. **Test factory methods** work correctly with updated repositories
+
+**Expected Outcome**: Repository factory properly creates Assertion repositories with connection management
 
 ## File Structure After Refactoring
 
@@ -219,46 +166,42 @@ src/infrastructure/database/modules/sqlite/
 
 ## Timeline Estimate
 
-- **Phase 1 (Mapper Enhancement)**: 3-4 hours
-- **Phase 2 (Repository Refactoring)**: 4-6 hours  
-- **Phase 3 (Coordinator Update)**: 2-3 hours
-- **Phase 4 (Service Update)**: 2-3 hours
-- **Phase 5 (Test Updates)**: 3-4 hours
+- **Phase 1 (Repository Connection Management)**: 1-2 hours
+- **Phase 2 (Repository Coordinator Update)**: 1 hour
+- **Phase 3 (Test Updates)**: 1-2 hours
+- **Phase 4 (Repository Factory Update)**: 30 minutes
 
-**Total Estimated Time**: 14-20 hours
+**Total Estimated Time**: 3.5-5.5 hours
 
 ## Success Metrics
 
-### Code Quality
-- [ ] Zero TypeScript errors or warnings
-- [ ] All ESLint rules passing
-- [ ] 100% type safety (no `any` or `@ts-ignore`)
-- [ ] Consistent code patterns with Issuer repository
+### Connection Management
+- [ ] Repository uses `SqliteConnectionManager` correctly
+- [ ] No stale database client references after reconnections
+- [ ] All database operations get fresh clients
+- [ ] Consistent with Issuer repository patterns
 
 ### Functionality
-- [ ] All existing Assertion operations work correctly
-- [ ] Date handling works correctly across all scenarios
-- [ ] Revocation and verification logic functions properly
-- [ ] Proper error handling and logging
+- [ ] All existing Assertion operations work correctly after changes
+- [ ] Repository coordinator properly manages Assertion repository
+- [ ] Proper error handling and logging maintained
 - [ ] Performance maintained or improved
 
 ### Testing
-- [ ] All Assertion repository tests pass
+- [ ] All Assertion repository tests pass with new connection management
 - [ ] Integration tests pass
-- [ ] Date handling tests comprehensive
 - [ ] No regressions in existing functionality
-- [ ] Comprehensive test coverage
+- [ ] Reconnection scenarios work correctly
 
 ## Next Steps
 
-1. **Complete BadgeClass repository refactoring first**
-2. **Review current Assertion repository implementation**
-3. **Enhance date handling utilities if needed**
-4. **Start with Phase 1: Mapper enhancement**
-5. **Follow Issuer repository patterns exactly**
-6. **Test thoroughly at each phase, especially date operations**
-7. **Document any Assertion-specific considerations**
+1. **Complete BadgeClass repository refactoring first** (dependency)
+2. **Start with Phase 1: Update Assertion repository constructor and connection management**
+3. **Follow exact same pattern as SqliteIssuerRepository**
+4. **Update repository coordinator to pass SqliteConnectionManager**
+5. **Test thoroughly to ensure no stale client issues**
+6. **Verify all existing functionality works correctly**
 
 ---
 
-**Note**: This refactoring should follow the exact same patterns used successfully in the Issuer repository refactoring, with special attention to date handling and complex business logic. The goal is consistency, type safety, and maintainability while preserving all existing functionality.
+**Note**: This refactoring focuses specifically on fixing the stale database client issue by ensuring repositories always get fresh database clients through SqliteConnectionManager, following the exact pattern successfully used in the Issuer repository. The BadgeClass repository should be completed first as it may be a dependency for some Assertion operations.

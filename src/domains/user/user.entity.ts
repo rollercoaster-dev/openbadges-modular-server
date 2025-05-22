@@ -1,12 +1,12 @@
 /**
  * User Entity
- * 
+ *
  * This entity represents a user in the system with authentication and authorization information.
  * It includes user identity, credentials, roles, and permissions.
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 /**
  * User roles in the system
@@ -15,7 +15,7 @@ export enum UserRole {
   ADMIN = 'admin',
   ISSUER = 'issuer',
   VIEWER = 'viewer',
-  USER = 'user'
+  USER = 'user',
 }
 
 /**
@@ -25,28 +25,28 @@ export enum UserPermission {
   // Admin permissions
   MANAGE_USERS = 'manage:users',
   MANAGE_SYSTEM = 'manage:system',
-  
+
   // Issuer permissions
   CREATE_ISSUER = 'create:issuer',
   UPDATE_ISSUER = 'update:issuer',
   DELETE_ISSUER = 'delete:issuer',
-  
+
   // Badge class permissions
   CREATE_BADGE_CLASS = 'create:badgeClass',
   UPDATE_BADGE_CLASS = 'update:badgeClass',
   DELETE_BADGE_CLASS = 'delete:badgeClass',
-  
+
   // Assertion permissions
   CREATE_ASSERTION = 'create:assertion',
   UPDATE_ASSERTION = 'update:assertion',
   DELETE_ASSERTION = 'delete:assertion',
   REVOKE_ASSERTION = 'revoke:assertion',
   SIGN_ASSERTION = 'sign:assertion',
-  
+
   // Backpack permissions
   MANAGE_PLATFORMS = 'manage:platforms',
   VIEW_BACKPACK = 'view:backpack',
-  MANAGE_BACKPACK = 'manage:backpack'
+  MANAGE_BACKPACK = 'manage:backpack',
 }
 
 /**
@@ -62,15 +62,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermission[]> = {
     UserPermission.CREATE_ASSERTION,
     UserPermission.UPDATE_ASSERTION,
     UserPermission.REVOKE_ASSERTION,
-    UserPermission.SIGN_ASSERTION
+    UserPermission.SIGN_ASSERTION,
   ],
-  [UserRole.VIEWER]: [
-    UserPermission.VIEW_BACKPACK
-  ],
+  [UserRole.VIEWER]: [UserPermission.VIEW_BACKPACK],
   [UserRole.USER]: [
     UserPermission.VIEW_BACKPACK,
-    UserPermission.MANAGE_BACKPACK
-  ]
+    UserPermission.MANAGE_BACKPACK,
+  ],
 };
 
 /**
@@ -106,7 +104,7 @@ export class User {
   static create(data: Partial<User>): User {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default values
@@ -161,7 +159,7 @@ export class User {
    * @returns True if the user has any of the permissions
    */
   hasAnyPermission(permissions: UserPermission[]): boolean {
-    return permissions.some(permission => this.hasPermission(permission));
+    return permissions.some((permission) => this.hasPermission(permission));
   }
 
   /**
@@ -170,7 +168,7 @@ export class User {
    * @returns True if the user has all of the permissions
    */
   hasAllPermissions(permissions: UserPermission[]): boolean {
-    return permissions.every(permission => this.hasPermission(permission));
+    return permissions.every((permission) => this.hasPermission(permission));
   }
 
   /**
@@ -190,7 +188,7 @@ export class User {
       lastLogin: this.lastLogin,
       metadata: this.metadata,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 
@@ -208,7 +206,7 @@ export class User {
       roles: this.roles,
       isActive: this.isActive,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 }

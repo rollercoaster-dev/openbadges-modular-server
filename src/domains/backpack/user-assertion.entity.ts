@@ -1,9 +1,9 @@
 /**
  * UserAssertion entity representing a badge in a user's backpack
  */
-import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus, UserAssertionMetadata } from './backpack.types';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 /**
  * Interface for the data returned by UserAssertion.toObject()
@@ -40,7 +40,7 @@ export class UserAssertion {
   static create(data: Partial<UserAssertion>): UserAssertion {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default status if not provided
@@ -67,7 +67,7 @@ export class UserAssertion {
       assertionId: this.assertionId,
       addedAt: this.addedAt,
       status: this.status,
-      metadata: this.metadata
+      metadata: this.metadata,
     };
   }
 }
