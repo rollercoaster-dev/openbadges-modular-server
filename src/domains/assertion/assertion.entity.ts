@@ -103,7 +103,7 @@ export class Assertion {
   ): OB2.Assertion | OB3.VerifiableCredential {
     // Create a base object with common properties
     const baseObject = {
-      id: this.id,
+      ...(version === BadgeVersion.V2 && { issuedOn: this.issuedOn }),
       issuedOn: this.issuedOn,
       evidence: this.evidence,
     };

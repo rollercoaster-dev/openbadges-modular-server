@@ -6,27 +6,43 @@
  */
 
 import { eq, or, like, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';
 import { UserRepository, UserCreateParams, UserUpdateParams, UserQueryParams } from '@domains/user/user.repository';
 import { users } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 /**
  * SQLite implementation of the User repository
  */
 export class SqliteUserRepository implements UserRepository {
-  private db;
-
   /**
    * Constructor
-   * @param client SQLite database
+   * @param connectionManager SQLite connection manager
    */
-  constructor(client: Database) {
-    this.db = drizzle(client);
+  constructor(private readonly connectionManager: SqliteConnectionManager) {}
+  
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase() {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
+  }
+  
+  /**
+   * Create a mapper for this repository on demand
+   * This allows access to the mapper for external components
+   * while maintaining lazy initialization
+   */
+  getMapper() {
+    // We don't have a dedicated mapper class for User yet, 
+    // but this provides the interface for future implementation
+    return {
+      toDomain: this.toDomain.bind(this)
+    };
   }
 
   /**
@@ -55,21 +71,27 @@ export class SqliteUserRepository implements UserRepository {
       // Log the password hash for debugging
       logger.debug(`Creating user in SQLite repository with passwordHash: ${params.passwordHash ? 'yes' : 'no'}`);
 
-      // Insert into database
-      await this.db.insert(users).values({
-        id: obj.id as string,
-        username: obj.username as string,
-        email: obj.email as string,
-        passwordHash: params.passwordHash || null,
-        firstName: obj.firstName as string | null,
-        lastName: obj.lastName as string | null,
-        roles: JSON.stringify(obj.roles),
-        permissions: JSON.stringify(obj.permissions),
-        isActive: obj.isActive ? 1 : 0,
-        lastLogin,
-        metadata: obj.metadata ? JSON.stringify(obj.metadata) : null,
-        createdAt,
-        updatedAt
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
+      // Use transaction for atomicity
+      await db.transaction(async (tx) => {
+        // Insert into database
+        await tx.insert(users).values({
+          id: obj.id as string,
+          username: obj.username as string,
+          email: obj.email as string,
+          passwordHash: params.passwordHash || null,
+          firstName: obj.firstName as string | null,
+          lastName: obj.lastName as string | null,
+          roles: JSON.stringify(obj.roles),
+          permissions: JSON.stringify(obj.permissions),
+          isActive: obj.isActive ? 1 : 0,
+          lastLogin,
+          metadata: obj.metadata ? JSON.stringify(obj.metadata) : null,
+          createdAt,
+          updatedAt
+        });
       });
 
       // Verify the user was created with the password hash
@@ -96,8 +118,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async findById(id: Shared.IRI): Promise<User | null> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database
-      const result = await this.db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.id, id as string));
@@ -125,8 +150,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async findByUsername(username: string): Promise<User | null> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database
-      const result = await this.db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.username, username));
@@ -154,8 +182,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async findByEmail(email: string): Promise<User | null> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database
-      const result = await this.db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.email, email));
@@ -219,8 +250,11 @@ export class SqliteUserRepository implements UserRepository {
         updateValues.metadata = params.metadata ? JSON.stringify(params.metadata) : null;
       }
 
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Update in database
-      await this.db
+      await db
         .update(users)
         .set(updateValues)
         .where(eq(users.id, id as string));
@@ -243,8 +277,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Delete from database
-      const result = await this.db
+      const result = await db
         .delete(users)
         .where(eq(users.id, id as string))
         .returning({ id: users.id });
@@ -267,8 +304,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async findByQuery(params: UserQueryParams): Promise<User[]> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Build query
-      let query = this.db.select().from(users);
+      let query = db.select().from(users);
 
       // Add filters
       const conditions = [];
@@ -323,8 +363,11 @@ export class SqliteUserRepository implements UserRepository {
    */
   async countByQuery(params: UserQueryParams): Promise<number> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Build query
-      let query = this.db.select({ count: sql`count(*)` }).from(users);
+      let query = db.select({ count: sql`count(*)` }).from(users);
 
       // Add filters
       const conditions = [];

@@ -332,9 +332,9 @@ export class RepositoryFactory {
         throw new Error('SQLite connection manager not initialized');
       }
 
-      // Create the repository using the raw client from the shared connection manager
+      // Create the repository using the shared connection manager
       return new SqliteUserAssertionRepository(
-        RepositoryFactory.sqliteConnectionManager.getClient()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 
@@ -359,9 +359,9 @@ export class RepositoryFactory {
         throw new Error('SQLite connection manager not initialized');
       }
 
-      // Create the repository using the raw client from the shared connection manager
+      // Create the repository using the shared connection manager
       return new SqliteUserRepository(
-        RepositoryFactory.sqliteConnectionManager.getClient()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 

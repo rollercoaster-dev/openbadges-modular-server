@@ -65,7 +65,7 @@ export class SqliteIssuerMapper {
           ) || {}
         );
 
-      // Create and return the domain entity
+      // Create and return the domain entity with timestamps preserved
       const baseData = {
         id: idResult.data!,
         name,
@@ -74,6 +74,8 @@ export class SqliteIssuerMapper {
         description: description || undefined,
         image: convertedImage || undefined,
         publicKey: convertedPublicKey || undefined,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
       };
 
       // Spread `additionalFields` first so that validated base fields win,

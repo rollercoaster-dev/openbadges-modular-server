@@ -5,8 +5,8 @@
  * ensuring proper handling of OpenBadges types and database-specific conversions.
  */
 
-import { Shared } from 'openbadges-types';
-// OB2 and OB3 imports available for future use if needed
+import { Shared, OB2 } from 'openbadges-types';
+// OB3 imports available for future use if needed
 import { logger } from '@utils/logging/logger.service';
 import { createOrGenerateIRI } from '@utils/types/iri-utils';
 import {
@@ -90,13 +90,35 @@ export namespace SqliteTypeConverters {
    */
   export function convertImageFromString(
     imageStr: string | null
-  ): Shared.IRI | Shared.OB3ImageObject | null {
+  ): Shared.IRI | Shared.OB3ImageObject | OB2.Image | null {
     if (!imageStr) return null;
 
     // Try to parse as JSON first
     try {
       const parsed = JSON.parse(imageStr);
       if (typeof parsed === 'object' && parsed !== null) {
+        // Check if it matches OB2.Image structure:
+        // - Has id property as a string
+        // - May have a type property (usually "Image")
+        // - May have caption or author properties
+        // - Generally simpler than OB3ImageObject
+        if ('id' in parsed && typeof parsed.id === 'string') {
+          // Check additional properties that might indicate an OB2.Image
+          // OB2.Image typically has a subset of: id, type, caption, author
+          if (
+            // OB2.Image is typically simpler with fewer properties
+            Object.keys(parsed).length <= 4 &&
+            // Check for common OB2.Image properties
+            (parsed.type === 'Image' ||
+              typeof parsed.caption === 'string' ||
+              typeof parsed.author === 'string' ||
+              // Simple object with mainly an ID
+              Object.keys(parsed).length <= 2)
+          ) {
+            return parsed as OB2.Image;
+          }
+        }
+        // Otherwise assume it's an OB3ImageObject with more complex structure
         return parsed as Shared.OB3ImageObject;
       }
       // parsed is primitive => return it, not the raw DB value

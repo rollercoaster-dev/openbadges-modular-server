@@ -6,8 +6,6 @@
  */
 
 import { eq, and, ne, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
 import { UserAssertion } from '@domains/backpack/user-assertion.entity';
 import type { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
 import { Shared } from 'openbadges-types';
@@ -17,14 +15,28 @@ import { UserAssertionCreateParams, UserAssertionQueryParams } from '@domains/ba
 import { userAssertions } from '../schema';
 import { SqliteUserAssertionMapper } from '../mappers/sqlite-user-assertion.mapper';
 import { createId } from '@paralleldrive/cuid2';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
-  private db: ReturnType<typeof drizzle>;
   private mapper: SqliteUserAssertionMapper;
 
-  constructor(client: Database) {
-    this.db = drizzle(client);
+  constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.mapper = new SqliteUserAssertionMapper();
+  }
+  
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase() {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
+  }
+  
+  /**
+   * Gets the mapper instance for external access
+   */
+  getMapper(): SqliteUserAssertionMapper {
+    return this.mapper;
   }
 
   /**
@@ -94,30 +106,56 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Convert domain entity to database record
       const record = this.mapper.toPersistence(userAssertion);
 
-      // Insert into database with ON CONFLICT DO UPDATE
-      // Extract fields to update from the record
-      const extendedRecord = record as Record<string, unknown>;
-      const updateData: Record<string, unknown> = {};
-
-      if ('status' in extendedRecord && extendedRecord.status !== undefined) {
-        updateData.status = extendedRecord.status;
-      }
-
-      if ('metadata' in extendedRecord && extendedRecord.metadata !== undefined) {
-        updateData.metadata = extendedRecord.metadata;
-      }
-
-      // Use the helper method to construct the Drizzle update set
-      const drizzleUpdateSet = this.constructDrizzleUpdateSet(updateData);
-
-      await this.db
-        .insert(userAssertions)
-        .values(record)
-        .onConflictDoUpdate({
-          target: [userAssertions.userId, userAssertions.assertionId],
-          set: drizzleUpdateSet
-        })
-        .returning();
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
+      // Use transaction for atomicity
+      await db.transaction(async (tx) => {
+        // First check if the record already exists
+        const existingRecord = await tx
+          .select()
+          .from(userAssertions)
+          .where(
+            and(
+              eq(userAssertions.userId, userId as string),
+              eq(userAssertions.assertionId, assertionId as string)
+            )
+          );
+          
+        if (existingRecord.length > 0) {
+          // Record exists, update it
+          const updateData: Record<string, unknown> = {};
+          
+          // Extract fields to update from the record
+          const extendedRecord = record as Record<string, unknown>;
+          
+          if ('status' in extendedRecord && extendedRecord.status !== undefined) {
+            updateData.status = extendedRecord.status;
+          }
+          
+          if ('metadata' in extendedRecord && extendedRecord.metadata !== undefined) {
+            updateData.metadata = extendedRecord.metadata;
+          }
+          
+          // Use the helper method to construct the Drizzle update set
+          const drizzleUpdateSet = this.constructDrizzleUpdateSet(updateData);
+          
+          await tx
+            .update(userAssertions)
+            .set(drizzleUpdateSet)
+            .where(
+              and(
+                eq(userAssertions.userId, userId as string),
+                eq(userAssertions.assertionId, assertionId as string)
+              )
+            );
+        } else {
+          // Record doesn't exist, insert it
+          await tx
+            .insert(userAssertions)
+            .values(record);
+        }
+      });
 
       // Return the domain entity
       return userAssertion;
@@ -133,8 +171,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async removeAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Delete from database using Drizzle ORM
-      const result = await this.db
+      const result = await db
         .delete(userAssertions)
         .where(
           and(
@@ -158,11 +199,14 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async updateStatus(userId: Shared.IRI, assertionId: Shared.IRI, status: UserAssertionStatus): Promise<boolean> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Update status in database using Drizzle ORM
       // Use the helper method to construct the Drizzle update set
       const drizzleUpdateSet = this.constructDrizzleUpdateSet({ status });
 
-      const result = await this.db
+      const result = await db
         .update(userAssertions)
         .set(drizzleUpdateSet)
         .where(
@@ -188,6 +232,9 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async getUserAssertions(userId: Shared.IRI, params?: UserAssertionQueryParams): Promise<UserAssertion[]> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Build the where conditions
       const whereCondition = params?.status
         ? and(
@@ -200,7 +247,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
           );
 
       // Build the query with the condition
-      let query = this.db.select().from(userAssertions).where(whereCondition);
+      let query = db.select().from(userAssertions).where(whereCondition);
 
       // Execute the query with pagination if provided
       let result;
@@ -238,8 +285,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async getAssertionUsers(assertionId: Shared.IRI): Promise<UserAssertion[]> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database using Drizzle ORM
-      const result = await this.db
+      const result = await db
         .select()
         .from(userAssertions)
         .where(eq(userAssertions.assertionId, assertionId as string));
@@ -257,8 +307,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async hasAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<boolean> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database using Drizzle ORM
-      const result = await this.db
+      const result = await db
         .select({ exists: sql`1` })
         .from(userAssertions)
         .where(
@@ -283,8 +336,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
   async findByUserAndAssertion(userId: Shared.IRI, assertionId: Shared.IRI): Promise<UserAssertion | null> {
     try {
+      // Get database with connection validation
+      const db = this.getDatabase();
+      
       // Query database using Drizzle ORM
-      const result = await this.db
+      const result = await db
         .select()
         .from(userAssertions)
         .where(

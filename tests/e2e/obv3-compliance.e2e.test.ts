@@ -36,6 +36,25 @@ const createdResources: {
   assertionId?: string;
 } = {};
 
+/**
+ * Helper function to wait until server is healthy with retry logic
+ * @param url Base URL of the server
+ * @param timeoutMs Maximum time to wait in milliseconds
+ */
+async function waitUntilHealthy(url: string, timeoutMs = 10_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(`${url}/health`);
+      if (res.ok) return;
+    } catch {
+      /* ignore connection errors during startup */
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  throw new Error('Test server did not become healthy in time');
+}
+
 // Helper function to check for database connection issues
 async function checkDatabaseConnectionIssue(
   response: Response
@@ -152,25 +171,34 @@ async function isAcceptableValidationError(
 
   // Clone the response to avoid consuming it
   const clonedResponse = response.clone();
-  
+
   try {
     // Try to parse error response
-    const errorResponse = await clonedResponse.json() as Record<string, unknown>;
-    
+    const errorResponse = (await clonedResponse.json()) as Record<
+      string,
+      unknown
+    >;
+
     // Handle case where response format is unexpected
     if (!errorResponse || typeof errorResponse !== 'object') {
-      logger.warn(`Invalid error response format for ${entityType}:`, { errorResponse });
+      logger.warn(`Invalid error response format for ${entityType}:`, {
+        errorResponse,
+      });
       return false;
     }
-    
-    const errorMessage = (errorResponse.message || errorResponse.error || '') as string;
-    const errors = Array.isArray(errorResponse.errors) ? errorResponse.errors as string[] : [];
-    
+
+    const errorMessage = (errorResponse.message ||
+      errorResponse.error ||
+      '') as string;
+    const errors = Array.isArray(errorResponse.errors)
+      ? (errorResponse.errors as string[])
+      : [];
+
     // Log the error for debugging
-    logger.info(`Validation error for ${entityType}:`, { 
-      status: response.status, 
-      message: errorMessage, 
-      errors 
+    logger.info(`Validation error for ${entityType}:`, {
+      status: response.status,
+      message: errorMessage,
+      errors,
     });
 
     // Known acceptable validation errors for each entity type
@@ -195,26 +223,34 @@ async function isAcceptableValidationError(
         'badge must be a valid BadgeClass reference', // Reference validation
         'issuedOn must be a valid ISO 8601 date string', // Date format validation
         'validation failed', // Generic validation error
-      ]
+      ],
     };
 
     // Check if the error message contains any acceptable errors
-    const isAcceptable = acceptableErrors[entityType].some(acceptableError => 
-      (errorMessage && errorMessage.toLowerCase().includes(acceptableError.toLowerCase())) || 
-      errors.some(error => typeof error === 'string' && error.toLowerCase().includes(acceptableError.toLowerCase()))
+    const isAcceptable = acceptableErrors[entityType].some(
+      (acceptableError) =>
+        (errorMessage &&
+          errorMessage.toLowerCase().includes(acceptableError.toLowerCase())) ||
+        errors.some(
+          (error) =>
+            typeof error === 'string' &&
+            error.toLowerCase().includes(acceptableError.toLowerCase())
+        )
     );
 
     if (!isAcceptable) {
-      logger.warn(`Unexpected validation error for ${entityType}:`, { 
-        errorMessage, 
+      logger.warn(`Unexpected validation error for ${entityType}:`, {
+        errorMessage,
         errors,
-        acceptableErrors: acceptableErrors[entityType]
+        acceptableErrors: acceptableErrors[entityType],
       });
     }
-    
+
     return isAcceptable;
   } catch (error) {
-    logger.warn(`Failed to parse validation error for ${entityType}:`, { error });
+    logger.warn(`Failed to parse validation error for ${entityType}:`, {
+      error,
+    });
     // Attempt to get the raw text for better diagnostics
     try {
       const rawText = await response.clone().text();
@@ -237,8 +273,9 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       const result = await setupTestApp();
       server = result.server;
       logger.info('E2E Test: Server started successfully');
-      // Wait for the server to be fully ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait for the server to be fully ready with health check
+      await waitUntilHealthy(API_URL);
+      logger.info('E2E Test: Server health check passed');
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
@@ -346,17 +383,22 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // If we got a 400 response, check if it's due to an acceptable validation error
     if (issuerResponse.status === 400) {
-      const isAcceptableError = await isAcceptableValidationError(issuerResponse, 'issuer');
+      const isAcceptableError = await isAcceptableValidationError(
+        issuerResponse,
+        'issuer'
+      );
       if (!isAcceptableError) {
         // If the error is not acceptable, fail the test with details
         const errorText = await issuerResponse.clone().text();
-        throw new Error(`Unacceptable validation error for issuer: ${errorText}`);
+        throw new Error(
+          `Unacceptable validation error for issuer: ${errorText}`
+        );
       }
       // If it's an acceptable validation error, skip to the next test
       logger.info('Skipping issuer test due to acceptable validation error');
       return;
     }
-    
+
     // For success responses, continue with validation
     expect(issuerResponse.status).toBe(201);
     const issuer = (await issuerResponse.json()) as Record<string, unknown>;
@@ -400,17 +442,24 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // If we got a 400 response, check if it's due to an acceptable validation error
     if (badgeClassResponse.status === 400) {
-      const isAcceptableError = await isAcceptableValidationError(badgeClassResponse, 'badgeClass');
+      const isAcceptableError = await isAcceptableValidationError(
+        badgeClassResponse,
+        'badgeClass'
+      );
       if (!isAcceptableError) {
         // If the error is not acceptable, fail the test with details
         const errorText = await badgeClassResponse.clone().text();
-        throw new Error(`Unacceptable validation error for badge class: ${errorText}`);
+        throw new Error(
+          `Unacceptable validation error for badge class: ${errorText}`
+        );
       }
       // If it's an acceptable validation error, skip to the next test
-      logger.info('Skipping badge class test due to acceptable validation error');
+      logger.info(
+        'Skipping badge class test due to acceptable validation error'
+      );
       return;
     }
-    
+
     // For success responses, continue with validation
     expect(badgeClassResponse.status).toBe(201);
     const badgeClass = (await badgeClassResponse.json()) as Record<
@@ -467,17 +516,22 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // If we got a 400 response, check if it's due to an acceptable validation error
     if (assertionResponse.status === 400) {
-      const isAcceptableError = await isAcceptableValidationError(assertionResponse, 'assertion');
+      const isAcceptableError = await isAcceptableValidationError(
+        assertionResponse,
+        'assertion'
+      );
       if (!isAcceptableError) {
         // If the error is not acceptable, fail the test with details
         const errorText = await assertionResponse.clone().text();
-        throw new Error(`Unacceptable validation error for assertion: ${errorText}`);
+        throw new Error(
+          `Unacceptable validation error for assertion: ${errorText}`
+        );
       }
       // If it's an acceptable validation error, skip the rest of the test
       logger.info('Skipping assertion test due to acceptable validation error');
       return;
     }
-    
+
     // For success responses, continue with validation
     expect(assertionResponse.status).toBe(201);
     const assertion = (await assertionResponse.json()) as Record<
@@ -567,18 +621,20 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       logger.warn('Assertion verification failed: Resource not found', {
         assertionId: assertion.id,
         status: verifyResponse.status,
-        responseText: await verifyResponse.clone().text()
+        responseText: await verifyResponse.clone().text(),
       });
-      
+
       // This is only acceptable in CI environments, fail in development
       if (process.env.CI !== 'true') {
-        throw new Error(`Assertion verification failed with 404 status. This should only happen in CI environments.`);
+        throw new Error(
+          `Assertion verification failed with 404 status. This should only happen in CI environments.`
+        );
       }
-      
+
       logger.info('Skipping verification in CI environment due to 404 error');
       return;
     }
-    
+
     // For success responses, continue with verification
     expect(verifyResponse.status).toBe(200);
     const verifyResult = (await verifyResponse.json()) as Record<

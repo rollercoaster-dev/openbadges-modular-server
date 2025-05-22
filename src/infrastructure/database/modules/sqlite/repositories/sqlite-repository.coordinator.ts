@@ -174,16 +174,18 @@ export class SqliteRepositoryCoordinator {
     try {
       // Extract issuer ID with proper type checking
       let issuerId: Shared.IRI | undefined;
-      
+
       if (typeof badgeClassData.issuer === 'string') {
         issuerId = badgeClassData.issuer as Shared.IRI;
-      } else if (badgeClassData.issuer && 
-                typeof badgeClassData.issuer === 'object' && 
-                'id' in badgeClassData.issuer && 
-                badgeClassData.issuer.id) {
+      } else if (
+        badgeClassData.issuer &&
+        typeof badgeClassData.issuer === 'object' &&
+        'id' in badgeClassData.issuer &&
+        badgeClassData.issuer.id
+      ) {
         issuerId = badgeClassData.issuer.id as Shared.IRI;
       }
-      
+
       // Validate that we have a valid issuer ID
       if (!issuerId) {
         throw new Error('Invalid or missing issuer ID in badge class data');
@@ -200,20 +202,22 @@ export class SqliteRepositoryCoordinator {
     } catch (error) {
       // Extract issuer ID safely for error logging
       let issuerId: Shared.IRI | undefined;
-      
+
       if (typeof badgeClassData.issuer === 'string') {
         issuerId = badgeClassData.issuer as Shared.IRI;
-      } else if (badgeClassData.issuer && 
-                typeof badgeClassData.issuer === 'object' && 
-                'id' in badgeClassData.issuer && 
-                badgeClassData.issuer.id) {
+      } else if (
+        badgeClassData.issuer &&
+        typeof badgeClassData.issuer === 'object' &&
+        'id' in badgeClassData.issuer &&
+        badgeClassData.issuer.id
+      ) {
         issuerId = badgeClassData.issuer.id as Shared.IRI;
       }
-      
+
       logger.error('Failed to create badge class with validation', {
         error: error instanceof Error ? error.message : String(error),
         issuerId,
-        badgeClassData: SensitiveValue.from(badgeClassData)
+        badgeClassData: SensitiveValue.from(badgeClassData),
       });
       throw error;
     }
