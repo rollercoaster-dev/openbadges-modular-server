@@ -24,15 +24,13 @@ import {
  */
 export class SqliteRepositoryCoordinator {
   private readonly issuerRepository: SqliteIssuerRepository;
-  private readonly badgeClassRepository: SqliteBadgeClassRepository;
-  private readonly assertionRepository: SqliteAssertionRepository;
+  private _badgeClassRepository: SqliteBadgeClassRepository | null = null;
+  private _assertionRepository: SqliteAssertionRepository | null = null;
 
   constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.issuerRepository = new SqliteIssuerRepository(connectionManager);
-    this.badgeClassRepository = new SqliteBadgeClassRepository(
-      connectionManager
-    );
-    this.assertionRepository = new SqliteAssertionRepository(connectionManager);
+    // BadgeClass and Assertion repositories use lazy initialization
+    // to avoid accessing the client before connection is established
   }
 
   /**
@@ -43,17 +41,39 @@ export class SqliteRepositoryCoordinator {
   }
 
   /**
-   * Gets the badge class repository
+   * Gets the badge class repository (lazy initialization)
    */
   getBadgeClassRepository(): SqliteBadgeClassRepository {
-    return this.badgeClassRepository;
+    if (!this._badgeClassRepository) {
+      const client = this.connectionManager.getClient();
+      this._badgeClassRepository = new SqliteBadgeClassRepository(client);
+    }
+    return this._badgeClassRepository;
   }
 
   /**
-   * Gets the assertion repository
+   * Gets the assertion repository (lazy initialization)
    */
   getAssertionRepository(): SqliteAssertionRepository {
-    return this.assertionRepository;
+    if (!this._assertionRepository) {
+      const client = this.connectionManager.getClient();
+      this._assertionRepository = new SqliteAssertionRepository(client);
+    }
+    return this._assertionRepository;
+  }
+
+  /**
+   * Private getter for badge class repository (for internal use)
+   */
+  private get badgeClassRepository(): SqliteBadgeClassRepository {
+    return this.getBadgeClassRepository();
+  }
+
+  /**
+   * Private getter for assertion repository (for internal use)
+   */
+  private get assertionRepository(): SqliteAssertionRepository {
+    return this.getAssertionRepository();
   }
 
   /**
@@ -131,7 +151,7 @@ export class SqliteRepositoryCoordinator {
       const issuerId =
         typeof badgeClassData.issuer === 'string'
           ? (badgeClassData.issuer as Shared.IRI)
-          : badgeClassData.issuer.id;
+          : ((badgeClassData.issuer as { id: Shared.IRI }).id as Shared.IRI);
 
       const issuer = await this.issuerRepository.findById(issuerId);
       if (!issuer) {
@@ -146,7 +166,7 @@ export class SqliteRepositoryCoordinator {
         issuerId:
           typeof badgeClassData.issuer === 'string'
             ? badgeClassData.issuer
-            : badgeClassData.issuer.id,
+            : (badgeClassData.issuer as { id: Shared.IRI }).id,
       });
       throw error;
     }
@@ -160,7 +180,7 @@ export class SqliteRepositoryCoordinator {
   ): Promise<Assertion> {
     try {
       // Validate that the badge class exists
-      const badgeClassId = assertionData.badgeClass;
+      const badgeClassId = assertionData.badgeClass as string;
       const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
       if (!badgeClass) {
         throw new Error(`Badge class with ID ${badgeClassId} does not exist`);
@@ -297,7 +317,7 @@ export class SqliteRepositoryCoordinator {
     _operation: string
   ): SqliteTransactionContext {
     return {
-      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       startTime: Date.now(),
       operations: [],
       rollbackOnError: true,

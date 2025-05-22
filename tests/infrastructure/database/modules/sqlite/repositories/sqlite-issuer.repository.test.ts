@@ -34,13 +34,10 @@ describe('SqliteIssuerRepository', () => {
     // Create drizzle instance
     const drizzleDb = drizzle(db);
 
-    // Initialize the connection manager with the drizzle instance
-    connectionManager = new SqliteConnectionManager({
-      file: ':memory:',
-      enableWAL: false,
-      busyTimeout: 5000,
+    // Initialize the connection manager with the database instance and config
+    connectionManager = new SqliteConnectionManager(db, {
       maxConnectionAttempts: 3,
-      retryDelayMs: 1000,
+      connectionRetryDelayMs: 1000,
     });
 
     // Set the drizzle instance and connection state directly (for testing)

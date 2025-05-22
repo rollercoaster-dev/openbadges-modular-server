@@ -13,7 +13,7 @@ import type { Database } from 'bun:sqlite';
  * SQLite database client wrapper with type safety
  */
 export interface SqliteDatabaseClient {
-  db: BunSQLiteDatabase;
+  db: BunSQLiteDatabase<Record<string, unknown>>;
   client: Database;
 }
 
@@ -28,7 +28,11 @@ export interface SqliteConnectionConfig {
 /**
  * Connection state management
  */
-export type SqliteConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type SqliteConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'error';
 
 /**
  * Database record types that match the schema exactly
@@ -105,12 +109,18 @@ export interface SqliteQueryResult<T> {
 /**
  * Image type union for OpenBadges compatibility
  */
-export type OpenBadgesImageType = Shared.IRI | Shared.OB3ImageObject | OB2.Image | string;
+export type OpenBadgesImageType =
+  | Shared.IRI
+  | Shared.OB3ImageObject
+  | OB2.Image
+  | string;
 
 /**
  * Recipient type union for OpenBadges compatibility
  */
-export type OpenBadgesRecipientType = OB2.IdentityObject | OB3.CredentialSubject;
+export type OpenBadgesRecipientType =
+  | OB2.IdentityObject
+  | OB3.CredentialSubject;
 
 /**
  * Verification type union for OpenBadges compatibility
@@ -154,14 +164,22 @@ export class SqliteConnectionError extends Error {
 }
 
 export class SqliteTypeConversionError extends Error {
-  constructor(message: string, public readonly value: unknown, public readonly targetType: string) {
+  constructor(
+    message: string,
+    public readonly value: unknown,
+    public readonly targetType: string
+  ) {
     super(message);
     this.name = 'SqliteTypeConversionError';
   }
 }
 
 export class SqliteValidationError extends Error {
-  constructor(message: string, public readonly field: string, public readonly value: unknown) {
+  constructor(
+    message: string,
+    public readonly field: string,
+    public readonly value: unknown
+  ) {
     super(message);
     this.name = 'SqliteValidationError';
   }

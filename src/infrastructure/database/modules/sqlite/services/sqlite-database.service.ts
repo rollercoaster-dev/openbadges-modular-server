@@ -186,7 +186,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
         issuerId:
           typeof badgeClass.issuer === 'string'
             ? badgeClass.issuer
-            : badgeClass.issuer.id,
+            : (badgeClass.issuer as { id: Shared.IRI }).id,
         duration: Date.now() - context.startTime,
       });
 

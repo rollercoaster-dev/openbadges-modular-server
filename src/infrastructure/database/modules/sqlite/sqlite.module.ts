@@ -1,7 +1,6 @@
 import { DatabaseModuleInterface } from '../../interfaces/database-module.interface';
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteDatabase } from './sqlite.database';
 import { logger } from '../../../../utils/logging/logger.service';
 // import { sql } from 'drizzle-orm';
@@ -17,10 +16,15 @@ export class SqliteModule implements DatabaseModuleInterface {
   /**
    * Creates and returns a DatabaseInterface instance for SQLite using bun:sqlite
    */
-  async createDatabase(config: Record<string, unknown>): Promise<DatabaseInterface> {
+  async createDatabase(
+    config: Record<string, unknown>
+  ): Promise<DatabaseInterface> {
     // Open SQLite database (file or in-memory)
     let filePath: string;
-    if (typeof config['sqliteFile'] === 'string' && config['sqliteFile'].trim()) {
+    if (
+      typeof config['sqliteFile'] === 'string' &&
+      config['sqliteFile'].trim()
+    ) {
       filePath = config['sqliteFile'];
     } else {
       filePath = ':memory:'; // Default to in-memory if no valid path provided
@@ -30,11 +34,13 @@ export class SqliteModule implements DatabaseModuleInterface {
     // Apply SQLite optimizations
     this.applySqliteOptimizations(client, config);
 
-    // Initialize Drizzle ORM over SQLite (bun:sqlite adapter)
-    const db = drizzle(client);
-
     // Wrap in our DatabaseInterface implementation
-    const sqliteDb = new SqliteDatabase(db);
+    // Use the new configuration-based constructor with proper config
+    const connectionConfig = {
+      maxConnectionAttempts: (config.maxConnectionAttempts as number) || 3,
+      connectionRetryDelayMs: (config.retryDelayMs as number) || 1000,
+    };
+    const sqliteDb = new SqliteDatabase(client, connectionConfig);
     await sqliteDb.connect();
     return sqliteDb;
   }
@@ -44,7 +50,10 @@ export class SqliteModule implements DatabaseModuleInterface {
    * @param client The SQLite database client
    * @param config Configuration options
    */
-  private applySqliteOptimizations(client: Database, config: Record<string, unknown>): void {
+  private applySqliteOptimizations(
+    client: Database,
+    config: Record<string, unknown>
+  ): void {
     // Use WAL mode for better concurrency and performance
     // This allows reads and writes to happen concurrently
     client.exec('PRAGMA journal_mode = WAL;');
@@ -81,7 +90,7 @@ export class SqliteModule implements DatabaseModuleInterface {
         cacheSize,
         foreignKeys: 'ON',
         tempStore: 'MEMORY',
-        customIndexes: true
+        customIndexes: true,
       });
     }
   }
@@ -93,7 +102,9 @@ export class SqliteModule implements DatabaseModuleInterface {
   private createCustomIndexes(client: Database): void {
     try {
       // Check if tables exist before creating indexes
-      const tables = client.query("SELECT name FROM sqlite_master WHERE type='table'").all();
+      const tables = client
+        .query("SELECT name FROM sqlite_master WHERE type='table'")
+        .all();
       const tableNames = tables.map((t: { name: string }) => t.name);
 
       // Only create indexes if tables exist
@@ -131,7 +142,7 @@ export class SqliteModule implements DatabaseModuleInterface {
     } catch (error) {
       // Log error but don't fail initialization
       logger.warn('Error creating custom indexes', {
-        errorMessage: error instanceof Error ? error.message : String(error)
+        errorMessage: error instanceof Error ? error.message : String(error),
       });
     }
   }

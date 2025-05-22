@@ -7,7 +7,12 @@
 
 import { Assertion } from '@domains/assertion/assertion.entity';
 import { Shared, OB2, OB3 } from 'openbadges-types';
-import { convertBoolean, convertJson, convertTimestamp, convertUuid } from '@infrastructure/database/utils/type-conversion';
+import {
+  convertBoolean,
+  convertJson,
+  convertTimestamp,
+  convertUuid,
+} from '@infrastructure/database/utils/type-conversion';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { assertions } from '../schema';
 import { logger } from '@utils/logging/logger.service';
@@ -49,7 +54,9 @@ export class SqliteAssertionMapper {
       throw new Error('Assertion record is missing required field: id');
     }
     if (badgeClassId === null || badgeClassId === undefined) {
-      throw new Error('Assertion record is missing required field: badgeClassId');
+      throw new Error(
+        'Assertion record is missing required field: badgeClassId'
+      );
     }
     if (issuedOn === null || issuedOn === undefined) {
       throw new Error('Assertion record is missing required field: issuedOn');
@@ -57,8 +64,16 @@ export class SqliteAssertionMapper {
 
     // Safely convert additional fields, ensuring it's an object for spreading
     const parsedAdditionalFields =
-      convertJson<Record<string, unknown>>(additionalFields, 'sqlite', 'from') ?? {};
-    const safeAdditionalFields = this.validateParsedJson(parsedAdditionalFields, 'additionalFields', id);
+      convertJson<Record<string, unknown>>(
+        additionalFields,
+        'sqlite',
+        'from'
+      ) ?? {};
+    const safeAdditionalFields = this.validateParsedJson(
+      parsedAdditionalFields,
+      'additionalFields',
+      id
+    );
 
     // Parse and validate JSON fields
     const parsedRecipient = this.validateParsedJson(
@@ -70,13 +85,19 @@ export class SqliteAssertionMapper {
       'recipient',
       id
     );
-    if (!parsedRecipient) { // Recipient is mandatory
-      throw new Error(`Parsed recipient JSON is null or undefined for assertion ${id}.`);
+    if (!parsedRecipient) {
+      // Recipient is mandatory
+      throw new Error(
+        `Parsed recipient JSON is null or undefined for assertion ${id}.`
+      );
     }
 
     const parsedEvidence = this.validateParsedJson(
-        convertJson<OB2.Evidence[] | OB3.Evidence[]>(evidence, 'sqlite', 'from') ??
-        [], // Default to empty array if null/undefined BEFORE validation
+      convertJson<OB2.Evidence[] | OB3.Evidence[]>(
+        evidence,
+        'sqlite',
+        'from'
+      ) ?? [], // Default to empty array if null/undefined BEFORE validation
       'evidence',
       id
     );
@@ -89,7 +110,7 @@ export class SqliteAssertionMapper {
       ),
       'verification',
       id
-      ); // Verification can be null/undefined
+    ); // Verification can be null/undefined
 
     // Create and return the domain entity
     try {
@@ -102,7 +123,9 @@ export class SqliteAssertionMapper {
         ).toISOString(),
         expires:
           expires !== null && expires !== undefined
-            ? new Date(convertTimestamp(expires, 'sqlite', 'from') as number).toISOString()
+            ? new Date(
+                convertTimestamp(expires, 'sqlite', 'from') as number
+              ).toISOString()
             : undefined,
         evidence: parsedEvidence,
         verification: parsedVerification,
@@ -115,17 +138,25 @@ export class SqliteAssertionMapper {
       });
     } catch (error) {
       logger.error(`Error mapping SQLite Assertion record to domain: ${error}`);
-      throw new Error(`Failed to map Assertion record with id ${id} to domain.`);
+      throw new Error(
+        `Failed to map Assertion record with id ${id} to domain.`
+      );
     }
   }
 
-  private validateParsedJson<T>(value: T | string | null | undefined, fieldName: string, assertionId: string): T {
+  private validateParsedJson<T>(
+    value: T | string | null | undefined,
+    fieldName: string,
+    assertionId: string
+  ): T {
     if (value === null || value === undefined) {
       // Allow null/undefined for optional fields, handle specific checks elsewhere if needed
       return value as T;
     }
     if (typeof value === 'string') {
-      throw new Error(`Parsed ${fieldName} JSON is unexpectedly a string for assertion ${assertionId}.`);
+      throw new Error(
+        `Parsed ${fieldName} JSON is unexpectedly a string for assertion ${assertionId}.`
+      );
     }
     // At this point, it should be the target type T
     return value;
@@ -142,15 +173,52 @@ export class SqliteAssertionMapper {
       throw new Error('Cannot persist null Assertion entity.');
     }
 
-    // Return only the fields required by InferInsertModel for insert
-    const persistenceRecord: InferInsertModel<typeof assertions> = {
+    // Return all fields that can be persisted
+    const persistenceRecord = {
       id: convertUuid(entity.id as string, 'sqlite', 'to'),
-      badgeClassId: convertUuid((entity.badgeClass || entity['badge']) as string, 'sqlite', 'to'),
-      recipient: convertJson(entity.recipient as object, 'sqlite', 'to') as string,
-      issuedOn: convertTimestamp(entity.issuedOn as string | Date, 'sqlite', 'to') as number,
+      badgeClassId: convertUuid(
+        (entity.badgeClass || entity['badge']) as string,
+        'sqlite',
+        'to'
+      ),
+      recipient: convertJson(
+        entity.recipient as object,
+        'sqlite',
+        'to'
+      ) as string,
+      issuedOn: convertTimestamp(
+        entity.issuedOn as string | Date,
+        'sqlite',
+        'to'
+      ) as number,
+      expires: entity.expires
+        ? (convertTimestamp(
+            entity.expires as string | Date,
+            'sqlite',
+            'to'
+          ) as number)
+        : null,
+      evidence: entity.evidence
+        ? (convertJson(entity.evidence as object, 'sqlite', 'to') as string)
+        : null,
+      verification: entity.verification
+        ? (convertJson(entity.verification as object, 'sqlite', 'to') as string)
+        : null,
+      revoked:
+        entity.revoked !== undefined
+          ? (convertBoolean(entity.revoked, 'sqlite', 'to') as number)
+          : null,
+      revocationReason: entity.revocationReason || null,
+      additionalFields: entity['additionalFields']
+        ? (convertJson(
+            entity['additionalFields'] as object,
+            'sqlite',
+            'to'
+          ) as string)
+        : null,
       createdAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
       updatedAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
-    };
+    } as InferInsertModel<typeof assertions>;
     return persistenceRecord;
   }
 }

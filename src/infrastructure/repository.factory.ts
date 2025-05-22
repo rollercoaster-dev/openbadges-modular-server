@@ -57,7 +57,9 @@ export class RepositoryFactory {
   }): Promise<void> {
     // Prevent multiple initializations
     if (this.isInitialized) {
-      logger.warn('RepositoryFactory already initialized. Skipping redundant initialization.');
+      logger.warn(
+        'RepositoryFactory already initialized. Skipping redundant initialization.'
+      );
       return;
     }
 
@@ -100,18 +102,34 @@ export class RepositoryFactory {
       const baseRepository = new PostgresIssuerRepository(this.client);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedIssuerRepository(baseRepository)
+        : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');
       const sqliteFile = config.database.sqliteFile || ':memory:';
       const client = new Database(sqliteFile);
 
-      // Create the base repository
-      const baseRepository = new SqliteIssuerRepository(client);
+      // Create connection manager for the new pattern
+      const { SqliteConnectionManager } = await import(
+        './database/modules/sqlite/connection/sqlite-connection.manager'
+      );
+      const connectionManager = new SqliteConnectionManager(client, {
+        maxConnectionAttempts: 3,
+        connectionRetryDelayMs: 1000,
+      });
+
+      // Connect the connection manager
+      await connectionManager.connect();
+
+      // Create the base repository using the new pattern
+      const baseRepository = new SqliteIssuerRepository(connectionManager);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedIssuerRepository(baseRepository)
+        : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -134,7 +152,9 @@ export class RepositoryFactory {
       const baseRepository = new PostgresBadgeClassRepository(this.client);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedBadgeClassRepository(baseRepository)
+        : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');
@@ -145,7 +165,9 @@ export class RepositoryFactory {
       const baseRepository = new SqliteBadgeClassRepository(client);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedBadgeClassRepository(baseRepository)
+        : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -168,7 +190,9 @@ export class RepositoryFactory {
       const baseRepository = new PostgresAssertionRepository(this.client);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedAssertionRepository(baseRepository)
+        : baseRepository;
     } else if (this.dbType === 'sqlite') {
       // Get SQLite database client
       const { Database } = await import('bun:sqlite');
@@ -179,7 +203,9 @@ export class RepositoryFactory {
       const baseRepository = new SqliteAssertionRepository(client);
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedAssertionRepository(baseRepository)
+        : baseRepository;
     }
 
     throw new Error(`Unsupported database type: ${this.dbType}`);
@@ -330,7 +356,7 @@ export class RepositoryFactory {
         logger.info('SQLite connections will be closed automatically');
       } catch (error) {
         logger.warn('Error handling SQLite connections', {
-          errorMessage: error instanceof Error ? error.message : String(error)
+          errorMessage: error instanceof Error ? error.message : String(error),
         });
       }
     }

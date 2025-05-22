@@ -88,7 +88,18 @@ export class SqliteIssuerMapper {
    * @param entity The Issuer domain entity
    * @returns A database record conforming to the insert schema
    */
-  toPersistence(entity: Issuer): typeof issuers.$inferInsert {
+  toPersistence(entity: Issuer): {
+    id: string;
+    name: string;
+    url: string;
+    email: string | null;
+    description: string | null;
+    image: string | null;
+    publicKey: string | null;
+    additionalFields: string | null;
+    createdAt: number;
+    updatedAt: number;
+  } {
     if (!entity) {
       throw new Error(
         'Cannot convert null or undefined entity to database record'
@@ -117,18 +128,24 @@ export class SqliteIssuerMapper {
           ? name.en || name[Object.keys(name)[0]] || ''
           : (name as string) || '';
 
+      // Ensure description is a string for the database
+      const dbDescription: string | null =
+        typeof description === 'object' && description !== null
+          ? description.en || description[Object.keys(description)[0]] || null
+          : (description as string) || null;
+
       // Validate additional fields
       const additionalFieldsResult =
         SqliteTypeConverters.validateAdditionalFields(additionalFields);
 
       // Create the database record with proper type safety
       const now = Date.now();
-      const record: typeof issuers.$inferInsert = {
+      return {
         id: id as string, // ID is already validated in the entity
         name: dbName,
         url: url as string,
         email: email || null,
-        description: description || null,
+        description: dbDescription,
         image: SqliteTypeConverters.convertImageToString(image),
         publicKey: SqliteTypeConverters.safeJsonStringify(
           publicKey,
@@ -141,8 +158,6 @@ export class SqliteIssuerMapper {
         createdAt: now,
         updatedAt: now,
       };
-
-      return record;
     } catch (error) {
       logger.error('Error converting Issuer domain entity to database record', {
         error: error instanceof Error ? error.message : String(error),
