@@ -96,39 +96,46 @@ export class SqliteRepositoryCoordinator {
       // Ensure connection
       this.connectionManager.ensureConnected();
 
-      // Create issuer first
-      const issuer = await this.issuerRepository.create(issuerData);
-      transactionContext.operations.push(
-        this.createOperationContext('CREATE Issuer', issuer.id)
-      );
+      // Use Drizzle's transaction helper for atomic operations
+      const db = this.connectionManager.getDatabase();
 
-      // Create badge class with issuer reference
-      const badgeClass = await this.badgeClassRepository.create({
-        ...badgeClassData,
-        issuer: issuer.id,
-      });
-      transactionContext.operations.push(
-        this.createOperationContext('CREATE BadgeClass', badgeClass.id)
-      );
+      const result = await db.transaction(async (_tx) => {
+        // Create issuer first
+        const issuer = await this.issuerRepository.create(issuerData);
+        transactionContext.operations.push(
+          this.createOperationContext('CREATE Issuer', issuer.id)
+        );
 
-      // Create assertion with badge class reference
-      const assertion = await this.assertionRepository.create({
-        ...assertionData,
-        badgeClass: badgeClass.id,
+        // Create badge class with issuer reference
+        const badgeClass = await this.badgeClassRepository.create({
+          ...badgeClassData,
+          issuer: issuer.id,
+        });
+        transactionContext.operations.push(
+          this.createOperationContext('CREATE BadgeClass', badgeClass.id)
+        );
+
+        // Create assertion with badge class reference
+        const assertion = await this.assertionRepository.create({
+          ...assertionData,
+          badgeClass: badgeClass.id,
+        });
+        transactionContext.operations.push(
+          this.createOperationContext('CREATE Assertion', assertion.id)
+        );
+
+        return { issuer, badgeClass, assertion };
       });
-      transactionContext.operations.push(
-        this.createOperationContext('CREATE Assertion', assertion.id)
-      );
 
       logger.info('Badge ecosystem created successfully', {
         transactionId: transactionContext.id,
-        issuerId: issuer.id,
-        badgeClassId: badgeClass.id,
-        assertionId: assertion.id,
+        issuerId: result.issuer.id,
+        badgeClassId: result.badgeClass.id,
+        assertionId: result.assertion.id,
         duration: Date.now() - transactionContext.startTime,
       });
 
-      return { issuer, badgeClass, assertion };
+      return result;
     } catch (error) {
       logger.error('Failed to create badge ecosystem', {
         error: error instanceof Error ? error.message : String(error),
@@ -210,44 +217,54 @@ export class SqliteRepositoryCoordinator {
     );
 
     try {
-      // Get all badge classes for this issuer
-      const badgeClasses = await this.badgeClassRepository.findByIssuer(
-        issuerId
-      );
+      // Ensure connection
+      this.connectionManager.ensureConnected();
 
-      let assertionsDeleted = 0;
+      // Use Drizzle's transaction helper for atomic operations
+      const db = this.connectionManager.getDatabase();
 
-      // Delete all assertions for each badge class
-      for (const badgeClass of badgeClasses) {
-        const assertions = await this.assertionRepository.findByBadgeClass(
-          badgeClass.id
+      const result = await db.transaction(async (_tx) => {
+        // Get all badge classes for this issuer
+        const badgeClasses = await this.badgeClassRepository.findByIssuer(
+          issuerId
         );
-        for (const assertion of assertions) {
-          await this.assertionRepository.delete(assertion.id);
-          assertionsDeleted++;
+
+        let assertionsDeleted = 0;
+
+        // Delete all assertions for each badge class
+        for (const badgeClass of badgeClasses) {
+          const assertions = await this.assertionRepository.findByBadgeClass(
+            badgeClass.id
+          );
+          for (const assertion of assertions) {
+            await this.assertionRepository.delete(assertion.id);
+            assertionsDeleted++;
+          }
         }
-      }
 
-      // Delete all badge classes
-      let badgeClassesDeleted = 0;
-      for (const badgeClass of badgeClasses) {
-        const deleted = await this.badgeClassRepository.delete(badgeClass.id);
-        if (deleted) badgeClassesDeleted++;
-      }
+        // Delete all badge classes
+        let badgeClassesDeleted = 0;
+        for (const badgeClass of badgeClasses) {
+          const deleted = await this.badgeClassRepository.delete(badgeClass.id);
+          if (deleted) badgeClassesDeleted++;
+        }
 
-      // Delete the issuer
-      const issuerDeleted = await this.issuerRepository.delete(issuerId);
+        // Delete the issuer
+        const issuerDeleted = await this.issuerRepository.delete(issuerId);
+
+        return { issuerDeleted, badgeClassesDeleted, assertionsDeleted };
+      });
 
       logger.info('Issuer cascade deletion completed', {
         transactionId: transactionContext.id,
         issuerId,
-        issuerDeleted,
-        badgeClassesDeleted,
-        assertionsDeleted,
+        issuerDeleted: result.issuerDeleted,
+        badgeClassesDeleted: result.badgeClassesDeleted,
+        assertionsDeleted: result.assertionsDeleted,
         duration: Date.now() - transactionContext.startTime,
       });
 
-      return { issuerDeleted, badgeClassesDeleted, assertionsDeleted };
+      return result;
     } catch (error) {
       logger.error('Failed to delete issuer cascade', {
         error: error instanceof Error ? error.message : String(error),
@@ -331,12 +348,38 @@ export class SqliteRepositoryCoordinator {
     operation: string,
     entityId?: Shared.IRI
   ): SqliteOperationContext {
+    // Determine entity type from operation string
+    const entityType = this.determineEntityTypeFromOperation(operation);
+
     return {
       operation,
-      entityType: 'issuer', // This would be dynamic based on the operation
+      entityType,
       entityId,
       startTime: Date.now(),
     };
+  }
+
+  /**
+   * Determines entity type from operation string
+   */
+  private determineEntityTypeFromOperation(
+    operation: string
+  ): SqliteOperationContext['entityType'] {
+    const lowerOp = operation.toLowerCase();
+
+    if (lowerOp.includes('issuer')) {
+      return 'issuer';
+    } else if (
+      lowerOp.includes('badgeclass') ||
+      lowerOp.includes('badge class')
+    ) {
+      return 'badgeClass';
+    } else if (lowerOp.includes('assertion')) {
+      return 'assertion';
+    }
+
+    // Default fallback
+    return 'issuer';
   }
 
   /**

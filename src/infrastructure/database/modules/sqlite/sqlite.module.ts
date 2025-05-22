@@ -37,8 +37,14 @@ export class SqliteModule implements DatabaseModuleInterface {
     // Wrap in our DatabaseInterface implementation
     // Use the new configuration-based constructor with proper config
     const connectionConfig = {
-      maxConnectionAttempts: (config.maxConnectionAttempts as number) || 3,
-      connectionRetryDelayMs: (config.retryDelayMs as number) || 1000,
+      maxConnectionAttempts:
+        typeof config['maxConnectionAttempts'] === 'number'
+          ? config['maxConnectionAttempts']
+          : 3,
+      connectionRetryDelayMs:
+        typeof config['retryDelayMs'] === 'number'
+          ? config['retryDelayMs']
+          : 1000,
     };
     const sqliteDb = new SqliteDatabase(client, connectionConfig);
     await sqliteDb.connect();
@@ -60,16 +66,29 @@ export class SqliteModule implements DatabaseModuleInterface {
 
     // Set busy timeout to avoid SQLITE_BUSY errors
     // This is the time in ms that SQLite will wait if the database is locked
-    const busyTimeout = config['sqliteBusyTimeout'] || 5000;
+    const busyTimeout =
+      typeof config['sqliteBusyTimeout'] === 'number' &&
+      config['sqliteBusyTimeout'] > 0
+        ? config['sqliteBusyTimeout']
+        : 5000;
     client.exec(`PRAGMA busy_timeout = ${busyTimeout};`);
 
     // Set synchronous mode to NORMAL for better performance
     // FULL is safer but slower, OFF is fastest but risks corruption on power loss
-    const syncMode = config['sqliteSyncMode'] || 'NORMAL';
+    const validSyncModes = ['OFF', 'NORMAL', 'FULL'];
+    const syncMode =
+      typeof config['sqliteSyncMode'] === 'string' &&
+      validSyncModes.includes(config['sqliteSyncMode'])
+        ? config['sqliteSyncMode']
+        : 'NORMAL';
     client.exec(`PRAGMA synchronous = ${syncMode};`);
 
     // Increase cache size for better performance (default is 2000 pages)
-    const cacheSize = config['sqliteCacheSize'] || 10000;
+    const cacheSize =
+      typeof config['sqliteCacheSize'] === 'number' &&
+      config['sqliteCacheSize'] > 0
+        ? config['sqliteCacheSize']
+        : 10000;
     client.exec(`PRAGMA cache_size = ${cacheSize};`);
 
     // Enable foreign keys (they're disabled by default in SQLite)

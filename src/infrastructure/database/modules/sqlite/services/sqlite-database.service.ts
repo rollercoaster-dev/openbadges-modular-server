@@ -35,11 +35,12 @@ export class SqliteDatabaseService implements DatabaseInterface {
    */
   private createOperationContext(
     operation: string,
+    entityType: SqliteOperationContext['entityType'],
     entityId?: Shared.IRI
   ): SqliteOperationContext {
     return {
       operation,
-      entityType: 'issuer', // This would be dynamic based on the operation
+      entityType,
       entityId,
       startTime: Date.now(),
     };
@@ -60,7 +61,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
 
   // Issuer operations
   async createIssuer(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
-    const context = this.createOperationContext('CREATE Issuer');
+    const context = this.createOperationContext('CREATE Issuer', 'issuer');
 
     try {
       const result = await this.repositoryCoordinator
@@ -85,7 +86,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getIssuerById(id: Shared.IRI): Promise<Issuer | null> {
-    const context = this.createOperationContext('GET Issuer', id);
+    const context = this.createOperationContext('GET Issuer', 'issuer', id);
 
     try {
       const result = await this.repositoryCoordinator
@@ -115,7 +116,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     id: Shared.IRI,
     issuer: Partial<Issuer>
   ): Promise<Issuer | null> {
-    const context = this.createOperationContext('UPDATE Issuer', id);
+    const context = this.createOperationContext('UPDATE Issuer', 'issuer', id);
 
     try {
       const result = await this.repositoryCoordinator
@@ -142,7 +143,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async deleteIssuer(id: Shared.IRI): Promise<boolean> {
-    const context = this.createOperationContext('DELETE Issuer', id);
+    const context = this.createOperationContext('DELETE Issuer', 'issuer', id);
 
     try {
       const result = await this.repositoryCoordinator
@@ -172,7 +173,10 @@ export class SqliteDatabaseService implements DatabaseInterface {
   async createBadgeClass(
     badgeClass: Omit<BadgeClass, 'id'>
   ): Promise<BadgeClass> {
-    const context = this.createOperationContext('CREATE BadgeClass');
+    const context = this.createOperationContext(
+      'CREATE BadgeClass',
+      'badgeClass'
+    );
 
     try {
       const result =
@@ -202,7 +206,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getBadgeClassById(id: Shared.IRI): Promise<BadgeClass | null> {
-    const context = this.createOperationContext('GET BadgeClass', id);
+    const context = this.createOperationContext(
+      'GET BadgeClass',
+      'badgeClass',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -231,6 +239,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   async getBadgeClassesByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
     const context = this.createOperationContext(
       'GET BadgeClasses by Issuer',
+      'badgeClass',
       issuerId
     );
 
@@ -262,7 +271,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
     id: Shared.IRI,
     badgeClass: Partial<BadgeClass>
   ): Promise<BadgeClass | null> {
-    const context = this.createOperationContext('UPDATE BadgeClass', id);
+    const context = this.createOperationContext(
+      'UPDATE BadgeClass',
+      'badgeClass',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -289,7 +302,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async deleteBadgeClass(id: Shared.IRI): Promise<boolean> {
-    const context = this.createOperationContext('DELETE BadgeClass', id);
+    const context = this.createOperationContext(
+      'DELETE BadgeClass',
+      'badgeClass',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -317,7 +334,10 @@ export class SqliteDatabaseService implements DatabaseInterface {
 
   // Assertion operations
   async createAssertion(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
-    const context = this.createOperationContext('CREATE Assertion');
+    const context = this.createOperationContext(
+      'CREATE Assertion',
+      'assertion'
+    );
 
     try {
       const result =
@@ -344,7 +364,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getAssertionById(id: Shared.IRI): Promise<Assertion | null> {
-    const context = this.createOperationContext('GET Assertion', id);
+    const context = this.createOperationContext(
+      'GET Assertion',
+      'assertion',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -375,6 +399,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   ): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by BadgeClass',
+      'assertion',
       badgeClassId
     );
 
@@ -403,7 +428,10 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getAssertionsByRecipient(recipientId: string): Promise<Assertion[]> {
-    const context = this.createOperationContext('GET Assertions by Recipient');
+    const context = this.createOperationContext(
+      'GET Assertions by Recipient',
+      'assertion'
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -431,7 +459,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
     id: Shared.IRI,
     assertion: Partial<Assertion>
   ): Promise<Assertion | null> {
-    const context = this.createOperationContext('UPDATE Assertion', id);
+    const context = this.createOperationContext(
+      'UPDATE Assertion',
+      'assertion',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -458,7 +490,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async deleteAssertion(id: Shared.IRI): Promise<boolean> {
-    const context = this.createOperationContext('DELETE Assertion', id);
+    const context = this.createOperationContext(
+      'DELETE Assertion',
+      'assertion',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -488,7 +524,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
     id: Shared.IRI,
     reason?: string
   ): Promise<Assertion | null> {
-    const context = this.createOperationContext('REVOKE Assertion', id);
+    const context = this.createOperationContext(
+      'REVOKE Assertion',
+      'assertion',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -518,7 +558,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
   async verifyAssertion(
     id: Shared.IRI
   ): Promise<{ isValid: boolean; reason?: string }> {
-    const context = this.createOperationContext('VERIFY Assertion', id);
+    const context = this.createOperationContext(
+      'VERIFY Assertion',
+      'assertion',
+      id
+    );
 
     try {
       const result = await this.repositoryCoordinator
@@ -593,7 +637,10 @@ export class SqliteDatabaseService implements DatabaseInterface {
     badgeClass: BadgeClass;
     assertion: Assertion;
   }> {
-    const context = this.createOperationContext('CREATE Badge Ecosystem');
+    const context = this.createOperationContext(
+      'CREATE Badge Ecosystem',
+      'issuer'
+    );
 
     try {
       const result = await this.repositoryCoordinator.createBadgeEcosystem(
@@ -628,6 +675,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }> {
     const context = this.createOperationContext(
       'DELETE Issuer Cascade',
+      'issuer',
       issuerId
     );
 

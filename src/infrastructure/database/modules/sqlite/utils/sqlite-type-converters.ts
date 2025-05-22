@@ -24,11 +24,11 @@ import {
 /**
  * SQLite-specific type conversion utilities with strict type safety
  */
-export class SqliteTypeConverters {
+export namespace SqliteTypeConverters {
   /**
    * Generates a new Shared.IRI with proper validation
    */
-  static generateSharedIRI(): Shared.IRI {
+  export function generateSharedIRI(): Shared.IRI {
     const uuid = uuidv4();
     return uuid as Shared.IRI;
   }
@@ -36,7 +36,7 @@ export class SqliteTypeConverters {
   /**
    * Validates and converts a string to Shared.IRI
    */
-  static validateAndConvertIRI(
+  export function validateAndConvertIRI(
     value: string
   ): TypeConversionResult<Shared.IRI> {
     if (!value || typeof value !== 'string') {
@@ -65,7 +65,7 @@ export class SqliteTypeConverters {
   /**
    * Converts OpenBadges image types to SQLite string format
    */
-  static convertImageToString(
+  export function convertImageToString(
     image: OpenBadgesImageType | undefined
   ): string | null {
     if (!image) return null;
@@ -89,7 +89,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to OpenBadges image type
    */
-  static convertImageFromString(
+  export function convertImageFromString(
     imageStr: string | null
   ): Shared.IRI | Shared.OB3ImageObject | null {
     if (!imageStr) return null;
@@ -111,7 +111,10 @@ export class SqliteTypeConverters {
   /**
    * Safely converts JSON string to typed object
    */
-  static safeJsonParse<T>(value: string | null, fieldName: string): T | null {
+  export function safeJsonParse<T>(
+    value: string | null,
+    fieldName: string
+  ): T | null {
     if (!value) return null;
 
     try {
@@ -125,7 +128,10 @@ export class SqliteTypeConverters {
   /**
    * Safely converts object to JSON string
    */
-  static safeJsonStringify(value: unknown, fieldName: string): string | null {
+  export function safeJsonStringify(
+    value: unknown,
+    fieldName: string
+  ): string | null {
     if (value === null || value === undefined) return null;
 
     try {
@@ -147,7 +153,9 @@ export class SqliteTypeConverters {
   /**
    * Converts recipient object to SQLite string format
    */
-  static convertRecipientToString(recipient: OpenBadgesRecipientType): string {
+  export function convertRecipientToString(
+    recipient: OpenBadgesRecipientType
+  ): string {
     try {
       return JSON.stringify(recipient);
     } catch (error) {
@@ -166,7 +174,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to recipient object
    */
-  static convertRecipientFromString(
+  export function convertRecipientFromString(
     recipientStr: string
   ): OpenBadgesRecipientType {
     try {
@@ -188,7 +196,7 @@ export class SqliteTypeConverters {
   /**
    * Converts verification object to SQLite string format
    */
-  static convertVerificationToString(
+  export function convertVerificationToString(
     verification: OpenBadgesVerificationType | undefined
   ): string | null {
     if (!verification) return null;
@@ -211,7 +219,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to verification object
    */
-  static convertVerificationFromString(
+  export function convertVerificationFromString(
     verificationStr: string | null
   ): OpenBadgesVerificationType | null {
     if (!verificationStr) return null;
@@ -231,7 +239,7 @@ export class SqliteTypeConverters {
   /**
    * Converts evidence array to SQLite string format
    */
-  static convertEvidenceToString(
+  export function convertEvidenceToString(
     evidence: OpenBadgesEvidenceType | undefined
   ): string | null {
     if (!evidence) return null;
@@ -251,7 +259,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to evidence array
    */
-  static convertEvidenceFromString(
+  export function convertEvidenceFromString(
     evidenceStr: string | null
   ): OpenBadgesEvidenceType | null {
     if (!evidenceStr) return null;
@@ -271,7 +279,7 @@ export class SqliteTypeConverters {
   /**
    * Converts criteria object to SQLite string format
    */
-  static convertCriteriaToString(
+  export function convertCriteriaToString(
     criteria: OpenBadgesCriteriaType | undefined
   ): string {
     if (!criteria) {
@@ -294,7 +302,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to criteria object
    */
-  static convertCriteriaFromString(
+  export function convertCriteriaFromString(
     criteriaStr: string
   ): OpenBadgesCriteriaType | undefined {
     if (!criteriaStr) return undefined;
@@ -314,7 +322,7 @@ export class SqliteTypeConverters {
   /**
    * Converts alignment array to SQLite string format
    */
-  static convertAlignmentToString(
+  export function convertAlignmentToString(
     alignment: OpenBadgesAlignmentType | undefined
   ): string | null {
     if (!alignment) return null;
@@ -337,7 +345,7 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite string back to alignment array
    */
-  static convertAlignmentFromString(
+  export function convertAlignmentFromString(
     alignmentStr: string | null
   ): OpenBadgesAlignmentType | null {
     if (!alignmentStr) return null;
@@ -357,7 +365,9 @@ export class SqliteTypeConverters {
   /**
    * Converts boolean to SQLite integer format
    */
-  static convertBooleanToInteger(value: boolean | undefined): number | null {
+  export function convertBooleanToInteger(
+    value: boolean | undefined
+  ): number | null {
     if (value === undefined) return null;
     return value ? 1 : 0;
   }
@@ -365,12 +375,15 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite integer back to boolean
    */
-  static convertIntegerToBoolean(value: number | null): boolean | undefined {
+  export function convertIntegerToBoolean(
+    value: number | null,
+    fieldName: string
+  ): boolean | undefined {
     if (value === null) return undefined;
     if (value !== 0 && value !== 1) {
       throw new SqliteValidationError(
         'Invalid boolean integer value',
-        'revoked',
+        fieldName,
         value
       );
     }
@@ -380,7 +393,9 @@ export class SqliteTypeConverters {
   /**
    * Converts Date to SQLite timestamp (milliseconds)
    */
-  static convertDateToTimestamp(date: Date | string | undefined): number {
+  export function convertDateToTimestamp(
+    date: Date | string | undefined
+  ): number {
     if (!date) return Date.now();
 
     if (date instanceof Date) {
@@ -402,14 +417,14 @@ export class SqliteTypeConverters {
   /**
    * Converts SQLite timestamp back to Date
    */
-  static convertTimestampToDate(timestamp: number): Date {
+  export function convertTimestampToDate(timestamp: number): Date {
     return new Date(timestamp);
   }
 
   /**
    * Converts SQLite timestamp to ISO string
    */
-  static convertTimestampToISOString(
+  export function convertTimestampToISOString(
     timestamp: number | null
   ): string | undefined {
     if (timestamp === null) return undefined;
@@ -419,7 +434,7 @@ export class SqliteTypeConverters {
   /**
    * Validates additional fields object
    */
-  static validateAdditionalFields(
+  export function validateAdditionalFields(
     fields: Record<string, unknown>
   ): TypeConversionResult<Record<string, unknown>> {
     if (!fields || typeof fields !== 'object') {
@@ -452,9 +467,9 @@ export class SqliteTypeConverters {
       'tags',
     ];
 
-    const filtered = Object.entries(fields)
-      .filter(([key]) => !standardFields.includes(key))
-      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+    const filtered = Object.fromEntries(
+      Object.entries(fields).filter(([key]) => !standardFields.includes(key))
+    );
 
     return {
       success: true,

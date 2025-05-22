@@ -13,7 +13,7 @@ import {
   SqliteConnectionState,
   SqliteDatabaseClient,
   SqliteConnectionError,
-  SqliteDatabaseHealth
+  SqliteDatabaseHealth,
 } from '../types/sqlite-database.types';
 
 /**
@@ -41,6 +41,8 @@ export class SqliteConnectionManager {
    * Establishes a connection to the SQLite database
    */
   async connect(): Promise<void> {
+    const startTime = Date.now();
+
     // If already connected, return immediately
     if (this.connectionState === 'connected') {
       return;
@@ -60,16 +62,17 @@ export class SqliteConnectionManager {
       this.connectionState = 'connected';
       this.lastConnectionTime = Date.now();
       this.lastError = null;
-      
+
       if (process.env.NODE_ENV !== 'production') {
         logger.info('SQLite database connected successfully', {
           attempts: this.connectionAttempts + 1,
-          duration: Date.now() - this.lastConnectionTime
+          duration: Date.now() - startTime,
         });
       }
     } catch (error) {
       this.connectionState = 'error';
-      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
       throw error;
     } finally {
       this.connectionPromise = null;
@@ -80,7 +83,11 @@ export class SqliteConnectionManager {
    * Performs the actual connection with retry logic
    */
   private async performConnection(): Promise<void> {
-    for (let attempt = 1; attempt <= this.config.maxConnectionAttempts; attempt++) {
+    for (
+      let attempt = 1;
+      attempt <= this.config.maxConnectionAttempts;
+      attempt++
+    ) {
       this.connectionAttempts = attempt;
 
       try {
@@ -89,32 +96,35 @@ export class SqliteConnectionManager {
         return;
       } catch (error) {
         const isLastAttempt = attempt === this.config.maxConnectionAttempts;
-        
+
         if (isLastAttempt) {
           const errorMessage = `Failed to connect to SQLite database after ${attempt} attempts`;
           logger.logError(errorMessage, error, {
             attempts: attempt,
-            maxAttempts: this.config.maxConnectionAttempts
+            maxAttempts: this.config.maxConnectionAttempts,
           });
-          
+
           throw new SqliteConnectionError(
-            `${errorMessage}: ${error instanceof Error ? error.message : String(error)}`,
+            `${errorMessage}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
             attempt
           );
         }
 
         // Calculate exponential backoff delay
-        const delay = this.config.connectionRetryDelayMs * Math.pow(2, attempt - 1);
-        
+        const delay =
+          this.config.connectionRetryDelayMs * Math.pow(2, attempt - 1);
+
         logger.warn('SQLite connection attempt failed, retrying', {
           attempt,
           maxAttempts: this.config.maxConnectionAttempts,
           retryDelay: `${delay}ms`,
-          errorMessage: error instanceof Error ? error.message : String(error)
+          errorMessage: error instanceof Error ? error.message : String(error),
         });
 
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -127,7 +137,11 @@ export class SqliteConnectionManager {
       // Test the connection with a simple query
       this.client.prepare('SELECT 1 as test').get();
     } catch (error) {
-      throw new Error(`SQLite connection test failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `SQLite connection test failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -145,7 +159,10 @@ export class SqliteConnectionManager {
         this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
       } catch (checkpointError) {
         logger.warn('Error during WAL checkpoint', {
-          errorMessage: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
+          errorMessage:
+            checkpointError instanceof Error
+              ? checkpointError.message
+              : String(checkpointError),
         });
       }
 
@@ -163,8 +180,9 @@ export class SqliteConnectionManager {
       }
     } catch (error) {
       this.connectionState = 'error';
-      this.lastError = error instanceof Error ? error : new Error(String(error));
-      
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
+
       logger.logError('Failed to disconnect SQLite database', error);
       throw error;
     }
@@ -216,7 +234,7 @@ export class SqliteConnectionManager {
     }
     return {
       db: this.db,
-      client: this.client
+      client: this.client,
     };
   }
 
@@ -245,7 +263,8 @@ export class SqliteConnectionManager {
       responseTime = Date.now() - startTime;
     } catch (error) {
       responseTime = Date.now() - startTime;
-      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
     }
 
     return {
@@ -253,7 +272,7 @@ export class SqliteConnectionManager {
       responseTime,
       lastError: this.lastError || undefined,
       connectionAttempts: this.connectionAttempts,
-      uptime: Date.now() - this.startTime
+      uptime: Date.now() - this.startTime,
     };
   }
 
@@ -263,17 +282,17 @@ export class SqliteConnectionManager {
   async performHealthCheck(): Promise<boolean> {
     try {
       const health = await this.getHealth();
-      
+
       if (health.connected) {
         logger.info('SQLite database health check passed', {
           responseTime: health.responseTime,
-          uptime: health.uptime
+          uptime: health.uptime,
         });
         return true;
       } else {
         logger.warn('SQLite database health check failed', {
           lastError: health.lastError?.message,
-          connectionAttempts: health.connectionAttempts
+          connectionAttempts: health.connectionAttempts,
         });
         return false;
       }
@@ -288,12 +307,12 @@ export class SqliteConnectionManager {
    */
   async reconnect(): Promise<void> {
     logger.info('Reconnecting to SQLite database');
-    
+
     try {
       await this.disconnect();
     } catch (error) {
       logger.warn('Error during disconnect in reconnect', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
 
@@ -317,7 +336,7 @@ export class SqliteConnectionManager {
       lastConnectionTime: this.lastConnectionTime,
       uptime: Date.now() - this.startTime,
       hasError: this.lastError !== null,
-      lastError: this.lastError?.message
+      lastError: this.lastError?.message,
     };
   }
 }

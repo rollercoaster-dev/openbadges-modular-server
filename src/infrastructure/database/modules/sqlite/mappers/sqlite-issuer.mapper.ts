@@ -6,12 +6,9 @@
  */
 
 import { Issuer } from '@domains/issuer/issuer.entity';
-import { Shared } from 'openbadges-types';
 import { issuers } from '../schema';
 import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 import { logger } from '@utils/logging/logger.service';
-// Types are imported but not used directly in this file
-// They are available for future use if needed
 
 export class SqliteIssuerMapper {
   /**
@@ -45,6 +42,12 @@ export class SqliteIssuerMapper {
         throw new Error(`Invalid issuer ID: ${idResult.error}`);
       }
 
+      // Validate and convert URL
+      const urlResult = SqliteTypeConverters.validateAndConvertIRI(url);
+      if (!urlResult.success) {
+        throw new Error(`Invalid issuer URL: ${urlResult.error}`);
+      }
+
       // Convert image with type safety
       const convertedImage = SqliteTypeConverters.convertImageFromString(image);
 
@@ -66,7 +69,7 @@ export class SqliteIssuerMapper {
       const baseData = {
         id: idResult.data!,
         name,
-        url: url as Shared.IRI,
+        url: urlResult.data!,
         email: email || undefined,
         description: description || undefined,
         image: convertedImage || undefined,
@@ -88,7 +91,10 @@ export class SqliteIssuerMapper {
    * @param entity The Issuer domain entity
    * @returns A database record conforming to the insert schema
    */
-  toPersistence(entity: Issuer): {
+  toPersistence(
+    entity: Issuer,
+    preserveTimestamps = false
+  ): {
     id: string;
     name: string;
     url: string;
@@ -140,6 +146,16 @@ export class SqliteIssuerMapper {
 
       // Create the database record with proper type safety
       const now = Date.now();
+
+      // Handle timestamps based on whether this is an update or create operation
+      const entityObj = entity.toObject();
+      const createdAt =
+        preserveTimestamps && entityObj.createdAt
+          ? typeof entityObj.createdAt === 'number'
+            ? entityObj.createdAt
+            : now
+          : now;
+
       return {
         id: id as string, // ID is already validated in the entity
         name: dbName,
@@ -155,7 +171,7 @@ export class SqliteIssuerMapper {
           additionalFieldsResult.data,
           'additionalFields'
         ),
-        createdAt: now,
+        createdAt,
         updatedAt: now,
       };
     } catch (error) {
