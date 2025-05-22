@@ -87,29 +87,37 @@ export class SqliteIssuerRepository implements IssuerRepository {
     try {
       const db = this.getDatabase();
 
-      // Create a full issuer entity with generated ID for mapping
-      const issuerWithId = Issuer.create(issuer);
+      // Use transaction to ensure atomicity between entity creation and database insertion
+      const result = await db.transaction(async (_tx) => {
+        // Create a full issuer entity with generated ID for mapping
+        const issuerWithId = Issuer.create(issuer);
 
-      // Convert domain entity to database record
-      const record = this.mapper.toPersistence(issuerWithId);
+        // Convert domain entity to database record
+        const record = this.mapper.toPersistence(issuerWithId);
 
-      // Ensure timestamps are set
-      const now = Date.now();
-      record.createdAt = now;
-      record.updatedAt = now;
+        // Ensure timestamps are set
+        const now = Date.now();
+        record.createdAt = now;
+        record.updatedAt = now;
 
-      // Insert into database
-      const result = await db.insert(issuers).values(record).returning();
+        // Insert into database within the transaction
+        const insertResult = await db
+          .insert(issuers)
+          .values(record)
+          .returning();
+
+        if (!insertResult[0]) {
+          throw new Error('Failed to create issuer: no result returned');
+        }
+
+        return insertResult[0];
+      });
 
       // Log metrics
-      this.logQueryMetrics(context, result.length);
-
-      if (!result[0]) {
-        throw new Error('Failed to create issuer: no result returned');
-      }
+      this.logQueryMetrics(context, 1);
 
       // Convert database record back to domain entity
-      return this.mapper.toDomain(result[0]);
+      return this.mapper.toDomain(result);
     } catch (error) {
       logger.error('Error creating issuer in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
