@@ -45,8 +45,9 @@ export class SqliteRepositoryCoordinator {
    */
   getBadgeClassRepository(): SqliteBadgeClassRepository {
     if (!this._badgeClassRepository) {
-      const client = this.connectionManager.getClient();
-      this._badgeClassRepository = new SqliteBadgeClassRepository(client);
+      this._badgeClassRepository = new SqliteBadgeClassRepository(
+        this.connectionManager
+      );
     }
     return this._badgeClassRepository;
   }

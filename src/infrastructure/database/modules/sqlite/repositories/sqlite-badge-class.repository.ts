@@ -14,10 +14,6 @@ import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
-import {
-  SqliteQueryMetrics,
-  SqliteOperationContext,
-} from '../types/sqlite-database.types';
 
 export class SqliteBadgeClassRepository implements BadgeClassRepository {
   private mapper: SqliteBadgeClassMapper;
@@ -36,42 +32,6 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     return this.connectionManager.getDatabase();
   }
 
-  /**
-   * Creates operation context for logging and monitoring
-   */
-  private createOperationContext(
-    operation: string,
-    entityId?: Shared.IRI
-  ): SqliteOperationContext {
-    return {
-      operation,
-      entityType: 'badgeClass',
-      entityId,
-      startTime: Date.now(),
-    };
-  }
-
-  /**
-   * Logs query metrics for monitoring and debugging
-   */
-  private logQueryMetrics(
-    context: SqliteOperationContext,
-    resultCount: number
-  ): void {
-    const duration = Date.now() - context.startTime;
-    const metrics: SqliteQueryMetrics = {
-      operation: context.operation,
-      duration,
-      resultCount,
-      entityType: context.entityType,
-      entityId: context.entityId,
-    };
-
-    if (process.env.NODE_ENV !== 'production') {
-      logger.debug('BadgeClass repository operation completed', metrics);
-    }
-  }
-
   async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
     try {
       // Instantiate entity first to ensure defaults
@@ -83,7 +43,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
 
       // Insert into database
       const startTime = Date.now();
-      const result = await this.db
+      const result = await this.getDatabase()
         .insert(badgeClasses)
         .values(record)
         .returning();
@@ -113,7 +73,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       // Query database to get all badge classes
       const startTime = Date.now();
-      const result = await this.db.select().from(badgeClasses);
+      const result = await this.getDatabase().select().from(badgeClasses);
       const duration = Date.now() - startTime;
 
       // Log query
@@ -138,7 +98,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       const startTime = Date.now();
       // Query database
-      const result = await this.db
+      const result = await this.getDatabase()
         .select()
         .from(badgeClasses)
         .where(eq(badgeClasses.id, id));
@@ -167,7 +127,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       const startTime = Date.now();
       // Query database
-      const result = await this.db
+      const result = await this.getDatabase()
         .select()
         .from(badgeClasses)
         .where(eq(badgeClasses.issuerId, issuerId as string));
@@ -223,7 +183,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
 
       // Update in database
       const startTime = Date.now();
-      const result = await this.db
+      const result = await this.getDatabase()
         .update(badgeClasses)
         .set(record)
         .where(eq(badgeClasses.id, id))
@@ -254,7 +214,7 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     try {
       // Delete from database
       const startTime = Date.now();
-      const result = await this.db
+      const result = await this.getDatabase()
         .delete(badgeClasses)
         .where(eq(badgeClasses.id, id))
         .returning();

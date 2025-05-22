@@ -161,8 +161,20 @@ export class RepositoryFactory {
       const sqliteFile = config.database.sqliteFile || ':memory:';
       const client = new Database(sqliteFile);
 
-      // Create the base repository
-      const baseRepository = new SqliteBadgeClassRepository(client);
+      // Create connection manager for the new pattern
+      const { SqliteConnectionManager } = await import(
+        './database/modules/sqlite/connection/sqlite-connection.manager'
+      );
+      const connectionManager = new SqliteConnectionManager(client, {
+        maxConnectionAttempts: 3,
+        connectionRetryDelayMs: 1000,
+      });
+
+      // Connect the connection manager
+      await connectionManager.connect();
+
+      // Create the base repository using the new pattern
+      const baseRepository = new SqliteBadgeClassRepository(connectionManager);
 
       // Wrap with cache if enabled
       return enableCaching
