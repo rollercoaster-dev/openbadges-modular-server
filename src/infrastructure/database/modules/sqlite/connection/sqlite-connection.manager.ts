@@ -395,43 +395,152 @@ export class SqliteConnectionManager {
    * Applies SQLite configuration parameters using PRAGMA statements
    * This method applies the configuration parameters from the config object to the SQLite client
    */
+  /**
+   * Applies SQLite configuration parameters via PRAGMA statements
+   * with enhanced error handling to differentiate between mandatory and optional settings.
+   */
   private applyConfigurationPragmas(): void {
+    // Track which settings were successfully applied
+    const appliedSettings = {
+      busyTimeout: false,
+      syncMode: false,
+      cacheSize: false,
+      foreignKeys: false,
+      tempStore: false,
+    };
+    
+    // Record any non-critical errors to report them together
+    const nonCriticalErrors: Array<{ setting: string; error: string }> = [];
+    
     try {
-      // Apply busy timeout if provided
+      // ----- CRITICAL SETTINGS (Application should not continue if these fail) -----
+      
+      // Apply busy timeout setting (CRITICAL)
       if (
         typeof this.config.sqliteBusyTimeout === 'number' &&
         this.config.sqliteBusyTimeout > 0
       ) {
-        this.client.exec(
-          `PRAGMA busy_timeout = ${this.config.sqliteBusyTimeout};`
-        );
+        try {
+          this.client.exec(
+            `PRAGMA busy_timeout = ${this.config.sqliteBusyTimeout};`
+          );
+          appliedSettings.busyTimeout = true;
+        } catch (error) {
+          const errorMsg = `Failed to set SQLite busy_timeout (CRITICAL for concurrency): ${error instanceof Error ? error.message : String(error)}`;
+          logger.error(errorMsg, {
+            requestedValue: this.config.sqliteBusyTimeout,
+            category: 'CRITICAL_SETTING'
+          });
+          throw new Error(errorMsg); // Critical setting - halt initialization
+        }
+      } else {
+        logger.warn('SQLite busy_timeout not configured or invalid value - using SQLite default', {
+          providedValue: this.config.sqliteBusyTimeout
+        });
       }
 
-      // Apply synchronous mode if provided
+      // Apply synchronous mode setting (CRITICAL for data integrity)
       if (this.config.sqliteSyncMode) {
-        this.client.exec(`PRAGMA synchronous = ${this.config.sqliteSyncMode};`);
+        try {
+          this.client.exec(`PRAGMA synchronous = ${this.config.sqliteSyncMode};`);
+          appliedSettings.syncMode = true;
+        } catch (error) {
+          const errorMsg = `Failed to set SQLite synchronous mode (CRITICAL for data integrity): ${error instanceof Error ? error.message : String(error)}`;
+          logger.error(errorMsg, { 
+            requestedValue: this.config.sqliteSyncMode,
+            category: 'CRITICAL_SETTING'
+          });
+          throw new Error(errorMsg); // Critical setting - halt initialization
+        }
+      } else {
+        logger.warn('SQLite synchronous mode not configured - using SQLite default', {
+          defaultValue: 'FULL'
+        });
       }
-
-      // Apply cache size if provided
+      
+      // ----- IMPORTANT BUT NON-CRITICAL SETTINGS (Continue with warnings) -----
+      
+      // Enable foreign keys constraint checking (IMPORTANT)
+      try {
+        this.client.exec('PRAGMA foreign_keys = ON;');
+        appliedSettings.foreignKeys = true;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        nonCriticalErrors.push({
+          setting: 'foreign_keys',
+          error: errorMessage
+        });
+        logger.warn('Failed to enable SQLite foreign_keys (continuing with SQLite default)', {
+          errorMessage,
+          category: 'IMPORTANT_SETTING'
+        });
+      }
+      
+      // ----- OPTIONAL PERFORMANCE SETTINGS (Continue with fallback) -----
+      
+      // Apply cache size setting (OPTIONAL - performance only)
       if (
         typeof this.config.sqliteCacheSize === 'number' &&
         this.config.sqliteCacheSize > 0
       ) {
-        this.client.exec(`PRAGMA cache_size = ${this.config.sqliteCacheSize};`);
+        try {
+          this.client.exec(`PRAGMA cache_size = ${this.config.sqliteCacheSize};`);
+          appliedSettings.cacheSize = true;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          nonCriticalErrors.push({
+            setting: 'cache_size',
+            error: errorMessage
+          });
+          logger.warn('Failed to set SQLite cache_size (continuing with SQLite default)', {
+            errorMessage,
+            requestedValue: this.config.sqliteCacheSize,
+            category: 'OPTIONAL_SETTING'
+          });
+        }
+      }
+      
+      // Set temp store to memory for better performance (OPTIONAL)
+      try {
+        this.client.exec('PRAGMA temp_store = MEMORY;');
+        appliedSettings.tempStore = true;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        nonCriticalErrors.push({
+          setting: 'temp_store',
+          error: errorMessage
+        });
+        logger.warn('Failed to set SQLite temp_store to MEMORY (continuing with SQLite default)', {
+          errorMessage,
+          category: 'OPTIONAL_SETTING'
+        });
       }
 
       // Log applied configurations in non-production environments
       if (process.env.NODE_ENV !== 'production') {
         logger.info('SQLite configuration parameters applied:', {
-          busyTimeout: this.config.sqliteBusyTimeout,
-          syncMode: this.config.sqliteSyncMode,
-          cacheSize: this.config.sqliteCacheSize,
+          busyTimeout: appliedSettings.busyTimeout ? this.config.sqliteBusyTimeout : 'default',
+          syncMode: appliedSettings.syncMode ? this.config.sqliteSyncMode : 'default',
+          cacheSize: appliedSettings.cacheSize ? this.config.sqliteCacheSize : 'default',
+          foreignKeys: appliedSettings.foreignKeys ? 'ON' : 'default',
+          tempStore: appliedSettings.tempStore ? 'MEMORY' : 'default',
         });
+        
+        // If any non-critical errors occurred, log them together for easier debugging
+        if (nonCriticalErrors.length > 0) {
+          logger.warn(`${nonCriticalErrors.length} non-critical SQLite settings failed to apply`, {
+            errors: nonCriticalErrors
+          });
+        }
       }
     } catch (error) {
-      logger.warn('Error applying SQLite configuration parameters', {
-        errorMessage: error instanceof Error ? error.message : String(error),
+      // This will only catch errors not already handled in the individual try/catch blocks
+      // These would be truly unexpected errors or critical setting failures
+      logger.error('Critical error applying SQLite configuration parameters', {
+        error: error instanceof Error ? error.stack : String(error),
+        appliedSettingsBeforeError: appliedSettings
       });
+      throw error; // Re-throw to halt initialization
     }
   }
 }

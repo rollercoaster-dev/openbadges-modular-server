@@ -127,6 +127,7 @@ export class Assertion {
       // OB3 VerifiableCredential
       // Create a properly typed OB3 VerifiableCredential
       const ob3Data: Record<string, unknown> = {
+        id: this.id,
         ...baseObject,
         type: ['VerifiableCredential', 'OpenBadgeCredential'],
         '@context': [
@@ -262,6 +263,11 @@ export class Assertion {
       // Ensure context includes both VC and OB3 contexts
       if (typeof output['@context'] === 'string') {
         output['@context'] = [VC_V2_CONTEXT_URL, output['@context']];
+      } else if (
+        Array.isArray(output['@context']) &&
+        !output['@context'].includes(VC_V2_CONTEXT_URL)
+      ) {
+        output['@context'] = [VC_V2_CONTEXT_URL, ...output['@context']];
       }
 
       // Convert badgeClass to badge for OB3

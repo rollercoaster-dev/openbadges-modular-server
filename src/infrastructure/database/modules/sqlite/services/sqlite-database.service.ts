@@ -614,8 +614,14 @@ export class SqliteDatabaseService implements DatabaseInterface {
       const repositoryHealth =
         await this.repositoryCoordinator.performHealthCheck();
 
+      // Default to false when the property is absent
+      const repoStatus =
+        typeof repositoryHealth === 'object' && 'overall' in repositoryHealth
+          ? (repositoryHealth as { overall: boolean }).overall
+          : false;
+
       return {
-        connected: connectionHealth.connected && repositoryHealth.overall,
+        connected: connectionHealth.connected && repoStatus,
         responseTime: connectionHealth.responseTime,
         lastError: connectionHealth.lastError,
         connectionAttempts: connectionHealth.connectionAttempts,

@@ -65,6 +65,12 @@ export class SqliteIssuerMapper {
           ) || {}
         );
 
+      if (!additionalFieldsResult.success) {
+        throw new Error(
+          `Invalid additionalFields: ${additionalFieldsResult.error}`
+        );
+      }
+
       // Create and return the domain entity with timestamps preserved
       const baseData = {
         id: idResult.data!,
@@ -148,6 +154,15 @@ export class SqliteIssuerMapper {
       const additionalFieldsResult =
         SqliteTypeConverters.validateAdditionalFields(additionalFields);
 
+      // Check if validation succeeded
+      if (!additionalFieldsResult.success) {
+        throw new Error(
+          `Invalid additional fields in Issuer: ${
+            additionalFieldsResult.error || 'Unknown validation error'
+          }`
+        );
+      }
+
       // Create the database record with proper type safety
       const now = Date.now();
 
@@ -172,7 +187,9 @@ export class SqliteIssuerMapper {
           'publicKey'
         ),
         additionalFields: SqliteTypeConverters.safeJsonStringify(
-          additionalFieldsResult.data,
+          // At this point we've verified additionalFieldsResult.success is true,
+          // so we can safely access additionalFieldsResult.data
+          additionalFieldsResult.data || {},
           'additionalFields'
         ),
         createdAt,

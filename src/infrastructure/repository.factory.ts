@@ -385,7 +385,14 @@ export class RepositoryFactory {
     }
 
     if (RepositoryFactory.dbType === 'postgresql' && RepositoryFactory.client) {
-      await RepositoryFactory.client.end();
+      try {
+        await RepositoryFactory.client.end();
+        logger.info('PostgreSQL client closed successfully');
+      } catch (e) {
+        logger.warn('Failed to close PostgreSQL client', {
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+      }
       RepositoryFactory.client = null;
     } else if (
       RepositoryFactory.dbType === 'sqlite' &&

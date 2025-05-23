@@ -378,7 +378,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // Check for database connection issues
     if (await checkDatabaseConnectionIssue(issuerResponse)) {
-      return; // Skip the rest of the test
+      return; // Database unavailable – skipping issuer flow
     }
 
     // If we got a 400 response, check if it's due to an acceptable validation error

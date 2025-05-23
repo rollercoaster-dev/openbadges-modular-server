@@ -40,7 +40,11 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
     const db = drizzle(testDbInstance, { schema });
     try {
       migrate(db, { migrationsFolder: getMigrationsPath() });
-    } catch (_error) {
+    } catch (err) {
+      console.error('❌  Migration failed in cascade-deletion test:', err);
+      // Falling back keeps the test running, but re-throw if you
+      // want migrations to stay the single source of truth.
+      // throw err;
       // If migrations fail, create tables manually for testing
       // First enable foreign keys
       testDbInstance.exec('PRAGMA foreign_keys = ON;');

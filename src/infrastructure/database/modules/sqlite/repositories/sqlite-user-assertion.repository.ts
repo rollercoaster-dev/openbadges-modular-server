@@ -51,13 +51,15 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
   private constructDrizzleUpdateSet(record: Record<string, unknown>): {
     [key in
       | typeof userAssertions.status.name
-      | typeof userAssertions.metadata.name]?: string;
+      | typeof userAssertions.metadata.name
+      | typeof userAssertions.addedAt.name]?: string | number;
   } {
     // Define a properly typed update object for Drizzle
     type DrizzleUpdateSet = {
       [key in
         | typeof userAssertions.status.name
-        | typeof userAssertions.metadata.name]?: string;
+        | typeof userAssertions.metadata.name
+        | typeof userAssertions.addedAt.name]?: string | number;
     };
 
     const updateSet: DrizzleUpdateSet = {};
@@ -75,6 +77,16 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
               record.metadata,
               'metadata'
             ) || '{}';
+    }
+
+    // Handle addedAt field (used also to track updates)
+    if (record.addedAt !== undefined) {
+      updateSet[userAssertions.addedAt.name] =
+        typeof record.addedAt === 'number'
+          ? record.addedAt
+          : record.addedAt instanceof Date
+          ? record.addedAt.getTime()
+          : Date.now();
     }
 
     return updateSet;
@@ -138,54 +150,42 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
       // Use transaction for atomicity
       await db.transaction(async (tx) => {
-        // First check if the record already exists
-        const existingRecord = await tx
-          .select()
-          .from(userAssertions)
-          .where(
-            and(
-              eq(userAssertions.userId, userId as string),
-              eq(userAssertions.assertionId, assertionId as string)
-            )
-          );
+        // Ensure we have current timestamp for updated records
+        const now = Date.now();
 
-        if (existingRecord.length > 0) {
-          // Record exists, update it
-          const updateData: Record<string, unknown> = {};
+        // Prepare record with current timestamp
+        const recordWithTime = {
+          ...record,
+          addedAt: now,
+        };
 
-          // Extract fields to update from the record
-          const extendedRecord = record as Record<string, unknown>;
+        // Extract the original entity data for update values
+        const entityData = userAssertion.toObject();
 
-          if (
-            'status' in extendedRecord &&
-            extendedRecord.status !== undefined
-          ) {
-            updateData.status = extendedRecord.status;
-          }
-
-          if (
-            'metadata' in extendedRecord &&
-            extendedRecord.metadata !== undefined
-          ) {
-            updateData.metadata = extendedRecord.metadata;
-          }
-
-          // Use the helper method to construct the Drizzle update set
-          const drizzleUpdateSet = this.constructDrizzleUpdateSet(updateData);
-
-          await tx
-            .update(userAssertions)
-            .set(drizzleUpdateSet)
-            .where(
-              and(
-                eq(userAssertions.userId, userId as string),
-                eq(userAssertions.assertionId, assertionId as string)
+        // Create update values for conflict case - preserve only the fields we want to update
+        const updateValues = {
+          // Update metadata if present in the entity
+          metadata: entityData.metadata
+            ? SqliteTypeConverters.safeJsonStringify(
+                entityData.metadata,
+                'metadata'
               )
-            );
-        } else {
-          // Record doesn't exist, insert it
-          await tx.insert(userAssertions).values(record);
-        }
+            : undefined,
+          // Update status if present in the entity
+          status: entityData.status || 'active',
+          // Always update the timestamp to track modifications
+          addedAt: now,
+        };
+
+        // Use a single atomic operation with INSERT ... ON CONFLICT DO UPDATE
+        // This ensures we don't have race conditions with concurrent transactions
+        await tx
+          .insert(userAssertions)
+          .values(recordWithTime)
+          .onConflictDoUpdate({
+            target: [userAssertions.userId, userAssertions.assertionId],
+            set: updateValues,
+          });
       });
 
       // Return the domain entity
@@ -242,7 +242,10 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
       // Update status in database using Drizzle ORM
       // Use the helper method to construct the Drizzle update set
-      const drizzleUpdateSet = this.constructDrizzleUpdateSet({ status });
+      const drizzleUpdateSet = this.constructDrizzleUpdateSet({
+        status,
+        addedAt: Date.now(), // Use addedAt instead of updatedAt as timestamp field
+      });
 
       const result = await db
         .update(userAssertions)

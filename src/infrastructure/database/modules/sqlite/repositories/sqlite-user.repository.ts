@@ -389,7 +389,9 @@ export class SqliteUserRepository implements UserRepository {
       }
 
       // Apply filters if any
-      if (conditions.length > 0) {
+      if (conditions.length === 1) {
+        query = query.where(conditions[0]) as typeof query;
+      } else if (conditions.length > 1) {
         query = query.where(or(...conditions)) as typeof query;
       }
 
@@ -445,7 +447,9 @@ export class SqliteUserRepository implements UserRepository {
       }
 
       // Apply filters if any
-      if (conditions.length > 0) {
+      if (conditions.length === 1) {
+        query = query.where(conditions[0]) as typeof query;
+      } else if (conditions.length > 1) {
         query = query.where(or(...conditions)) as typeof query;
       }
 

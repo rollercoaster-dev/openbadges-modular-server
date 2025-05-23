@@ -447,7 +447,9 @@ export namespace SqliteTypeConverters {
    * Converts SQLite timestamp back to Date
    * Returns undefined for null timestamps
    */
-  export function convertTimestampToDate(timestamp: number | null): Date | undefined {
+  export function convertTimestampToDate(
+    timestamp: number | null
+  ): Date | undefined {
     if (timestamp === null) return undefined;
     return new Date(timestamp);
   }

@@ -288,12 +288,14 @@ export class SqliteRepositoryCoordinator {
 
         // Count assertions that will be deleted
         if (badgeClassIds.length > 0) {
-          for (const badgeClassId of badgeClassIds) {
-            const assertionResults = await tx
-              .select({ id: assertions.id })
+          if (badgeClassIds.length) {
+            const { count } = await tx
+              .select({ count: sql<number>`count(*)` })
               .from(assertions)
-              .where(eq(assertions.badgeClassId, badgeClassId));
-            assertionsDeleted += assertionResults.length;
+              .where(inArray(assertions.badgeClassId, badgeClassIds))
+              .limit(1) // sqlite optimisation – single row
+              .get(); // drizzle: pluck the first row only
+            assertionsDeleted = count;
           }
         }
 
