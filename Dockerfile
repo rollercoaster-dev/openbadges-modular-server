@@ -45,6 +45,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
+# Copy only necessary source files for runtime (migrations and config)
 COPY --from=builder /app/src/config ./src/config
 COPY --from=builder /app/src/infrastructure/database/migrations ./src/infrastructure/database/migrations
 

@@ -5,7 +5,7 @@
  */
 
 import { QueryLoggerService } from './query-logger.service';
-import { logger } from '../../../utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
 // Define types for database operations
 type DatabaseClient = {
@@ -54,7 +54,8 @@ export async function executeBatch<T>(
   dbType: 'sqlite' | 'postgresql'
 ): Promise<T[]> {
   const startTime = Date.now();
-  let transaction: DatabaseClient | { exec: (sql: string) => void } | null = null;
+  let transaction: DatabaseClient | { exec: (sql: string) => void } | null =
+    null;
 
   try {
     // Start transaction
@@ -108,7 +109,7 @@ export async function executeBatch<T>(
     } catch (rollbackError) {
       logger.logError('Error rolling back transaction', rollbackError, {
         dbType,
-        operationsCount: operations.length
+        operationsCount: operations.length,
       });
     }
 
@@ -147,7 +148,7 @@ export async function batchInsert<T>(
   try {
     // For small batches, use individual inserts in a transaction
     if (records.length <= 10) {
-      const operations = records.map(record => {
+      const operations = records.map((record) => {
         return async () => {
           return await db.insert(table).values(record).returning();
         };
@@ -164,7 +165,7 @@ export async function batchInsert<T>(
       result = await db.insert(table).values(records).returning();
     } else if (dbType === 'sqlite') {
       // SQLite doesn't support bulk insert with returning, so we need to use a transaction
-      const operations = records.map(record => {
+      const operations = records.map((record) => {
         return async () => {
           return await db.insert(table).values(record).returning();
         };
@@ -222,7 +223,7 @@ export async function batchUpdate<T>(
 
   try {
     // Use individual updates in a transaction
-    const operations = records.map(record => {
+    const operations = records.map((record) => {
       return async () => {
         const id = record[idField];
         if (!id) {
@@ -233,7 +234,11 @@ export async function batchUpdate<T>(
         const { [idField]: _, ...updateData } = record;
 
         // Update the record
-        return await db.update(table).set(updateData).where(db.eq(table[idField], id)).returning();
+        return await db
+          .update(table)
+          .set(updateData)
+          .where(db.eq(table[idField], id))
+          .returning();
       };
     });
 
@@ -289,9 +294,12 @@ export async function batchDelete(
 
     // For small batches, use individual deletes in a transaction
     if (ids.length <= 10) {
-      const operations = ids.map(id => {
+      const operations = ids.map((id) => {
         return async () => {
-          const result = await db.delete(table).where(db.eq(table[idField], id)).returning();
+          const result = await db
+            .delete(table)
+            .where(db.eq(table[idField], id))
+            .returning();
           return result.length;
         };
       });
@@ -302,14 +310,20 @@ export async function batchDelete(
       // For larger batches, use IN clause if supported
       if (dbType === 'postgresql') {
         // PostgreSQL supports IN clause
-        const result = await db.delete(table).where(db.inArray(table[idField], ids)).returning();
+        const result = await db
+          .delete(table)
+          .where(db.inArray(table[idField], ids))
+          .returning();
         deletedCount = result.length;
       } else if (dbType === 'sqlite') {
         // SQLite supports IN clause but might be less efficient
         // We'll use a transaction with individual deletes for better control
-        const operations = ids.map(id => {
+        const operations = ids.map((id) => {
           return async () => {
-            const result = await db.delete(table).where(db.eq(table[idField], id)).returning();
+            const result = await db
+              .delete(table)
+              .where(db.eq(table[idField], id))
+              .returning();
             return result.length;
           };
         });

@@ -16,13 +16,24 @@ export class PostgresqlModule implements DatabaseModuleInterface {
    * @param config Configuration options for the PostgreSQL connection
    * @returns A promise that resolves to a DatabaseInterface implementation
    */
-  async createDatabase(config: Record<string, unknown>): Promise<DatabaseInterface> {
+  async createDatabase(
+    config: Record<string, unknown>
+  ): Promise<DatabaseInterface> {
     // Set default configuration values if not provided
     // Use SensitiveValue for the default connection string to prevent password logging
-    const defaultConnectionString = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges`;
+    const defaultConnectionString = `postgres://postgres:${SensitiveValue.from(
+      'postgres'
+    )}@localhost:5432/openbadges`;
+
+    // Use type-safe config access with runtime guards
+    const connectionString =
+      (typeof config.connectionString === 'string'
+        ? config.connectionString
+        : process.env.DATABASE_URL) || defaultConnectionString;
+
     const dbConfig = {
-      connectionString: config['connectionString'] || process.env['DATABASE_URL'] || defaultConnectionString,
-      ...config
+      connectionString,
+      ...config,
     };
 
     const database = new PostgresqlDatabase(dbConfig);

@@ -4,9 +4,9 @@
  * This utility manages prepared statements for database queries to improve performance.
  */
 
-import { config } from '../../../config/config';
+import { config } from '@/config/config';
 import { QueryLoggerService } from './query-logger.service';
-import { logger } from '../../../utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
 // Database client types
 type PostgresClient = {
@@ -23,7 +23,9 @@ type SqliteClient = {
 };
 
 // Type for prepared statement functions
-export type PreparedStatementFn<T = unknown> = (...args: unknown[]) => Promise<T>;
+export type PreparedStatementFn<T = unknown> = (
+  ...args: unknown[]
+) => Promise<T>;
 
 // Interface for prepared statement cache
 interface PreparedStatementCache {
@@ -36,7 +38,8 @@ interface PreparedStatementCache {
 
 export class PreparedStatementManager {
   private static cache: PreparedStatementCache = {};
-  private static enabled: boolean = config.database.usePreparedStatements !== false;
+  private static enabled: boolean =
+    config.database?.usePreparedStatements ?? true;
 
   /**
    * Prepares a statement for PostgreSQL
@@ -60,11 +63,21 @@ export class PreparedStatementManager {
         try {
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`DIRECT: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `DIRECT: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
           return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `ERROR: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
           throw error;
         }
       };
@@ -86,7 +99,12 @@ export class PreparedStatementManager {
           // For now, we'll just execute the query directly
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`PREPARED ${name}: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `PREPARED ${name}: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
 
           // Update usage statistics
           if (this.cache[name]) {
@@ -94,10 +112,15 @@ export class PreparedStatementManager {
             this.cache[name].lastUsed = Date.now();
           }
 
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR PREPARED ${name}: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `ERROR PREPARED ${name}: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
           throw error;
         }
       };
@@ -106,7 +129,7 @@ export class PreparedStatementManager {
       this.cache[name] = {
         fn: preparedFn,
         usageCount: 0,
-        lastUsed: Date.now()
+        lastUsed: Date.now(),
       };
 
       return preparedFn as PreparedStatementFn<T>;
@@ -119,11 +142,21 @@ export class PreparedStatementManager {
         try {
           const result = await client.query(query, params);
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`FALLBACK ${name}: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `FALLBACK ${name}: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
           return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR FALLBACK ${name}: ${query}`, params, duration, 'postgresql');
+          QueryLoggerService.logQuery(
+            `ERROR FALLBACK ${name}: ${query}`,
+            params,
+            duration,
+            'postgresql'
+          );
           throw error;
         }
       };
@@ -148,7 +181,7 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = client.prepare(query).all(...params);
           } else {
@@ -159,7 +192,12 @@ export class PreparedStatementManager {
           return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR: ${query}`, params, duration, 'sqlite');
+          QueryLoggerService.logQuery(
+            `ERROR: ${query}`,
+            params,
+            duration,
+            'sqlite'
+          );
           throw error;
         }
       };
@@ -179,14 +217,19 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // Determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = stmt.all(...params);
           } else {
             result = stmt.run(...params);
           }
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`PREPARED ${name}: ${query}`, params, duration, 'sqlite');
+          QueryLoggerService.logQuery(
+            `PREPARED ${name}: ${query}`,
+            params,
+            duration,
+            'sqlite'
+          );
 
           // Update usage statistics
           if (this.cache[name]) {
@@ -194,10 +237,15 @@ export class PreparedStatementManager {
             this.cache[name].lastUsed = Date.now();
           }
 
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR PREPARED ${name}: ${query}`, params, duration, 'sqlite');
+          QueryLoggerService.logQuery(
+            `ERROR PREPARED ${name}: ${query}`,
+            params,
+            duration,
+            'sqlite'
+          );
           throw error;
         }
       };
@@ -206,7 +254,7 @@ export class PreparedStatementManager {
       this.cache[name] = {
         fn: preparedFn,
         usageCount: 0,
-        lastUsed: Date.now()
+        lastUsed: Date.now(),
       };
 
       return preparedFn as PreparedStatementFn<T>;
@@ -218,18 +266,28 @@ export class PreparedStatementManager {
         const startTime = Date.now();
         try {
           // For SQLite, we need to determine if this is a query or an execution
-          let result;
+          let result: unknown;
           if (query.trim().toLowerCase().startsWith('select')) {
             result = client.prepare(query).all(...params);
           } else {
             result = client.prepare(query).run(...params);
           }
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`FALLBACK ${name}: ${query}`, params, duration, 'sqlite');
+          QueryLoggerService.logQuery(
+            `FALLBACK ${name}: ${query}`,
+            params,
+            duration,
+            'sqlite'
+          );
           return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
-          QueryLoggerService.logQuery(`ERROR FALLBACK ${name}: ${query}`, params, duration, 'sqlite');
+          QueryLoggerService.logQuery(
+            `ERROR FALLBACK ${name}: ${query}`,
+            params,
+            duration,
+            'sqlite'
+          );
           throw error;
         }
       };
@@ -249,19 +307,28 @@ export class PreparedStatementManager {
     const statements = Object.entries(this.cache).map(([name, info]) => ({
       name,
       usageCount: info.usageCount,
-      lastUsed: info.lastUsed
+      lastUsed: info.lastUsed,
     }));
 
-    const totalUsageCount = statements.reduce((sum, stmt) => sum + stmt.usageCount, 0);
+    const totalUsageCount = statements.reduce(
+      (sum, stmt) => sum + stmt.usageCount,
+      0
+    );
 
     // Sort by usage count (descending)
-    const sortedByUsage = [...statements].sort((a, b) => b.usageCount - a.usageCount);
+    const sortedByUsage = [...statements].sort(
+      (a, b) => b.usageCount - a.usageCount
+    );
 
     return {
       totalPreparedStatements: statements.length,
       totalUsageCount,
-      mostUsed: sortedByUsage.slice(0, 5).map(stmt => ({ name: stmt.name, usageCount: stmt.usageCount })),
-      leastUsed: sortedByUsage.slice(-5).map(stmt => ({ name: stmt.name, usageCount: stmt.usageCount }))
+      mostUsed: sortedByUsage
+        .slice(0, 5)
+        .map((stmt) => ({ name: stmt.name, usageCount: stmt.usageCount })),
+      leastUsed: sortedByUsage
+        .slice(-5)
+        .map((stmt) => ({ name: stmt.name, usageCount: stmt.usageCount })),
     };
   }
 

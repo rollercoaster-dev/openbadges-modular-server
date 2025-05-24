@@ -6,7 +6,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 
 Each commit message consists of a **header**, an optional **body**, and an optional **footer**:
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -24,7 +24,7 @@ The **footer** is optional and can be used to reference issue tracker IDs or ind
 
 The header has a specific format that includes a **type**, an optional **scope**, and a **subject**:
 
-```
+```text
 <type>(<scope>): <subject>
 ```
 
@@ -79,13 +79,13 @@ The footer should contain any information about **Breaking Changes** and is also
 
 ## Examples
 
-```
+```text
 feat(api): add version endpoint
 
 Add a new endpoint to expose the application version information.
 ```
 
-```
+```text
 fix(db): resolve connection timeout issue
 
 Increase connection timeout and add retry logic to prevent database connection failures.
@@ -93,13 +93,13 @@ Increase connection timeout and add retry logic to prevent database connection f
 Closes #123
 ```
 
-```
+```text
 feat(auth): implement JWT authentication
 
 BREAKING CHANGE: Authentication is now required for all API endpoints except health checks.
 ```
 
-```
+```text
 docs(readme): update installation instructions
 
 Update the installation instructions to include the new environment variables.

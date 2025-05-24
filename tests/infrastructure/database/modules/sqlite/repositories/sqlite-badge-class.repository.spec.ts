@@ -3,6 +3,7 @@ import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { SqliteBadgeClassRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository';
+import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
@@ -10,21 +11,32 @@ import { toIRI } from '@utils/types/iri-utils';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
-const MIGRATIONS_FOLDER = 'drizzle/migrations';
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 
-const mockIssuer = {
-  id: `urn:uuid:${createId()}`,
-  type: 'Profile',
-  name: 'Test Issuer',
-  url: EXAMPLE_ISSUER_URL,
-  email: 'issuer@example.com',
+const MIGRATIONS_FOLDER = getMigrationsPath();
+
+// Helper to create a test issuer in the database
+const createTestIssuer = async (
+  db: ReturnType<typeof drizzle<typeof schema>>
+) => {
+  const issuerId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.issuers).values({
+    id: issuerId,
+    name: 'Test Issuer',
+    url: EXAMPLE_ISSUER_URL,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return issuerId;
 };
 
 // Helper to create valid plain object data resembling BadgeClass structure
-const createTestDataObject = () => {
+const createTestDataObject = (issuerId: string) => {
   return {
     id: toIRI(`urn:uuid:${createId()}`), // Convert string to IRI type
-    issuer: toIRI(mockIssuer.id), // Convert issuer ID to IRI type
+    issuer: toIRI(issuerId), // Convert issuer ID to IRI type
     name: 'Test Badge',
     description: 'A badge for testing',
     criteria: {
@@ -37,14 +49,27 @@ const createTestDataObject = () => {
 describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>;
   let sqliteDb: Database;
+  let connectionManager: SqliteConnectionManager;
   let repository: SqliteBadgeClassRepository;
+  let testIssuerId: string;
 
   beforeEach(async () => {
     sqliteDb = new Database(':memory:');
     db = drizzle(sqliteDb, { schema, logger: true });
     queryLogger.configure({ enabled: true });
     await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-    repository = new SqliteBadgeClassRepository(sqliteDb);
+
+    // Create connection manager and repository
+    connectionManager = new SqliteConnectionManager(sqliteDb, {
+      maxConnectionAttempts: 3,
+      connectionRetryDelayMs: 1000,
+    });
+    await connectionManager.connect();
+    repository = new SqliteBadgeClassRepository(connectionManager);
+
+    // Create test issuer for foreign key constraint
+    testIssuerId = await createTestIssuer(db);
+
     queryLogger.clearLogs();
   });
 
@@ -53,7 +78,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on create', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     const logs = queryLogger.getLogs();
 
@@ -78,7 +103,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on findById', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 
@@ -95,7 +120,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log queries on update', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 
@@ -116,17 +141,17 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     expect(findLog.params?.[0]).toBe(testBadgeData.id);
 
     const updateLog = logs[1];
-    expect(updateLog.query).toBe('UPDATE BadgeClass'); 
+    expect(updateLog.query).toBe('UPDATE BadgeClass');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
     expect(updateLog.params).toBeArrayOfSize(2);
     expect(updateLog.params?.[0]).toBe(testBadgeData.id);
-    
+
     // Check the second parameter (updated data)
     // The second parameter should be a SensitiveValue instance
     const sensitiveParam = updateLog.params?.[1];
     expect(sensitiveParam).toBeInstanceOf(SensitiveValue);
-    
+
     // Since SensitiveValue's value property is private, we can't directly access it
     // Instead, we'll verify the object has the expected string representation
     // The SensitiveValue class redacts its contents when converted to a string
@@ -135,7 +160,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on delete', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 

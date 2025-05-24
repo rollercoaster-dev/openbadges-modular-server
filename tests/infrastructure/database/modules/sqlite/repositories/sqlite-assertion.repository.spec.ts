@@ -1,7 +1,15 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+} from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteAssertionRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository';
+import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { Assertion } from '@domains/assertion/assertion.entity';
 import { queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Import SensitiveValue
@@ -10,16 +18,58 @@ import { createId } from '@paralleldrive/cuid2';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { assertions } from '@infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
 import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
+import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 // --- Test Setup ---
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repository: SqliteAssertionRepository;
 let testDbInstance: Database;
+let connectionManager: SqliteConnectionManager;
+let testIssuerId: string;
+let testBadgeClassId: string;
 
-const MIGRATIONS_PATH = './drizzle/migrations'; // Adjust if your path differs
+const MIGRATIONS_PATH = getMigrationsPath();
+
+// Helper to create a test issuer in the database
+const createTestIssuer = async (
+  db: ReturnType<typeof drizzle<typeof schema>>
+) => {
+  const issuerId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.issuers).values({
+    id: issuerId,
+    name: 'Test Issuer',
+    url: EXAMPLE_ISSUER_URL,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return issuerId;
+};
+
+// Helper to create a test badge class in the database
+const createTestBadgeClass = async (
+  db: ReturnType<typeof drizzle<typeof schema>>,
+  issuerId: string
+) => {
+  const badgeClassId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.badgeClasses).values({
+    id: badgeClassId,
+    issuerId: issuerId,
+    name: 'Test Badge Class',
+    description: 'A test badge class',
+    image: 'https://example.com/badge.png',
+    criteria: JSON.stringify({ narrative: 'Complete the test' }),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return badgeClassId;
+};
 
 describe('SqliteAssertionRepository Integration - Query Logging', () => {
-
   beforeAll(async () => {
     // Initialize in-memory SQLite database
     testDbInstance = new Database(':memory:');
@@ -32,18 +82,34 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
       // NOTE: This assumes your migrations folder is configured correctly
       // and drizzle-kit generated migrations are compatible with bun:sqlite
       migrate(db, { migrationsFolder: MIGRATIONS_PATH });
-    } catch (_error) { 
+    } catch (_error) {
       // Fail fast if migrations don't work
       throw new Error('SQLite migration failed, cannot run integration tests.');
     }
 
-    // Instantiate the real repository with the test database
-    repository = new SqliteAssertionRepository(testDbInstance);
+    // Create connection manager for the new pattern
+    connectionManager = new SqliteConnectionManager(testDbInstance, {
+      maxConnectionAttempts: 3,
+      connectionRetryDelayMs: 1000,
+    });
+
+    // Connect the connection manager
+    await connectionManager.connect();
+
+    // Instantiate the real repository with the connection manager
+    repository = new SqliteAssertionRepository(connectionManager);
   });
 
   beforeEach(async () => {
-    // Clear the assertions table before each test
+    // Clear all tables before each test
     await db.delete(assertions);
+    await db.delete(schema.badgeClasses);
+    await db.delete(schema.issuers);
+
+    // Create test dependencies
+    testIssuerId = await createTestIssuer(db);
+    testBadgeClassId = await createTestBadgeClass(db, testIssuerId);
+
     // Clear logs captured by the queryLogger
     queryLogger.clearLogs();
   });
@@ -55,8 +121,8 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
 
   // --- Test Data ---
   const createTestAssertionData = (): Omit<Assertion, 'id'> => ({
-    badgeClass: `urn:uuid:${createId()}` as Shared.IRI,
-    issuer: `urn:uuid:${createId()}` as Shared.IRI, // Add issuer field
+    badgeClass: testBadgeClassId as Shared.IRI,
+    issuer: testIssuerId as Shared.IRI,
     recipient: {
       type: 'email',
       identity: `test-${createId()}@example.com`,
@@ -125,11 +191,12 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
   });
 
   it('should log query on findByRecipient', async () => {
-     const assertionData = createTestAssertionData();
+    const assertionData = createTestAssertionData();
     await repository.create(assertionData);
     queryLogger.clearLogs(); // Clear logs from setup
     // Type assertion needed as Assertion['recipient'] might be a union
-    const recipientId = (assertionData.recipient as OB2.IdentityObject).identity;
+    const recipientId = (assertionData.recipient as OB2.IdentityObject)
+      .identity;
 
     await repository.findByRecipient(recipientId);
 
@@ -207,7 +274,6 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     // Check that the parameter is an instance of SensitiveValue
     expect(logs[2].params?.[1]).toBeInstanceOf(SensitiveValue);
     expect(logs[2].database).toBe('sqlite');
-
   });
 
   it('should log query on verify (findById)', async () => {
@@ -225,5 +291,4 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(log.duration).toBeGreaterThanOrEqual(0);
     expect(log.params).toEqual([createdAssertion.id]);
   });
-
 });

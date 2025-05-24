@@ -4,11 +4,14 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../../../utils/logging/logger.service';
+import { logger } from '@/utils/logging/logger.service';
 
-const UPLOADS_DIR = process.env['ASSETS_LOCAL_DIR'] || path.resolve(process.cwd(), 'uploads');
+const UPLOADS_DIR =
+  process.env['ASSETS_LOCAL_DIR'] || path.resolve(process.cwd(), 'uploads');
 
-export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetResolver {
+export class LocalAssetStorageAdapter
+  implements AssetStorageInterface, AssetResolver
+{
   /**
    * Creates a new LocalAssetStorageAdapter
    * Initializes the uploads directory synchronously to ensure it exists
@@ -25,7 +28,11 @@ export class LocalAssetStorageAdapter implements AssetStorageInterface, AssetRes
     }
   }
 
-  async store(fileBuffer: Buffer, filename: string, _mimetype: string): Promise<string> {
+  async store(
+    fileBuffer: Buffer,
+    filename: string,
+    _mimetype: string
+  ): Promise<string> {
     const ext = path.extname(filename) || '';
     const safeName = `${uuidv4()}${ext}`;
     const filePath = path.join(UPLOADS_DIR, safeName);

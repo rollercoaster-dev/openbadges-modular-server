@@ -1,9 +1,9 @@
 /**
  * UserAssertion entity representing a badge in a user's backpack
  */
-import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
 import { UserAssertionStatus, UserAssertionMetadata } from './backpack.types';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 /**
  * Interface for the data returned by UserAssertion.toObject()
@@ -13,6 +13,7 @@ export interface UserAssertionData {
   userId: Shared.IRI;
   assertionId: Shared.IRI;
   addedAt: Date;
+  updatedAt: Date;
   status: UserAssertionStatus;
   metadata?: UserAssertionMetadata;
 }
@@ -22,6 +23,7 @@ export class UserAssertion {
   userId: Shared.IRI;
   assertionId: Shared.IRI;
   addedAt: Date;
+  updatedAt: Date;
   status: UserAssertionStatus;
   metadata?: UserAssertionMetadata;
 
@@ -40,7 +42,7 @@ export class UserAssertion {
   static create(data: Partial<UserAssertion>): UserAssertion {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default status if not provided
@@ -51,6 +53,11 @@ export class UserAssertion {
     // Set addedAt if not provided
     if (!data.addedAt) {
       data.addedAt = new Date();
+    }
+
+    // Set updatedAt if not provided, defaults to addedAt time initially
+    if (!data.updatedAt) {
+      data.updatedAt = data.addedAt || new Date();
     }
 
     return new UserAssertion(data);
@@ -66,8 +73,9 @@ export class UserAssertion {
       userId: this.userId,
       assertionId: this.assertionId,
       addedAt: this.addedAt,
+      updatedAt: this.updatedAt,
       status: this.status,
-      metadata: this.metadata
+      metadata: this.metadata,
     };
   }
 }

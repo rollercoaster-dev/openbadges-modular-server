@@ -1,9 +1,9 @@
 /**
  * Platform entity representing an external platform that can integrate with the backpack
  */
-import { v4 as uuidv4 } from 'uuid';
 import { Shared } from 'openbadges-types';
 import { PlatformStatus, PlatformMetadata } from './backpack.types';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 export class Platform {
   id: Shared.IRI;
@@ -32,7 +32,7 @@ export class Platform {
   static create(data: Partial<Platform>): Platform {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default status if not provided
@@ -67,7 +67,7 @@ export class Platform {
       status: this.status,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      metadata: this.metadata
+      metadata: this.metadata,
     };
   }
 }

@@ -1,14 +1,17 @@
 import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
 import { Database } from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { SqliteIssuerRepository } from '@/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository';
+import { SqliteConnectionManager } from '@/infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { Issuer } from '@/domains/issuer/issuer.entity';
 import { Shared } from 'openbadges-types';
 
 describe('SqliteIssuerRepository', () => {
   let db: Database;
+  let connectionManager: SqliteConnectionManager;
   let repository: SqliteIssuerRepository;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create an in-memory SQLite database for testing
     db = new Database(':memory:');
 
@@ -28,12 +31,30 @@ describe('SqliteIssuerRepository', () => {
       );
     `);
 
+    // Create drizzle instance
+    const drizzleDb = drizzle(db);
+
+    // Initialize the connection manager with the database instance and config
+    connectionManager = new SqliteConnectionManager(db, {
+      maxConnectionAttempts: 3,
+      connectionRetryDelayMs: 1000,
+    });
+
+    // Set the drizzle instance and connection state directly (for testing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (connectionManager as any).db = drizzleDb;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (connectionManager as any).client = db;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (connectionManager as any).connectionState = 'connected';
+
     // Initialize the repository
-    repository = new SqliteIssuerRepository(db);
+    repository = new SqliteIssuerRepository(connectionManager);
   });
 
-  afterAll(() => {
-    // Close the database connection
+  afterAll(async () => {
+    // Disconnect and close the database connection
+    await connectionManager.disconnect();
     db.close();
   });
 
@@ -44,7 +65,7 @@ describe('SqliteIssuerRepository', () => {
       url: 'https://example.com' as Shared.IRI,
       email: 'test@example.com',
       description: 'A test issuer',
-      image: 'https://example.com/image.png' as Shared.IRI
+      image: 'https://example.com/image.png' as Shared.IRI,
     });
 
     // Create the issuer in the database
@@ -59,7 +80,9 @@ describe('SqliteIssuerRepository', () => {
     expect(createdIssuer.email).toBe('test@example.com');
     expect(createdIssuer.description).toBe('A test issuer');
     expect(createdIssuer.image).toBeDefined();
-    expect(createdIssuer.image.toString()).toBe('https://example.com/image.png');
+    expect(createdIssuer.image.toString()).toBe(
+      'https://example.com/image.png'
+    );
 
     // Verify the issuer can be retrieved
     const retrievedIssuer = await repository.findById(createdIssuer.id);
@@ -82,7 +105,7 @@ describe('SqliteIssuerRepository', () => {
     const issuer = Issuer.create({
       name: 'Update Test',
       url: 'https://update.example.com' as Shared.IRI,
-      email: 'update@example.com'
+      email: 'update@example.com',
     });
 
     // Create the issuer in the database
@@ -91,7 +114,7 @@ describe('SqliteIssuerRepository', () => {
     // Update the issuer
     const updatedIssuer = await repository.update(createdIssuer.id, {
       name: 'Updated Name',
-      description: 'Updated description'
+      description: 'Updated description',
     });
 
     // Verify the issuer was updated
@@ -108,7 +131,7 @@ describe('SqliteIssuerRepository', () => {
     // Attempt to update an issuer with a non-existent ID
     const nonExistentId = '00000000-0000-0000-0000-000000000000' as Shared.IRI;
     const updatedIssuer = await repository.update(nonExistentId, {
-      name: 'Updated Name'
+      name: 'Updated Name',
     });
 
     // Verify
@@ -119,7 +142,7 @@ describe('SqliteIssuerRepository', () => {
     // Create a test issuer
     const issuer = Issuer.create({
       name: 'Delete Test',
-      url: 'https://delete.example.com' as Shared.IRI
+      url: 'https://delete.example.com' as Shared.IRI,
     });
 
     // Create the issuer in the database
@@ -147,15 +170,19 @@ describe('SqliteIssuerRepository', () => {
 
   it('should find all issuers', async () => {
     // Create multiple test issuers
-    await repository.create(Issuer.create({
-      name: 'Issuer 1',
-      url: 'https://issuer1.example.com' as Shared.IRI
-    }));
+    await repository.create(
+      Issuer.create({
+        name: 'Issuer 1',
+        url: 'https://issuer1.example.com' as Shared.IRI,
+      })
+    );
 
-    await repository.create(Issuer.create({
-      name: 'Issuer 2',
-      url: 'https://issuer2.example.com' as Shared.IRI
-    }));
+    await repository.create(
+      Issuer.create({
+        name: 'Issuer 2',
+        url: 'https://issuer2.example.com' as Shared.IRI,
+      })
+    );
 
     // Find all issuers
     const issuers = await repository.findAll();
@@ -163,7 +190,7 @@ describe('SqliteIssuerRepository', () => {
     // Verify issuers were found
     expect(issuers).toBeDefined();
     expect(issuers.length).toBeGreaterThanOrEqual(2);
-    expect(issuers.some(i => i.name === 'Issuer 1')).toBe(true);
-    expect(issuers.some(i => i.name === 'Issuer 2')).toBe(true);
+    expect(issuers.some((i) => i.name === 'Issuer 1')).toBe(true);
+    expect(issuers.some((i) => i.name === 'Issuer 2')).toBe(true);
   });
 });

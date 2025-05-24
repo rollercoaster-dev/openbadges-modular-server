@@ -1,10 +1,10 @@
 /**
  * Pagination Utilities
- * 
+ *
  * This file provides utilities for implementing pagination in database queries.
  */
 
-import { config } from '../../../config/config';
+import { config } from '@/config/config';
 
 export interface PaginationOptions {
   /**
@@ -88,7 +88,10 @@ export interface PaginatedResult<T> {
  * @param options Pagination options
  * @returns Normalized pagination options
  */
-export function normalizePaginationOptions(options?: PaginationOptions): Required<Omit<PaginationOptions, 'cursor' | 'sortBy' | 'sortDirection'>> & Pick<PaginationOptions, 'cursor' | 'sortBy' | 'sortDirection'> {
+export function normalizePaginationOptions(
+  options?: PaginationOptions
+): Required<Omit<PaginationOptions, 'cursor' | 'sortBy' | 'sortDirection'>> &
+  Pick<PaginationOptions, 'cursor' | 'sortBy' | 'sortDirection'> {
   const defaultPageSize = config.database.defaultPageSize || 20;
   const maxPageSize = config.database.maxPageSize || 100;
 
@@ -105,7 +108,7 @@ export function normalizePaginationOptions(options?: PaginationOptions): Require
     pageSize,
     cursor: options?.cursor,
     sortBy: options?.sortBy,
-    sortDirection: options?.sortDirection || 'asc'
+    sortDirection: options?.sortDirection || 'asc',
   };
 }
 
@@ -114,7 +117,10 @@ export function normalizePaginationOptions(options?: PaginationOptions): Require
  * @param options Pagination options
  * @returns Object with offset and limit
  */
-export function calculateOffsetAndLimit(options?: PaginationOptions): { offset: number; limit: number } {
+export function calculateOffsetAndLimit(options?: PaginationOptions): {
+  offset: number;
+  limit: number;
+} {
   const { page, pageSize } = normalizePaginationOptions(options);
   const offset = (page - 1) * pageSize;
   return { offset, limit: pageSize };
@@ -144,7 +150,7 @@ export function createPaginatedResult<T>(
     hasNextPage: page < totalPages,
     hasPreviousPage: page > 1,
     nextCursor: cursor ? generateNextCursor(cursor) : undefined,
-    previousCursor: cursor ? generatePreviousCursor(cursor) : undefined
+    previousCursor: cursor ? generatePreviousCursor(cursor) : undefined,
   };
 }
 

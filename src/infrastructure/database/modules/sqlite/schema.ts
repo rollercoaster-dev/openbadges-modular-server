@@ -7,7 +7,13 @@
  * Note: SQLite stores JSON as text and timestamps as integers (epoch milliseconds).
  */
 
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 // Users table - defined first to avoid circular references
 export const users = sqliteTable(
@@ -63,7 +69,9 @@ export const apiKeys = sqliteTable(
     id: text('id').primaryKey(),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
     description: text('description'),
     permissions: text('permissions').notNull(), // JSON stored as text
     revoked: integer('revoked').notNull().default(0),
@@ -97,7 +105,7 @@ export const issuers = sqliteTable(
     publicKey: text('public_key'), // JSON stored as text
     createdAt: integer('created_at').notNull(), // epoch ms
     updatedAt: integer('updated_at').notNull(),
-    additionalFields: text('additional_fields') // JSON stored as text
+    additionalFields: text('additional_fields'), // JSON stored as text
   },
   (table) => {
     return {
@@ -108,7 +116,7 @@ export const issuers = sqliteTable(
       // Add index on email for faster lookups
       emailIdx: index('issuer_email_idx').on(table.email),
       // Add index on creation date for sorting
-      createdAtIdx: index('issuer_created_at_idx').on(table.createdAt)
+      createdAtIdx: index('issuer_created_at_idx').on(table.createdAt),
     };
   }
 );
@@ -118,7 +126,9 @@ export const badgeClasses = sqliteTable(
   'badge_classes',
   {
     id: text('id').primaryKey(),
-    issuerId: text('issuer_id').notNull().references(() => issuers.id, { onDelete: 'cascade' }),
+    issuerId: text('issuer_id')
+      .notNull()
+      .references(() => issuers.id, { onDelete: 'cascade' }),
     // Add index on issuerId for faster lookups by issuer
     name: text('name').notNull(),
     description: text('description').notNull(),
@@ -128,7 +138,7 @@ export const badgeClasses = sqliteTable(
     tags: text('tags'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
-    additionalFields: text('additional_fields')
+    additionalFields: text('additional_fields'),
   },
   (table) => {
     return {
@@ -137,7 +147,7 @@ export const badgeClasses = sqliteTable(
       // Add index on name for faster searches
       nameIdx: index('badge_class_name_idx').on(table.name),
       // Add index on creation date for sorting
-      createdAtIdx: index('badge_class_created_at_idx').on(table.createdAt)
+      createdAtIdx: index('badge_class_created_at_idx').on(table.createdAt),
     };
   }
 );
@@ -147,7 +157,9 @@ export const assertions = sqliteTable(
   'assertions',
   {
     id: text('id').primaryKey(),
-    badgeClassId: text('badge_class_id').notNull().references(() => badgeClasses.id, { onDelete: 'cascade' }),
+    badgeClassId: text('badge_class_id')
+      .notNull()
+      .references(() => badgeClasses.id, { onDelete: 'cascade' }),
     // Add index on badgeClassId for faster lookups by badge class
     recipient: text('recipient').notNull(), // JSON stored as text
     issuedOn: integer('issued_on').notNull(),
@@ -158,7 +170,7 @@ export const assertions = sqliteTable(
     revocationReason: text('revocation_reason'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
-    additionalFields: text('additional_fields')
+    additionalFields: text('additional_fields'),
   },
   (table) => {
     return {
@@ -169,7 +181,7 @@ export const assertions = sqliteTable(
       // Add index on revoked for filtering
       revokedIdx: index('assertion_revoked_idx').on(table.revoked),
       // Add index on expires for filtering expired assertions
-      expiresIdx: index('assertion_expires_idx').on(table.expires)
+      expiresIdx: index('assertion_expires_idx').on(table.expires),
     };
   }
 );
@@ -201,7 +213,9 @@ export const platformUsers = sqliteTable(
   'platform_users',
   {
     id: text('id').primaryKey(),
-    platformId: text('platform_id').notNull().references(() => platforms.id, { onDelete: 'cascade' }),
+    platformId: text('platform_id')
+      .notNull()
+      .references(() => platforms.id, { onDelete: 'cascade' }),
     externalUserId: text('external_user_id').notNull(), // User ID in the external platform
     displayName: text('display_name'),
     email: text('email'),
@@ -211,7 +225,10 @@ export const platformUsers = sqliteTable(
   },
   (table) => {
     return {
-      platformUserIdx: index('platform_user_idx').on(table.platformId, table.externalUserId),
+      platformUserIdx: index('platform_user_idx').on(
+        table.platformId,
+        table.externalUserId
+      ),
       emailIdx: index('platform_user_email_idx').on(table.email),
     };
   }
@@ -222,8 +239,12 @@ export const userRoles = sqliteTable(
   'user_roles',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => roles.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at').notNull(),
   },
   (table) => {
@@ -233,7 +254,10 @@ export const userRoles = sqliteTable(
       // Add index on roleId for faster lookups
       roleIdIdx: index('user_role_role_id_idx').on(table.roleId),
       // Add index on userId and roleId
-      userRoleIdx: index('user_role_user_id_role_id_idx').on(table.userId, table.roleId),
+      userRoleIdx: index('user_role_user_id_role_id_idx').on(
+        table.userId,
+        table.roleId
+      ),
     };
   }
 );
@@ -243,16 +267,25 @@ export const userAssertions = sqliteTable(
   'user_assertions',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => platformUsers.id, { onDelete: 'cascade' }),
-    assertionId: text('assertion_id').notNull().references(() => assertions.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => platformUsers.id, { onDelete: 'cascade' }),
+    assertionId: text('assertion_id')
+      .notNull()
+      .references(() => assertions.id, { onDelete: 'cascade' }),
     addedAt: integer('added_at').notNull(),
+    updatedAt: integer('updated_at').notNull(), // epoch ms
     status: text('status').notNull().default('active'), // active, hidden, etc.
     metadata: text('metadata'), // JSON stored as text
   },
   (table) => {
     return {
-      userAssertionIdx: index('user_assertion_idx').on(table.userId, table.assertionId),
+      userAssertionIdx: uniqueIndex('user_assertion_idx').on(
+        table.userId,
+        table.assertionId
+      ),
       addedAtIdx: index('user_assertion_added_at_idx').on(table.addedAt),
+      updatedAtIdx: index('user_assertion_updated_at_idx').on(table.updatedAt),
     };
   }
 );

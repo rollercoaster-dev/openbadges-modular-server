@@ -6,17 +6,21 @@
  */
 
 import { OB2, OB3, Shared } from 'openbadges-types';
-import { v4 as uuidv4 } from 'uuid';
 import { BadgeVersion } from '../../utils/version/badge-version';
 import { BadgeSerializerFactory } from '../../utils/version/badge-serializer';
 import { BadgeClassData } from '../../utils/types/badge-data.types';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
+import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
 /**
  * BadgeClass entity representing a type of badge that can be issued
  * Compatible with both Open Badges 2.0 and 3.0
  */
-export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<Partial<OB3.Achievement>, 'image'> {
+export class BadgeClass
+  implements
+    Omit<Partial<OB2.BadgeClass>, 'image'>,
+    Omit<Partial<OB3.Achievement>, 'image'>
+{
   id: Shared.IRI;
   /**
    * The type of the badge class, which can be a single string or an array of strings.
@@ -68,7 +72,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
   static create(data: Partial<BadgeClass>): BadgeClass {
     // Generate ID if not provided
     if (!data.id) {
-      data.id = uuidv4() as Shared.IRI;
+      data.id = createOrGenerateIRI();
     }
 
     // Set default type if not provided
@@ -84,16 +88,26 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
    * @param version The badge version to use (defaults to 3.0)
    * @returns A plain object representation of the badge class, properly typed as OB2.BadgeClass or OB3.Achievement
    */
-  toObject(version: BadgeVersion = BadgeVersion.V3): OB2.BadgeClass | OB3.Achievement {
+  toObject(
+    version: BadgeVersion = BadgeVersion.V3
+  ): OB2.BadgeClass | OB3.Achievement {
     // Handle name and description based on version
     let nameValue: string | Shared.MultiLanguageString = this.name;
-    let descriptionValue: string | Shared.MultiLanguageString = this.description || '';
+    let descriptionValue: string | Shared.MultiLanguageString =
+      this.description || '';
 
     if (version === BadgeVersion.V2) {
       // For OB2, ensure name and description are strings
-      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
-      descriptionValue = typeof this.description === 'string' ? this.description :
-                       (this.description ? Object.values(this.description)[0] || '' : '');
+      nameValue =
+        typeof this.name === 'string'
+          ? this.name
+          : Object.values(this.name)[0] || '';
+      descriptionValue =
+        typeof this.description === 'string'
+          ? this.description
+          : this.description
+          ? Object.values(this.description)[0] || ''
+          : '';
     }
 
     // Handle criteria based on version
@@ -112,7 +126,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
         if (!criteria.id && !criteria.narrative) {
           // If neither id nor narrative is present, create a minimal valid OB3.Criteria
           criteriaValue = {
-            narrative: 'No criteria specified'
+            narrative: 'No criteria specified',
           } as OB3.Criteria;
         } else {
           // Use the criteria as is
@@ -121,7 +135,10 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       }
     } else {
       // Default empty criteria
-      criteriaValue = version === BadgeVersion.V2 ? ('' as Shared.IRI) : { narrative: 'No criteria specified' } as OB3.Criteria;
+      criteriaValue =
+        version === BadgeVersion.V2
+          ? ('' as Shared.IRI)
+          : ({ narrative: 'No criteria specified' } as OB3.Criteria);
     }
 
     // Create a base object with common properties
@@ -217,9 +234,16 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
 
     if (version === BadgeVersion.V2) {
       // For OB2, ensure name and description are strings
-      nameValue = typeof this.name === 'string' ? this.name : Object.values(this.name)[0] || '';
-      descriptionValue = typeof this.description === 'string' ? this.description :
-                        (this.description ? Object.values(this.description)[0] || '' : '');
+      nameValue =
+        typeof this.name === 'string'
+          ? this.name
+          : Object.values(this.name)[0] || '';
+      descriptionValue =
+        typeof this.description === 'string'
+          ? this.description
+          : this.description
+          ? Object.values(this.description)[0] || ''
+          : '';
     } else {
       // For OB3, we can use MultiLanguageString
       nameValue = this.name;
@@ -243,7 +267,7 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
         if (!criteria.id && !criteria.narrative) {
           // If neither id nor narrative is present, create a minimal valid OB3.Criteria
           criteriaValue = {
-            narrative: criteria.narrative || 'No criteria specified'
+            narrative: criteria.narrative || 'No criteria specified',
           };
         } else {
           // Use the criteria as is
@@ -252,7 +276,10 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       }
     } else {
       // Default empty criteria
-      criteriaValue = version === BadgeVersion.V2 ? ('' as Shared.IRI) : { narrative: 'No criteria specified' } as OB3.Criteria;
+      criteriaValue =
+        version === BadgeVersion.V2
+          ? ('' as Shared.IRI)
+          : ({ narrative: 'No criteria specified' } as OB3.Criteria);
     }
 
     // Use direct properties instead of typedData to avoid type issues
@@ -294,8 +321,14 @@ export class BadgeClass implements Omit<Partial<OB2.BadgeClass>, 'image'>, Omit<
       }
 
       // Ensure both required contexts are present
-      if (!jsonLd['@context'].includes('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json')) {
-        jsonLd['@context'].push('https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json');
+      if (
+        !jsonLd['@context'].includes(
+          'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+        )
+      ) {
+        jsonLd['@context'].push(
+          'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+        );
       }
 
       if (!jsonLd['@context'].includes(VC_V2_CONTEXT_URL)) {

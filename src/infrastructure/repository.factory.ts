@@ -42,6 +42,12 @@ export class RepositoryFactory {
   private static client: postgres.Sql | null = null;
   private static dbType: string = 'postgresql'; // Default database type
   private static isInitialized: boolean = false;
+  private static sqliteConnectionManager:
+    | import('./database/modules/sqlite/connection/sqlite-connection.manager').SqliteConnectionManager
+    | null = null;
+
+  // Promise to track ongoing initialization - serves as a mutex
+  private static initializationPromise: Promise<void> | null = null;
 
   /**
    * Initializes the repository factory with a database connection
@@ -55,32 +61,84 @@ export class RepositoryFactory {
     sqliteSyncMode?: string;
     sqliteCacheSize?: number;
   }): Promise<void> {
-    // Prevent multiple initializations
-    if (this.isInitialized) {
-      logger.warn('RepositoryFactory already initialized. Skipping redundant initialization.');
+    // Check if initialization is already in progress
+    if (RepositoryFactory.initializationPromise) {
+      // Wait for ongoing initialization to complete
+      await RepositoryFactory.initializationPromise;
+      return; // Initialization already completed by another call
+    }
+
+    // Prevent multiple initializations if already initialized
+    if (RepositoryFactory.isInitialized) {
+      logger.warn(
+        'RepositoryFactory already initialized. Skipping redundant initialization.'
+      );
       return;
     }
 
-    this.dbType = config.type;
+    // Create and store the initialization promise
+    RepositoryFactory.initializationPromise = (async () => {
+      try {
+        RepositoryFactory.dbType = config.type;
 
-    if (this.dbType === 'postgresql') {
-      // Configure PostgreSQL client with connection pooling
-      this.client = postgres(config.connectionString, {
-        max: 20, // Maximum connections in pool
-        idle_timeout: 30, // Close idle connections after 30 seconds
-        connect_timeout: 10, // Connection timeout in seconds
-        max_lifetime: 60 * 60, // Max connection lifetime in seconds
-      });
-    } else if (this.dbType === 'sqlite') {
-      // SQLite doesn't need a client in the repository factory
-      // It will be handled by the DatabaseFactory
-    } else {
-      throw new Error(`Unsupported database type: ${this.dbType}`);
-    }
+        if (RepositoryFactory.dbType === 'postgresql') {
+          // Configure PostgreSQL client with connection pooling
+          RepositoryFactory.client = postgres(config.connectionString, {
+            max: 20, // Maximum connections in pool
+            idle_timeout: 30, // Close idle connections after 30 seconds
+            connect_timeout: 10, // Connection timeout in seconds
+            max_lifetime: 60 * 60, // Max connection lifetime in seconds
+          });
+        } else if (RepositoryFactory.dbType === 'sqlite') {
+          // Only initialize if not already initialized
+          if (!RepositoryFactory.sqliteConnectionManager) {
+            // Create shared SQLite connection manager for resource management
+            const { Database } = await import('bun:sqlite');
+            const { SqliteConnectionManager } = await import(
+              './database/modules/sqlite/connection/sqlite-connection.manager'
+            );
 
-    // Mark as initialized
-    this.isInitialized = true;
-    logger.info(`Repository factory initialized with ${this.dbType} database`);
+            const sqliteFile = config.sqliteFile || ':memory:';
+            const client = new Database(sqliteFile);
+
+            RepositoryFactory.sqliteConnectionManager =
+              new SqliteConnectionManager(client, {
+                maxConnectionAttempts: 3,
+                connectionRetryDelayMs: 1000,
+                sqliteBusyTimeout: config.sqliteBusyTimeout,
+                sqliteSyncMode: config.sqliteSyncMode as
+                  | 'OFF'
+                  | 'NORMAL'
+                  | 'FULL'
+                  | undefined,
+                sqliteCacheSize: config.sqliteCacheSize,
+              });
+
+            // Connect the shared connection manager
+            await RepositoryFactory.sqliteConnectionManager.connect();
+            logger.info('SQLite connection manager initialized successfully');
+          }
+        } else {
+          throw new Error(
+            `Unsupported database type: ${RepositoryFactory.dbType}`
+          );
+        }
+
+        // Mark as initialized
+        RepositoryFactory.isInitialized = true;
+        logger.info(
+          `Repository factory initialized with ${RepositoryFactory.dbType} database`
+        );
+      } catch (error) {
+        logger.error('Failed to initialize RepositoryFactory', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    })();
+
+    // Wait for initialization to complete
+    await RepositoryFactory.initializationPromise;
   }
 
   /**
@@ -91,30 +149,38 @@ export class RepositoryFactory {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the base repository
-      const baseRepository = new PostgresIssuerRepository(this.client);
+      const baseRepository = new PostgresIssuerRepository(
+        RepositoryFactory.client
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return enableCaching
+        ? new CachedIssuerRepository(baseRepository)
+        : baseRepository;
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the base repository
-      const baseRepository = new SqliteIssuerRepository(client);
+      // Create the base repository using the shared connection manager
+      const baseRepository = new SqliteIssuerRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedIssuerRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedIssuerRepository(baseRepository)
+        : baseRepository;
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -125,30 +191,38 @@ export class RepositoryFactory {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the base repository
-      const baseRepository = new PostgresBadgeClassRepository(this.client);
+      const baseRepository = new PostgresBadgeClassRepository(
+        RepositoryFactory.client
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return enableCaching
+        ? new CachedBadgeClassRepository(baseRepository)
+        : baseRepository;
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the base repository
-      const baseRepository = new SqliteBadgeClassRepository(client);
+      // Create the base repository using the shared connection manager
+      const baseRepository = new SqliteBadgeClassRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedBadgeClassRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedBadgeClassRepository(baseRepository)
+        : baseRepository;
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -159,30 +233,38 @@ export class RepositoryFactory {
     // Check if caching is enabled
     const enableCaching = config.cache?.enabled !== false;
 
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the base repository
-      const baseRepository = new PostgresAssertionRepository(this.client);
+      const baseRepository = new PostgresAssertionRepository(
+        RepositoryFactory.client
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return enableCaching
+        ? new CachedAssertionRepository(baseRepository)
+        : baseRepository;
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the base repository
-      const baseRepository = new SqliteAssertionRepository(client);
+      // Create the base repository using the shared connection manager
+      const baseRepository = new SqliteAssertionRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
 
       // Wrap with cache if enabled
-      return enableCaching ? new CachedAssertionRepository(baseRepository) : baseRepository;
+      return enableCaching
+        ? new CachedAssertionRepository(baseRepository)
+        : baseRepository;
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -190,24 +272,26 @@ export class RepositoryFactory {
    * @returns An implementation of ApiKeyRepository
    */
   static async createApiKeyRepository(): Promise<ApiKeyRepository> {
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the repository (no caching for security-related repositories)
-      return new PostgresApiKeyRepository(this.client);
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return new PostgresApiKeyRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the repository
-      return new SqliteApiKeyRepository(client);
+      // Create the repository using the shared connection manager
+      return new SqliteApiKeyRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -215,24 +299,26 @@ export class RepositoryFactory {
    * @returns An implementation of PlatformRepository
    */
   static async createPlatformRepository(): Promise<PlatformRepository> {
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the repository
-      return new PostgresPlatformRepository(this.client);
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return new PostgresPlatformRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the repository
-      return new SqlitePlatformRepository(client);
+      // Create the repository using the shared connection manager
+      return new SqlitePlatformRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -240,24 +326,26 @@ export class RepositoryFactory {
    * @returns An implementation of PlatformUserRepository
    */
   static async createPlatformUserRepository(): Promise<PlatformUserRepository> {
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the repository
-      return new PostgresPlatformUserRepository(this.client);
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return new PostgresPlatformUserRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the repository
-      return new SqlitePlatformUserRepository(client);
+      // Create the repository using the shared connection manager
+      return new SqlitePlatformUserRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -265,24 +353,26 @@ export class RepositoryFactory {
    * @returns An implementation of UserAssertionRepository
    */
   static async createUserAssertionRepository(): Promise<UserAssertionRepository> {
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the repository
-      return new PostgresUserAssertionRepository(this.client);
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return new PostgresUserAssertionRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the repository
-      return new SqliteUserAssertionRepository(client);
+      // Create the repository using the shared connection manager
+      return new SqliteUserAssertionRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
@@ -290,53 +380,79 @@ export class RepositoryFactory {
    * @returns An implementation of UserRepository
    */
   static async createUserRepository(): Promise<UserRepository> {
-    if (this.dbType === 'postgresql') {
-      if (!this.client) {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
         throw new Error('PostgreSQL client not initialized');
       }
 
       // Create the repository
-      return new PostgresUserRepository(this.client);
-    } else if (this.dbType === 'sqlite') {
-      // Get SQLite database client
-      const { Database } = await import('bun:sqlite');
-      const sqliteFile = config.database.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+      return new PostgresUserRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
 
-      // Create the repository
-      return new SqliteUserRepository(client);
+      // Create the repository using the shared connection manager
+      return new SqliteUserRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
     }
 
-    throw new Error(`Unsupported database type: ${this.dbType}`);
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
   }
 
   /**
    * Closes the database connection
    */
   static async close(): Promise<void> {
-    if (!this.isInitialized) {
+    // Wait for any ongoing initialization to complete before attempting to close
+    if (RepositoryFactory.initializationPromise) {
+      try {
+        await RepositoryFactory.initializationPromise;
+      } catch (error) {
+        // If initialization failed, log and continue with cleanup
+        logger.warn('Initialization was in progress but failed during close', {
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    if (!RepositoryFactory.isInitialized) {
       logger.warn('RepositoryFactory not initialized. Nothing to close.');
       return;
     }
 
-    if (this.dbType === 'postgresql' && this.client) {
-      await this.client.end();
-      this.client = null;
-    } else if (this.dbType === 'sqlite') {
-      // SQLite connections are closed automatically when the Database object is garbage collected
-      // But we can explicitly close any open connections if needed
+    if (RepositoryFactory.dbType === 'postgresql' && RepositoryFactory.client) {
       try {
-        // No need to do anything here as SQLite connections are managed by the repositories
-        logger.info('SQLite connections will be closed automatically');
+        await RepositoryFactory.client.end();
+        logger.info('PostgreSQL client closed successfully');
+      } catch (e) {
+        logger.warn('Failed to close PostgreSQL client', {
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+      }
+      RepositoryFactory.client = null;
+    } else if (
+      RepositoryFactory.dbType === 'sqlite' &&
+      RepositoryFactory.sqliteConnectionManager
+    ) {
+      // Properly disconnect the shared SQLite connection manager
+      try {
+        await RepositoryFactory.sqliteConnectionManager.disconnect();
+        RepositoryFactory.sqliteConnectionManager = null;
+        logger.info('SQLite connection manager disconnected successfully');
       } catch (error) {
-        logger.warn('Error handling SQLite connections', {
-          errorMessage: error instanceof Error ? error.message : String(error)
+        logger.warn('Failed to disconnect SQLite connection manager', {
+          errorMessage: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
     // Reset initialization state
-    this.isInitialized = false;
+    RepositoryFactory.isInitialized = false;
+    // Reset initialization promise
+    RepositoryFactory.initializationPromise = null;
     logger.info('Repository factory closed');
   }
 }
