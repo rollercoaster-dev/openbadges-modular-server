@@ -15,6 +15,7 @@ import { SqliteConnectionManager } from '../../connection/sqlite-connection.mana
 import { Shared } from 'openbadges-types';
 import * as schema from '../../schema';
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+import { logger } from '@utils/logging/logger.service';
 
 describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
   let coordinator: SqliteRepositoryCoordinator;
@@ -40,8 +41,8 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
     const db = drizzle(testDbInstance, { schema });
     try {
       migrate(db, { migrationsFolder: getMigrationsPath() });
-    } catch (err) {
-      console.error('❌  Migration failed in cascade-deletion test:', err);
+    } catch (_err) {
+      logger.error('❌  Migration failed in cascade-deletion test:', _err);
       // Falling back keeps the test running, but re-throw if you
       // want migrations to stay the single source of truth.
       // throw err;

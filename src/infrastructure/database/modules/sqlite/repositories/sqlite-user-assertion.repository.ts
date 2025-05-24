@@ -55,7 +55,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
     const updateSet: {
       status?: string;
       metadata?: string;
-      addedAt?: number; // Must be number for SQLite integer field
+      updatedAt?: number; // Must be number for SQLite integer field
     } = {};
 
     if (record.status !== undefined) {
@@ -73,13 +73,13 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
             ) || '{}';
     }
 
-    // Handle addedAt field (used also to track updates)
-    if (record.addedAt !== undefined) {
-      updateSet.addedAt =
-        typeof record.addedAt === 'number'
-          ? record.addedAt
-          : record.addedAt instanceof Date
-          ? record.addedAt.getTime()
+    // Handle updatedAt field
+    if (record.updatedAt !== undefined) {
+      updateSet.updatedAt =
+        typeof record.updatedAt === 'number'
+          ? record.updatedAt
+          : record.updatedAt instanceof Date
+          ? record.updatedAt.getTime()
           : Date.now();
     }
 
@@ -147,10 +147,11 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         // Ensure we have current timestamp for updated records
         const now = Date.now();
 
-        // Prepare record with current timestamp
+        // Prepare record with current timestamps for initial insertion
         const recordWithTime = {
-          ...record,
+          ...record, // Contains id, userId, assertionId, metadata (if any), status (default or provided)
           addedAt: now,
+          updatedAt: now, // Set updatedAt on creation as well
         };
 
         // Extract the original entity data for update values
@@ -158,10 +159,9 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
         // Create update values for conflict case - preserve only the fields we want to update
         // Build the object dynamically to avoid including undefined values
-        const updateValues: Record<string, string | number> = {};
-
-        // Add timestamp for tracking modifications - always include this
-        updateValues.addedAt = now;
+        const updateValues: Record<string, string | number | undefined> = {
+          updatedAt: now, // Always update updatedAt on conflict
+        };
 
         // Only add status if it's defined, otherwise use default
         if (entityData.status) {
@@ -192,8 +192,26 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
           });
       });
 
-      // Return the domain entity
-      return userAssertion;
+      // Fetch the persisted entity to ensure canonical data is returned
+      const persistedAssertion = await this.findByUserAndAssertion(
+        userId,
+        assertionId
+      );
+
+      if (!persistedAssertion) {
+        // This should ideally not happen if the transaction was successful
+        logger.error('Failed to fetch user assertion after creation/update', {
+          userId,
+          assertionId,
+        });
+        // Throw an error to indicate an inconsistency, as returning the potentially
+        // stale in-memory 'userAssertion' would defeat the purpose of this change.
+        throw new Error(
+          'Failed to retrieve user assertion after persistence operation.'
+        );
+      }
+
+      return persistedAssertion;
     } catch (error) {
       logger.error('Error creating user assertion in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
@@ -248,7 +266,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Use the helper method to construct the Drizzle update set
       const drizzleUpdateSet = this.constructDrizzleUpdateSet({
         status,
-        addedAt: Date.now(), // Use addedAt instead of updatedAt as timestamp field
+        updatedAt: Date.now(), // Use updatedAt for timestamp field
       });
 
       const result = await db

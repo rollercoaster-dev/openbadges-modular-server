@@ -13,6 +13,7 @@ export interface UserAssertionData {
   userId: Shared.IRI;
   assertionId: Shared.IRI;
   addedAt: Date;
+  updatedAt: Date;
   status: UserAssertionStatus;
   metadata?: UserAssertionMetadata;
 }
@@ -22,6 +23,7 @@ export class UserAssertion {
   userId: Shared.IRI;
   assertionId: Shared.IRI;
   addedAt: Date;
+  updatedAt: Date;
   status: UserAssertionStatus;
   metadata?: UserAssertionMetadata;
 
@@ -53,6 +55,11 @@ export class UserAssertion {
       data.addedAt = new Date();
     }
 
+    // Set updatedAt if not provided, defaults to addedAt time initially
+    if (!data.updatedAt) {
+      data.updatedAt = data.addedAt || new Date();
+    }
+
     return new UserAssertion(data);
   }
 
@@ -66,6 +73,7 @@ export class UserAssertion {
       userId: this.userId,
       assertionId: this.assertionId,
       addedAt: this.addedAt,
+      updatedAt: this.updatedAt,
       status: this.status,
       metadata: this.metadata,
     };

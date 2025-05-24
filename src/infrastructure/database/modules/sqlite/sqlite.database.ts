@@ -83,8 +83,6 @@ export class SqliteDatabase implements DatabaseInterface {
         error instanceof Error ? error.message : String(error)
       }`;
 
-      // Import logger dynamically to avoid circular dependencies
-      const { logger } = require('@utils/logging/logger.service');
       logger.error(errorMsg, {
         error: error instanceof Error ? error.stack : String(error),
         config: {
@@ -178,7 +176,9 @@ export class SqliteDatabase implements DatabaseInterface {
     return this.databaseService.getAssertionsByBadgeClass(badgeClassId);
   }
 
-  async getAssertionsByRecipient(recipientId: string): Promise<Assertion[]> {
+  async getAssertionsByRecipient(
+    recipientId: Shared.IRI
+  ): Promise<Assertion[]> {
     return this.databaseService.getAssertionsByRecipient(recipientId);
   }
 

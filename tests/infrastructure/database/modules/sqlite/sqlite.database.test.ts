@@ -234,7 +234,7 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
 
     // Read by recipient
     const byRec = await db.getAssertionsByRecipient(
-      assertionData.recipient.identity as string
+      assertionData.recipient.identity as Shared.IRI
     );
     expect(byRec.length).toBe(1);
 

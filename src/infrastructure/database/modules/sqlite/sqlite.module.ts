@@ -4,6 +4,7 @@ import { Database } from 'bun:sqlite';
 import { SqliteDatabase } from './sqlite.database';
 import { logger } from '../../../../utils/logging/logger.service';
 import { resolve } from 'path';
+import { sanitizeObject } from '../../../../utils/security/sanitize';
 // import { sql } from 'drizzle-orm';
 
 /**
@@ -76,13 +77,16 @@ export class SqliteModule implements DatabaseModuleInterface {
       // Connection retry settings
       maxConnectionAttempts: config.maxConnectionAttempts ?? 3,
       connectionRetryDelayMs: config.connectionRetryDelayMs ?? 1000,
-      
+
       // CRITICAL SQLite settings (important for data integrity and concurrency)
       sqliteBusyTimeout: config.sqliteBusyTimeout ?? 5000,
-      sqliteSyncMode: config.sqliteSyncMode ?? 'NORMAL' as const,
-      
+      sqliteSyncMode: config.sqliteSyncMode ?? ('NORMAL' as const),
+
       // OPTIONAL performance settings (won't halt initialization if they fail)
-      sqliteCacheSize: config.sqliteCacheSize,
+      sqliteCacheSize:
+        typeof config.sqliteCacheSize === 'number'
+          ? config.sqliteCacheSize
+          : 10_000,
     };
     const sqliteDb = new SqliteDatabase(client, connectionConfig);
     await sqliteDb.connect();
@@ -91,13 +95,13 @@ export class SqliteModule implements DatabaseModuleInterface {
 
   /**
    * Applies performance optimizations to SQLite database
-   * 
+   *
    * IMPORTANT: This method applies initial connection optimizations,
    * while the connection manager handles ongoing PRAGMA settings.
-   * 
+   *
    * Some settings are applied here AND passed to the connection manager
    * to ensure they're consistently applied even after connection resets.
-   * 
+   *
    * @param client The SQLite database client
    * @param config Configuration options
    */
@@ -107,18 +111,25 @@ export class SqliteModule implements DatabaseModuleInterface {
   ): void {
     try {
       // Track settings for better error reporting
-      const appliedSettings: Record<string, any> = {};
+      const appliedSettings: Record<string, unknown> = {};
       const failedSettings: Array<{ setting: string; error: string }> = [];
-      
+
       // Set journal mode to WAL for better concurrency (CRITICAL)
       try {
         client.exec('PRAGMA journal_mode = WAL;');
         appliedSettings.journalMode = 'WAL';
       } catch (error) {
-        const errorMsg = `Failed to set journal_mode to WAL: ${error instanceof Error ? error.message : String(error)}`;
-        logger.error(errorMsg);
+        const errorMsg = `Failed to set journal_mode to WAL: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.error(errorMsg, {
+          setting: 'journal_mode',
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'journal_mode', error: errorMsg });
-        // Allow initialization to continue despite this error, as connection manager 
+        // Allow initialization to continue despite this error, as connection manager
         // will apply critical settings again
       }
 
@@ -134,8 +145,16 @@ export class SqliteModule implements DatabaseModuleInterface {
         client.exec(`PRAGMA busy_timeout = ${busyTimeout};`);
         appliedSettings.busyTimeout = busyTimeout;
       } catch (error) {
-        const errorMsg = `Failed to set busy_timeout: ${error instanceof Error ? error.message : String(error)}`;
-        logger.error(errorMsg);
+        const errorMsg = `Failed to set busy_timeout: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.error(errorMsg, {
+          setting: 'busy_timeout',
+          busyTimeout,
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'busy_timeout', error: errorMsg });
         // Allow initialization to continue as connection manager will apply this critical setting again
       }
@@ -143,15 +162,26 @@ export class SqliteModule implements DatabaseModuleInterface {
       // Set synchronous mode (CRITICAL - also passed to connection manager)
       // FULL is safer but slower, OFF is fastest but risks corruption on power loss
       const allowedSync = ['OFF', 'NORMAL', 'FULL'] as const;
-      const syncModeRaw = (config.sqliteSyncMode ?? 'NORMAL')
-        .toUpperCase() as (typeof allowedSync)[number];
-      const syncMode = allowedSync.includes(syncModeRaw) ? syncModeRaw : 'NORMAL';
+      const syncModeRaw = (
+        config.sqliteSyncMode ?? 'NORMAL'
+      ).toUpperCase() as (typeof allowedSync)[number];
+      const syncMode = allowedSync.includes(syncModeRaw)
+        ? syncModeRaw
+        : 'NORMAL';
       try {
         client.exec(`PRAGMA synchronous = ${syncMode};`);
         appliedSettings.syncMode = syncMode;
       } catch (error) {
-        const errorMsg = `Failed to set synchronous mode: ${error instanceof Error ? error.message : String(error)}`;
-        logger.error(errorMsg);
+        const errorMsg = `Failed to set synchronous mode: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.error(errorMsg, {
+          setting: 'synchronous',
+          syncMode,
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'synchronous', error: errorMsg });
         // Allow initialization to continue as connection manager will apply this critical setting again
       }
@@ -168,8 +198,16 @@ export class SqliteModule implements DatabaseModuleInterface {
         client.exec(`PRAGMA cache_size = ${cacheSize};`);
         appliedSettings.cacheSize = cacheSize;
       } catch (error) {
-        const errorMsg = `Failed to set cache_size: ${error instanceof Error ? error.message : String(error)}`;
-        logger.warn(errorMsg);
+        const errorMsg = `Failed to set cache_size: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.warn(errorMsg, {
+          setting: 'cache_size',
+          cacheSize,
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'cache_size', error: errorMsg });
         // Non-critical - continue initialization
       }
@@ -179,8 +217,15 @@ export class SqliteModule implements DatabaseModuleInterface {
         client.exec('PRAGMA foreign_keys = ON;');
         appliedSettings.foreignKeys = 'ON';
       } catch (error) {
-        const errorMsg = `Failed to enable foreign_keys: ${error instanceof Error ? error.message : String(error)}`;
-        logger.warn(errorMsg);
+        const errorMsg = `Failed to enable foreign_keys: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.warn(errorMsg, {
+          setting: 'foreign_keys',
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'foreign_keys', error: errorMsg });
         // Non-critical - continue initialization
       }
@@ -190,8 +235,15 @@ export class SqliteModule implements DatabaseModuleInterface {
         client.exec('PRAGMA temp_store = MEMORY;');
         appliedSettings.tempStore = 'MEMORY';
       } catch (error) {
-        const errorMsg = `Failed to set temp_store to MEMORY: ${error instanceof Error ? error.message : String(error)}`;
-        logger.warn(errorMsg);
+        const errorMsg = `Failed to set temp_store to MEMORY: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.warn(errorMsg, {
+          setting: 'temp_store',
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'temp_store', error: errorMsg });
         // Non-critical - continue initialization
       }
@@ -201,8 +253,15 @@ export class SqliteModule implements DatabaseModuleInterface {
         this.createCustomIndexes(client);
         appliedSettings.customIndexes = true;
       } catch (error) {
-        const errorMsg = `Failed to create custom indexes: ${error instanceof Error ? error.message : String(error)}`;
-        logger.warn(errorMsg);
+        const errorMsg = `Failed to create custom indexes: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        logger.warn(errorMsg, {
+          setting: 'customIndexes',
+          error: sanitizeObject({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        });
         failedSettings.push({ setting: 'customIndexes', error: errorMsg });
         // Non-critical - continue initialization
       }
@@ -210,21 +269,26 @@ export class SqliteModule implements DatabaseModuleInterface {
       // Log optimizations in development mode
       if (process.env.NODE_ENV !== 'production') {
         logger.info('SQLite initial optimizations applied:', appliedSettings);
-        
+
         if (failedSettings.length > 0) {
-          logger.warn(`${failedSettings.length} SQLite settings failed to apply during initialization`, {
-            failedSettings
-          });
+          logger.warn(
+            `${failedSettings.length} SQLite settings failed to apply during initialization`,
+            {
+              failedSettings,
+            }
+          );
         }
       }
     } catch (error) {
       // Log unexpected errors but allow initialization to continue
       // The connection manager will apply critical settings again
       logger.error('Unexpected error during SQLite optimization', {
-        error: error instanceof Error ? error.stack : String(error)
+        error: sanitizeObject({
+          error: error instanceof Error ? error.stack : String(error),
+          message: error instanceof Error ? error.message : String(error),
+        }),
       });
     }
-  }
   }
 
   /**
@@ -236,8 +300,8 @@ export class SqliteModule implements DatabaseModuleInterface {
       // Check if tables exist before creating indexes
       const tables = client
         .query("SELECT name FROM sqlite_master WHERE type='table'")
-        .all();
-      const tableNames = tables.map((t: { name: string }) => t.name);
+        .all() as Array<{ name: string }>;
+      const tableNames: string[] = tables.map((t) => t.name);
 
       // Only create indexes if tables exist
       if (tableNames.includes('assertions')) {
@@ -274,7 +338,10 @@ export class SqliteModule implements DatabaseModuleInterface {
     } catch (error) {
       // Log error but don't fail initialization
       logger.warn('Error creating custom indexes', {
-        errorMessage: error instanceof Error ? error.message : String(error),
+        error: sanitizeObject({
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
       });
     }
   }

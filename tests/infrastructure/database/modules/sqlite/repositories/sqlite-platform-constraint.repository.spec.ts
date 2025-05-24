@@ -92,7 +92,7 @@ describe('SqlitePlatformRepository constraint handling', () => {
 
   it('should throw DuplicateClientIdError when updating platform with duplicate clientId', async () => {
     // Create two platforms with different clientIds
-    const _platform1 = await repository.create({
+    await repository.create({
       name: 'Test Platform 1',
       clientId: 'client-id-1',
       publicKey: 'test-public-key-1',
