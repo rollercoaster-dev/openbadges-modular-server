@@ -13,6 +13,11 @@ import { SqliteBadgeClassMapper } from '../mappers/sqlite-badge-class.mapper';
 import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import {
+  SqlitePaginationParams,
+  DEFAULT_PAGINATION,
+  MAX_PAGINATION_LIMIT,
+} from '../types/sqlite-database.types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 export class SqliteBadgeClassRepository implements BadgeClassRepository {
@@ -37,6 +42,50 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
   > {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
+  }
+
+  /**
+   * Validates and normalizes pagination parameters
+   */
+  private validatePagination(
+    params?: SqlitePaginationParams
+  ): Required<SqlitePaginationParams> {
+    const limit = params?.limit ?? DEFAULT_PAGINATION.limit;
+    const offset = params?.offset ?? DEFAULT_PAGINATION.offset;
+
+    // Validate limit
+    if (limit <= 0) {
+      throw new Error(
+        `Invalid pagination limit: ${limit}. Must be greater than 0.`
+      );
+    }
+    if (limit > MAX_PAGINATION_LIMIT) {
+      throw new Error(
+        `Pagination limit ${limit} exceeds maximum allowed limit of ${MAX_PAGINATION_LIMIT}.`
+      );
+    }
+
+    // Validate offset
+    if (offset < 0) {
+      throw new Error(
+        `Invalid pagination offset: ${offset}. Must be 0 or greater.`
+      );
+    }
+
+    return { limit, offset };
+  }
+
+  /**
+   * Logs a warning for unbounded queries
+   */
+  private logUnboundedQueryWarning(operation: string): void {
+    logger.warn('Unbounded query detected in BadgeClass repository', {
+      operation,
+      entityType: 'badgeClass',
+      tableName: 'badgeClasses',
+      recommendation:
+        'Consider adding pagination parameters to prevent memory issues with large datasets',
+    });
   }
 
   async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
@@ -76,16 +125,66 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     }
   }
 
-  async findAll(): Promise<BadgeClass[]> {
+  /**
+   * Finds all badge classes with optional pagination
+   * @param pagination Optional pagination parameters. If not provided, uses default pagination to prevent unbounded queries.
+   * @returns Promise resolving to array of BadgeClass entities
+   */
+  async findAll(pagination?: SqlitePaginationParams): Promise<BadgeClass[]> {
     try {
-      // Query database to get all badge classes
+      // Validate and normalize pagination parameters
+      const { limit, offset } = this.validatePagination(pagination);
+
+      // Log warning if no pagination was explicitly provided
+      if (!pagination) {
+        this.logUnboundedQueryWarning('findAll');
+      }
+
+      // Query database with pagination
+      const startTime = Date.now();
+      const result = await this.getDatabase()
+        .select()
+        .from(badgeClasses)
+        .limit(limit)
+        .offset(offset);
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'SELECT All BadgeClasses',
+        undefined,
+        duration,
+        'sqlite'
+      );
+
+      // Convert database records to domain entities
+      return result.map((record) => this.mapper.toDomain(record));
+    } catch (error) {
+      logger.error('Error finding all badge classes in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Finds all badge classes without pagination (for backward compatibility and specific use cases)
+   * @deprecated Use findAll() with pagination parameters instead
+   * @returns Promise resolving to array of all BadgeClass entities
+   */
+  async findAllUnbounded(): Promise<BadgeClass[]> {
+    try {
+      // Log warning for unbounded query
+      this.logUnboundedQueryWarning('findAllUnbounded');
+
+      // Query database without pagination
       const startTime = Date.now();
       const result = await this.getDatabase().select().from(badgeClasses);
       const duration = Date.now() - startTime;
 
       // Log query
       queryLogger.logQuery(
-        'SELECT All BadgeClasses',
+        'SELECT All BadgeClasses (Unbounded)',
         undefined,
         duration,
         'sqlite'

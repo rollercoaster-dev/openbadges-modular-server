@@ -362,6 +362,36 @@ export interface SqliteMonitoringConfig {
 }
 
 /**
+ * Pagination parameters for database queries
+ */
+export interface SqlitePaginationParams {
+  /**
+   * Maximum number of records to return
+   * @default 100
+   */
+  limit?: number;
+
+  /**
+   * Number of records to skip
+   * @default 0
+   */
+  offset?: number;
+}
+
+/**
+ * Default pagination configuration to prevent unbounded queries
+ */
+export const DEFAULT_PAGINATION: Required<SqlitePaginationParams> = {
+  limit: 100,
+  offset: 0,
+} as const;
+
+/**
+ * Maximum allowed limit to prevent excessive memory usage
+ */
+export const MAX_PAGINATION_LIMIT = 1000;
+
+/**
  * Type for Drizzle transactions - uses the actual SQLite transaction type
  * This ensures compatibility with the real Drizzle transaction objects
  */

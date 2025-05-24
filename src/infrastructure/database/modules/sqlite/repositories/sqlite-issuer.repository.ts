@@ -13,6 +13,7 @@ import { SqliteIssuerMapper } from '../mappers/sqlite-issuer.mapper';
 import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
+import { SqlitePaginationParams } from '../types/sqlite-database.types';
 
 export class SqliteIssuerRepository
   extends BaseSqliteRepository
@@ -67,8 +68,43 @@ export class SqliteIssuerRepository
     });
   }
 
-  async findAll(): Promise<Issuer[]> {
+  /**
+   * Finds all issuers with optional pagination
+   * @param pagination Optional pagination parameters. If not provided, uses default pagination to prevent unbounded queries.
+   * @returns Promise resolving to array of Issuer entities
+   */
+  async findAll(pagination?: SqlitePaginationParams): Promise<Issuer[]> {
     const context = this.createOperationContext('SELECT All Issuers');
+
+    // Validate and normalize pagination parameters
+    const { limit, offset } = this.validatePagination(pagination);
+
+    // Log warning if no pagination was explicitly provided
+    if (!pagination) {
+      this.logUnboundedQueryWarning('findAll');
+    }
+
+    const result = await this.executeQuery(context, async () => {
+      const db = this.getDatabase();
+      return db.select().from(issuers).limit(limit).offset(offset);
+    });
+
+    // Convert database records to domain entities
+    return result.map((record) => this.mapper.toDomain(record));
+  }
+
+  /**
+   * Finds all issuers without pagination (for backward compatibility and specific use cases)
+   * @deprecated Use findAll() with pagination parameters instead
+   * @returns Promise resolving to array of all Issuer entities
+   */
+  async findAllUnbounded(): Promise<Issuer[]> {
+    const context = this.createOperationContext(
+      'SELECT All Issuers (Unbounded)'
+    );
+
+    // Log warning for unbounded query
+    this.logUnboundedQueryWarning('findAllUnbounded');
 
     const result = await this.executeQuery(context, async () => {
       const db = this.getDatabase();

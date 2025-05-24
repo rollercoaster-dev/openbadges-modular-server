@@ -12,6 +12,9 @@ import {
   SqliteQueryMetrics,
   DrizzleTransaction,
   SqliteEntityType,
+  SqlitePaginationParams,
+  DEFAULT_PAGINATION,
+  MAX_PAGINATION_LIMIT,
 } from '../types/sqlite-database.types';
 import { Shared } from 'openbadges-types';
 import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
@@ -270,5 +273,52 @@ export abstract class BaseSqliteRepository {
     const entityType = this.getEntityType();
     const baseMessage = `Failed to ${operation} ${entityType}`;
     return details ? `${baseMessage}: ${details}` : baseMessage;
+  }
+
+  /**
+   * Validates and normalizes pagination parameters
+   */
+  protected validatePagination(
+    params?: SqlitePaginationParams
+  ): Required<SqlitePaginationParams> {
+    const limit = params?.limit ?? DEFAULT_PAGINATION.limit;
+    const offset = params?.offset ?? DEFAULT_PAGINATION.offset;
+
+    // Validate limit
+    if (limit <= 0) {
+      throw new Error(
+        `Invalid pagination limit: ${limit}. Must be greater than 0.`
+      );
+    }
+    if (limit > MAX_PAGINATION_LIMIT) {
+      throw new Error(
+        `Pagination limit ${limit} exceeds maximum allowed limit of ${MAX_PAGINATION_LIMIT}.`
+      );
+    }
+
+    // Validate offset
+    if (offset < 0) {
+      throw new Error(
+        `Invalid pagination offset: ${offset}. Must be 0 or greater.`
+      );
+    }
+
+    return { limit, offset };
+  }
+
+  /**
+   * Logs a warning for unbounded queries to help identify potential scalability issues
+   */
+  protected logUnboundedQueryWarning(operation: string): void {
+    logger.warn(
+      `Unbounded query detected in ${this.getEntityType()} repository`,
+      {
+        operation,
+        entityType: this.getEntityType(),
+        tableName: this.getTableName(),
+        recommendation:
+          'Consider adding pagination parameters to prevent memory issues with large datasets',
+      }
+    );
   }
 }

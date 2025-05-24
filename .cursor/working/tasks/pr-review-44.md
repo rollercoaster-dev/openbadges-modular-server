@@ -147,11 +147,20 @@ result.criticalSettingsApplied = result.failedSettings.every(
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository.ts`
 **Lines**: 70-80
 **Severity**: 🔵 **Medium**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: `findAll()` loads entire table into memory without pagination.
 
-**Recommendation**: Add pagination parameters or document the behavior for high-cardinality scenarios.
+**Implemented Fix**:
+- Added `SqlitePaginationParams` interface with configurable limit and offset
+- Created `DEFAULT_PAGINATION` (limit: 100, offset: 0) and `MAX_PAGINATION_LIMIT` (1000) constants
+- Updated `findAll()` methods in SqliteIssuerRepository, SqliteBadgeClassRepository, and SqliteAssertionRepository to support pagination
+- Added pagination validation with proper error messages for invalid parameters
+- Implemented warning logging for unbounded queries to help identify potential scalability issues
+- Provided backward-compatible `findAllUnbounded()` methods marked as deprecated
+- Added comprehensive test coverage for pagination validation logic
+
+**Resolution**: All `findAll()` methods now use pagination by default, preventing memory issues with large datasets while maintaining backward compatibility.
 
 ## Action Items by Priority
 
@@ -166,7 +175,7 @@ result.criticalSettingsApplied = result.failedSettings.every(
 ### Medium Priority
 - [x] Create centralized entity type definitions
 - [x] Add production logging for PRAGMA partial failures
-- [ ] Add pagination to findAll methods or document limitations
+- [x] Add pagination to findAll methods or document limitations
 
 ### Low Priority
 - [ ] Consider refactoring static-only class to functions
@@ -177,9 +186,9 @@ result.criticalSettingsApplied = result.failedSettings.every(
 ## Progress Tracking
 
 **Total Issues**: 13
-**Addressed**: 5
-**Remaining**: 8
-**Next Focus**: Scalability improvements (Medium priority)
+**Addressed**: 6
+**Remaining**: 7
+**Next Focus**: Code quality improvements (Low priority)
 
 **Estimated Effort**:
 - Critical: 4-6 hours

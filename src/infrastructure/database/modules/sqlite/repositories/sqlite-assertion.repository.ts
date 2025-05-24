@@ -13,7 +13,11 @@ import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
 import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
-
+import {
+  SqlitePaginationParams,
+  DEFAULT_PAGINATION,
+  MAX_PAGINATION_LIMIT,
+} from '../types/sqlite-database.types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 export class SqliteAssertionRepository implements AssertionRepository {
@@ -36,6 +40,50 @@ export class SqliteAssertionRepository implements AssertionRepository {
   private getDatabase() {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
+  }
+
+  /**
+   * Validates and normalizes pagination parameters
+   */
+  private validatePagination(
+    params?: SqlitePaginationParams
+  ): Required<SqlitePaginationParams> {
+    const limit = params?.limit ?? DEFAULT_PAGINATION.limit;
+    const offset = params?.offset ?? DEFAULT_PAGINATION.offset;
+
+    // Validate limit
+    if (limit <= 0) {
+      throw new Error(
+        `Invalid pagination limit: ${limit}. Must be greater than 0.`
+      );
+    }
+    if (limit > MAX_PAGINATION_LIMIT) {
+      throw new Error(
+        `Pagination limit ${limit} exceeds maximum allowed limit of ${MAX_PAGINATION_LIMIT}.`
+      );
+    }
+
+    // Validate offset
+    if (offset < 0) {
+      throw new Error(
+        `Invalid pagination offset: ${offset}. Must be 0 or greater.`
+      );
+    }
+
+    return { limit, offset };
+  }
+
+  /**
+   * Logs a warning for unbounded queries
+   */
+  private logUnboundedQueryWarning(operation: string): void {
+    logger.warn('Unbounded query detected in Assertion repository', {
+      operation,
+      entityType: 'assertion',
+      tableName: 'assertions',
+      recommendation:
+        'Consider adding pagination parameters to prevent memory issues with large datasets',
+    });
   }
 
   async create(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
@@ -87,16 +135,66 @@ export class SqliteAssertionRepository implements AssertionRepository {
     }
   }
 
-  async findAll(): Promise<Assertion[]> {
+  /**
+   * Finds all assertions with optional pagination
+   * @param pagination Optional pagination parameters. If not provided, uses default pagination to prevent unbounded queries.
+   * @returns Promise resolving to array of Assertion entities
+   */
+  async findAll(pagination?: SqlitePaginationParams): Promise<Assertion[]> {
     try {
-      // Query database to get all assertions
+      // Validate and normalize pagination parameters
+      const { limit, offset } = this.validatePagination(pagination);
+
+      // Log warning if no pagination was explicitly provided
+      if (!pagination) {
+        this.logUnboundedQueryWarning('findAll');
+      }
+
+      // Query database with pagination
+      const startTime = Date.now();
+      const result = await this.getDatabase()
+        .select()
+        .from(assertions)
+        .limit(limit)
+        .offset(offset);
+      const duration = Date.now() - startTime;
+
+      // Log query
+      queryLogger.logQuery(
+        'SELECT All Assertions',
+        undefined,
+        duration,
+        'sqlite'
+      );
+
+      // Convert database records to domain entities
+      return result.map((record) => this.mapper.toDomain(record));
+    } catch (error) {
+      logger.error('Error finding all assertions in SQLite repository', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Finds all assertions without pagination (for backward compatibility and specific use cases)
+   * @deprecated Use findAll() with pagination parameters instead
+   * @returns Promise resolving to array of all Assertion entities
+   */
+  async findAllUnbounded(): Promise<Assertion[]> {
+    try {
+      // Log warning for unbounded query
+      this.logUnboundedQueryWarning('findAllUnbounded');
+
+      // Query database without pagination
       const startTime = Date.now();
       const result = await this.getDatabase().select().from(assertions);
       const duration = Date.now() - startTime;
 
       // Log query
       queryLogger.logQuery(
-        'SELECT All Assertions',
+        'SELECT All Assertions (Unbounded)',
         undefined,
         duration,
         'sqlite'
