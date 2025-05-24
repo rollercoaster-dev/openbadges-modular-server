@@ -9,9 +9,9 @@ import { logger } from '@utils/logging/logger.service';
 
 describe('SqlitePragmaManager Production Logging', () => {
   let originalNodeEnv: string | undefined;
-  let loggerInfoSpy: any;
-  let loggerWarnSpy: any;
-  let loggerErrorSpy: any;
+  let loggerInfoSpy: ReturnType<typeof spyOn>;
+  let loggerWarnSpy: ReturnType<typeof spyOn>;
+  let loggerErrorSpy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
     // Store original NODE_ENV
@@ -48,7 +48,7 @@ describe('SqlitePragmaManager Production Logging', () => {
       sqliteCacheSize: 10000,
     };
 
-    const result = SqlitePragmaManager.applyPragmas(client, config);
+    SqlitePragmaManager.applyPragmas(client, config);
 
     // Should log detailed info in development
     expect(loggerInfoSpy).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe('SqlitePragmaManager Production Logging', () => {
       sqliteCacheSize: 10000,
     };
 
-    const result = SqlitePragmaManager.applyPragmas(client, config);
+    SqlitePragmaManager.applyPragmas(client, config);
 
     // Should NOT log detailed info in production when everything succeeds
     expect(loggerInfoSpy).not.toHaveBeenCalledWith(
@@ -111,7 +111,7 @@ describe('SqlitePragmaManager Production Logging', () => {
       sqliteCacheSize: 10000,
     };
 
-    const result = SqlitePragmaManager.applyPragmas(client, config);
+    SqlitePragmaManager.applyPragmas(client, config);
 
     // Should log warning for non-critical failure with production-friendly format
     expect(loggerWarnSpy).toHaveBeenCalledWith(

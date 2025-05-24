@@ -19,7 +19,7 @@ describe('SQLite Entity Types', () => {
       'apiKey',
       'platformUser',
       'userAssertion',
-    ];
+    ] as const;
 
     expect(SQLITE_ENTITY_TYPES).toEqual(expectedTypes);
   });

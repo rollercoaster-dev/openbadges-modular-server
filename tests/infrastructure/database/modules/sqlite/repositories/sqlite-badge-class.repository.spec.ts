@@ -8,6 +8,7 @@ import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { toIRI } from '@utils/types/iri-utils';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Re-import SensitiveValue
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
@@ -143,7 +144,9 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     expect(updateLog.query).toBe('UPDATE BadgeClass');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeUndefined();
+    expect(updateLog.params).toBeArrayOfSize(2);
+    expect(updateLog.params?.[0]).toBe(testBadgeData.id);
+    expect(updateLog.params?.[1]).toBeInstanceOf(SensitiveValue);
   });
 
   it('should log query on delete', async () => {

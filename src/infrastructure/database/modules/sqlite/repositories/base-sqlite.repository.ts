@@ -223,14 +223,15 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeUpdate<T>(
     context: SqliteOperationContext,
-    update: (db: DrizzleDB) => Promise<T[]>
+    update: (db: DrizzleDB) => Promise<T[]>,
+    queryParams?: unknown[]
   ): Promise<T | null> {
     try {
       const db = this.getDatabase();
       const result = await update(db);
 
       // Log update metrics
-      this.logQueryMetrics(context, result.length);
+      this.logQueryMetrics(context, result.length, queryParams);
 
       // Return null if no rows were updated, otherwise return the updated record
       return result.length > 0 ? result[0] : null;

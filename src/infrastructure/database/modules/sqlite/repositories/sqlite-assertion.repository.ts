@@ -14,6 +14,7 @@ import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Correctly placed import
 
 export class SqliteAssertionRepository
   extends BaseSqliteRepository
@@ -151,7 +152,7 @@ export class SqliteAssertionRepository
             sql`json_extract(${assertions.recipient}, '$.identity') = ${recipientId}`
           );
       },
-      [recipientId]
+      [new SensitiveValue(recipientId)] // Wrap recipientId in SensitiveValue for logging
     );
 
     return result.map((record: typeof assertions.$inferSelect) =>
@@ -165,33 +166,37 @@ export class SqliteAssertionRepository
   ): Promise<Assertion | null> {
     const context = this.createOperationContext('UPDATE Assertion', id);
 
-    return this.executeUpdate(context, async (db) => {
-      const existingAssertion = await this.findById(id);
-      if (!existingAssertion) {
-        return []; // Return empty array if not found, as executeUpdate expects T[]
-      }
+    const existingAssertion = await this.findById(id);
+    if (!existingAssertion) {
+      return null;
+    }
 
-      const mergedAssertion = Assertion.create({
-        ...existingAssertion,
-        ...assertion,
-      } as Partial<Assertion>);
+    const mergedAssertion = Assertion.create({
+      ...existingAssertion,
+      ...assertion,
+    } as Partial<Assertion>);
 
-      const {
-        id: _ignore,
-        createdAt: _ca,
-        ...updatable
-      } = this.mapper.toPersistence(mergedAssertion);
+    const {
+      id: _ignore,
+      createdAt: _ca,
+      ...updatable
+    } = this.mapper.toPersistence(mergedAssertion);
 
-      const result = await db
-        .update(assertions)
-        .set(updatable)
-        .where(eq(assertions.id, id as string))
-        .returning();
+    const result = await this.executeUpdate(
+      context,
+      async (db) => {
+        return db
+          .update(assertions)
+          .set(updatable)
+          .where(eq(assertions.id, id as string))
+          .returning();
+      },
+      [id, new SensitiveValue(updatable)] // Pass id and updatable data for logging
+    );
 
-      return result.map((record: typeof assertions.$inferSelect) =>
-        this.mapper.toDomain(record)
-      );
-    });
+    return result
+      ? this.mapper.toDomain(result as typeof assertions.$inferSelect)
+      : null;
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {

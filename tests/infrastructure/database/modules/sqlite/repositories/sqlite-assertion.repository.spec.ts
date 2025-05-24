@@ -231,7 +231,9 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(updateLog.query).toBe('UPDATE Assertion');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeUndefined();
+    expect(updateLog.params).toBeArrayOfSize(2);
+    expect(updateLog.params?.[0]).toBe(createdAssertion.id);
+    expect(updateLog.params?.[1]).toBeInstanceOf(SensitiveValue);
   });
 
   it('should log query on delete', async () => {
@@ -259,14 +261,17 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     await repository.revoke(createdAssertion.id, reason);
 
     const logs = queryLogger.getLogs();
-    expect(logs.length).toBe(3); // findById (revoke) -> findById (update) -> update
+    expect(logs.length).toBe(4); // findById (revoke) -> findById (update) -> update -> findById (update's internal findById)
 
     // Check logs (simplified check, focus on query names)
-    expect(logs[0].query).toBe('SELECT Assertion by ID');
-    expect(logs[1].query).toBe('SELECT Assertion by ID');
-    expect(logs[2].query).toBe('UPDATE Assertion');
-    expect(logs[2].params).toBeUndefined();
-    expect(logs[2].database).toBe('sqlite');
+    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke
+    expect(logs[1].query).toBe('REVOKE Assertion'); // From executeTransaction in revoke
+    expect(logs[2].query).toBe('SELECT Assertion by ID'); // From findById in update
+    expect(logs[3].query).toBe('UPDATE Assertion'); // From executeUpdate in update
+    expect(logs[3].params).toBeArrayOfSize(2); // Update operation has 2 params
+    expect(logs[3].params?.[0]).toBe(createdAssertion.id);
+    expect(logs[3].params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(logs[3].database).toBe('sqlite');
   });
 
   it('should log query on verify (findById)', async () => {
