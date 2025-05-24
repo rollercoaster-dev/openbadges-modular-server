@@ -5,21 +5,33 @@
  * and the Data Mapper pattern with enhanced type safety.
  */
 
-import { eq, InferInsertModel } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import type { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { badgeClasses } from '../schema';
 import { SqliteBadgeClassMapper } from '../mappers/sqlite-badge-class.mapper';
 import { Shared } from 'openbadges-types';
-import { logger, queryLogger } from '@utils/logging/logger.service';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import { BaseSqliteRepository } from './base-sqlite.repository';
+import { SqlitePaginationParams } from '../types/sqlite-database.types';
 
-export class SqliteBadgeClassRepository implements BadgeClassRepository {
+export class SqliteBadgeClassRepository
+  extends BaseSqliteRepository
+  implements BadgeClassRepository
+{
   private mapper: SqliteBadgeClassMapper;
 
-  constructor(private readonly connectionManager: SqliteConnectionManager) {
+  constructor(connectionManager: SqliteConnectionManager) {
+    super(connectionManager);
     this.mapper = new SqliteBadgeClassMapper();
+  }
+
+  protected getEntityType(): 'badgeClass' {
+    return 'badgeClass';
+  }
+
+  protected getTableName(): string {
+    return 'badgeClasses';
   }
 
   /**
@@ -29,218 +41,164 @@ export class SqliteBadgeClassRepository implements BadgeClassRepository {
     return this.mapper;
   }
 
-  /**
-   * Gets the database instance with connection validation
-   */
-  private getDatabase(): ReturnType<
-    typeof import('drizzle-orm/bun-sqlite').drizzle
-  > {
-    this.connectionManager.ensureConnected();
-    return this.connectionManager.getDatabase();
-  }
-
   async create(badgeClass: Partial<BadgeClass>): Promise<BadgeClass> {
-    try {
-      // Instantiate entity first to ensure defaults
-      const newEntity = BadgeClass.create(badgeClass);
+    const context = this.createOperationContext('INSERT BadgeClass');
 
-      // Convert domain entity to database record, indicating it's new
-      const record: InferInsertModel<typeof badgeClasses> =
-        this.mapper.toPersistence(newEntity, true);
+    return this.executeTransaction(context, async (tx) => {
+      // Create a full badge class entity with generated ID for mapping
+      const badgeClassWithId = BadgeClass.create(badgeClass);
 
-      // Insert into database
-      const startTime = Date.now();
-      const result = await this.getDatabase()
+      // Convert domain entity to database record
+      const record = this.mapper.toPersistence(badgeClassWithId, true);
+
+      // Insert into database within the transaction
+      const insertResult = await tx
         .insert(badgeClasses)
         .values(record)
         .returning();
-      const duration = Date.now() - startTime;
 
-      // Log query
-      queryLogger.logQuery(
-        'INSERT BadgeClass',
-        [SensitiveValue.from(record)],
-        duration,
-        'sqlite'
-      );
-
-      // Convert database record back to domain entity
-      return this.mapper.toDomain(result[0]);
-    } catch (error) {
-      logger.error('Error creating badge class in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        badgeClass,
-        // Log sensitive data separately if needed for debugging
-      });
-      throw error;
-    }
+      return this.mapper.toDomain(insertResult[0]);
+    });
   }
 
-  async findAll(): Promise<BadgeClass[]> {
-    try {
-      // Query database to get all badge classes
-      const startTime = Date.now();
-      const result = await this.getDatabase().select().from(badgeClasses);
-      const duration = Date.now() - startTime;
+  /**
+   * Finds all badge classes with optional pagination
+   * @param pagination Optional pagination parameters. If not provided, uses default pagination to prevent unbounded queries.
+   * @returns Promise resolving to array of BadgeClass entities
+   */
+  async findAll(pagination?: SqlitePaginationParams): Promise<BadgeClass[]> {
+    const context = this.createOperationContext('SELECT All BadgeClasses');
 
-      // Log query
-      queryLogger.logQuery(
-        'SELECT All BadgeClasses',
-        undefined,
-        duration,
-        'sqlite'
-      );
+    const result = await this.executeQuery(context, async (db) => {
+      const { limit, offset } = this.validatePagination(pagination);
+      return db.select().from(badgeClasses).limit(limit).offset(offset);
+    });
 
-      // Convert database records to domain entities
-      return result.map((record) => this.mapper.toDomain(record));
-    } catch (error) {
-      logger.error('Error finding all badge classes in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    return result.map((record: typeof badgeClasses.$inferSelect) =>
+      this.mapper.toDomain(record)
+    );
+  }
+
+  /**
+   * Finds all badge classes without pagination (for backward compatibility and specific use cases)
+   * @deprecated Use findAll() with pagination parameters instead
+   * @returns Promise resolving to array of all BadgeClass entities
+   */
+  async findAllUnbounded(): Promise<BadgeClass[]> {
+    const context = this.createOperationContext(
+      'SELECT All BadgeClasses (Unbounded)'
+    );
+
+    const result = await this.executeQuery(context, async (db) => {
+      return db.select().from(badgeClasses);
+    });
+
+    return result.map((record: typeof badgeClasses.$inferSelect) =>
+      this.mapper.toDomain(record)
+    );
   }
 
   async findById(id: string): Promise<BadgeClass | null> {
-    try {
-      const startTime = Date.now();
-      // Query database
-      const result = await this.getDatabase()
-        .select()
-        .from(badgeClasses)
-        .where(eq(badgeClasses.id, id));
-      const duration = Date.now() - startTime;
+    this.validateEntityId(id as Shared.IRI, 'find badge class by ID');
+    const context = this.createOperationContext(
+      'SELECT BadgeClass by ID',
+      id as Shared.IRI
+    );
 
-      // Log query (assuming id is not sensitive)
-      queryLogger.logQuery('SELECT BadgeClass by ID', [id], duration, 'sqlite');
+    const result = await this.executeSingleQuery(
+      context,
+      async (db) => {
+        return db.select().from(badgeClasses).where(eq(badgeClasses.id, id));
+      },
+      [id] // Forward ID parameter to logger
+    );
 
-      // Return null if not found
-      if (!result.length) {
-        return null;
-      }
-
-      // Convert database record to domain entity
-      return this.mapper.toDomain(result[0]);
-    } catch (error) {
-      logger.error('Error finding badge class by ID in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-      });
-      throw error;
-    }
+    return result
+      ? this.mapper.toDomain(result as typeof badgeClasses.$inferSelect)
+      : null;
   }
 
   async findByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
-    try {
-      const startTime = Date.now();
-      // Query database
-      const result = await this.getDatabase()
-        .select()
-        .from(badgeClasses)
-        .where(eq(badgeClasses.issuerId, issuerId as string));
-      const duration = Date.now() - startTime;
+    this.validateEntityId(issuerId, 'find badge classes by issuer');
+    const context = this.createOperationContext(
+      'SELECT BadgeClasses by Issuer',
+      issuerId
+    );
 
-      // Log query (assuming issuerId is not sensitive)
-      queryLogger.logQuery(
-        'SELECT BadgeClasses by Issuer',
-        [issuerId],
-        duration,
-        'sqlite'
-      );
+    const result = await this.executeQuery(
+      context,
+      async (db) => {
+        return db
+          .select()
+          .from(badgeClasses)
+          .where(eq(badgeClasses.issuerId, issuerId as string));
+      },
+      [issuerId] // Forward issuer ID parameter to logger
+    );
 
-      // Convert database records to domain entities
-      return result.map((record) => this.mapper.toDomain(record));
-    } catch (error) {
-      logger.error(
-        'Error finding badge classes by issuer in SQLite repository',
-        {
-          error: error instanceof Error ? error.message : String(error),
-          issuerId,
-        }
-      );
-      throw error;
-    }
+    return result.map((record: typeof badgeClasses.$inferSelect) =>
+      this.mapper.toDomain(record)
+    );
   }
 
   async update(
     id: string,
     badgeClass: Partial<BadgeClass>
   ): Promise<BadgeClass | null> {
-    try {
-      // Check if badge class exists
-      const existingBadgeClass = await this.findById(id);
-      if (!existingBadgeClass) {
+    const context = this.createOperationContext(
+      'UPDATE BadgeClass',
+      id as Shared.IRI
+    );
+
+    return this.executeTransaction(context, async (tx) => {
+      // Perform SELECT and UPDATE within the same transaction to prevent TOCTOU race condition
+      const existing = await tx
+        .select()
+        .from(badgeClasses)
+        .where(eq(badgeClasses.id, id))
+        .limit(1);
+
+      if (existing.length === 0) {
         return null;
       }
 
-      // Create a merged entity using the internal representation from toPartial()
-      const partialExistingData = existingBadgeClass.toPartial();
-      const updateData = badgeClass; // Already Partial<BadgeClass>
+      // Convert database record to domain entity for merging
+      const existingBadgeClass = this.mapper.toDomain(existing[0]);
 
-      // Simple merge as both are Partial<BadgeClass>
+      const partialExistingData = existingBadgeClass.toPartial();
       const mergedData: Partial<BadgeClass> = {
         ...partialExistingData,
-        ...updateData,
+        ...badgeClass,
       };
 
       const mergedBadgeClass = BadgeClass.create(mergedData);
 
-      // Convert to database record
-      const record = { ...this.mapper.toPersistence(mergedBadgeClass) };
-      // Prevent overwriting immutable columns
-      delete (record as Partial<typeof record>).id;
-      delete (record as Partial<typeof record>).createdAt;
+      // Use destructuring instead of delete operator for better performance
+      const {
+        id: _ignore,
+        createdAt: _ca,
+        ...updatable
+      } = this.mapper.toPersistence(mergedBadgeClass);
 
-      // Update in database
-      const startTime = Date.now();
-      const result = await this.getDatabase()
+      const updated = await tx
         .update(badgeClasses)
-        .set(record)
+        .set(updatable)
         .where(eq(badgeClasses.id, id))
         .returning();
-      const duration = Date.now() - startTime;
 
-      // Log query
-      queryLogger.logQuery(
-        'UPDATE BadgeClass',
-        [id, SensitiveValue.from(record)],
-        duration,
-        'sqlite'
-      );
-
-      // Convert database record back to domain entity
-      return this.mapper.toDomain(result[0]);
-    } catch (error) {
-      logger.error('Error updating badge class in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-        badgeClass, // Log sensitive data separately if needed for debugging
-      });
-      throw error;
-    }
+      return this.mapper.toDomain(updated[0]);
+    });
   }
 
   async delete(id: string): Promise<boolean> {
-    try {
-      // Delete from database
-      const startTime = Date.now();
-      const result = await this.getDatabase()
-        .delete(badgeClasses)
-        .where(eq(badgeClasses.id, id))
-        .returning();
-      const duration = Date.now() - startTime;
+    this.validateEntityId(id as Shared.IRI, 'delete badge class');
+    const context = this.createOperationContext(
+      'DELETE BadgeClass',
+      id as Shared.IRI
+    );
 
-      // Log query (assuming id is not sensitive)
-      queryLogger.logQuery('DELETE BadgeClass', [id], duration, 'sqlite');
-
-      // Return true if something was deleted
-      return result.length > 0;
-    } catch (error) {
-      logger.error('Error deleting badge class in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-      });
-      throw error;
-    }
+    return this.executeDelete(context, async (db) => {
+      return db.delete(badgeClasses).where(eq(badgeClasses.id, id)).returning();
+    });
   }
 }

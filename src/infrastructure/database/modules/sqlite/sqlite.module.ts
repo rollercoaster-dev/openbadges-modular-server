@@ -5,6 +5,7 @@ import { SqliteDatabase } from './sqlite.database';
 import { logger } from '../../../../utils/logging/logger.service';
 import { resolve } from 'path';
 import { sanitizeObject } from '../../../../utils/security/sanitize';
+import { SqlitePragmaManager } from './utils/sqlite-pragma.manager';
 // import { sql } from 'drizzle-orm';
 
 /**
@@ -96,11 +97,8 @@ export class SqliteModule implements DatabaseModuleInterface {
   /**
    * Applies performance optimizations to SQLite database
    *
-   * IMPORTANT: This method applies initial connection optimizations,
-   * while the connection manager handles ongoing PRAGMA settings.
-   *
-   * Some settings are applied here AND passed to the connection manager
-   * to ensure they're consistently applied even after connection resets.
+   * Uses the centralized SqlitePragmaManager for consistent PRAGMA application.
+   * Also creates custom indexes for better query performance.
    *
    * @param client The SQLite database client
    * @param config Configuration options
@@ -110,174 +108,48 @@ export class SqliteModule implements DatabaseModuleInterface {
     config: Partial<SqliteModuleConfig>
   ): void {
     try {
-      // Track settings for better error reporting
-      const appliedSettings: Record<string, unknown> = {};
-      const failedSettings: Array<{ setting: string; error: string }> = [];
+      // Extract only PRAGMA-related properties for the PRAGMA manager
+      const pragmaConfig = {
+        sqliteBusyTimeout: Math.max(100, config.sqliteBusyTimeout ?? 5000),
+        sqliteSyncMode: config.sqliteSyncMode ?? ('NORMAL' as const),
+        sqliteCacheSize: Math.max(1000, config.sqliteCacheSize ?? 10000),
+      };
 
-      // Set journal mode to WAL for better concurrency (CRITICAL)
+      // Use centralized PRAGMA manager for consistent application
       try {
-        client.exec('PRAGMA journal_mode = WAL;');
-        appliedSettings.journalMode = 'WAL';
-      } catch (error) {
-        const errorMsg = `Failed to set journal_mode to WAL: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.error(errorMsg, {
-          setting: 'journal_mode',
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'journal_mode', error: errorMsg });
-        // Allow initialization to continue despite this error, as connection manager
-        // will apply critical settings again
-      }
+        const result = SqlitePragmaManager.applyPragmas(client, pragmaConfig);
 
-      // Set busy timeout (CRITICAL - also passed to connection manager)
-      // Ensure minimum timeout of 100ms to prevent immediate failures
-      const busyTimeout = Math.max(
-        100,
-        config.sqliteBusyTimeout && config.sqliteBusyTimeout > 0
-          ? config.sqliteBusyTimeout
-          : 5000
-      );
-      try {
-        client.exec(`PRAGMA busy_timeout = ${busyTimeout};`);
-        appliedSettings.busyTimeout = busyTimeout;
-      } catch (error) {
-        const errorMsg = `Failed to set busy_timeout: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.error(errorMsg, {
-          setting: 'busy_timeout',
-          busyTimeout,
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'busy_timeout', error: errorMsg });
-        // Allow initialization to continue as connection manager will apply this critical setting again
-      }
-
-      // Set synchronous mode (CRITICAL - also passed to connection manager)
-      // FULL is safer but slower, OFF is fastest but risks corruption on power loss
-      const allowedSync = ['OFF', 'NORMAL', 'FULL'] as const;
-      const syncModeRaw = (
-        config.sqliteSyncMode ?? 'NORMAL'
-      ).toUpperCase() as (typeof allowedSync)[number];
-      const syncMode = allowedSync.includes(syncModeRaw)
-        ? syncModeRaw
-        : 'NORMAL';
-      try {
-        client.exec(`PRAGMA synchronous = ${syncMode};`);
-        appliedSettings.syncMode = syncMode;
-      } catch (error) {
-        const errorMsg = `Failed to set synchronous mode: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.error(errorMsg, {
-          setting: 'synchronous',
-          syncMode,
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'synchronous', error: errorMsg });
-        // Allow initialization to continue as connection manager will apply this critical setting again
-      }
-
-      // Increase cache size (OPTIONAL - also passed to connection manager)
-      // Ensure minimum cache size of 1000 pages to prevent performance degradation
-      const cacheSize = Math.max(
-        1000,
-        config.sqliteCacheSize && config.sqliteCacheSize > 0
-          ? config.sqliteCacheSize
-          : 10000
-      );
-      try {
-        client.exec(`PRAGMA cache_size = ${cacheSize};`);
-        appliedSettings.cacheSize = cacheSize;
-      } catch (error) {
-        const errorMsg = `Failed to set cache_size: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.warn(errorMsg, {
-          setting: 'cache_size',
-          cacheSize,
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'cache_size', error: errorMsg });
-        // Non-critical - continue initialization
-      }
-
-      // Enable foreign keys (they're disabled by default in SQLite)
-      try {
-        client.exec('PRAGMA foreign_keys = ON;');
-        appliedSettings.foreignKeys = 'ON';
-      } catch (error) {
-        const errorMsg = `Failed to enable foreign_keys: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.warn(errorMsg, {
-          setting: 'foreign_keys',
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'foreign_keys', error: errorMsg });
-        // Non-critical - continue initialization
-      }
-
-      // Set temp store to memory for better performance (OPTIONAL)
-      try {
-        client.exec('PRAGMA temp_store = MEMORY;');
-        appliedSettings.tempStore = 'MEMORY';
-      } catch (error) {
-        const errorMsg = `Failed to set temp_store to MEMORY: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.warn(errorMsg, {
-          setting: 'temp_store',
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'temp_store', error: errorMsg });
-        // Non-critical - continue initialization
-      }
-
-      // Create custom indexes for JSON fields (if not exists)
-      try {
-        this.createCustomIndexes(client);
-        appliedSettings.customIndexes = true;
-      } catch (error) {
-        const errorMsg = `Failed to create custom indexes: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.warn(errorMsg, {
-          setting: 'customIndexes',
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        failedSettings.push({ setting: 'customIndexes', error: errorMsg });
-        // Non-critical - continue initialization
-      }
-
-      // Log optimizations in development mode
-      if (process.env.NODE_ENV !== 'production') {
-        logger.info('SQLite initial optimizations applied:', appliedSettings);
-
-        if (failedSettings.length > 0) {
-          logger.warn(
-            `${failedSettings.length} SQLite settings failed to apply during initialization`,
+        // Log successful application in development mode only
+        // (Failures are already logged by the PRAGMA manager in both dev and production)
+        if (process.env.NODE_ENV !== 'production') {
+          logger.info(
+            'SQLite initial optimizations applied via PRAGMA manager',
             {
-              failedSettings,
+              appliedSettings: result.appliedSettings,
+              criticalSettingsApplied: result.criticalSettingsApplied,
+              failedSettingsCount: result.failedSettings.length,
             }
           );
         }
+      } catch (error) {
+        // Log error but allow initialization to continue
+        // The connection manager will apply critical settings again
+        logger.warn(
+          'Some SQLite PRAGMA settings failed during initial optimization',
+          {
+            error: error instanceof Error ? error.message : String(error),
+            note: 'Connection manager will retry critical settings',
+          }
+        );
+      }
+
+      // Note: Custom indexes are NOT created during initial optimization
+      // They should be created after migrations using createIndexesAfterMigrations()
+      // This prevents silent no-ops when migrations haven't run yet
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info(
+          'SQLite initial optimizations complete. Custom indexes should be created after migrations.'
+        );
       }
     } catch (error) {
       // Log unexpected errors but allow initialization to continue
@@ -289,6 +161,15 @@ export class SqliteModule implements DatabaseModuleInterface {
         }),
       });
     }
+  }
+
+  /**
+   * Creates custom indexes after migrations have run
+   * This method can be called externally to ensure indexes are created after table creation
+   * @param client The SQLite database client
+   */
+  createIndexesAfterMigrations(client: Database): void {
+    this.createCustomIndexes(client);
   }
 
   /**

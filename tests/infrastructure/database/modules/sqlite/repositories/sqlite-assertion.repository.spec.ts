@@ -12,12 +12,12 @@ import { SqliteAssertionRepository } from '@infrastructure/database/modules/sqli
 import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { Assertion } from '@domains/assertion/assertion.entity';
 import { queryLogger } from '@utils/logging/logger.service';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Import SensitiveValue
-import { Shared, OB2 } from 'openbadges-types'; // Import OB2
+import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { Shared, OB2 } from 'openbadges-types';
 import { createId } from '@paralleldrive/cuid2';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { assertions } from '@infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
-import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
+import { assertions } from '@infrastructure/database/modules/sqlite/schema';
+import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
@@ -149,9 +149,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(log.query).toBe('INSERT Assertion');
     expect(log.database).toBe('sqlite');
     expect(log.duration).toBeGreaterThanOrEqual(0);
-    expect(log.params).toBeArrayOfSize(1);
-    // Check that the parameter is an instance of SensitiveValue
-    expect(log.params?.[0]).toBeInstanceOf(SensitiveValue);
+    expect(log.params).toBeUndefined();
   });
 
   it('should log query on findAll', async () => {
@@ -196,7 +194,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     queryLogger.clearLogs(); // Clear logs from setup
     // Type assertion needed as Assertion['recipient'] might be a union
     const recipientId = (assertionData.recipient as OB2.IdentityObject)
-      .identity;
+      .identity as Shared.IRI;
 
     await repository.findByRecipient(recipientId);
 
@@ -212,7 +210,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(log.params?.[0]).toBeInstanceOf(SensitiveValue);
   });
 
-  it('should log queries on update (findById + update)', async () => {
+  it('should log queries on update (transaction-based)', async () => {
     const createdAssertion = await repository.create(createTestAssertionData());
     queryLogger.clearLogs(); // Clear logs from setup
 
@@ -220,23 +218,14 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     await repository.update(createdAssertion.id, updateData);
 
     const logs = queryLogger.getLogs();
-    expect(logs.length).toBe(2);
+    expect(logs.length).toBe(1); // Now wrapped in a single transaction
 
-    // Check findById log
-    const findLog = logs[0];
-    expect(findLog.query).toBe('SELECT Assertion by ID');
-    expect(findLog.params).toEqual([createdAssertion.id]);
-    expect(findLog.database).toBe('sqlite');
-
-    // Check update log
-    const updateLog = logs[1];
+    // Check transaction log
+    const updateLog = logs[0];
     expect(updateLog.query).toBe('UPDATE Assertion');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeArrayOfSize(2);
-    expect(updateLog.params?.[0]).toBe(createdAssertion.id);
-    // Check that the parameter is an instance of SensitiveValue
-    expect(updateLog.params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(updateLog.params).toEqual([createdAssertion.id]);
   });
 
   it('should log query on delete', async () => {
@@ -256,7 +245,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
   });
 
   // Add tests for revoke and verify similarly, checking logs for underlying operations
-  it('should log queries on revoke (findById * 2 + update)', async () => {
+  it('should log queries on revoke (transaction-based)', async () => {
     const createdAssertion = await repository.create(createTestAssertionData());
     queryLogger.clearLogs(); // Clear logs from setup
 
@@ -264,15 +253,23 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     await repository.revoke(createdAssertion.id, reason);
 
     const logs = queryLogger.getLogs();
-    expect(logs.length).toBe(3); // findById (revoke) -> findById (update) -> update
+    expect(logs.length).toBe(3); // findById (revoke) + update (transaction) + revoke (transaction)
 
     // Check logs (simplified check, focus on query names)
-    expect(logs[0].query).toBe('SELECT Assertion by ID');
-    expect(logs[1].query).toBe('SELECT Assertion by ID');
-    expect(logs[2].query).toBe('UPDATE Assertion');
-    expect(logs[2].params?.[0]).toBe(createdAssertion.id);
-    // Check that the parameter is an instance of SensitiveValue
-    expect(logs[2].params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke
+    expect(logs[1].query).toBe('UPDATE Assertion'); // From update method (transaction-based)
+    expect(logs[2].query).toBe('REVOKE Assertion'); // From revoke transaction
+
+    // Verify parameters for the initial findById
+    expect(logs[0].params).toEqual([createdAssertion.id]);
+    expect(logs[0].database).toBe('sqlite');
+
+    // Verify parameters for the UPDATE operation
+    expect(logs[1].params).toEqual([createdAssertion.id]);
+    expect(logs[1].database).toBe('sqlite');
+
+    // Verify parameters for the REVOKE operation
+    expect(logs[2].params).toEqual([createdAssertion.id]);
     expect(logs[2].database).toBe('sqlite');
   });
 

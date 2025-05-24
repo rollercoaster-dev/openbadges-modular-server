@@ -12,6 +12,9 @@ import { DatabaseInterface } from '@infrastructure/database/interfaces/database.
 import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { SqliteRepositoryCoordinator } from '../repositories/sqlite-repository.coordinator';
+import { SqliteIssuerRepository } from '../repositories/sqlite-issuer.repository';
+import { SqliteBadgeClassRepository } from '../repositories/sqlite-badge-class.repository';
+import { SqliteAssertionRepository } from '../repositories/sqlite-assertion.repository';
 import { logger } from '@utils/logging/logger.service';
 import {
   SqliteOperationContext,
@@ -23,11 +26,21 @@ import {
  */
 export class SqliteDatabaseService implements DatabaseInterface {
   private readonly repositoryCoordinator: SqliteRepositoryCoordinator;
+  // Direct repository access for simple CRUD operations
+  private readonly issuerRepository: SqliteIssuerRepository;
+  private readonly badgeClassRepository: SqliteBadgeClassRepository;
+  private readonly assertionRepository: SqliteAssertionRepository;
 
   constructor(private readonly connectionManager: SqliteConnectionManager) {
     this.repositoryCoordinator = new SqliteRepositoryCoordinator(
       connectionManager
     );
+    // Initialize repositories directly for simple operations
+    this.issuerRepository = new SqliteIssuerRepository(connectionManager);
+    this.badgeClassRepository = new SqliteBadgeClassRepository(
+      connectionManager
+    );
+    this.assertionRepository = new SqliteAssertionRepository(connectionManager);
   }
 
   /**
@@ -44,6 +57,19 @@ export class SqliteDatabaseService implements DatabaseInterface {
       entityId,
       startTime: Date.now(),
     };
+  }
+
+  /**
+   * Conditionally logs debug messages based on environment
+   * Only logs in development mode to reduce production noise
+   */
+  private logDebugConditional(
+    message: string,
+    context: Record<string, unknown>
+  ): void {
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(message, context);
+    }
   }
 
   // Connection management methods
@@ -64,10 +90,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
     const context = this.createOperationContext('CREATE Issuer', 'issuer');
 
     try {
-      const result = await this.repositoryCoordinator
-        .getIssuerRepository()
-        .create(issuer);
+      const result = await this.issuerRepository.create(issuer);
 
+      // Log creation success - info level for important operations
       logger.info('Issuer created successfully', {
         operation: context.operation,
         issuerId: result.id,
@@ -89,11 +114,10 @@ export class SqliteDatabaseService implements DatabaseInterface {
     const context = this.createOperationContext('GET Issuer', 'issuer', id);
 
     try {
-      const result = await this.repositoryCoordinator
-        .getIssuerRepository()
-        .findById(id);
+      const result = await this.issuerRepository.findById(id);
 
-      logger.debug('Issuer retrieved', {
+      // Only log read operations in development mode to reduce noise
+      this.logDebugConditional('Issuer retrieved', {
         operation: context.operation,
         issuerId: id,
         found: result !== null,
@@ -119,9 +143,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     const context = this.createOperationContext('UPDATE Issuer', 'issuer', id);
 
     try {
-      const result = await this.repositoryCoordinator
-        .getIssuerRepository()
-        .update(id, issuer);
+      const result = await this.issuerRepository.update(id, issuer);
 
       logger.info('Issuer updated', {
         operation: context.operation,
@@ -146,9 +168,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     const context = this.createOperationContext('DELETE Issuer', 'issuer', id);
 
     try {
-      const result = await this.repositoryCoordinator
-        .getIssuerRepository()
-        .delete(id);
+      const result = await this.issuerRepository.delete(id);
 
       logger.info('Issuer deletion attempted', {
         operation: context.operation,
@@ -231,11 +251,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getBadgeClassRepository()
-        .findById(id);
+      const result = await this.badgeClassRepository.findById(id);
 
-      logger.debug('BadgeClass retrieved', {
+      this.logDebugConditional('BadgeClass retrieved', {
         operation: context.operation,
         badgeClassId: id,
         found: result !== null,
@@ -262,11 +280,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getBadgeClassRepository()
-        .findByIssuer(issuerId);
+      const result = await this.badgeClassRepository.findByIssuer(issuerId);
 
-      logger.debug('BadgeClasses retrieved by issuer', {
+      this.logDebugConditional('BadgeClasses retrieved by issuer', {
         operation: context.operation,
         issuerId,
         count: result.length,
@@ -296,9 +312,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getBadgeClassRepository()
-        .update(id, badgeClass);
+      const result = await this.badgeClassRepository.update(id, badgeClass);
 
       logger.info('BadgeClass updated', {
         operation: context.operation,
@@ -327,9 +341,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getBadgeClassRepository()
-        .delete(id);
+      const result = await this.badgeClassRepository.delete(id);
 
       logger.info('BadgeClass deletion attempted', {
         operation: context.operation,
@@ -389,11 +401,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .findById(id);
+      const result = await this.assertionRepository.findById(id);
 
-      logger.debug('Assertion retrieved', {
+      this.logDebugConditional('Assertion retrieved', {
         operation: context.operation,
         assertionId: id,
         found: result !== null,
@@ -422,11 +432,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .findByBadgeClass(badgeClassId);
+      const result = await this.assertionRepository.findByBadgeClass(
+        badgeClassId
+      );
 
-      logger.debug('Assertions retrieved by badge class', {
+      this.logDebugConditional('Assertions retrieved by badge class', {
         operation: context.operation,
         badgeClassId,
         count: result.length,
@@ -455,11 +465,11 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .findByRecipient(recipientId);
+      const result = await this.assertionRepository.findByRecipient(
+        recipientId
+      );
 
-      logger.debug('Assertions retrieved by recipient', {
+      this.logDebugConditional('Assertions retrieved by recipient', {
         operation: context.operation,
         count: result.length,
         duration: Date.now() - context.startTime,
@@ -487,9 +497,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .update(id, assertion);
+      const result = await this.assertionRepository.update(id, assertion);
 
       logger.info('Assertion updated', {
         operation: context.operation,
@@ -518,9 +526,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .delete(id);
+      const result = await this.assertionRepository.delete(id);
 
       logger.info('Assertion deletion attempted', {
         operation: context.operation,
@@ -552,9 +558,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .revoke(id, reason);
+      const result = await this.assertionRepository.revoke(id, reason);
 
       logger.info('Assertion revocation attempted', {
         operation: context.operation,
@@ -586,11 +590,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
     );
 
     try {
-      const result = await this.repositoryCoordinator
-        .getAssertionRepository()
-        .verify(id);
+      const result = await this.assertionRepository.verify(id);
 
-      logger.debug('Assertion verification completed', {
+      this.logDebugConditional('Assertion verification completed', {
         operation: context.operation,
         assertionId: id,
         isValid: result.isValid,
