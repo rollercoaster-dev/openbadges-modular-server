@@ -66,6 +66,11 @@ export class SqlitePragmaManager {
       // Apply optional performance settings
       this.applyOptionalSettings(client, config, result);
 
+      // Mark overall success only if no critical failures were recorded
+      result.criticalSettingsApplied = result.failedSettings.every(
+        (f) => !f.critical
+      );
+
       // Log results in development
       if (process.env.NODE_ENV !== 'production') {
         this.logPragmaResults(result);
@@ -118,6 +123,7 @@ export class SqlitePragmaManager {
         }),
       });
       // Allow initialization to continue - connection manager will retry
+      // Note: criticalSettingsApplied will be set to false after all settings are applied
     }
 
     // Apply busy timeout setting (CRITICAL for concurrency)
