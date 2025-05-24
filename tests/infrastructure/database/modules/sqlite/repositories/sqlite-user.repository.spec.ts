@@ -316,9 +316,9 @@ describe('SqliteUserRepository Integration', () => {
     expect(
       adminWithTestEmail.every((u) => u.roles.includes(UserRole.ADMIN))
     ).toBe(true);
-    expect(adminWithTestEmail.every((u) => u.email.includes('test.com'))).toBe(
-      true
-    );
+    expect(
+      adminWithTestEmail.every((u) => u.email.split('@').pop() === 'test.com')
+    ).toBe(true);
 
     // Test three conditions combined
     const specificUser = await repository.findByQuery({
