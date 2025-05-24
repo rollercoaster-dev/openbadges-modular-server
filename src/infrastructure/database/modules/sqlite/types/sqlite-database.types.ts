@@ -37,6 +37,46 @@ export interface SqliteConnectionConfig {
    * CRITICAL SETTING: SQLite busy timeout in milliseconds
    * Controls how long SQLite will wait when a database is locked before returning SQLITE_BUSY
    * Critical for handling concurrent connections properly
+   */
+  sqliteBusyTimeout: number;
+
+  /**
+   * CRITICAL SETTING: SQLite synchronous mode
+   * Controls how aggressively SQLite writes data to disk
+   * - 'OFF': Fastest but risks data corruption if power is lost
+   * - 'NORMAL': Good balance of safety and performance (recommended)
+   * - 'FULL': Safest but slowest option
+   */
+  sqliteSyncMode: 'OFF' | 'NORMAL' | 'FULL';
+
+  /**
+   * OPTIONAL SETTING: SQLite cache size in pages
+   * Affects performance but not critical for operation
+   * @default 10000
+   */
+  sqliteCacheSize?: number;
+}
+
+/**
+ * Partial configuration for SQLite database connections with defaults
+ */
+export interface SqliteConnectionConfigInput {
+  /**
+   * Maximum number of connection attempts before failing
+   * @default 3
+   */
+  maxConnectionAttempts?: number;
+
+  /**
+   * Delay in milliseconds between connection retry attempts
+   * @default 1000
+   */
+  connectionRetryDelayMs?: number;
+
+  /**
+   * CRITICAL SETTING: SQLite busy timeout in milliseconds
+   * Controls how long SQLite will wait when a database is locked before returning SQLITE_BUSY
+   * Critical for handling concurrent connections properly
    * @default 5000
    */
   sqliteBusyTimeout?: number;
@@ -57,6 +97,21 @@ export interface SqliteConnectionConfig {
    * @default 10000
    */
   sqliteCacheSize?: number;
+}
+
+/**
+ * Creates a complete SQLite connection config with validated defaults
+ */
+export function createSqliteConnectionConfig(
+  input: SqliteConnectionConfigInput = {}
+): SqliteConnectionConfig {
+  return {
+    maxConnectionAttempts: Math.max(1, input.maxConnectionAttempts ?? 3),
+    connectionRetryDelayMs: Math.max(100, input.connectionRetryDelayMs ?? 1000),
+    sqliteBusyTimeout: Math.max(1000, input.sqliteBusyTimeout ?? 5000),
+    sqliteSyncMode: input.sqliteSyncMode ?? 'NORMAL',
+    sqliteCacheSize: input.sqliteCacheSize,
+  };
 }
 
 /**
@@ -94,7 +149,8 @@ export type SqliteConnectionState =
   | 'disconnected'
   | 'connecting'
   | 'connected'
-  | 'error';
+  | 'error'
+  | 'closed';
 
 /**
  * Database record types that match the schema exactly

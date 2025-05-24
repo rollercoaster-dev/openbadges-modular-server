@@ -210,10 +210,15 @@ export class SqliteIssuerRepository implements IssuerRepository {
       const db = this.getDatabase();
 
       // Create a merged entity using toPartial for type safety
+      // Filter out undefined values from the update to prevent overwriting with undefined
+      const filteredUpdate = Object.fromEntries(
+        Object.entries(issuer).filter(([_, value]) => value !== undefined)
+      ) as Partial<Issuer>;
+
       // Preserve the original ID by explicitly setting it
       const mergedIssuer = Issuer.create({
         ...existingIssuer.toPartial(),
-        ...issuer,
+        ...filteredUpdate,
         id: existingIssuer.id, // Ensure we keep the original ID
       });
 

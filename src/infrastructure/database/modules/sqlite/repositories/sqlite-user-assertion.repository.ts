@@ -167,7 +167,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         if (entityData.status) {
           updateValues.status = entityData.status;
         } else {
-          updateValues.status = 'active';
+          updateValues.status = UserAssertionStatus.ACTIVE;
         }
 
         // Only add metadata if it's defined and can be converted to a string

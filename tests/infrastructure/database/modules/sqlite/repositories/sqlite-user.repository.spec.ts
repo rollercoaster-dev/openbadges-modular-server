@@ -307,18 +307,18 @@ describe('SqliteUserRepository Integration', () => {
       activeUsersWithTest.every((u) => u.username.includes('active'))
     ).toBe(true);
 
-    // Test email + role combination
+    // Test email + role combination - use proper domain validation
     const adminWithTestEmail = await repository.findByQuery({
-      email: 'test.com',
+      email: '@test.com',
       role: UserRole.ADMIN,
     });
     expect(adminWithTestEmail.length).toBe(2); // both admin users
     expect(
       adminWithTestEmail.every((u) => u.roles.includes(UserRole.ADMIN))
     ).toBe(true);
-    expect(
-      adminWithTestEmail.every((u) => u.email.split('@').pop() === 'test.com')
-    ).toBe(true);
+    expect(adminWithTestEmail.every((u) => u.email.endsWith('@test.com'))).toBe(
+      true
+    );
 
     // Test three conditions combined
     const specificUser = await repository.findByQuery({

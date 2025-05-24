@@ -10,10 +10,12 @@ import type { Database } from 'bun:sqlite';
 import { logger } from '@utils/logging/logger.service';
 import {
   SqliteConnectionConfig,
+  SqliteConnectionConfigInput,
   SqliteConnectionState,
   SqliteDatabaseClient,
   SqliteConnectionError,
   SqliteDatabaseHealth,
+  createSqliteConnectionConfig,
 } from '../types/sqlite-database.types';
 
 /**
@@ -38,7 +40,7 @@ export class SqliteConnectionManager {
    * @param config Configuration for the connection, including critical and optional settings
    * @throws Error if critical configuration parameters fail to apply
    */
-  constructor(client: Database, config: SqliteConnectionConfig) {
+  constructor(client: Database, config: SqliteConnectionConfigInput = {}) {
     try {
       if (!client) {
         throw new Error('SQLite client is required for connection manager');
@@ -47,22 +49,8 @@ export class SqliteConnectionManager {
       this.client = client;
       this.db = drizzle(client);
 
-      // Validate and normalize configuration
-      this.config = {
-        ...config,
-        // Ensure minimal values for critical settings
-        maxConnectionAttempts: Math.max(1, config.maxConnectionAttempts ?? 3),
-        connectionRetryDelayMs: Math.max(
-          100,
-          config.connectionRetryDelayMs ?? 1000
-        ),
-        // Apply defaults for optional settings if not provided
-        sqliteBusyTimeout:
-          typeof config.sqliteBusyTimeout === 'number' &&
-          config.sqliteBusyTimeout > 0
-            ? config.sqliteBusyTimeout
-            : 5000,
-      };
+      // Validate and normalize configuration using factory function
+      this.config = createSqliteConnectionConfig(config);
 
       // Apply SQLite configuration parameters using PRAGMA statements
       // This may throw for critical settings - let it propagate
@@ -93,6 +81,13 @@ export class SqliteConnectionManager {
    */
   async connect(): Promise<void> {
     const startTime = Date.now();
+
+    // Prevent operations on closed connections
+    if (this.connectionState === 'closed') {
+      throw new Error(
+        'Cannot connect to a closed database connection. Create a new connection manager.'
+      );
+    }
 
     // If already connected, return immediately
     if (this.connectionState === 'connected') {
@@ -150,8 +145,9 @@ export class SqliteConnectionManager {
 
         if (isLastAttempt) {
           const errorMessage = `Failed to connect to SQLite database after ${attempt} attempts`;
-          logger.logError(errorMessage, error, {
+          logger.error(errorMessage, {
             error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
             attempts: attempt,
             maxAttempts: this.config.maxConnectionAttempts,
           });
@@ -233,7 +229,10 @@ export class SqliteConnectionManager {
       this.lastError =
         error instanceof Error ? error : new Error(String(error));
 
-      logger.logError('Failed to disconnect SQLite database', error);
+      logger.error('Failed to disconnect SQLite database', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -244,7 +243,10 @@ export class SqliteConnectionManager {
    * This should only be used when completely shutting down the application
    */
   async close(): Promise<void> {
-    if (this.connectionState === 'disconnected') {
+    if (
+      this.connectionState === 'disconnected' ||
+      this.connectionState === 'closed'
+    ) {
       return;
     }
 
@@ -266,7 +268,8 @@ export class SqliteConnectionManager {
         this.client.close();
       }
 
-      this.connectionState = 'disconnected';
+      // Mark as truly closed so that reconnect() won't reuse a closed client
+      this.connectionState = 'closed';
       this.connectionAttempts = 0;
       this.lastError = null;
 
@@ -278,7 +281,10 @@ export class SqliteConnectionManager {
       this.lastError =
         error instanceof Error ? error : new Error(String(error));
 
-      logger.logError('Failed to fully close SQLite database', error);
+      logger.error('Failed to fully close SQLite database', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -501,6 +507,13 @@ export class SqliteConnectionManager {
    * Reconnects to the database (disconnect then connect)
    */
   async reconnect(): Promise<void> {
+    // Prevent reconnection on closed connections
+    if (this.connectionState === 'closed') {
+      throw new Error(
+        'Cannot reconnect a closed database connection. Create a new connection manager.'
+      );
+    }
+
     logger.info('Reconnecting to SQLite database');
 
     try {

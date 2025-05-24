@@ -41,7 +41,6 @@ const createTestIssuer = async (
     id: issuerId,
     name: 'Test Issuer',
     url: EXAMPLE_ISSUER_URL,
-    email: 'issuer@example.com',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });

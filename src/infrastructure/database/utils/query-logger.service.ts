@@ -36,7 +36,7 @@ export class QueryLoggerService {
     duration: number,
     database: string
   ): void {
-    if (!this.enabled) return;
+    if (!QueryLoggerService.enabled) return;
 
     const entry: QueryLogEntry = {
       query,
@@ -47,13 +47,13 @@ export class QueryLoggerService {
     };
 
     // Add to logs (with size limit)
-    this.logs.push(entry);
-    if (this.logs.length > this.maxLogs) {
-      this.logs.shift(); // Remove oldest entry
+    QueryLoggerService.logs.push(entry);
+    if (QueryLoggerService.logs.length > QueryLoggerService.maxLogs) {
+      QueryLoggerService.logs.shift(); // Remove oldest entry
     }
 
     // Log slow queries using structured logger
-    if (duration >= this.slowQueryThreshold) {
+    if (duration >= QueryLoggerService.slowQueryThreshold) {
       logger.warn(`Slow query detected`, {
         duration: `${duration}ms`,
         database,
@@ -81,7 +81,7 @@ export class QueryLoggerService {
    * @returns Array of query log entries
    */
   static getLogs(): QueryLogEntry[] {
-    return this.logs;
+    return QueryLoggerService.logs;
   }
 
   /**
@@ -90,15 +90,17 @@ export class QueryLoggerService {
    * @returns Array of slow query log entries
    */
   static getSlowQueries(threshold?: number): QueryLogEntry[] {
-    const actualThreshold = threshold || this.slowQueryThreshold;
-    return this.logs.filter((log) => log.duration >= actualThreshold);
+    const actualThreshold = threshold || QueryLoggerService.slowQueryThreshold;
+    return QueryLoggerService.logs.filter(
+      (log) => log.duration >= actualThreshold
+    );
   }
 
   /**
    * Clears all logs
    */
   static clearLogs(): void {
-    this.logs = [];
+    QueryLoggerService.logs = [];
   }
 
   /**
@@ -106,7 +108,7 @@ export class QueryLoggerService {
    * @param threshold Threshold in milliseconds
    */
   static setSlowQueryThreshold(threshold: number): void {
-    this.slowQueryThreshold = threshold;
+    QueryLoggerService.slowQueryThreshold = threshold;
   }
 
   /**
@@ -114,7 +116,7 @@ export class QueryLoggerService {
    * @param enabled Whether to enable query logging
    */
   static setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
+    QueryLoggerService.enabled = enabled;
   }
 
   /**
@@ -128,7 +130,7 @@ export class QueryLoggerService {
     maxDuration: number;
     byDatabase: Record<string, { count: number; avgDuration: number }>;
   } {
-    if (this.logs.length === 0) {
+    if (QueryLoggerService.logs.length === 0) {
       return {
         totalQueries: 0,
         slowQueries: 0,
@@ -138,16 +140,21 @@ export class QueryLoggerService {
       };
     }
 
-    const totalDuration = this.logs.reduce((sum, log) => sum + log.duration, 0);
-    const maxDuration = Math.max(...this.logs.map((log) => log.duration));
-    const slowQueries = this.logs.filter(
-      (log) => log.duration >= this.slowQueryThreshold
+    const totalDuration = QueryLoggerService.logs.reduce(
+      (sum, log) => sum + log.duration,
+      0
+    );
+    const maxDuration = Math.max(
+      ...QueryLoggerService.logs.map((log) => log.duration)
+    );
+    const slowQueries = QueryLoggerService.logs.filter(
+      (log) => log.duration >= QueryLoggerService.slowQueryThreshold
     ).length;
 
     // Group by database
     const byDatabase: Record<string, { count: number; totalDuration: number }> =
       {};
-    for (const log of this.logs) {
+    for (const log of QueryLoggerService.logs) {
       if (!byDatabase[log.database]) {
         byDatabase[log.database] = { count: 0, totalDuration: 0 };
       }
@@ -168,9 +175,9 @@ export class QueryLoggerService {
     }
 
     return {
-      totalQueries: this.logs.length,
+      totalQueries: QueryLoggerService.logs.length,
       slowQueries,
-      averageDuration: totalDuration / this.logs.length,
+      averageDuration: totalDuration / QueryLoggerService.logs.length,
       maxDuration,
       byDatabase: byDatabaseStats,
     };
