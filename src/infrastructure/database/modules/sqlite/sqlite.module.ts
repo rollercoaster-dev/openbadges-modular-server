@@ -147,6 +147,8 @@ export class SqliteModule implements DatabaseModuleInterface {
       }
 
       // Create custom indexes for JSON fields (if not exists)
+      // Note: This safely checks for table existence before creating indexes
+      // If migrations haven't run yet, indexes will be skipped and can be created later
       try {
         this.createCustomIndexes(client);
 
@@ -175,6 +177,15 @@ export class SqliteModule implements DatabaseModuleInterface {
         }),
       });
     }
+  }
+
+  /**
+   * Creates custom indexes after migrations have run
+   * This method can be called externally to ensure indexes are created after table creation
+   * @param client The SQLite database client
+   */
+  createIndexesAfterMigrations(client: Database): void {
+    this.createCustomIndexes(client);
   }
 
   /**

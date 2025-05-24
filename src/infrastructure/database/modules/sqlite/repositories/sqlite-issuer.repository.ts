@@ -102,14 +102,18 @@ export class SqliteIssuerRepository
     this.validateEntityId(id, 'update issuer');
     const context = this.createOperationContext('UPDATE Issuer', id);
 
-    // Check if issuer exists
-    const existingIssuer = await this.findById(id);
-    if (!existingIssuer) {
-      return null;
-    }
+    return this.executeTransaction(context, async (tx) => {
+      // First, get the existing issuer within the transaction to avoid race conditions
+      const existingRecords = await tx
+        .select()
+        .from(issuers)
+        .where(eq(issuers.id, id as string));
 
-    const result = await this.executeUpdate(context, async () => {
-      const db = this.getDatabase();
+      if (existingRecords.length === 0) {
+        return null; // Entity doesn't exist
+      }
+
+      const existingIssuer = this.mapper.toDomain(existingRecords[0]);
 
       // Create a merged entity using toPartial for type safety
       // Filter out undefined values from the update to prevent overwriting with undefined
@@ -131,19 +135,19 @@ export class SqliteIssuerRepository
       // Ensure updatedAt timestamp is set
       updatable.updatedAt = this.getCurrentTimestamp();
 
-      return db
+      const updateResult = await tx
         .update(issuers)
         .set(updatable)
         .where(eq(issuers.id, id as string))
         .returning();
+
+      if (!updateResult[0]) {
+        throw new Error('Failed to update issuer: no result returned');
+      }
+
+      // Convert database record back to domain entity
+      return this.mapper.toDomain(updateResult[0]);
     });
-
-    if (!result) {
-      throw new Error('Failed to update issuer: no result returned');
-    }
-
-    // Convert database record back to domain entity
-    return this.mapper.toDomain(result);
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {
