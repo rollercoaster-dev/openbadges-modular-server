@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'bun:test';
 import { Assertion } from '@/domains/assertion/assertion.entity';
-import { Shared, OB3 } from 'openbadges-types';
+import { Shared } from 'openbadges-types';
 import {
   EXAMPLE_EDU_EVIDENCE_URL,
   EXAMPLE_EDU_KEYS_URL,
@@ -319,7 +319,7 @@ describe('Assertion Entity', () => {
         recipient: {
           id: 'did:example:123456789abcdefghi', // OB3 style recipient
           type: 'AchievementSubject',
-        } as OB3.CredentialSubject,
+        } as Shared.AchievementSubject,
       });
 
       const obj = assertionWithDidRecipient.toObject();
