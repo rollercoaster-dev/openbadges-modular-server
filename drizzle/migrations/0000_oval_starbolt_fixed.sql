@@ -169,6 +169,7 @@ CREATE TABLE `user_assertions` (
   `user_id` text NOT NULL,
   `assertion_id` text NOT NULL,
   `added_at` integer NOT NULL,
+  `updated_at` integer NOT NULL,
   `status` text DEFAULT 'active' NOT NULL,
   `metadata` text,
   FOREIGN KEY (`user_id`) REFERENCES `platform_users`(`id`) ON UPDATE no action ON DELETE cascade,
@@ -177,3 +178,4 @@ CREATE TABLE `user_assertions` (
 --> statement-breakpoint
 CREATE INDEX `user_assertion_idx` ON `user_assertions` (`user_id`,`assertion_id`);--> statement-breakpoint
 CREATE INDEX `user_assertion_added_at_idx` ON `user_assertions` (`added_at`);--> statement-breakpoint
+CREATE INDEX `user_assertion_updated_at_idx` ON `user_assertions` (`updated_at`);--> statement-breakpoint

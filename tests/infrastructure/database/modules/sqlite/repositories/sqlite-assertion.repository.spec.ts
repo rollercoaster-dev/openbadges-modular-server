@@ -19,14 +19,56 @@ import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { assertions } from '@infrastructure/database/modules/sqlite/schema'; // Import schema for clearing table
 import * as schema from '@infrastructure/database/modules/sqlite/schema'; // Import all schema for drizzle
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 // --- Test Setup ---
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repository: SqliteAssertionRepository;
 let testDbInstance: Database;
 let connectionManager: SqliteConnectionManager;
+let testIssuerId: string;
+let testBadgeClassId: string;
 
 const MIGRATIONS_PATH = getMigrationsPath();
+
+// Helper to create a test issuer in the database
+const createTestIssuer = async (
+  db: ReturnType<typeof drizzle<typeof schema>>
+) => {
+  const issuerId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.issuers).values({
+    id: issuerId,
+    name: 'Test Issuer',
+    url: EXAMPLE_ISSUER_URL,
+    email: 'issuer@example.com',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return issuerId;
+};
+
+// Helper to create a test badge class in the database
+const createTestBadgeClass = async (
+  db: ReturnType<typeof drizzle<typeof schema>>,
+  issuerId: string
+) => {
+  const badgeClassId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.badgeClasses).values({
+    id: badgeClassId,
+    issuerId: issuerId,
+    name: 'Test Badge Class',
+    description: 'A test badge class',
+    image: 'https://example.com/badge.png',
+    criteria: JSON.stringify({ narrative: 'Complete the test' }),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return badgeClassId;
+};
 
 describe('SqliteAssertionRepository Integration - Query Logging', () => {
   beforeAll(async () => {
@@ -60,8 +102,15 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
   });
 
   beforeEach(async () => {
-    // Clear the assertions table before each test
+    // Clear all tables before each test
     await db.delete(assertions);
+    await db.delete(schema.badgeClasses);
+    await db.delete(schema.issuers);
+
+    // Create test dependencies
+    testIssuerId = await createTestIssuer(db);
+    testBadgeClassId = await createTestBadgeClass(db, testIssuerId);
+
     // Clear logs captured by the queryLogger
     queryLogger.clearLogs();
   });
@@ -73,8 +122,8 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
 
   // --- Test Data ---
   const createTestAssertionData = (): Omit<Assertion, 'id'> => ({
-    badgeClass: `urn:uuid:${createId()}` as Shared.IRI,
-    issuer: `urn:uuid:${createId()}` as Shared.IRI, // Add issuer field
+    badgeClass: testBadgeClassId as Shared.IRI,
+    issuer: testIssuerId as Shared.IRI,
     recipient: {
       type: 'email',
       identity: `test-${createId()}@example.com`,

@@ -22,7 +22,7 @@ import {
   DrizzleTransaction,
 } from '../types/sqlite-database.types';
 import { issuers, badgeClasses, assertions } from '../schema';
-import { createId } from '@paralleldrive/cuid2';
+
 import { randomUUID } from 'crypto';
 // We'll use a more pragmatic approach with proper JSDoc comments
 
@@ -621,9 +621,8 @@ export class SqliteRepositoryCoordinator {
     assertionData: Omit<Assertion, 'id'>,
     tx: DrizzleTransaction // Transaction object from Drizzle
   ): Promise<Assertion> {
-    // Generate ID and create full assertion entity
-    const id = createId() as Shared.IRI;
-    const fullAssertion = Assertion.create({ ...assertionData, id });
+    // Let the entity handle ID generation to ensure proper IRI format
+    const fullAssertion = Assertion.create(assertionData);
 
     // Get mapper from assertion repository if possible, or create a new one
     let mapper: SqliteAssertionMapper;

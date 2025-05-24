@@ -13,7 +13,7 @@ import { SqliteAssertionMapper } from '../mappers/sqlite-assertion.mapper';
 import { Shared } from 'openbadges-types';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
-import { createId } from '@paralleldrive/cuid2';
+
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 
 export class SqliteAssertionRepository implements AssertionRepository {
@@ -40,9 +40,8 @@ export class SqliteAssertionRepository implements AssertionRepository {
 
   async create(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
     try {
-      // Generate ID and create full entity
-      const id = createId() as Shared.IRI;
-      const fullAssertion = Assertion.create({ ...assertion, id });
+      // Let the entity handle ID generation to ensure proper IRI format
+      const fullAssertion = Assertion.create(assertion);
 
       // Convert domain entity to database record
       const record: InferInsertModel<typeof assertions> =

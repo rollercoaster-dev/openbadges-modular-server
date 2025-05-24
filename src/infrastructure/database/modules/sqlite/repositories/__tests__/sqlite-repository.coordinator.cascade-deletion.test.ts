@@ -300,15 +300,15 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
     });
 
     it('should maintain transaction atomicity on error', async () => {
-      // This test would require mocking database errors to verify rollback behavior
-      // For now, we'll test that the method properly handles connection issues
+      // This test verifies that the method handles connection issues gracefully
+      // Since the coordinator automatically reconnects, we'll test with a closed database
 
-      // Arrange: Disconnect the database to simulate an error
-      await connectionManager.disconnect();
+      // Arrange: Close the database completely to simulate an unrecoverable error
+      testDbInstance.close();
 
       const issuerId = 'test-issuer-id' as Shared.IRI;
 
-      // Act & Assert: Verify error is thrown and no partial operations occur
+      // Act & Assert: Verify error is thrown when database is completely unavailable
       await expect(coordinator.deleteIssuerCascade(issuerId)).rejects.toThrow();
     });
   });

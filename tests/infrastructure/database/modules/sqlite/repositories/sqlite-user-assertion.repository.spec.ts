@@ -28,8 +28,8 @@ const MIGRATIONS_PATH = getMigrationsPath();
 const createTestPlatformUser = async (
   db: ReturnType<typeof drizzle<typeof schema>>
 ) => {
-  const platformId = createId() as Shared.IRI;
-  const userId = createId() as Shared.IRI;
+  const platformId = `urn:uuid:${createId()}` as Shared.IRI;
+  const userId = `urn:uuid:${createId()}` as Shared.IRI;
 
   // Insert platform with unique name to avoid conflicts
   await db.insert(schema.platforms).values({
@@ -56,9 +56,9 @@ const createTestPlatformUser = async (
 const createTestAssertion = async (
   db: ReturnType<typeof drizzle<typeof schema>>
 ) => {
-  const issuerId = createId() as Shared.IRI;
-  const badgeClassId = createId() as Shared.IRI;
-  const assertionId = createId() as Shared.IRI;
+  const issuerId = `urn:uuid:${createId()}` as Shared.IRI;
+  const badgeClassId = `urn:uuid:${createId()}` as Shared.IRI;
+  const assertionId = `urn:uuid:${createId()}` as Shared.IRI;
 
   // Insert issuer
   await db.insert(schema.issuers).values({

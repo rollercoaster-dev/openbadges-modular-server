@@ -15,19 +15,29 @@ import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 
 const MIGRATIONS_FOLDER = getMigrationsPath();
 
-const mockIssuer = {
-  id: `urn:uuid:${createId()}`,
-  type: 'Profile',
-  name: 'Test Issuer',
-  url: EXAMPLE_ISSUER_URL,
-  email: 'issuer@example.com',
+// Helper to create a test issuer in the database
+const createTestIssuer = async (
+  db: ReturnType<typeof drizzle<typeof schema>>
+) => {
+  const issuerId = `urn:uuid:${createId()}`;
+
+  await db.insert(schema.issuers).values({
+    id: issuerId,
+    name: 'Test Issuer',
+    url: EXAMPLE_ISSUER_URL,
+    email: 'issuer@example.com',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return issuerId;
 };
 
 // Helper to create valid plain object data resembling BadgeClass structure
-const createTestDataObject = () => {
+const createTestDataObject = (issuerId: string) => {
   return {
     id: toIRI(`urn:uuid:${createId()}`), // Convert string to IRI type
-    issuer: toIRI(mockIssuer.id), // Convert issuer ID to IRI type
+    issuer: toIRI(issuerId), // Convert issuer ID to IRI type
     name: 'Test Badge',
     description: 'A badge for testing',
     criteria: {
@@ -42,6 +52,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   let sqliteDb: Database;
   let connectionManager: SqliteConnectionManager;
   let repository: SqliteBadgeClassRepository;
+  let testIssuerId: string;
 
   beforeEach(async () => {
     sqliteDb = new Database(':memory:');
@@ -56,6 +67,10 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     });
     await connectionManager.connect();
     repository = new SqliteBadgeClassRepository(connectionManager);
+
+    // Create test issuer for foreign key constraint
+    testIssuerId = await createTestIssuer(db);
+
     queryLogger.clearLogs();
   });
 
@@ -64,7 +79,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on create', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     const logs = queryLogger.getLogs();
 
@@ -89,7 +104,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on findById', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 
@@ -106,7 +121,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log queries on update', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 
@@ -146,7 +161,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
   });
 
   it('should log query on delete', async () => {
-    const testBadgeData = createTestDataObject();
+    const testBadgeData = createTestDataObject(testIssuerId);
     await repository.create(testBadgeData);
     queryLogger.clearLogs();
 

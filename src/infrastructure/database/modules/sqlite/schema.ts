@@ -7,7 +7,13 @@
  * Note: SQLite stores JSON as text and timestamps as integers (epoch milliseconds).
  */
 
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 // Users table - defined first to avoid circular references
 export const users = sqliteTable(
@@ -274,7 +280,7 @@ export const userAssertions = sqliteTable(
   },
   (table) => {
     return {
-      userAssertionIdx: index('user_assertion_idx').on(
+      userAssertionIdx: uniqueIndex('user_assertion_idx').on(
         table.userId,
         table.assertionId
       ),
