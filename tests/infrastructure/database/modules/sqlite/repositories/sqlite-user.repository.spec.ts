@@ -259,21 +259,75 @@ describe('SqliteUserRepository Integration', () => {
     expect(adminResults.length).toBe(1);
     expect(adminResults[0].username).toBe('user1');
 
-    // Note: The current implementation doesn't combine conditions with AND logic
-    // but rather with OR logic, so combining isActive and role won't work as expected.
-    // This would need a refactor of the repository implementation to fix.
-    // For now, we'll adjust the test to match the current behavior.
+    // Test combined conditions with AND logic (the correct implementation)
+    // This should return only users that are BOTH active AND have the USER role
     const combinedResults = await repository.findByQuery({
       isActive: true,
       role: UserRole.USER,
     });
-    // We should get all active users OR all users with 'user' role
-    expect(combinedResults.length).toBe(3);
-    // Verify the results contain both active users and users with 'user' role
-    const usernames = combinedResults.map((u) => u.username);
-    expect(usernames).toContain('user1'); // active admin
-    expect(usernames).toContain('user2'); // active user
-    expect(usernames).toContain('inactive'); // inactive user (matched by role)
+    // We should get only active users with 'user' role (user2)
+    expect(combinedResults.length).toBe(1);
+    expect(combinedResults[0].username).toBe('user2');
+    expect(combinedResults[0].isActive).toBe(true);
+    expect(combinedResults[0].roles).toContain(UserRole.USER);
+  });
+
+  it('should properly combine multiple query conditions with AND logic', async () => {
+    // Create test users with specific combinations
+    await repository.create({
+      username: 'activeadmin',
+      email: 'activeadmin@test.com',
+      passwordHash: 'hash1',
+      isActive: true,
+      roles: [UserRole.ADMIN],
+    });
+    await repository.create({
+      username: 'inactiveadmin',
+      email: 'inactiveadmin@test.com',
+      passwordHash: 'hash2',
+      isActive: false,
+      roles: [UserRole.ADMIN],
+    });
+    await repository.create({
+      username: 'activeuser',
+      email: 'activeuser@test.com',
+      passwordHash: 'hash3',
+      isActive: true,
+      roles: [UserRole.USER],
+    });
+
+    // Test username + isActive combination
+    const activeUsersWithTest = await repository.findByQuery({
+      username: 'active',
+      isActive: true,
+    });
+    expect(activeUsersWithTest.length).toBe(2); // activeadmin and activeuser
+    expect(activeUsersWithTest.every((u) => u.isActive)).toBe(true);
+    expect(
+      activeUsersWithTest.every((u) => u.username.includes('active'))
+    ).toBe(true);
+
+    // Test email + role combination
+    const adminWithTestEmail = await repository.findByQuery({
+      email: 'test.com',
+      role: UserRole.ADMIN,
+    });
+    expect(adminWithTestEmail.length).toBe(2); // both admin users
+    expect(
+      adminWithTestEmail.every((u) => u.roles.includes(UserRole.ADMIN))
+    ).toBe(true);
+    expect(adminWithTestEmail.every((u) => u.email.includes('test.com'))).toBe(
+      true
+    );
+
+    // Test three conditions combined
+    const specificUser = await repository.findByQuery({
+      username: 'active',
+      isActive: true,
+      role: UserRole.ADMIN,
+    });
+    expect(specificUser.length).toBe(1); // only activeadmin
+    expect(specificUser[0].username).toBe('activeadmin');
   });
 
   it('should count users by query', async () => {

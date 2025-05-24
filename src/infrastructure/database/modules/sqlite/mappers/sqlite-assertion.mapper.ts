@@ -134,7 +134,23 @@ export class SqliteAssertionMapper {
             ? (convertBoolean(revoked, 'sqlite', 'from') as boolean)
             : undefined,
         revocationReason: revocationReason ?? undefined, // Use nullish coalescing
-        ...safeAdditionalFields, // Spread the validated object
+        // Spread only keys that are *not* already part of the core DTO
+        ...Object.fromEntries(
+          Object.entries(safeAdditionalFields).filter(
+            ([k]) =>
+              ![
+                'id',
+                'badgeClass',
+                'recipient',
+                'issuedOn',
+                'expires',
+                'evidence',
+                'verification',
+                'revoked',
+                'revocationReason',
+              ].includes(k)
+          )
+        ),
       });
     } catch (error) {
       logger.error(`Error mapping SQLite Assertion record to domain: ${error}`);

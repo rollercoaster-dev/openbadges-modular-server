@@ -20,7 +20,7 @@ import type {
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
-import { createOrGenerateIRI } from '@utils/types/iri-utils';
+import { createOrGenerateIRI, isValidIRI } from '@utils/types/iri-utils';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -112,6 +112,7 @@ export class Assertion {
     if (version === BadgeVersion.V2) {
       // OB2 Assertion
       return {
+        id: this.id,
         ...baseObject,
         type: 'Assertion',
         badge: this.badgeClass, // In OB2, badge is the IRI of the BadgeClass
@@ -171,24 +172,8 @@ export class Assertion {
       }
 
       // Create a proper CredentialSubject with required achievement property
-      let recipientId = '';
-      if (this.recipient && typeof this.recipient === 'object') {
-        if ('identity' in this.recipient) {
-          // OB2 style recipient
-          recipientId = this.recipient.identity
-            ? String(this.recipient.identity)
-            : '';
-        } else if ('id' in this.recipient) {
-          // OB3 style recipient
-          recipientId = this.recipient.id ? String(this.recipient.id) : '';
-        } else {
-          // Fallback
-          recipientId = 'unknown';
-        }
-      } else {
-        // Fallback
-        recipientId = 'unknown';
-      }
+      // Use validated recipient ID - this will throw an error if invalid
+      const recipientId = this.getValidatedRecipientId();
 
       ob3Data.credentialSubject = {
         id: recipientId,
@@ -299,22 +284,8 @@ export class Assertion {
 
       // Ensure credentialSubject is properly formatted
       if (!output.credentialSubject && this.recipient) {
-        let recipientId: string;
-        if (
-          typeof this.recipient === 'object' &&
-          'identity' in this.recipient
-        ) {
-          recipientId = this.recipient.identity
-            ? String(this.recipient.identity)
-            : '';
-        } else if (
-          typeof this.recipient === 'object' &&
-          'id' in this.recipient
-        ) {
-          recipientId = this.recipient.id as string;
-        } else {
-          recipientId = 'unknown';
-        }
+        // Use validated recipient ID - this will throw an error if invalid
+        const recipientId = this.getValidatedRecipientId();
 
         output.credentialSubject = {
           id: recipientId,
@@ -368,6 +339,69 @@ export class Assertion {
     }
 
     return true;
+  }
+
+  /**
+   * Extracts and validates the recipient ID for OB3 CredentialSubject
+   * Converts email addresses to mailto: URIs to ensure valid IRIs
+   * @returns A valid IRI for the recipient or throws an error
+   * @throws Error if no valid recipient ID can be determined
+   */
+  private getValidatedRecipientId(): Shared.IRI {
+    if (!this.recipient || typeof this.recipient !== 'object') {
+      throw new Error(
+        'Cannot create OB3 VerifiableCredential: recipient is required and must be a valid object'
+      );
+    }
+
+    let recipientId: string | undefined;
+
+    if ('identity' in this.recipient) {
+      // OB2 style recipient
+      recipientId = this.recipient.identity
+        ? String(this.recipient.identity)
+        : undefined;
+    } else if ('id' in this.recipient) {
+      // OB3 style recipient
+      recipientId = this.recipient.id ? String(this.recipient.id) : undefined;
+    }
+
+    if (!recipientId) {
+      throw new Error(
+        'Cannot create OB3 VerifiableCredential: recipient must have a valid identity or id field'
+      );
+    }
+
+    // Convert to valid IRI if needed
+    const validIRI = this.convertToValidIRI(recipientId);
+    if (!validIRI) {
+      throw new Error(
+        `Cannot create OB3 VerifiableCredential: recipient ID "${recipientId}" cannot be converted to a valid IRI`
+      );
+    }
+
+    return validIRI;
+  }
+
+  /**
+   * Converts a recipient identity to a valid IRI
+   * @param identity The recipient identity (email, URL, UUID, etc.)
+   * @returns A valid IRI or null if conversion is not possible
+   */
+  private convertToValidIRI(identity: string): Shared.IRI | null {
+    // If it's already a valid IRI, return it
+    if (isValidIRI(identity)) {
+      return identity as Shared.IRI;
+    }
+
+    // Check if it's an email address and convert to mailto: URI
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(identity)) {
+      return `mailto:${identity}` as Shared.IRI;
+    }
+
+    // If it's not a valid IRI and not an email, we can't convert it
+    return null;
   }
 
   /**

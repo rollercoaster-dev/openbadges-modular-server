@@ -100,7 +100,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
 
         // For other database errors, wrap in a PlatformOperationError
         throw new PlatformOperationError(
-          'Failed to create platform due to database error',
+          `SQLite error ${sqliteError?.code ?? ''}: unable to create platform`,
           sqliteError instanceof Error
             ? sqliteError
             : new Error(String(sqliteError))
@@ -156,7 +156,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
           queryParams.push(params.limit);
 
           if (params.offset) {
-            query += ` OFFSET ?`;
+            query += params.limit ? ' OFFSET ?' : ' LIMIT -1 OFFSET ?';
             queryParams.push(params.offset);
           }
         }

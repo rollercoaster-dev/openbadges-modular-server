@@ -19,6 +19,10 @@ import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { createId } from '@paralleldrive/cuid2';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
+
+// Create compile-time type alias to avoid runtime import dependency
+type DrizzleDB = ReturnType<typeof DrizzleFn>;
 
 /**
  * SQLite implementation of the User repository
@@ -33,7 +37,7 @@ export class SqliteUserRepository implements UserRepository {
   /**
    * Gets the database instance with connection validation
    */
-  private getDatabase() {
+  private getDatabase(): DrizzleDB {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getDatabase();
   }
@@ -136,7 +140,10 @@ export class SqliteUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error creating user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params,
+        params: {
+          ...params,
+          ...(params.passwordHash ? { passwordHash: '[REDACTED]' } : {}),
+        },
       });
       throw error;
     }
@@ -333,7 +340,10 @@ export class SqliteUserRepository implements UserRepository {
       logger.error('Error updating user in SQLite repository', {
         error: error instanceof Error ? error.stack : String(error),
         id,
-        params,
+        params: {
+          ...params,
+          ...(params.passwordHash ? { passwordHash: '[REDACTED]' } : {}),
+        },
       });
       throw error;
     }
@@ -368,8 +378,18 @@ export class SqliteUserRepository implements UserRepository {
 
   /**
    * Finds users by query parameters
+   *
+   * Multiple query parameters are combined using AND logic, meaning all specified
+   * conditions must be satisfied for a user to be included in the results.
+   *
    * @param params The query parameters
-   * @returns The users matching the query
+   * @param params.username Partial username match (case-insensitive LIKE search)
+   * @param params.email Partial email match (case-insensitive LIKE search)
+   * @param params.isActive Exact match for active status
+   * @param params.role Exact match for user role (searches within JSON array)
+   * @param params.limit Maximum number of results to return
+   * @param params.offset Number of results to skip (for pagination)
+   * @returns The users matching ALL specified query conditions
    */
   async findByQuery(params: UserQueryParams): Promise<User[]> {
     try {
@@ -427,8 +447,12 @@ export class SqliteUserRepository implements UserRepository {
 
   /**
    * Counts users by query parameters
-   * @param params The query parameters
-   * @returns The number of users matching the query
+   *
+   * Multiple query parameters are combined using AND logic, meaning all specified
+   * conditions must be satisfied for a user to be counted in the results.
+   *
+   * @param params The query parameters (same as findByQuery)
+   * @returns The number of users matching ALL specified query conditions
    */
   async countByQuery(params: UserQueryParams): Promise<number> {
     try {

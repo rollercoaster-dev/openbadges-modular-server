@@ -445,10 +445,13 @@ export class SqliteDatabaseService implements DatabaseInterface {
     }
   }
 
-  async getAssertionsByRecipient(recipientId: string): Promise<Assertion[]> {
+  async getAssertionsByRecipient(
+    recipientId: Shared.IRI
+  ): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by Recipient',
-      'assertion'
+      'assertion',
+      recipientId
     );
 
     try {
@@ -616,7 +619,9 @@ export class SqliteDatabaseService implements DatabaseInterface {
 
       // Default to false when the property is absent
       const repoStatus =
-        typeof repositoryHealth === 'object' && 'overall' in repositoryHealth
+        typeof repositoryHealth === 'boolean'
+          ? repositoryHealth
+          : 'overall' in (repositoryHealth as Record<string, unknown>)
           ? (repositoryHealth as { overall: boolean }).overall
           : false;
 

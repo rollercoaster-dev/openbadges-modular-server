@@ -5,11 +5,16 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, or, like, sql } from 'drizzle-orm';
+import { eq, and, like, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';
-import { UserRepository, UserCreateParams, UserUpdateParams, UserQueryParams } from '@domains/user/user.repository';
+import {
+  UserRepository,
+  UserCreateParams,
+  UserUpdateParams,
+  UserQueryParams,
+} from '@domains/user/user.repository';
 import { users } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
@@ -53,14 +58,14 @@ export class PostgresUserRepository implements UserRepository {
         lastLogin: obj.lastLogin as Date | null,
         metadata: obj.metadata as Record<string, unknown> | null,
         createdAt: obj.createdAt as Date,
-        updatedAt: obj.updatedAt as Date
+        updatedAt: obj.updatedAt as Date,
       });
 
       return newUser;
     } catch (error) {
       logger.error('Error creating user in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -89,7 +94,7 @@ export class PostgresUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by ID in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }
@@ -118,7 +123,7 @@ export class PostgresUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by username in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        username
+        username,
       });
       throw error;
     }
@@ -147,7 +152,7 @@ export class PostgresUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error finding user by email in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        email
+        email,
       });
       throw error;
     }
@@ -170,27 +175,36 @@ export class PostgresUserRepository implements UserRepository {
       // Create a merged entity
       const mergedUser = User.create({
         ...existingUser.toObject(),
-        ...params as Partial<User>,
-        updatedAt: new Date()
+        ...(params as Partial<User>),
+        updatedAt: new Date(),
       });
       const obj = mergedUser.toObject();
 
       // Prepare update values
       const updateValues: Record<string, unknown> = {
-        updatedAt: obj.updatedAt as Date
+        updatedAt: obj.updatedAt as Date,
       };
 
       // Add optional fields if provided
-      if (params.username !== undefined) updateValues.username = params.username;
+      if (params.username !== undefined)
+        updateValues.username = params.username;
       if (params.email !== undefined) updateValues.email = params.email;
-      if (params.passwordHash !== undefined) updateValues.passwordHash = params.passwordHash;
-      if (params.firstName !== undefined) updateValues.firstName = params.firstName;
-      if (params.lastName !== undefined) updateValues.lastName = params.lastName;
-      if (params.roles !== undefined) updateValues.roles = JSON.stringify(params.roles);
-      if (params.permissions !== undefined) updateValues.permissions = JSON.stringify(params.permissions);
-      if (params.isActive !== undefined) updateValues.isActive = params.isActive;
-      if (params.lastLogin !== undefined) updateValues.lastLogin = params.lastLogin;
-      if (params.metadata !== undefined) updateValues.metadata = params.metadata;
+      if (params.passwordHash !== undefined)
+        updateValues.passwordHash = params.passwordHash;
+      if (params.firstName !== undefined)
+        updateValues.firstName = params.firstName;
+      if (params.lastName !== undefined)
+        updateValues.lastName = params.lastName;
+      if (params.roles !== undefined)
+        updateValues.roles = JSON.stringify(params.roles);
+      if (params.permissions !== undefined)
+        updateValues.permissions = JSON.stringify(params.permissions);
+      if (params.isActive !== undefined)
+        updateValues.isActive = params.isActive;
+      if (params.lastLogin !== undefined)
+        updateValues.lastLogin = params.lastLogin;
+      if (params.metadata !== undefined)
+        updateValues.metadata = params.metadata;
 
       // Update in database
       await this.db
@@ -203,7 +217,7 @@ export class PostgresUserRepository implements UserRepository {
       logger.error('Error updating user in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
         id,
-        params
+        params,
       });
       throw error;
     }
@@ -227,7 +241,7 @@ export class PostgresUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error deleting user in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        id
+        id,
       });
       throw error;
     }
@@ -235,8 +249,18 @@ export class PostgresUserRepository implements UserRepository {
 
   /**
    * Finds users by query parameters
+   *
+   * Multiple query parameters are combined using AND logic, meaning all specified
+   * conditions must be satisfied for a user to be included in the results.
+   *
    * @param params The query parameters
-   * @returns The users matching the query
+   * @param params.username Partial username match (case-insensitive LIKE search)
+   * @param params.email Partial email match (case-insensitive LIKE search)
+   * @param params.isActive Exact match for active status
+   * @param params.role Exact match for user role (searches within JSONB array)
+   * @param params.limit Maximum number of results to return
+   * @param params.offset Number of results to skip (for pagination)
+   * @returns The users matching ALL specified query conditions
    */
   async findByQuery(params: UserQueryParams): Promise<User[]> {
     try {
@@ -263,8 +287,10 @@ export class PostgresUserRepository implements UserRepository {
       }
 
       // Apply filters if any
-      if (conditions.length > 0) {
-        query = query.where(or(...conditions));
+      if (conditions.length === 1) {
+        query = query.where(conditions[0]);
+      } else if (conditions.length > 1) {
+        query = query.where(and(...conditions));
       }
 
       // Apply pagination
@@ -279,11 +305,11 @@ export class PostgresUserRepository implements UserRepository {
       const result = await query;
 
       // Convert database records to domain entities
-      return result.map(record => this.toDomain(record));
+      return result.map((record) => this.toDomain(record));
     } catch (error) {
       logger.error('Error finding users by query in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -291,8 +317,12 @@ export class PostgresUserRepository implements UserRepository {
 
   /**
    * Counts users by query parameters
-   * @param params The query parameters
-   * @returns The number of users matching the query
+   *
+   * Multiple query parameters are combined using AND logic, meaning all specified
+   * conditions must be satisfied for a user to be counted in the results.
+   *
+   * @param params The query parameters (same as findByQuery)
+   * @returns The number of users matching ALL specified query conditions
    */
   async countByQuery(params: UserQueryParams): Promise<number> {
     try {
@@ -319,8 +349,10 @@ export class PostgresUserRepository implements UserRepository {
       }
 
       // Apply filters if any
-      if (conditions.length > 0) {
-        query = query.where(or(...conditions));
+      if (conditions.length === 1) {
+        query = query.where(conditions[0]);
+      } else if (conditions.length > 1) {
+        query = query.where(and(...conditions));
       }
 
       // Execute query
@@ -331,7 +363,7 @@ export class PostgresUserRepository implements UserRepository {
     } catch (error) {
       logger.error('Error counting users by query in PostgreSQL repository', {
         error: error instanceof Error ? error.stack : String(error),
-        params
+        params,
       });
       throw error;
     }
@@ -344,17 +376,20 @@ export class PostgresUserRepository implements UserRepository {
    */
   private toDomain(record: Record<string, unknown>): User {
     // Parse JSON fields
-    const roles = typeof record.roles === 'string'
-      ? JSON.parse(record.roles as string) as UserRole[]
-      : record.roles as UserRole[];
+    const roles =
+      typeof record.roles === 'string'
+        ? (JSON.parse(record.roles as string) as UserRole[])
+        : (record.roles as UserRole[]);
 
-    const permissions = typeof record.permissions === 'string'
-      ? JSON.parse(record.permissions as string) as UserPermission[]
-      : record.permissions as UserPermission[];
+    const permissions =
+      typeof record.permissions === 'string'
+        ? (JSON.parse(record.permissions as string) as UserPermission[])
+        : (record.permissions as UserPermission[]);
 
-    const metadata = typeof record.metadata === 'string' && record.metadata
-      ? JSON.parse(record.metadata as string)
-      : record.metadata as Record<string, unknown> | undefined;
+    const metadata =
+      typeof record.metadata === 'string' && record.metadata
+        ? JSON.parse(record.metadata as string)
+        : (record.metadata as Record<string, unknown> | undefined);
 
     // Create user entity
     return User.create({
@@ -370,7 +405,7 @@ export class PostgresUserRepository implements UserRepository {
       lastLogin: record.lastLogin as Date | undefined,
       metadata,
       createdAt: record.createdAt as Date,
-      updatedAt: record.updatedAt as Date
+      updatedAt: record.updatedAt as Date,
     });
   }
 }
