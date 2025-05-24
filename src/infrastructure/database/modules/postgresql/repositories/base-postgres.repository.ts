@@ -5,7 +5,7 @@
  * Includes standardized error handling, logging, transaction support, and query execution patterns.
  */
 
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
