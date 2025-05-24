@@ -561,7 +561,8 @@ export class SqliteConnectionManager {
       // Use the centralized PRAGMA manager for consistent application
       const result = SqlitePragmaManager.applyPragmas(this.client, this.config);
 
-      // Log successful application in development mode
+      // Log successful application in development mode only
+      // (Failures are already logged by the PRAGMA manager in both dev and production)
       if (process.env.NODE_ENV !== 'production') {
         logger.info('SQLite PRAGMA settings applied via centralized manager', {
           appliedSettings: result.appliedSettings,

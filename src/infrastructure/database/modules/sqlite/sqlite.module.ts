@@ -124,6 +124,8 @@ export class SqliteModule implements DatabaseModuleInterface {
           connectionConfig
         );
 
+        // Log successful application in development mode only
+        // (Failures are already logged by the PRAGMA manager in both dev and production)
         if (process.env.NODE_ENV !== 'production') {
           logger.info(
             'SQLite initial optimizations applied via PRAGMA manager',

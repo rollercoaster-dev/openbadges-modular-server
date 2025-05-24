@@ -71,10 +71,8 @@ export class SqlitePragmaManager {
         (f) => !f.critical
       );
 
-      // Log results in development
-      if (process.env.NODE_ENV !== 'production') {
-        this.logPragmaResults(result);
-      }
+      // Log results in development (detailed) and production (warnings only)
+      this.logPragmaResults(result);
     } catch (error) {
       // Critical error occurred
       result.criticalSettingsApplied = false;
@@ -261,15 +259,23 @@ export class SqlitePragmaManager {
   }
 
   /**
-   * Logs the results of PRAGMA application in development mode
+   * Logs the results of PRAGMA application
+   * - Development: Detailed logging of all settings and failures
+   * - Production: Warning-level logging for failed settings only
    */
   private static logPragmaResults(result: SqlitePragmaResult): void {
-    logger.info('SQLite PRAGMA settings applied:', {
-      appliedSettings: result.appliedSettings,
-      criticalSettingsApplied: result.criticalSettingsApplied,
-      failedSettingsCount: result.failedSettings.length,
-    });
+    const isProduction = process.env.NODE_ENV === 'production';
 
+    // In development, log detailed information about all settings
+    if (!isProduction) {
+      logger.info('SQLite PRAGMA settings applied:', {
+        appliedSettings: result.appliedSettings,
+        criticalSettingsApplied: result.criticalSettingsApplied,
+        failedSettingsCount: result.failedSettings.length,
+      });
+    }
+
+    // Log failures in both development and production
     if (result.failedSettings.length > 0) {
       const criticalFailures = result.failedSettings.filter((f) => f.critical);
       const nonCriticalFailures = result.failedSettings.filter(
@@ -279,14 +285,24 @@ export class SqlitePragmaManager {
       if (criticalFailures.length > 0) {
         logger.error(
           `${criticalFailures.length} critical SQLite PRAGMA settings failed`,
-          { criticalFailures }
+          isProduction
+            ? {
+                criticalFailureCount: criticalFailures.length,
+                failedSettings: criticalFailures.map((f) => f.setting),
+              }
+            : { criticalFailures }
         );
       }
 
       if (nonCriticalFailures.length > 0) {
         logger.warn(
           `${nonCriticalFailures.length} non-critical SQLite PRAGMA settings failed`,
-          { nonCriticalFailures }
+          isProduction
+            ? {
+                nonCriticalFailureCount: nonCriticalFailures.length,
+                failedSettings: nonCriticalFailures.map((f) => f.setting),
+              }
+            : { nonCriticalFailures }
         );
       }
     }
