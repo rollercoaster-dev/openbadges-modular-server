@@ -178,11 +178,12 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeQuery<T>(
     context: SqliteOperationContext,
-    query: () => Promise<T[]>,
+    query: (db: DrizzleDB) => Promise<T[]>,
     queryParams?: unknown[]
   ): Promise<T[]> {
     try {
-      const result = await query();
+      const db = this.getDatabase();
+      const result = await query(db);
 
       // Log query metrics with actual row count and parameters
       this.logQueryMetrics(context, result.length, queryParams);
@@ -199,11 +200,12 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeSingleQuery<T>(
     context: SqliteOperationContext,
-    query: () => Promise<T[]>,
+    query: (db: DrizzleDB) => Promise<T[]>,
     queryParams?: unknown[]
   ): Promise<T | null> {
     try {
-      const result = await query();
+      const db = this.getDatabase();
+      const result = await query(db);
 
       // Log query metrics with parameters
       this.logQueryMetrics(context, result.length, queryParams);
@@ -221,10 +223,11 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeUpdate<T>(
     context: SqliteOperationContext,
-    update: () => Promise<T[]>
+    update: (db: DrizzleDB) => Promise<T[]>
   ): Promise<T | null> {
     try {
-      const result = await update();
+      const db = this.getDatabase();
+      const result = await update(db);
 
       // Log update metrics
       this.logQueryMetrics(context, result.length);
@@ -242,10 +245,11 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeDelete(
     context: SqliteOperationContext,
-    deleteOp: () => Promise<unknown[]>
+    deleteOp: (db: DrizzleDB) => Promise<unknown[]>
   ): Promise<boolean> {
     try {
-      const result = await deleteOp();
+      const db = this.getDatabase();
+      const result = await deleteOp(db);
 
       // Log delete metrics
       const rowsAffected = Array.isArray(result) ? result.length : 0;
