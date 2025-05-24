@@ -179,16 +179,19 @@ result.criticalSettingsApplied = result.failedSettings.every(
 
 ### Low Priority
 - [ ] Consider refactoring static-only class to functions
-- [ ] Improve query type determination logic
-- [ ] Fix timestamp handling in create operations
-- [ ] Improve query logger parameter forwarding
+- [x] Improve query type determination logic
+- [x] Remove unused config properties
+- [x] Fix timestamp handling in create operations
+- [x] Improve query logger parameter forwarding
+- [x] Accept optional rowsAffected parameter
+- [x] Fix markdown formatting issues
 
 ## Progress Tracking
 
 **Total Issues**: 13
-**Addressed**: 6
-**Remaining**: 7
-**Next Focus**: Code quality improvements (Low priority)
+**Addressed**: 12
+**Remaining**: 1
+**Next Focus**: Static-only class refactoring (Optional)
 
 **Estimated Effort**:
 - Critical: 4-6 hours
@@ -214,11 +217,17 @@ Each commit will be tested thoroughly and pushed individually for continued Code
 **File**: `src/infrastructure/database/modules/sqlite/utils/sqlite-pragma.manager.ts`
 **Lines**: 15-21
 **Severity**: 🟡 **Low**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: `maxConnectionAttempts` and `connectionRetryDelayMs` are present in `SqlitePragmaConfig` but never used.
 
-**Recommendation**: Remove unused properties or create a dedicated type alias.
+**Implemented Fix**:
+- Removed unused properties from `SqlitePragmaConfig` interface
+- Created dedicated PRAGMA-only configuration interface
+- Updated connection manager and SQLite module to extract only PRAGMA-related properties when calling the PRAGMA manager
+- Updated all test files to use the new interface structure
+
+**Resolution**: `SqlitePragmaConfig` now only contains properties actually used for PRAGMA settings, eliminating unused configuration properties.
 
 ---
 
@@ -226,11 +235,17 @@ Each commit will be tested thoroughly and pushed individually for continued Code
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository.ts`
 **Lines**: 54-57
 **Severity**: 🟡 **Low**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: Timestamps are set twice - once in `Issuer.create()` and again before database insertion.
 
-**Recommendation**: Rely on domain factory or database defaults to avoid divergence.
+**Implemented Fix**:
+- Removed redundant timestamp setting in `create()` method (lines 54-57)
+- Removed redundant timestamp setting in `update()` method (line 172)
+- Added comments explaining that the mapper handles timestamp setting
+- Ensured all timestamp logic is centralized in the mapper layer
+
+**Resolution**: Timestamps are now set only once by the mapper, eliminating redundancy and potential divergence between domain and persistence layers.
 
 ---
 
@@ -238,11 +253,17 @@ Each commit will be tested thoroughly and pushed individually for continued Code
 **File**: `src/infrastructure/database/modules/sqlite/repositories/base-sqlite.repository.ts`
 **Lines**: 69-86
 **Severity**: 🟡 **Low**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: `rowsAffected`, `queryType`, and `tableName` are calculated but not forwarded to the logger.
 
-**Recommendation**: Either include the extra details in logging or remove unused computation.
+**Implemented Fix**:
+- Enhanced `logQueryMetrics()` method to accept optional `queryParams` parameter
+- Updated `executeQuery()` and `executeSingleQuery()` methods to accept and forward query parameters
+- Modified issuer repository to pass calculated pagination parameters (`limit`, `offset`) and entity IDs to the logger
+- Ensured actual query parameters are logged instead of just entity IDs when available
+
+**Resolution**: Query logger now receives the actual parameters used in database queries, providing more accurate logging and debugging information.
 
 ---
 
@@ -250,11 +271,17 @@ Each commit will be tested thoroughly and pushed individually for continued Code
 **File**: `src/infrastructure/database/modules/sqlite/repositories/base-sqlite.repository.ts`
 **Lines**: 108-115
 **Severity**: 🟡 **Low**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: `executeOperation` hard-codes `rowsAffected = 1` regardless of actual operation results.
 
-**Recommendation**: Accept optional `rowsAffected` parameter or infer from result.
+**Implemented Fix**:
+- Added optional `rowsAffected` parameter to `executeOperation()` method
+- Added optional `rowsAffected` parameter to `executeTransaction()` method
+- Updated methods to use provided row count or fall back to default value of 1
+- Maintained backward compatibility by making the parameter optional
+
+**Resolution**: Methods now accept actual row counts when available, eliminating hard-coded assumptions while maintaining backward compatibility.
 
 ---
 
@@ -262,11 +289,17 @@ Each commit will be tested thoroughly and pushed individually for continued Code
 **File**: `.cursor/working/tasks/db-system-refactor.md`
 **Lines**: 178-188, 240-259
 **Severity**: 🟡 **Low**
-**Status**: 🔴 Pending
+**Status**: ✅ **Completed**
 
 **Issue**: Nested list items use 4-space indentation instead of 2, breaking Markdown rendering.
 
-**Recommendation**: Fix indentation to comply with MD007 linting rule.
+**Implemented Fix**:
+- Fixed indentation in Phase 3 section (lines 178-201) from 4-space to 2-space indentation
+- Fixed indentation in Progress Summary section (lines 244-259) from 4-space to 2-space indentation
+- Ensured all nested list items comply with MD007 linting rule
+- Maintained document structure and readability
+
+**Resolution**: All markdown formatting issues resolved, document now renders properly with correct nested list indentation.
 
 ## Positive Feedback
 
