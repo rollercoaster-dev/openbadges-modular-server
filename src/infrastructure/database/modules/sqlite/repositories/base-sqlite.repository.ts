@@ -9,10 +9,6 @@ import type { Database } from 'bun:sqlite';
 import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
-import {
-  SqliteQueryMetrics,
-  SqliteOperationContext,
-} from '../types/sqlite-database.types';
 import { Shared } from 'openbadges-types';
 
 // Create compile-time type alias to avoid runtime import dependency
@@ -87,13 +83,13 @@ export abstract class BaseSqliteRepository {
   /**
    * Logs query metrics for performance monitoring
    * @param context Operation context
-   * @param resultCount Number of results returned
-   * @param additionalMetrics Optional additional metrics
+   * @param _resultCount Number of results returned (unused but kept for interface consistency)
+   * @param _additionalMetrics Optional additional metrics (unused but kept for interface consistency)
    */
   protected logQueryMetrics(
     context: BaseOperationContext,
-    resultCount: number,
-    additionalMetrics?: Partial<SqliteQueryMetrics>
+    _resultCount: number,
+    _additionalMetrics?: unknown
   ): void {
     const duration = Date.now() - context.startTime;
 

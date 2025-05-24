@@ -11,7 +11,6 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { SqliteIssuerRepository } from '@infrastructure/database/modules/sqlite/repositories/sqlite-issuer.repository';
-import { Issuer } from '@domains/issuer/issuer.entity';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 import { Shared } from 'openbadges-types';
@@ -122,8 +121,12 @@ describe('BaseSqliteRepository Integration Tests', () => {
     const allIssuers = await issuerRepository.findAll();
 
     expect(allIssuers).toHaveLength(2);
-    expect(allIssuers.some(issuer => issuer.name === issuerData1.name)).toBe(true);
-    expect(allIssuers.some(issuer => issuer.name === issuerData2.name)).toBe(true);
+    expect(allIssuers.some((issuer) => issuer.name === issuerData1.name)).toBe(
+      true
+    );
+    expect(allIssuers.some((issuer) => issuer.name === issuerData2.name)).toBe(
+      true
+    );
   });
 
   test('should update issuer using base repository functionality', async () => {
@@ -143,7 +146,10 @@ describe('BaseSqliteRepository Integration Tests', () => {
       description: 'An updated test issuer',
     };
 
-    const updatedIssuer = await issuerRepository.update(createdIssuer.id, updateData);
+    const updatedIssuer = await issuerRepository.update(
+      createdIssuer.id,
+      updateData
+    );
 
     expect(updatedIssuer).toBeDefined();
     expect(updatedIssuer!.id).toBe(createdIssuer.id);

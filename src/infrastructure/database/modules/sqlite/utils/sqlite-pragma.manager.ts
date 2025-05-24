@@ -7,7 +7,6 @@
 
 import type { Database } from 'bun:sqlite';
 import { logger } from '@utils/logging/logger.service';
-import { sanitizeObject } from '@utils/logging/sanitize';
 import type { SqliteConnectionConfig } from '../types/sqlite-database.types';
 
 /**
@@ -17,7 +16,11 @@ export interface PragmaApplicationResult {
   /** Settings that were successfully applied */
   appliedSettings: Record<string, string | number | boolean>;
   /** Non-critical settings that failed to apply */
-  failedSettings: Array<{ setting: string; error: string; category: 'CRITICAL' | 'OPTIONAL' }>;
+  failedSettings: Array<{
+    setting: string;
+    error: string;
+    category: 'CRITICAL' | 'OPTIONAL';
+  }>;
   /** Whether all critical settings were applied successfully */
   criticalSettingsApplied: boolean;
 }
@@ -62,9 +65,9 @@ export class SqlitePragmaManager {
         this.applySinglePragma(client, setting);
         result.appliedSettings[setting.name] = setting.value;
       } catch (error) {
-        const errorMsg = `Failed to set ${setting.name} (${setting.category}): ${
-          error instanceof Error ? error.message : String(error)
-        }`;
+        const errorMsg = `Failed to set ${setting.name} (${
+          setting.category
+        }): ${error instanceof Error ? error.message : String(error)}`;
 
         result.failedSettings.push({
           setting: setting.name,
@@ -105,11 +108,16 @@ export class SqlitePragmaManager {
   /**
    * Builds PRAGMA settings array from configuration
    */
-  private static buildPragmaSettings(config: SqliteConnectionConfig): PragmaSetting[] {
+  private static buildPragmaSettings(
+    config: SqliteConnectionConfig
+  ): PragmaSetting[] {
     const settings: PragmaSetting[] = [];
 
     // Critical settings for data integrity and concurrency
-    if (typeof config.sqliteBusyTimeout === 'number' && config.sqliteBusyTimeout > 0) {
+    if (
+      typeof config.sqliteBusyTimeout === 'number' &&
+      config.sqliteBusyTimeout > 0
+    ) {
       settings.push({
         name: 'busy_timeout',
         value: config.sqliteBusyTimeout,
@@ -144,7 +152,10 @@ export class SqlitePragmaManager {
     );
 
     // Optional performance settings
-    if (typeof config.sqliteCacheSize === 'number' && config.sqliteCacheSize > 0) {
+    if (
+      typeof config.sqliteCacheSize === 'number' &&
+      config.sqliteCacheSize > 0
+    ) {
       settings.push({
         name: 'cache_size',
         value: -Math.abs(config.sqliteCacheSize), // Negative value means KB
@@ -174,7 +185,10 @@ export class SqlitePragmaManager {
   /**
    * Applies a single PRAGMA setting
    */
-  private static applySinglePragma(client: Database, setting: PragmaSetting): void {
+  private static applySinglePragma(
+    client: Database,
+    setting: PragmaSetting
+  ): void {
     const pragmaStatement = `PRAGMA ${setting.name} = ${setting.value};`;
     client.exec(pragmaStatement);
   }
@@ -189,19 +203,29 @@ export class SqlitePragmaManager {
     });
 
     if (result.failedSettings.length > 0) {
-      const criticalFailures = result.failedSettings.filter(f => f.category === 'CRITICAL');
-      const optionalFailures = result.failedSettings.filter(f => f.category === 'OPTIONAL');
+      const criticalFailures = result.failedSettings.filter(
+        (f) => f.category === 'CRITICAL'
+      );
+      const optionalFailures = result.failedSettings.filter(
+        (f) => f.category === 'OPTIONAL'
+      );
 
       if (criticalFailures.length > 0) {
-        logger.error(`${criticalFailures.length} critical PRAGMA settings failed`, {
-          failedSettings: criticalFailures,
-        });
+        logger.error(
+          `${criticalFailures.length} critical PRAGMA settings failed`,
+          {
+            failedSettings: criticalFailures,
+          }
+        );
       }
 
       if (optionalFailures.length > 0) {
-        logger.warn(`${optionalFailures.length} optional PRAGMA settings failed`, {
-          failedSettings: optionalFailures,
-        });
+        logger.warn(
+          `${optionalFailures.length} optional PRAGMA settings failed`,
+          {
+            failedSettings: optionalFailures,
+          }
+        );
       }
     }
   }
@@ -215,12 +239,26 @@ export class SqlitePragmaManager {
   static validatePragmas(
     client: Database,
     expectedSettings: Record<string, string | number>
-  ): { valid: boolean; mismatches: Array<{ setting: string; expected: string | number; actual: string | number }> } {
-    const mismatches: Array<{ setting: string; expected: string | number; actual: string | number }> = [];
+  ): {
+    valid: boolean;
+    mismatches: Array<{
+      setting: string;
+      expected: string | number;
+      actual: string | number;
+    }>;
+  } {
+    const mismatches: Array<{
+      setting: string;
+      expected: string | number;
+      actual: string | number;
+    }> = [];
 
     for (const [setting, expectedValue] of Object.entries(expectedSettings)) {
       try {
-        const result = client.query(`PRAGMA ${setting};`).get() as Record<string, unknown>;
+        const result = client.query(`PRAGMA ${setting};`).get() as Record<
+          string,
+          unknown
+        >;
         const actualValue = Object.values(result)[0];
 
         // Normalize values for comparison
