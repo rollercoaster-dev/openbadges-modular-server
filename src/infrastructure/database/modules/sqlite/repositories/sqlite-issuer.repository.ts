@@ -11,22 +11,17 @@ import type { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { issuers } from '../schema';
 import { SqliteIssuerMapper } from '../mappers/sqlite-issuer.mapper';
 import { Shared } from 'openbadges-types';
-import { logger, queryLogger } from '@utils/logging/logger.service';
-// SensitiveValue import removed as it's not used in this file
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
-import {
-  SqliteQueryMetrics,
-  SqliteOperationContext,
-} from '../types/sqlite-database.types';
-import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
+import { BaseSqliteRepository } from './base-sqlite.repository';
 
-// Create compile-time type alias to avoid runtime import dependency
-type DrizzleDB = ReturnType<typeof DrizzleFn>;
+export class SqliteIssuerRepository
+  extends BaseSqliteRepository
+  implements IssuerRepository
+{
+  private readonly mapper: SqliteIssuerMapper;
 
-export class SqliteIssuerRepository implements IssuerRepository {
-  private mapper: SqliteIssuerMapper;
-
-  constructor(private readonly connectionManager: SqliteConnectionManager) {
+  constructor(connectionManager: SqliteConnectionManager) {
+    super(connectionManager);
     this.mapper = new SqliteIssuerMapper();
   }
 
@@ -37,110 +32,40 @@ export class SqliteIssuerRepository implements IssuerRepository {
     return this.mapper;
   }
 
-  /**
-   * Gets the database instance with connection validation
-   */
-  private getDatabase(): DrizzleDB {
-    this.connectionManager.ensureConnected();
-    return this.connectionManager.getDatabase();
-  }
-
-  /**
-   * Creates operation context for logging and monitoring
-   */
-  private createOperationContext(
-    operation: string,
-    entityId?: Shared.IRI
-  ): SqliteOperationContext {
-    return {
-      operation,
-      entityType: 'issuer',
-      entityId,
-      startTime: Date.now(),
-    };
-  }
-
-  /**
-   * Logs query metrics
-   */
-  private logQueryMetrics(
-    context: SqliteOperationContext,
-    rowsAffected: number
-  ): SqliteQueryMetrics {
-    const metrics: SqliteQueryMetrics = {
-      duration: Date.now() - context.startTime,
-      rowsAffected,
-      queryType: context.operation.includes('SELECT')
-        ? 'SELECT'
-        : context.operation.includes('INSERT')
-        ? 'INSERT'
-        : context.operation.includes('UPDATE')
-        ? 'UPDATE'
-        : 'DELETE',
-      tableName: 'issuers',
-    };
-
-    queryLogger.logQuery(
-      context.operation,
-      context.entityId ? [context.entityId] : undefined,
-      metrics.duration,
-      'sqlite'
-    );
-
-    return metrics;
-  }
-
   async create(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
-    const context = this.createOperationContext('INSERT Issuer');
+    const context = this.createOperationContext('INSERT Issuer', 'issuer');
 
-    try {
-      const db = this.getDatabase();
+    return this.executeTransaction(context, async (tx) => {
+      // Create a full issuer entity with generated ID for mapping
+      const issuerWithId = Issuer.create(issuer);
 
-      // Use transaction to ensure atomicity between entity creation and database insertion
-      const result = await db.transaction(async (tx) => {
-        // Create a full issuer entity with generated ID for mapping
-        const issuerWithId = Issuer.create(issuer);
+      // Convert domain entity to database record
+      const record = this.mapper.toPersistence(issuerWithId);
 
-        // Convert domain entity to database record
-        const record = this.mapper.toPersistence(issuerWithId);
+      // Ensure timestamps are set
+      const now = Date.now();
+      record.createdAt = now;
+      record.updatedAt = now;
 
-        // Ensure timestamps are set
-        const now = Date.now();
-        record.createdAt = now;
-        record.updatedAt = now;
+      // Insert into database within the transaction
+      const insertResult = await tx.insert(issuers).values(record).returning();
 
-        // Insert into database within the transaction
-        const insertResult = await tx
-          .insert(issuers)
-          .values(record)
-          .returning();
-
-        if (!insertResult[0]) {
-          throw new Error('Failed to create issuer: no result returned');
-        }
-
-        return insertResult[0];
-      });
+      if (!insertResult[0]) {
+        throw new Error('Failed to create issuer: no result returned');
+      }
 
       // Log metrics
       this.logQueryMetrics(context, 1);
 
       // Convert database record back to domain entity
-      return this.mapper.toDomain(result);
-    } catch (error) {
-      logger.error('Error creating issuer in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        operation: context.operation,
-        duration: Date.now() - context.startTime,
-      });
-      throw error;
-    }
+      return this.mapper.toDomain(insertResult[0]);
+    });
   }
 
   async findAll(): Promise<Issuer[]> {
-    const context = this.createOperationContext('SELECT All Issuers');
+    const context = this.createOperationContext('SELECT All Issuers', 'issuer');
 
-    try {
+    return this.executeOperation(context, async () => {
       const db = this.getDatabase();
 
       // Query database to get all issuers
@@ -151,20 +76,18 @@ export class SqliteIssuerRepository implements IssuerRepository {
 
       // Convert database records to domain entities
       return result.map((record) => this.mapper.toDomain(record));
-    } catch (error) {
-      logger.error('Error finding all issuers in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        operation: context.operation,
-        duration: Date.now() - context.startTime,
-      });
-      throw error;
-    }
+    });
   }
 
   async findById(id: Shared.IRI): Promise<Issuer | null> {
-    const context = this.createOperationContext('SELECT Issuer by ID', id);
+    this.validateEntityId(id, 'issuer');
+    const context = this.createOperationContext(
+      'SELECT Issuer by ID',
+      'issuer',
+      id
+    );
 
-    try {
+    return this.executeOperation(context, async () => {
       const db = this.getDatabase();
 
       // Query database
@@ -183,24 +106,17 @@ export class SqliteIssuerRepository implements IssuerRepository {
 
       // Convert database record to domain entity
       return this.mapper.toDomain(result[0]);
-    } catch (error) {
-      logger.error('Error finding issuer by ID in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-        operation: context.operation,
-        duration: Date.now() - context.startTime,
-      });
-      throw error;
-    }
+    });
   }
 
   async update(
     id: Shared.IRI,
     issuer: Partial<Issuer>
   ): Promise<Issuer | null> {
-    const context = this.createOperationContext('UPDATE Issuer', id);
+    this.validateEntityId(id, 'issuer');
+    const context = this.createOperationContext('UPDATE Issuer', 'issuer', id);
 
-    try {
+    return this.executeOperation(context, async () => {
       // Check if issuer exists
       const existingIssuer = await this.findById(id);
       if (!existingIssuer) {
@@ -234,6 +150,7 @@ export class SqliteIssuerRepository implements IssuerRepository {
         .set(updatable)
         .where(eq(issuers.id, id as string))
         .returning();
+
       this.logQueryMetrics(context, result.length);
 
       if (!result[0]) {
@@ -242,21 +159,14 @@ export class SqliteIssuerRepository implements IssuerRepository {
 
       // Convert database record back to domain entity
       return this.mapper.toDomain(result[0]);
-    } catch (error) {
-      logger.error('Error updating issuer in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-        operation: context.operation,
-        duration: Date.now() - context.startTime,
-      });
-      throw error;
-    }
+    });
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {
-    const context = this.createOperationContext('DELETE Issuer', id);
+    this.validateEntityId(id, 'issuer');
+    const context = this.createOperationContext('DELETE Issuer', 'issuer', id);
 
-    try {
+    return this.executeOperation(context, async () => {
       const db = this.getDatabase();
 
       // Delete from database
@@ -270,14 +180,6 @@ export class SqliteIssuerRepository implements IssuerRepository {
 
       // Return true if something was deleted
       return result.length > 0;
-    } catch (error) {
-      logger.error('Error deleting issuer in SQLite repository', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-        operation: context.operation,
-        duration: Date.now() - context.startTime,
-      });
-      throw error;
-    }
+    });
   }
 }
