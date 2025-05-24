@@ -264,14 +264,24 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(logs.length).toBe(4); // findById (revoke) -> findById (update) -> update -> findById (update's internal findById)
 
     // Check logs (simplified check, focus on query names)
-    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke
-    expect(logs[1].query).toBe('REVOKE Assertion'); // From executeTransaction in revoke
-    expect(logs[2].query).toBe('SELECT Assertion by ID'); // From findById in update
-    expect(logs[3].query).toBe('UPDATE Assertion'); // From executeUpdate in update
-    expect(logs[3].params).toBeArrayOfSize(2); // Update operation has 2 params
-    expect(logs[3].params?.[0]).toBe(createdAssertion.id);
-    expect(logs[3].params?.[1]).toBeInstanceOf(SensitiveValue);
-    expect(logs[3].database).toBe('sqlite');
+    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke's transaction
+    expect(logs[1].query).toBe('SELECT Assertion by ID'); // From findById in update (called within transaction)
+    expect(logs[2].query).toBe('UPDATE Assertion'); // From executeUpdate in update (called within transaction)
+    expect(logs[3].query).toBe('REVOKE Assertion'); // From executeTransaction after its callback completes
+
+    // Verify parameters for the UPDATE operation
+    expect(logs[2].params).toBeArrayOfSize(2);
+    expect(logs[2].params?.[0]).toBe(createdAssertion.id);
+    expect(logs[2].params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(logs[2].database).toBe('sqlite');
+
+    // Verify parameters for the final SELECT Assertion by ID (from update's internal findById)
+    expect(logs[1].params).toEqual([createdAssertion.id]);
+    expect(logs[1].database).toBe('sqlite');
+
+    // Verify parameters for the initial SELECT Assertion by ID (from revoke's findById)
+    expect(logs[0].params).toEqual([createdAssertion.id]);
+    expect(logs[0].database).toBe('sqlite');
   });
 
   it('should log query on verify (findById)', async () => {
