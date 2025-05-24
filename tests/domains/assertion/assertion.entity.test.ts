@@ -317,9 +317,10 @@ describe('Assertion Entity', () => {
       const assertionWithDidRecipient = Assertion.create({
         ...validAssertionData,
         recipient: {
-          id: 'did:example:123456789abcdefghi', // OB3 style recipient
-          type: 'AchievementSubject',
-        } as Shared.AchievementSubject,
+          type: 'did',
+          identity: 'did:example:123456789abcdefghi',
+          hashed: false,
+        },
       });
 
       const obj = assertionWithDidRecipient.toObject();
