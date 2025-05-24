@@ -205,16 +205,7 @@ export class SqliteConnectionManager {
 
     try {
       // Perform WAL checkpoint to ensure all data is written
-      try {
-        this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
-      } catch (checkpointError) {
-        logger.warn('Error during WAL checkpoint', {
-          errorMessage:
-            checkpointError instanceof Error
-              ? checkpointError.message
-              : String(checkpointError),
-        });
-      }
+      this.performWalCheckpoint();
 
       // Mark the connection as logically disconnected without closing the client
       // This allows the client to be reused for reconnection
@@ -253,16 +244,7 @@ export class SqliteConnectionManager {
 
     try {
       // Perform WAL checkpoint to ensure all data is written
-      try {
-        this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
-      } catch (checkpointError) {
-        logger.warn('Error during WAL checkpoint', {
-          errorMessage:
-            checkpointError instanceof Error
-              ? checkpointError.message
-              : String(checkpointError),
-        });
-      }
+      this.performWalCheckpoint();
 
       // Actually close the database connection
       if (typeof this.client.close === 'function') {
@@ -374,89 +356,9 @@ export class SqliteConnectionManager {
         await this.testConnection();
         connected = true;
 
-        // Get PRAGMA values to include in health check
+        // Get PRAGMA configuration details if connected
         if (connected) {
-          try {
-            // Get busy_timeout setting
-            const busyTimeoutResult = this.client
-              .query('PRAGMA busy_timeout;')
-              .get() as { busy_timeout?: number } | null;
-            if (busyTimeoutResult && 'busy_timeout' in busyTimeoutResult) {
-              configInfo.busyTimeout = busyTimeoutResult.busy_timeout;
-              configInfo.appliedSettings.busyTimeout = true;
-            }
-
-            // Get synchronous mode
-            const syncModeResult = this.client
-              .query('PRAGMA synchronous;')
-              .get() as { synchronous?: number | string } | null;
-            if (syncModeResult && 'synchronous' in syncModeResult) {
-              configInfo.syncMode = String(syncModeResult.synchronous);
-              configInfo.appliedSettings.syncMode = true;
-            }
-
-            // Get cache size
-            const cacheSizeResult = this.client
-              .query('PRAGMA cache_size;')
-              .get() as { cache_size?: number } | null;
-            if (cacheSizeResult && 'cache_size' in cacheSizeResult) {
-              configInfo.cacheSize = cacheSizeResult.cache_size;
-              configInfo.appliedSettings.cacheSize = true;
-            }
-
-            // Get journal mode
-            const journalModeResult = this.client
-              .query('PRAGMA journal_mode;')
-              .get() as { journal_mode?: string } | null;
-            if (journalModeResult && 'journal_mode' in journalModeResult) {
-              configInfo.journalMode = String(journalModeResult.journal_mode);
-            }
-
-            // Check foreign keys status
-            const foreignKeysResult = this.client
-              .query('PRAGMA foreign_keys;')
-              .get() as { foreign_keys?: number } | null;
-            if (foreignKeysResult && 'foreign_keys' in foreignKeysResult) {
-              configInfo.foreignKeys = Boolean(foreignKeysResult.foreign_keys);
-              configInfo.appliedSettings.foreignKeys = true;
-            }
-
-            // Get temp_store setting
-            const tempStoreResult = this.client
-              .query('PRAGMA temp_store;')
-              .get() as { temp_store?: number } | null;
-            if (
-              tempStoreResult &&
-              'temp_store' in tempStoreResult &&
-              tempStoreResult.temp_store === 2
-            ) {
-              // 2 = MEMORY
-              configInfo.appliedSettings.tempStore = true;
-            }
-
-            // Estimate memory usage (if available)
-            try {
-              const memoryUsed = this.client
-                .query('PRAGMA memory_used;')
-                .get() as { memory_used?: number } | null;
-              if (memoryUsed && 'memory_used' in memoryUsed) {
-                configInfo.memoryUsage = memoryUsed.memory_used;
-              }
-            } catch {
-              // Memory usage stats not available in all SQLite versions
-            }
-          } catch (configError) {
-            // Log but don't fail the health check due to config info issues
-            logger.warn(
-              'Error getting SQLite configuration details during health check',
-              {
-                error:
-                  configError instanceof Error
-                    ? configError.message
-                    : String(configError),
-              }
-            );
-          }
+          this.populateConfigurationInfo(configInfo);
         }
       }
       responseTime = Date.now() - startTime;
@@ -551,6 +453,123 @@ export class SqliteConnectionManager {
       hasError: this.lastError !== null,
       lastError: this.lastError?.message,
     };
+  }
+
+  /**
+   * Populates configuration information by querying SQLite PRAGMA settings
+   */
+  private populateConfigurationInfo(
+    configInfo: SqliteDatabaseHealth['configuration']
+  ): void {
+    try {
+      // Get busy_timeout setting
+      this.queryPragmaSetting(
+        'PRAGMA busy_timeout;',
+        'busy_timeout',
+        (result) => {
+          configInfo.busyTimeout = result.busy_timeout as number;
+          configInfo.appliedSettings.busyTimeout = true;
+        }
+      );
+
+      // Get synchronous mode
+      this.queryPragmaSetting(
+        'PRAGMA synchronous;',
+        'synchronous',
+        (result) => {
+          configInfo.syncMode = String(result.synchronous);
+          configInfo.appliedSettings.syncMode = true;
+        }
+      );
+
+      // Get cache size
+      this.queryPragmaSetting('PRAGMA cache_size;', 'cache_size', (result) => {
+        configInfo.cacheSize = result.cache_size as number;
+        configInfo.appliedSettings.cacheSize = true;
+      });
+
+      // Get journal mode
+      this.queryPragmaSetting(
+        'PRAGMA journal_mode;',
+        'journal_mode',
+        (result) => {
+          configInfo.journalMode = String(result.journal_mode);
+        }
+      );
+
+      // Check foreign keys status
+      this.queryPragmaSetting(
+        'PRAGMA foreign_keys;',
+        'foreign_keys',
+        (result) => {
+          configInfo.foreignKeys = Boolean(result.foreign_keys);
+          configInfo.appliedSettings.foreignKeys = true;
+        }
+      );
+
+      // Get temp_store setting
+      this.queryPragmaSetting('PRAGMA temp_store;', 'temp_store', (result) => {
+        if (result.temp_store === 2) {
+          // 2 = MEMORY
+          configInfo.appliedSettings.tempStore = true;
+        }
+      });
+
+      // Estimate memory usage (if available)
+      try {
+        this.queryPragmaSetting(
+          'PRAGMA memory_used;',
+          'memory_used',
+          (result) => {
+            configInfo.memoryUsage = result.memory_used as number;
+          }
+        );
+      } catch {
+        // Memory usage stats not available in all SQLite versions
+      }
+    } catch (configError) {
+      // Log but don't fail the health check due to config info issues
+      logger.warn(
+        'Error getting SQLite configuration details during health check',
+        {
+          error:
+            configError instanceof Error
+              ? configError.message
+              : String(configError),
+        }
+      );
+    }
+  }
+
+  /**
+   * Helper method to query a single PRAGMA setting and process the result
+   */
+  private queryPragmaSetting<T extends Record<string, unknown>>(
+    query: string,
+    expectedKey: string,
+    processor: (result: T) => void
+  ): void {
+    const result = this.client.query(query).get() as T | null;
+    if (result && expectedKey in result) {
+      processor(result);
+    }
+  }
+
+  /**
+   * Performs a WAL checkpoint to ensure all data is written to disk
+   * Used by both disconnect() and close() methods
+   */
+  private performWalCheckpoint(): void {
+    try {
+      this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
+    } catch (checkpointError) {
+      logger.warn('Error during WAL checkpoint', {
+        errorMessage:
+          checkpointError instanceof Error
+            ? checkpointError.message
+            : String(checkpointError),
+      });
+    }
   }
 
   /**

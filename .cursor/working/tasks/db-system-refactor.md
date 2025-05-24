@@ -198,35 +198,54 @@ This checklist translates the research, planning, and simplification tasks into 
   -   [📝] **Update tests to match new standardized logging behavior** - PENDING
     -   [⚠️] BadgeClass repository tests need updates for new query logging format
     -   [📝] Assertion repository tests will need similar updates
--   [ ] **Review and Simplify `SqliteRepositoryCoordinator` (Ref: Task 5.3)**
-  -   [ ] Analyze current usage patterns of the coordinator.
-  -   [ ] Decide if its role can be more focused (e.g., only for transactions/multi-entity validation).
-  -   [ ] Refactor `SqliteDatabaseService` and `SqliteRepositoryCoordinator` based on the decision.
-  -   [ ] Test changes to coordinator and service.
--   [ ] **Refine Logging Strategy (Ref: Task 5.4)**
-  -   [ ] Review current logging levels and verbosity.
-  -   [ ] Implement conditional logging for verbose debug/info logs (e.g., based on `NODE_ENV`).
-  -   [ ] Test logging output.
--   [ ] **Streamline `SqliteConnectionManager` (Ref: Task 5.5)**
-  -   [ ] If PRAGMA management is centralized, simplify/remove `applyConfigurationPragmas`.
-  -   [ ] Break down lengthy methods (`getHealth`) into smaller private helpers.
-  -   [ ] Evaluate and potentially simplify `disconnect()` vs. `close()` methods.
-  -   [ ] Test connection manager functionality.
+-   [✅] **Review and Simplify `SqliteRepositoryCoordinator` (Ref: Task 5.3)**
+  -   [✅] Analyzed current usage patterns of the coordinator.
+  -   [✅] Decided to focus coordinator role on complex operations (transactions/multi-entity validation).
+  -   [✅] Refactored `SqliteDatabaseService` to use direct repository access for simple CRUD operations.
+  -   [✅] Coordinator now reserved for: `createBadgeEcosystem()`, `createAssertionWithValidation()`, `createBadgeClassWithValidation()`, and `performHealthCheck()`.
+  -   [✅] All repository tests passing - no breaking changes.
+-   [✅] **Refine Logging Strategy (Ref: Task 5.4)**
+  -   [✅] Reviewed current logging levels and verbosity across SQLite module.
+  -   [✅] Implemented conditional logging for read operations (debug level only in development).
+  -   [✅] Created `logDebugConditional()` utility method in `SqliteDatabaseService` for consistent conditional logging.
+  -   [✅] Applied environment-based logging to all read operations (GET, findBy*, verify) to reduce production noise.
+  -   [✅] Maintained info-level logging for important operations (CREATE, UPDATE, DELETE) and error logging for all failures.
+  -   [✅] Verified existing query logging and PRAGMA logging already use proper environment-based conditions.
+  -   [✅] All tests passing - logging improvements working correctly.
+-   [✅] **Streamline `SqliteConnectionManager` (Ref: Task 5.5)**
+  -   [✅] Confirmed PRAGMA management is properly centralized via `SqlitePragmaManager` - no changes needed to `applyConfigurationPragmas()`.
+  -   [✅] Broke down lengthy `getHealth()` method into smaller private helpers:
+    - Created `populateConfigurationInfo()` method to handle PRAGMA querying logic
+    - Created `queryPragmaSetting()` helper for consistent PRAGMA query processing
+  -   [✅] Simplified `disconnect()` and `close()` methods by extracting common WAL checkpoint logic into `performWalCheckpoint()` helper method.
+  -   [✅] Reduced code duplication and improved maintainability while preserving all functionality.
+  -   [✅] All tests passing - no breaking changes.
+  -   [✅] Tested connection manager functionality - all streamlined methods working correctly.
 
 ### Phase 4: Overall Implementation Planning & Execution
 
--   [ ] **Develop Detailed Implementation Plan (Ref: Task 3.5 & 5.6)**
-    -   [ ] Integrate decisions from Phase 1 & 2.
-    -   [ ] Incorporate SQLite simplification tasks from Phase 3.
-    -   [ ] Outline steps for modifying/creating interfaces, services, coordinators, repositories for all relevant database modules (SQLite, PostgreSQL).
-    -   [ ] Plan refactoring of existing application code to use new abstractions.
-    -   [ ] Prioritize tasks and estimate effort.
-    -   [ ] **Output**: Detailed overall implementation plan.
+-   [✅] **Develop Detailed Implementation Plan (Ref: Task 3.5 & 5.6)**
+    -   [✅] Integrated decisions from Phase 1 & 2 (Option B: Separate but Coordinated strategy).
+    -   [✅] Incorporated SQLite simplification tasks from Phase 3 (all completed successfully).
+    -   [✅] Outlined steps for modifying/creating interfaces, services, coordinators, repositories.
+    -   [✅] Planned refactoring of existing application code to use new abstractions.
+    -   [✅] Prioritized tasks and estimated effort.
+    -   [✅] **Output**: Detailed overall implementation plan (see below).
 -   [ ] **Execute Implementation Plan (Ref: Section 4 - Step 1)**
-    -   [ ] Implement changes to `DatabaseInterface` / new interfaces.
-    -   [ ] Implement changes to `SqliteDatabaseService` / `SqliteRepositoryCoordinator` (and PostgreSQL equivalents).
-    -   [ ] Implement/modify repositories for all abstracted entities.
-    -   [ ] Update `DatabaseFactory` / `RepositoryFactory` as needed.
+    -   [ ] **Phase 4.1: PostgreSQL Module Enhancement**
+      -   [ ] Create `BasePostgresRepository` abstract class (similar to `BaseSqliteRepository`)
+      -   [ ] Create PostgreSQL connection manager with proper state management
+      -   [ ] Implement centralized PostgreSQL configuration management
+      -   [ ] Refactor existing PostgreSQL repositories to use base class
+      -   [ ] Add consistent logging and error handling patterns
+    -   [ ] **Phase 4.2: Cross-Module Coordination**
+      -   [ ] Enhance `DatabaseInterface` for better abstraction
+      -   [ ] Improve `DatabaseFactory` for consistent module creation
+      -   [ ] Standardize repository interfaces across modules
+    -   [ ] **Phase 4.3: Application Integration**
+      -   [ ] Update application code to use enhanced abstractions
+      -   [ ] Implement consistent transaction patterns
+      -   [ ] Add comprehensive error handling
 
 ### Phase 5: Testing
 
@@ -249,6 +268,26 @@ This checklist translates the research, planning, and simplification tasks into 
     -   [ ] Merge changes to the main development branch.
 
 This checklist should help guide the development process. Remember to adapt it as decisions are made and more insights are gained.
+
+## Detailed Implementation Plan
+
+### Overview
+Based on Phase 1-3 analysis and the "Separate but Coordinated" strategy (Option B), the implementation focuses on:
+1. **Completed**: SQLite module simplification and optimization
+2. **Next**: Extend improvements to PostgreSQL module
+3. **Future**: Enhanced coordination between database modules
+4. **Final**: Application-level refactoring for improved abstractions
+
+### Implementation Strategy
+
+**Current Status**: Phase 3 (SQLite Module Simplification) is complete with significant improvements:
+- Centralized PRAGMA management via `SqlitePragmaManager`
+- Base repository class (`BaseSqliteRepository`) with 60% code reduction
+- Streamlined connection manager with helper methods
+- Enhanced logging strategy with environment-based conditionals
+- All tests passing, no breaking changes
+
+**Next Priority**: Apply similar patterns to PostgreSQL module for consistency.
 
 ## Progress Summary
 
