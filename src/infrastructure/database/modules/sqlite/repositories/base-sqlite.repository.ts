@@ -26,8 +26,9 @@ export interface BaseOperationContext {
 
 /**
  * Transaction callback function type
+ * Uses any to match Drizzle's transaction callback signature
  */
-export type TransactionCallback<T> = (tx: DrizzleDB) => Promise<T>;
+export type TransactionCallback<T> = (tx: any) => Promise<T>;
 
 /**
  * Abstract base class for SQLite repositories
