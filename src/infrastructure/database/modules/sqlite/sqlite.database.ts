@@ -14,6 +14,7 @@ import { DatabaseInterface } from '@infrastructure/database/interfaces/database.
 import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from './connection/sqlite-connection.manager';
 import { SqliteDatabaseService } from './services/sqlite-database.service';
+import { logger } from '@utils/logging/logger.service';
 import {
   SqliteConnectionConfig,
   SqliteDatabaseHealth,
@@ -26,22 +27,79 @@ export class SqliteDatabase implements DatabaseInterface {
   private readonly connectionManager: SqliteConnectionManager;
   private readonly databaseService: SqliteDatabaseService;
 
+  /**
+   * Creates a new SQLite database implementation
+   *
+   * @param client SQLite database client instance
+   * @param config Configuration options with categorized settings (critical vs optional)
+   * @throws Error if critical configuration parameters cannot be applied or client is invalid
+   */
   constructor(client: Database, config?: Partial<SqliteConnectionConfig>) {
-    // Set up connection configuration with defaults
-    const connectionConfig: SqliteConnectionConfig = {
-      maxConnectionAttempts: config?.maxConnectionAttempts ?? 3,
-      connectionRetryDelayMs: config?.connectionRetryDelayMs ?? 1000,
-      sqliteBusyTimeout: config?.sqliteBusyTimeout,
-      sqliteSyncMode: config?.sqliteSyncMode,
-      sqliteCacheSize: config?.sqliteCacheSize,
-    };
+    try {
+      if (!client) {
+        throw new Error(
+          'SQLite client is required for database initialization'
+        );
+      }
 
-    // Initialize connection manager and service
-    this.connectionManager = new SqliteConnectionManager(
-      client,
-      connectionConfig
-    );
-    this.databaseService = new SqliteDatabaseService(this.connectionManager);
+      // Set up connection configuration with defaults and validation
+      const connectionConfig: SqliteConnectionConfig = {
+        // Required connection settings with fallbacks
+        maxConnectionAttempts: Math.max(1, config?.maxConnectionAttempts ?? 3),
+        connectionRetryDelayMs: Math.max(
+          100,
+          config?.connectionRetryDelayMs ?? 1000
+        ),
+
+        // Critical SQLite settings (with type checking)
+        sqliteBusyTimeout:
+          typeof config?.sqliteBusyTimeout === 'number'
+            ? Math.max(100, config.sqliteBusyTimeout)
+            : 5000, // Default 5 seconds
+
+        sqliteSyncMode:
+          config?.sqliteSyncMode &&
+          ['OFF', 'NORMAL', 'FULL'].includes(config.sqliteSyncMode)
+            ? config.sqliteSyncMode
+            : 'NORMAL',
+
+        // Optional performance settings (passed through as-is)
+        sqliteCacheSize:
+          typeof config?.sqliteCacheSize === 'number' &&
+          config.sqliteCacheSize > 0
+            ? config.sqliteCacheSize
+            : undefined,
+      };
+
+      // Initialize connection manager and service
+      // This may throw if critical settings cannot be applied
+      this.connectionManager = new SqliteConnectionManager(
+        client,
+        connectionConfig
+      );
+      this.databaseService = new SqliteDatabaseService(this.connectionManager);
+    } catch (error) {
+      const errorMsg = `Failed to initialize SQLite database: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+
+      // Import logger dynamically to avoid circular dependencies
+      const { logger } = require('@utils/logging/logger.service');
+      logger.error(errorMsg, {
+        error: error instanceof Error ? error.stack : String(error),
+        config: {
+          // Log config but omit any sensitive values
+          maxConnectionAttempts: config?.maxConnectionAttempts,
+          connectionRetryDelayMs: config?.connectionRetryDelayMs,
+          sqliteBusyTimeout: config?.sqliteBusyTimeout,
+          sqliteSyncMode: config?.sqliteSyncMode,
+          sqliteCacheSize: config?.sqliteCacheSize,
+        },
+      });
+
+      // Rethrow with contextual information
+      throw new Error(errorMsg);
+    }
   }
 
   // Connection management methods - delegate to service

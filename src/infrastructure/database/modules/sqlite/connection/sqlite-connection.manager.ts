@@ -31,13 +31,61 @@ export class SqliteConnectionManager {
   private readonly db: ReturnType<typeof drizzle>;
   private readonly config: SqliteConnectionConfig;
 
+  /**
+   * Creates a new SQLite connection manager with proper error handling during initialization
+   *
+   * @param client The SQLite database client
+   * @param config Configuration for the connection, including critical and optional settings
+   * @throws Error if critical configuration parameters fail to apply
+   */
   constructor(client: Database, config: SqliteConnectionConfig) {
-    this.client = client;
-    this.db = drizzle(client);
-    this.config = config;
+    try {
+      if (!client) {
+        throw new Error('SQLite client is required for connection manager');
+      }
 
-    // Apply SQLite configuration parameters using PRAGMA statements
-    this.applyConfigurationPragmas();
+      this.client = client;
+      this.db = drizzle(client);
+
+      // Validate and normalize configuration
+      this.config = {
+        ...config,
+        // Ensure minimal values for critical settings
+        maxConnectionAttempts: Math.max(1, config.maxConnectionAttempts ?? 3),
+        connectionRetryDelayMs: Math.max(
+          100,
+          config.connectionRetryDelayMs ?? 1000
+        ),
+        // Apply defaults for optional settings if not provided
+        sqliteBusyTimeout:
+          typeof config.sqliteBusyTimeout === 'number' &&
+          config.sqliteBusyTimeout > 0
+            ? config.sqliteBusyTimeout
+            : 5000,
+      };
+
+      // Apply SQLite configuration parameters using PRAGMA statements
+      // This may throw for critical settings - let it propagate
+      this.applyConfigurationPragmas();
+
+      logger.info('SQLite connection manager initialized successfully');
+    } catch (error) {
+      const errorMsg = `Failed to initialize SQLite connection manager: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      logger.error(errorMsg, {
+        error: error instanceof Error ? error.stack : String(error),
+        config: {
+          // Log config but omit any sensitive data that might be present
+          maxConnectionAttempts: config?.maxConnectionAttempts,
+          connectionRetryDelayMs: config?.connectionRetryDelayMs,
+          sqliteBusyTimeout: config?.sqliteBusyTimeout,
+          sqliteSyncMode: config?.sqliteSyncMode,
+          sqliteCacheSize: config?.sqliteCacheSize,
+        },
+      });
+      throw new Error(errorMsg);
+    }
   }
 
   /**
@@ -295,17 +343,114 @@ export class SqliteConnectionManager {
   }
 
   /**
-   * Gets database health information
+   * Gets detailed database health information including SQLite configuration status
    */
   async getHealth(): Promise<SqliteDatabaseHealth> {
     const startTime = Date.now();
     let connected = false;
     let responseTime = 0;
 
+    // Will store SQLite PRAGMA results
+    const configInfo: SqliteDatabaseHealth['configuration'] = {
+      appliedSettings: {
+        busyTimeout: false,
+        syncMode: false,
+        cacheSize: false,
+        foreignKeys: false,
+        tempStore: false,
+      },
+    };
+
     try {
       if (this.connectionState === 'connected') {
+        // Test basic connection
         await this.testConnection();
         connected = true;
+
+        // Get PRAGMA values to include in health check
+        if (connected) {
+          try {
+            // Get busy_timeout setting
+            const busyTimeoutResult = this.client
+              .query('PRAGMA busy_timeout;')
+              .get() as { busy_timeout?: number } | null;
+            if (busyTimeoutResult && 'busy_timeout' in busyTimeoutResult) {
+              configInfo.busyTimeout = busyTimeoutResult.busy_timeout;
+              configInfo.appliedSettings.busyTimeout = true;
+            }
+
+            // Get synchronous mode
+            const syncModeResult = this.client
+              .query('PRAGMA synchronous;')
+              .get() as { synchronous?: number | string } | null;
+            if (syncModeResult && 'synchronous' in syncModeResult) {
+              configInfo.syncMode = String(syncModeResult.synchronous);
+              configInfo.appliedSettings.syncMode = true;
+            }
+
+            // Get cache size
+            const cacheSizeResult = this.client
+              .query('PRAGMA cache_size;')
+              .get() as { cache_size?: number } | null;
+            if (cacheSizeResult && 'cache_size' in cacheSizeResult) {
+              configInfo.cacheSize = cacheSizeResult.cache_size;
+              configInfo.appliedSettings.cacheSize = true;
+            }
+
+            // Get journal mode
+            const journalModeResult = this.client
+              .query('PRAGMA journal_mode;')
+              .get() as { journal_mode?: string } | null;
+            if (journalModeResult && 'journal_mode' in journalModeResult) {
+              configInfo.journalMode = String(journalModeResult.journal_mode);
+            }
+
+            // Check foreign keys status
+            const foreignKeysResult = this.client
+              .query('PRAGMA foreign_keys;')
+              .get() as { foreign_keys?: number } | null;
+            if (foreignKeysResult && 'foreign_keys' in foreignKeysResult) {
+              configInfo.foreignKeys = Boolean(foreignKeysResult.foreign_keys);
+              configInfo.appliedSettings.foreignKeys = true;
+            }
+
+            // Get temp_store setting
+            const tempStoreResult = this.client
+              .query('PRAGMA temp_store;')
+              .get() as { temp_store?: number } | null;
+            if (
+              tempStoreResult &&
+              'temp_store' in tempStoreResult &&
+              tempStoreResult.temp_store === 2
+            ) {
+              // 2 = MEMORY
+              configInfo.appliedSettings.tempStore = true;
+            }
+
+            // Estimate memory usage (if available)
+            try {
+              const memoryUsed = this.client
+                .query('PRAGMA memory_used;')
+                .get() as { memory_used?: number } | null;
+              if (memoryUsed && 'memory_used' in memoryUsed) {
+                configInfo.memoryUsage = memoryUsed.memory_used;
+              }
+            } catch {
+              // Memory usage stats not available in all SQLite versions
+            }
+          } catch (configError) {
+            // Log but don't fail the health check due to config info issues
+            logger.warn(
+              'Error getting SQLite configuration details during health check',
+              {
+                error:
+                  configError instanceof Error
+                    ? configError.message
+                    : String(configError),
+              }
+            );
+          }
+        }
       }
       responseTime = Date.now() - startTime;
     } catch (error) {
@@ -320,6 +465,7 @@ export class SqliteConnectionManager {
       lastError: this.lastError || undefined,
       connectionAttempts: this.connectionAttempts,
       uptime: Date.now() - this.startTime,
+      configuration: configInfo,
     };
   }
 
@@ -334,12 +480,14 @@ export class SqliteConnectionManager {
         logger.info('SQLite database health check passed', {
           responseTime: health.responseTime,
           uptime: health.uptime,
+          configuration: health.configuration,
         });
         return true;
       } else {
         logger.warn('SQLite database health check failed', {
           lastError: health.lastError?.message,
           connectionAttempts: health.connectionAttempts,
+          partialConfiguration: health.configuration,
         });
         return false;
       }
@@ -408,13 +556,13 @@ export class SqliteConnectionManager {
       foreignKeys: false,
       tempStore: false,
     };
-    
+
     // Record any non-critical errors to report them together
     const nonCriticalErrors: Array<{ setting: string; error: string }> = [];
-    
+
     try {
       // ----- CRITICAL SETTINGS (Application should not continue if these fail) -----
-      
+
       // Apply busy timeout setting (CRITICAL)
       if (
         typeof this.config.sqliteBusyTimeout === 'number' &&
@@ -426,111 +574,146 @@ export class SqliteConnectionManager {
           );
           appliedSettings.busyTimeout = true;
         } catch (error) {
-          const errorMsg = `Failed to set SQLite busy_timeout (CRITICAL for concurrency): ${error instanceof Error ? error.message : String(error)}`;
+          const errorMsg = `Failed to set SQLite busy_timeout (CRITICAL for concurrency): ${
+            error instanceof Error ? error.message : String(error)
+          }`;
           logger.error(errorMsg, {
             requestedValue: this.config.sqliteBusyTimeout,
-            category: 'CRITICAL_SETTING'
+            category: 'CRITICAL_SETTING',
           });
           throw new Error(errorMsg); // Critical setting - halt initialization
         }
       } else {
-        logger.warn('SQLite busy_timeout not configured or invalid value - using SQLite default', {
-          providedValue: this.config.sqliteBusyTimeout
-        });
+        logger.warn(
+          'SQLite busy_timeout not configured or invalid value - using SQLite default',
+          {
+            providedValue: this.config.sqliteBusyTimeout,
+          }
+        );
       }
 
       // Apply synchronous mode setting (CRITICAL for data integrity)
       if (this.config.sqliteSyncMode) {
         try {
-          this.client.exec(`PRAGMA synchronous = ${this.config.sqliteSyncMode};`);
+          this.client.exec(
+            `PRAGMA synchronous = ${this.config.sqliteSyncMode};`
+          );
           appliedSettings.syncMode = true;
         } catch (error) {
-          const errorMsg = `Failed to set SQLite synchronous mode (CRITICAL for data integrity): ${error instanceof Error ? error.message : String(error)}`;
-          logger.error(errorMsg, { 
+          const errorMsg = `Failed to set SQLite synchronous mode (CRITICAL for data integrity): ${
+            error instanceof Error ? error.message : String(error)
+          }`;
+          logger.error(errorMsg, {
             requestedValue: this.config.sqliteSyncMode,
-            category: 'CRITICAL_SETTING'
+            category: 'CRITICAL_SETTING',
           });
           throw new Error(errorMsg); // Critical setting - halt initialization
         }
       } else {
-        logger.warn('SQLite synchronous mode not configured - using SQLite default', {
-          defaultValue: 'FULL'
-        });
+        logger.warn(
+          'SQLite synchronous mode not configured - using SQLite default',
+          {
+            defaultValue: 'FULL',
+          }
+        );
       }
-      
+
       // ----- IMPORTANT BUT NON-CRITICAL SETTINGS (Continue with warnings) -----
-      
+
       // Enable foreign keys constraint checking (IMPORTANT)
       try {
         this.client.exec('PRAGMA foreign_keys = ON;');
         appliedSettings.foreignKeys = true;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         nonCriticalErrors.push({
           setting: 'foreign_keys',
-          error: errorMessage
+          error: errorMessage,
         });
-        logger.warn('Failed to enable SQLite foreign_keys (continuing with SQLite default)', {
-          errorMessage,
-          category: 'IMPORTANT_SETTING'
-        });
+        logger.warn(
+          'Failed to enable SQLite foreign_keys (continuing with SQLite default)',
+          {
+            errorMessage,
+            category: 'IMPORTANT_SETTING',
+          }
+        );
       }
-      
+
       // ----- OPTIONAL PERFORMANCE SETTINGS (Continue with fallback) -----
-      
+
       // Apply cache size setting (OPTIONAL - performance only)
       if (
         typeof this.config.sqliteCacheSize === 'number' &&
         this.config.sqliteCacheSize > 0
       ) {
         try {
-          this.client.exec(`PRAGMA cache_size = ${this.config.sqliteCacheSize};`);
+          this.client.exec(
+            `PRAGMA cache_size = ${this.config.sqliteCacheSize};`
+          );
           appliedSettings.cacheSize = true;
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           nonCriticalErrors.push({
             setting: 'cache_size',
-            error: errorMessage
+            error: errorMessage,
           });
-          logger.warn('Failed to set SQLite cache_size (continuing with SQLite default)', {
-            errorMessage,
-            requestedValue: this.config.sqliteCacheSize,
-            category: 'OPTIONAL_SETTING'
-          });
+          logger.warn(
+            'Failed to set SQLite cache_size (continuing with SQLite default)',
+            {
+              errorMessage,
+              requestedValue: this.config.sqliteCacheSize,
+              category: 'OPTIONAL_SETTING',
+            }
+          );
         }
       }
-      
+
       // Set temp store to memory for better performance (OPTIONAL)
       try {
         this.client.exec('PRAGMA temp_store = MEMORY;');
         appliedSettings.tempStore = true;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         nonCriticalErrors.push({
           setting: 'temp_store',
-          error: errorMessage
+          error: errorMessage,
         });
-        logger.warn('Failed to set SQLite temp_store to MEMORY (continuing with SQLite default)', {
-          errorMessage,
-          category: 'OPTIONAL_SETTING'
-        });
+        logger.warn(
+          'Failed to set SQLite temp_store to MEMORY (continuing with SQLite default)',
+          {
+            errorMessage,
+            category: 'OPTIONAL_SETTING',
+          }
+        );
       }
 
       // Log applied configurations in non-production environments
       if (process.env.NODE_ENV !== 'production') {
         logger.info('SQLite configuration parameters applied:', {
-          busyTimeout: appliedSettings.busyTimeout ? this.config.sqliteBusyTimeout : 'default',
-          syncMode: appliedSettings.syncMode ? this.config.sqliteSyncMode : 'default',
-          cacheSize: appliedSettings.cacheSize ? this.config.sqliteCacheSize : 'default',
+          busyTimeout: appliedSettings.busyTimeout
+            ? this.config.sqliteBusyTimeout
+            : 'default',
+          syncMode: appliedSettings.syncMode
+            ? this.config.sqliteSyncMode
+            : 'default',
+          cacheSize: appliedSettings.cacheSize
+            ? this.config.sqliteCacheSize
+            : 'default',
           foreignKeys: appliedSettings.foreignKeys ? 'ON' : 'default',
           tempStore: appliedSettings.tempStore ? 'MEMORY' : 'default',
         });
-        
+
         // If any non-critical errors occurred, log them together for easier debugging
         if (nonCriticalErrors.length > 0) {
-          logger.warn(`${nonCriticalErrors.length} non-critical SQLite settings failed to apply`, {
-            errors: nonCriticalErrors
-          });
+          logger.warn(
+            `${nonCriticalErrors.length} non-critical SQLite settings failed to apply`,
+            {
+              errors: nonCriticalErrors,
+            }
+          );
         }
       }
     } catch (error) {
@@ -538,7 +721,7 @@ export class SqliteConnectionManager {
       // These would be truly unexpected errors or critical setting failures
       logger.error('Critical error applying SQLite configuration parameters', {
         error: error instanceof Error ? error.stack : String(error),
-        appliedSettingsBeforeError: appliedSettings
+        appliedSettingsBeforeError: appliedSettings,
       });
       throw error; // Re-throw to halt initialization
     }

@@ -26,13 +26,13 @@ export interface SqliteConnectionConfig {
    * @default 3
    */
   maxConnectionAttempts: number;
-  
+
   /**
    * Delay in milliseconds between connection retry attempts
    * @default 1000
    */
   connectionRetryDelayMs: number;
-  
+
   /**
    * CRITICAL SETTING: SQLite busy timeout in milliseconds
    * Controls how long SQLite will wait when a database is locked before returning SQLITE_BUSY
@@ -40,7 +40,7 @@ export interface SqliteConnectionConfig {
    * @default 5000
    */
   sqliteBusyTimeout?: number;
-  
+
   /**
    * CRITICAL SETTING: SQLite synchronous mode
    * Controls how aggressively SQLite writes data to disk
@@ -50,13 +50,41 @@ export interface SqliteConnectionConfig {
    * @default 'NORMAL'
    */
   sqliteSyncMode?: 'OFF' | 'NORMAL' | 'FULL';
-  
+
   /**
    * OPTIONAL SETTING: SQLite cache size in pages
    * Affects performance but not critical for operation
    * @default 10000
    */
   sqliteCacheSize?: number;
+}
+
+/**
+ * Database health check information with detailed configuration status
+ */
+export interface SqliteDatabaseHealth {
+  connected: boolean;
+  responseTime: number;
+  lastError?: Error;
+  connectionAttempts: number;
+  uptime: number;
+
+  // SQLite configuration status information
+  configuration?: {
+    busyTimeout?: number;
+    syncMode?: string;
+    cacheSize?: number;
+    journalMode?: string;
+    foreignKeys?: boolean;
+    memoryUsage?: number;
+    appliedSettings: {
+      busyTimeout: boolean;
+      syncMode: boolean;
+      cacheSize: boolean;
+      foreignKeys: boolean;
+      tempStore: boolean;
+    };
+  };
 }
 
 /**
