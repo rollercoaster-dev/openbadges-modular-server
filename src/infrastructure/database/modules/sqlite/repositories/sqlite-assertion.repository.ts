@@ -238,13 +238,17 @@ export class SqliteAssertionRepository implements AssertionRepository {
       } as Partial<Assertion>);
 
       // Convert to database record
-      const record = this.mapper.toPersistence(mergedAssertion);
+      const {
+        id: _ignore,
+        createdAt: _ca,
+        ...updatable
+      } = this.mapper.toPersistence(mergedAssertion);
 
       // Update in database
       const startTime = Date.now();
       const result = await this.getDatabase()
         .update(assertions)
-        .set(record)
+        .set(updatable)
         .where(eq(assertions.id, id as string))
         .returning();
       const duration = Date.now() - startTime;
@@ -252,7 +256,7 @@ export class SqliteAssertionRepository implements AssertionRepository {
       // Log query (wrap the whole record as potentially sensitive)
       queryLogger.logQuery(
         'UPDATE Assertion',
-        [id, SensitiveValue.from(record)], // Log ID and the updated data
+        [id, SensitiveValue.from(updatable)], // Log ID and the updated data
         duration,
         'sqlite'
       );

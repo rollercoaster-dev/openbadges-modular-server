@@ -30,9 +30,9 @@ export class SqliteAssertionMapper {
    */
   toDomain(record: SqliteAssertionRecord): Assertion {
     if (!record) {
-      logger.error('Attempted to map null record to Assertion domain entity.');
-      // Or throw an error depending on desired behavior for null records
-      return null as unknown as Assertion; // Keep existing behavior for now, but log
+      const msg = 'Assertion mapper received a null/undefined record';
+      logger.error(msg);
+      throw new Error(msg);
     }
 
     // Extract the standard fields from the record
@@ -148,7 +148,7 @@ export class SqliteAssertionMapper {
     value: T | string | null | undefined,
     fieldName: string,
     assertionId: string
-  ): T {
+  ): T | null | undefined {
     if (value === null || value === undefined) {
       // Allow null/undefined for optional fields, handle specific checks elsewhere if needed
       return value as T;
@@ -216,8 +216,20 @@ export class SqliteAssertionMapper {
             'to'
           ) as string)
         : null,
-      createdAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
-      updatedAt: convertTimestamp(new Date(), 'sqlite', 'to') as number,
+      createdAt: entity.createdAt
+        ? (convertTimestamp(
+            entity.createdAt as string | number | Date,
+            'sqlite',
+            'to'
+          ) as number)
+        : (convertTimestamp(new Date(), 'sqlite', 'to') as number),
+      updatedAt: entity.updatedAt
+        ? (convertTimestamp(
+            entity.updatedAt as string | number | Date,
+            'sqlite',
+            'to'
+          ) as number)
+        : (convertTimestamp(new Date(), 'sqlite', 'to') as number),
     } as InferInsertModel<typeof assertions>;
     return persistenceRecord;
   }

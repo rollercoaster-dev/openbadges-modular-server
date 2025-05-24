@@ -138,17 +138,69 @@ export class SqliteIssuerMapper {
         ...additionalFields
       } = obj;
 
-      // Ensure name is a string for the database
-      const dbName: string =
-        typeof name === 'object' && name !== null
-          ? name.en || name[Object.keys(name)[0]] || ''
-          : (name as string) || '';
+      // Extract and validate name as a string for the database
+      let dbName: string;
+      if (typeof name === 'object' && name !== null) {
+        // Try English version first
+        if (name.en && typeof name.en === 'string' && name.en.trim() !== '') {
+          dbName = name.en;
+        }
+        // Then try any other language key
+        else if (Object.keys(name).length > 0) {
+          const firstKey = Object.keys(name)[0];
+          const firstValue = name[firstKey];
+          if (typeof firstValue === 'string' && firstValue.trim() !== '') {
+            dbName = firstValue;
+          } else {
+            throw new Error(
+              'Issuer name must contain at least one non-empty string value'
+            );
+          }
+        }
+        // No valid keys found
+        else {
+          throw new Error(
+            'Issuer name object must contain at least one language key with non-empty string value'
+          );
+        }
+      }
+      // Handle direct string value
+      else if (typeof name === 'string' && name.trim() !== '') {
+        dbName = name;
+      }
+      // No valid name found
+      else {
+        throw new Error(
+          'Issuer name is required and must be a non-empty string or a multilingual object with at least one non-empty string value'
+        );
+      }
 
-      // Ensure description is a string for the database
-      const dbDescription: string | null =
-        typeof description === 'object' && description !== null
-          ? description.en || description[Object.keys(description)[0]] || null
-          : (description as string) || null;
+      // Ensure description is a string for the database (can be null)
+      let dbDescription: string | null;
+      if (typeof description === 'object' && description !== null) {
+        // Try English version first
+        if (description.en && typeof description.en === 'string') {
+          dbDescription = description.en;
+        }
+        // Then try any other language key
+        else if (Object.keys(description).length > 0) {
+          const firstKey = Object.keys(description)[0];
+          const firstValue = description[firstKey];
+          dbDescription = typeof firstValue === 'string' ? firstValue : null;
+        }
+        // No valid keys found
+        else {
+          dbDescription = null;
+        }
+      }
+      // Handle direct string value
+      else if (typeof description === 'string') {
+        dbDescription = description;
+      }
+      // No description or invalid type
+      else {
+        dbDescription = null;
+      }
 
       // Validate additional fields
       const additionalFieldsResult =
@@ -199,6 +251,10 @@ export class SqliteIssuerMapper {
       logger.error('Error converting Issuer domain entity to database record', {
         error: error instanceof Error ? error.message : String(error),
         entityId: entity.id,
+        entityName:
+          typeof entity.name === 'object'
+            ? JSON.stringify(entity.name)
+            : entity.name,
       });
       throw error;
     }

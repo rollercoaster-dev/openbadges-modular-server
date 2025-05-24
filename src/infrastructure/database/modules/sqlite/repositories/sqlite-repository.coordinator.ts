@@ -4,7 +4,7 @@
  * This class coordinates operations across multiple SQLite repositories,
  * providing transaction support and unified error handling.
  */
-import { eq } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { Shared } from 'openbadges-types';
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
@@ -102,8 +102,20 @@ export class SqliteRepositoryCoordinator {
     );
 
     try {
-      // Ensure connection
-      this.connectionManager.ensureConnected();
+      // Ensure an active database connection before proceeding
+      if (!this.connectionManager.isConnected()) {
+        logger.info(
+          'Database not connected, establishing connection before createBadgeEcosystem operation'
+        );
+        await this.connectionManager.connect();
+      }
+
+      // Double-check connection status after connection attempt
+      if (!this.connectionManager.isConnected()) {
+        throw new Error(
+          'Failed to establish database connection for createBadgeEcosystem operation'
+        );
+      }
 
       // Use Drizzle's transaction helper for atomic operations
       const db = this.connectionManager.getDatabase();
@@ -172,6 +184,21 @@ export class SqliteRepositoryCoordinator {
     badgeClassData: Omit<BadgeClass, 'id'>
   ): Promise<BadgeClass> {
     try {
+      // Ensure an active database connection before proceeding
+      if (!this.connectionManager.isConnected()) {
+        logger.info(
+          'Database not connected, establishing connection before createBadgeClassWithValidation operation'
+        );
+        await this.connectionManager.connect();
+      }
+
+      // Double-check connection status after connection attempt
+      if (!this.connectionManager.isConnected()) {
+        throw new Error(
+          'Failed to establish database connection for createBadgeClassWithValidation operation'
+        );
+      }
+
       // Extract issuer ID with proper type checking
       let issuerId: Shared.IRI | undefined;
 
@@ -230,6 +257,21 @@ export class SqliteRepositoryCoordinator {
     assertionData: Omit<Assertion, 'id'>
   ): Promise<Assertion> {
     try {
+      // Ensure an active database connection before proceeding
+      if (!this.connectionManager.isConnected()) {
+        logger.info(
+          'Database not connected, establishing connection before createAssertionWithValidation operation'
+        );
+        await this.connectionManager.connect();
+      }
+
+      // Double-check connection status after connection attempt
+      if (!this.connectionManager.isConnected()) {
+        throw new Error(
+          'Failed to establish database connection for createAssertionWithValidation operation'
+        );
+      }
+
       // Validate that the badge class exists
       const badgeClassId = assertionData.badgeClass as string;
       const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
@@ -269,8 +311,20 @@ export class SqliteRepositoryCoordinator {
     );
 
     try {
-      // Ensure connection
-      this.connectionManager.ensureConnected();
+      // Ensure an active database connection before proceeding
+      if (!this.connectionManager.isConnected()) {
+        logger.info(
+          'Database not connected, establishing connection before deleteIssuerCascade operation'
+        );
+        await this.connectionManager.connect();
+      }
+
+      // Double-check connection status after connection attempt
+      if (!this.connectionManager.isConnected()) {
+        throw new Error(
+          'Failed to establish database connection for deleteIssuerCascade operation'
+        );
+      }
 
       // Use Drizzle's transaction helper for atomic operations
       const db = this.connectionManager.getDatabase();
@@ -354,7 +408,15 @@ export class SqliteRepositoryCoordinator {
     };
   }> {
     try {
-      // Check connection
+      // Ensure an active database connection before proceeding
+      if (!this.connectionManager.isConnected()) {
+        logger.info(
+          'Database not connected, establishing connection before performHealthCheck operation'
+        );
+        await this.connectionManager.connect();
+      }
+
+      // Check connection - we still perform the explicit health check even after connecting
       const connectionHealthy =
         await this.connectionManager.performHealthCheck();
 

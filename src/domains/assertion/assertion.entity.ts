@@ -103,8 +103,8 @@ export class Assertion {
   ): OB2.Assertion | OB3.VerifiableCredential {
     // Create a base object with common properties
     const baseObject = {
+      // OB2 keeps `issuedOn`; OB3 will use `issuanceDate` later
       ...(version === BadgeVersion.V2 && { issuedOn: this.issuedOn }),
-      issuedOn: this.issuedOn,
       evidence: this.evidence,
     };
 
@@ -154,7 +154,9 @@ export class Assertion {
             verification.created || createDateTime(new Date().toISOString()),
           verificationMethod: verification.creator || `${this.id}#key-1`,
           proofPurpose: 'assertionMethod',
-          proofValue: verification.signatureValue || 'placeholder',
+          ...(verification.signatureValue
+            ? { proofValue: verification.signatureValue }
+            : {}),
         };
       }
 

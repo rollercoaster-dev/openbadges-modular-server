@@ -46,6 +46,9 @@ export class RepositoryFactory {
     | import('./database/modules/sqlite/connection/sqlite-connection.manager').SqliteConnectionManager
     | null = null;
 
+  // Promise to track ongoing initialization - serves as a mutex
+  private static initializationPromise: Promise<void> | null = null;
+
   /**
    * Initializes the repository factory with a database connection
    * @param config Database configuration
@@ -58,7 +61,14 @@ export class RepositoryFactory {
     sqliteSyncMode?: string;
     sqliteCacheSize?: number;
   }): Promise<void> {
-    // Prevent multiple initializations
+    // Check if initialization is already in progress
+    if (RepositoryFactory.initializationPromise) {
+      // Wait for ongoing initialization to complete
+      await RepositoryFactory.initializationPromise;
+      return; // Initialization already completed by another call
+    }
+
+    // Prevent multiple initializations if already initialized
     if (RepositoryFactory.isInitialized) {
       logger.warn(
         'RepositoryFactory already initialized. Skipping redundant initialization.'
@@ -66,52 +76,69 @@ export class RepositoryFactory {
       return;
     }
 
-    RepositoryFactory.dbType = config.type;
+    // Create and store the initialization promise
+    RepositoryFactory.initializationPromise = (async () => {
+      try {
+        RepositoryFactory.dbType = config.type;
 
-    if (RepositoryFactory.dbType === 'postgresql') {
-      // Configure PostgreSQL client with connection pooling
-      RepositoryFactory.client = postgres(config.connectionString, {
-        max: 20, // Maximum connections in pool
-        idle_timeout: 30, // Close idle connections after 30 seconds
-        connect_timeout: 10, // Connection timeout in seconds
-        max_lifetime: 60 * 60, // Max connection lifetime in seconds
-      });
-    } else if (RepositoryFactory.dbType === 'sqlite') {
-      // Create shared SQLite connection manager for resource management
-      const { Database } = await import('bun:sqlite');
-      const { SqliteConnectionManager } = await import(
-        './database/modules/sqlite/connection/sqlite-connection.manager'
-      );
+        if (RepositoryFactory.dbType === 'postgresql') {
+          // Configure PostgreSQL client with connection pooling
+          RepositoryFactory.client = postgres(config.connectionString, {
+            max: 20, // Maximum connections in pool
+            idle_timeout: 30, // Close idle connections after 30 seconds
+            connect_timeout: 10, // Connection timeout in seconds
+            max_lifetime: 60 * 60, // Max connection lifetime in seconds
+          });
+        } else if (RepositoryFactory.dbType === 'sqlite') {
+          // Only initialize if not already initialized
+          if (!RepositoryFactory.sqliteConnectionManager) {
+            // Create shared SQLite connection manager for resource management
+            const { Database } = await import('bun:sqlite');
+            const { SqliteConnectionManager } = await import(
+              './database/modules/sqlite/connection/sqlite-connection.manager'
+            );
 
-      const sqliteFile = config.sqliteFile || ':memory:';
-      const client = new Database(sqliteFile);
+            const sqliteFile = config.sqliteFile || ':memory:';
+            const client = new Database(sqliteFile);
 
-      RepositoryFactory.sqliteConnectionManager = new SqliteConnectionManager(
-        client,
-        {
-          maxConnectionAttempts: 3,
-          connectionRetryDelayMs: 1000,
-          sqliteBusyTimeout: config.sqliteBusyTimeout,
-          sqliteSyncMode: config.sqliteSyncMode as
-            | 'OFF'
-            | 'NORMAL'
-            | 'FULL'
-            | undefined,
-          sqliteCacheSize: config.sqliteCacheSize,
+            RepositoryFactory.sqliteConnectionManager =
+              new SqliteConnectionManager(client, {
+                maxConnectionAttempts: 3,
+                connectionRetryDelayMs: 1000,
+                sqliteBusyTimeout: config.sqliteBusyTimeout,
+                sqliteSyncMode: config.sqliteSyncMode as
+                  | 'OFF'
+                  | 'NORMAL'
+                  | 'FULL'
+                  | undefined,
+                sqliteCacheSize: config.sqliteCacheSize,
+              });
+
+            // Connect the shared connection manager
+            await RepositoryFactory.sqliteConnectionManager.connect();
+            logger.info('SQLite connection manager initialized successfully');
+          }
+        } else {
+          throw new Error(
+            `Unsupported database type: ${RepositoryFactory.dbType}`
+          );
         }
-      );
 
-      // Connect the shared connection manager
-      await RepositoryFactory.sqliteConnectionManager.connect();
-    } else {
-      throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
-    }
+        // Mark as initialized
+        RepositoryFactory.isInitialized = true;
+        logger.info(
+          `Repository factory initialized with ${RepositoryFactory.dbType} database`
+        );
+      } catch (error) {
+        logger.error('Failed to initialize RepositoryFactory', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    })();
 
-    // Mark as initialized
-    RepositoryFactory.isInitialized = true;
-    logger.info(
-      `Repository factory initialized with ${RepositoryFactory.dbType} database`
-    );
+    // Wait for initialization to complete
+    await RepositoryFactory.initializationPromise;
   }
 
   /**
@@ -379,6 +406,18 @@ export class RepositoryFactory {
    * Closes the database connection
    */
   static async close(): Promise<void> {
+    // Wait for any ongoing initialization to complete before attempting to close
+    if (RepositoryFactory.initializationPromise) {
+      try {
+        await RepositoryFactory.initializationPromise;
+      } catch (error) {
+        // If initialization failed, log and continue with cleanup
+        logger.warn('Initialization was in progress but failed during close', {
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     if (!RepositoryFactory.isInitialized) {
       logger.warn('RepositoryFactory not initialized. Nothing to close.');
       return;
@@ -412,6 +451,8 @@ export class RepositoryFactory {
 
     // Reset initialization state
     RepositoryFactory.isInitialized = false;
+    // Reset initialization promise
+    RepositoryFactory.initializationPromise = null;
     logger.info('Repository factory closed');
   }
 }

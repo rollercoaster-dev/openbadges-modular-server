@@ -237,7 +237,7 @@ export class PreparedStatementManager {
             this.cache[name].lastUsed = Date.now();
           }
 
-          return result;
+          return result as T;
         } catch (error) {
           const duration = Date.now() - startTime;
           QueryLoggerService.logQuery(

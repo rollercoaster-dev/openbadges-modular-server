@@ -20,11 +20,14 @@ import {
 } from '@infrastructure/database/utils/type-conversion';
 import { toIRI } from '@utils/types/iri-utils';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import {
+  DuplicateClientIdError,
+  PlatformOperationError,
+} from '@domains/backpack/platform.errors';
 
 export class SqlitePlatformRepository implements PlatformRepository {
   constructor(private readonly connectionManager: SqliteConnectionManager) {
-    // Initialize table on first connection
-    this.initializeTable();
+    // Table creation is handled by migrations
   }
 
   /**
@@ -41,28 +44,6 @@ export class SqlitePlatformRepository implements PlatformRepository {
   private getClient() {
     this.connectionManager.ensureConnected();
     return this.connectionManager.getClient();
-  }
-
-  /**
-   * Initialize the platforms table
-   */
-  private initializeTable() {
-    const client = this.getClient();
-
-    // Create the platforms table if it doesn't exist
-    client.run(`
-      CREATE TABLE IF NOT EXISTS platforms (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        clientId TEXT NOT NULL UNIQUE,
-        publicKey TEXT NOT NULL,
-        webhookUrl TEXT,
-        status TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
-      )
-    `);
   }
 
   async create(params: PlatformCreateParams): Promise<Platform> {
@@ -85,29 +66,58 @@ export class SqlitePlatformRepository implements PlatformRepository {
         'to'
       ) as number;
 
-      // Insert into database
-      this.getClient()
-        .prepare(
-          `
-        INSERT INTO platforms (
-          id, name, description, clientId, publicKey, webhookUrl, status, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
-        )
-        .run(
-          convertUuid(String(obj.id), 'sqlite', 'to') as string,
-          String(obj.name),
-          obj.description ? String(obj.description) : null,
-          String(obj.clientId),
-          String(obj.publicKey),
-          obj.webhookUrl ? String(obj.webhookUrl) : null,
-          String(obj.status),
-          createdAtTimestamp,
-          updatedAtTimestamp
+      try {
+        // Insert into database
+        this.getClient()
+          .prepare(
+            `
+          INSERT INTO platforms (
+            id, name, description, client_id, public_key, webhook_url, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+          )
+          .run(
+            convertUuid(String(obj.id), 'sqlite', 'to') as string,
+            String(obj.name),
+            obj.description ? String(obj.description) : null,
+            String(obj.clientId),
+            String(obj.publicKey),
+            obj.webhookUrl ? String(obj.webhookUrl) : null,
+            String(obj.status),
+            createdAtTimestamp,
+            updatedAtTimestamp
+          );
+      } catch (sqliteError) {
+        // Check if the error is related to a UNIQUE constraint violation on client_id
+        const errorMessage = String(sqliteError);
+        if (
+          errorMessage.includes('UNIQUE constraint failed') &&
+          errorMessage.includes('client_id')
+        ) {
+          // Convert to a domain-specific error
+          throw new DuplicateClientIdError(String(obj.clientId));
+        }
+
+        // For other database errors, wrap in a PlatformOperationError
+        throw new PlatformOperationError(
+          'Failed to create platform due to database error',
+          sqliteError instanceof Error
+            ? sqliteError
+            : new Error(String(sqliteError))
         );
+      }
 
       return newPlatform;
     } catch (error) {
+      // If it's already a domain-specific error, rethrow
+      if (
+        error instanceof DuplicateClientIdError ||
+        error instanceof PlatformOperationError
+      ) {
+        throw error;
+      }
+
+      // Log the generic error
       logger.error('Error creating platform in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         params,
@@ -194,7 +204,7 @@ export class SqlitePlatformRepository implements PlatformRepository {
     try {
       // Query database
       const row = this.getClient()
-        .prepare(`SELECT * FROM platforms WHERE clientId = ?`)
+        .prepare(`SELECT * FROM platforms WHERE client_id = ?`)
         .get(clientId);
 
       // Return null if not found
@@ -240,34 +250,63 @@ export class SqlitePlatformRepository implements PlatformRepository {
       ) as number;
       const idString = convertUuid(String(id), 'sqlite', 'to') as string;
 
-      // Update in database
-      this.getClient()
-        .prepare(
-          `
-        UPDATE platforms SET
-          name = ?,
-          description = ?,
-          clientId = ?,
-          publicKey = ?,
-          webhookUrl = ?,
-          status = ?,
-          updatedAt = ?
-        WHERE id = ?
-      `
-        )
-        .run(
-          String(obj.name),
-          obj.description ? String(obj.description) : null,
-          String(obj.clientId),
-          String(obj.publicKey),
-          obj.webhookUrl ? String(obj.webhookUrl) : null,
-          String(obj.status),
-          updatedAtTimestamp,
-          idString
+      try {
+        // Update in database
+        this.getClient()
+          .prepare(
+            `
+          UPDATE platforms SET
+            name = ?,
+            description = ?,
+            client_id = ?,
+            public_key = ?,
+            webhook_url = ?,
+            status = ?,
+            updated_at = ?
+          WHERE id = ?
+        `
+          )
+          .run(
+            String(obj.name),
+            obj.description ? String(obj.description) : null,
+            String(obj.clientId),
+            String(obj.publicKey),
+            obj.webhookUrl ? String(obj.webhookUrl) : null,
+            String(obj.status),
+            updatedAtTimestamp,
+            idString
+          );
+      } catch (sqliteError) {
+        // Check if the error is related to a UNIQUE constraint violation on client_id
+        const errorMessage = String(sqliteError);
+        if (
+          errorMessage.includes('UNIQUE constraint failed') &&
+          errorMessage.includes('client_id')
+        ) {
+          // Convert to a domain-specific error
+          throw new DuplicateClientIdError(String(obj.clientId));
+        }
+
+        // For other database errors, wrap in a PlatformOperationError
+        throw new PlatformOperationError(
+          'Failed to update platform due to database error',
+          sqliteError instanceof Error
+            ? sqliteError
+            : new Error(String(sqliteError))
         );
+      }
 
       return mergedPlatform;
     } catch (error) {
+      // If it's already a domain-specific error, rethrow
+      if (
+        error instanceof DuplicateClientIdError ||
+        error instanceof PlatformOperationError
+      ) {
+        throw error;
+      }
+
+      // Log the generic error
       logger.error('Error updating platform in SQLite repository', {
         error: error instanceof Error ? error.message : String(error),
         id,
@@ -309,12 +348,22 @@ export class SqlitePlatformRepository implements PlatformRepository {
       description: typedRow.description
         ? String(typedRow.description)
         : undefined,
-      clientId: String(typedRow.clientId),
-      publicKey: String(typedRow.publicKey),
-      webhookUrl: typedRow.webhookUrl ? String(typedRow.webhookUrl) : undefined,
+      clientId: String(typedRow.client_id),
+      publicKey: String(typedRow.public_key),
+      webhookUrl: typedRow.webhook_url
+        ? String(typedRow.webhook_url)
+        : undefined,
       status: String(typedRow.status) as PlatformStatus,
-      createdAt: convertTimestamp(typedRow.createdAt, 'sqlite', 'from') as Date,
-      updatedAt: convertTimestamp(typedRow.updatedAt, 'sqlite', 'from') as Date,
+      createdAt: convertTimestamp(
+        typedRow.created_at,
+        'sqlite',
+        'from'
+      ) as Date,
+      updatedAt: convertTimestamp(
+        typedRow.updated_at,
+        'sqlite',
+        'from'
+      ) as Date,
     });
   }
 }

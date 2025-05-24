@@ -31,31 +31,83 @@ Added a static `sqliteConnectionManager` property to `RepositoryFactory`:
 private static sqliteConnectionManager:
   | import('./database/modules/sqlite/connection/sqlite-connection.manager').SqliteConnectionManager
   | null = null;
+
+// Promise to track ongoing initialization
+private static initializationPromise: Promise<void> | null = null;
 ```
 
-### 2. **Shared Connection Manager Creation**
+### 2. **Shared Connection Manager Creation with Mutex Pattern**
 
-Modified the `initialize()` method to create a single, shared `SqliteConnectionManager`:
+Modified the `initialize()` method to use a Promise-based mutex pattern to prevent concurrent initializations:
 
 ```typescript
-} else if (RepositoryFactory.dbType === 'sqlite') {
-  // Create shared SQLite connection manager for resource management
-  const { Database } = await import('bun:sqlite');
-  const { SqliteConnectionManager } = await import(
-    './database/modules/sqlite/connection/sqlite-connection.manager'
-  );
-  
-  const sqliteFile = config.sqliteFile || ':memory:';
-  const client = new Database(sqliteFile);
-  
-  RepositoryFactory.sqliteConnectionManager = new SqliteConnectionManager(client, {
-    maxConnectionAttempts: 3,
-    connectionRetryDelayMs: 1000,
-  });
-  
-  // Connect the shared connection manager
-  await RepositoryFactory.sqliteConnectionManager.connect();
+// At the beginning of initialize() method
+// Check if initialization is already in progress
+if (RepositoryFactory.initializationPromise) {
+  // Wait for ongoing initialization to complete
+  await RepositoryFactory.initializationPromise;
+  return; // Initialization already completed by another call
 }
+
+// Prevent multiple initializations if already initialized
+if (RepositoryFactory.isInitialized) {
+  logger.warn(
+    'RepositoryFactory already initialized. Skipping redundant initialization.'
+  );
+  return;
+}
+
+// Create and store the initialization promise
+RepositoryFactory.initializationPromise = (async () => {
+  try {
+    RepositoryFactory.dbType = config.type;
+
+    if (RepositoryFactory.dbType === 'postgresql') {
+      // PostgreSQL initialization (unchanged)
+      // ...
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Only initialize if not already initialized
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        // Create shared SQLite connection manager for resource management
+        const { Database } = await import('bun:sqlite');
+        const { SqliteConnectionManager } = await import(
+          './database/modules/sqlite/connection/sqlite-connection.manager'
+        );
+        
+        const sqliteFile = config.sqliteFile || ':memory:';
+        const client = new Database(sqliteFile);
+        
+        RepositoryFactory.sqliteConnectionManager = new SqliteConnectionManager(client, {
+          maxConnectionAttempts: 3,
+          connectionRetryDelayMs: 1000,
+          sqliteBusyTimeout: config.sqliteBusyTimeout,
+          sqliteSyncMode: config.sqliteSyncMode as | 'OFF' | 'NORMAL' | 'FULL' | undefined,
+          sqliteCacheSize: config.sqliteCacheSize,
+        });
+        
+        // Connect the shared connection manager
+        await RepositoryFactory.sqliteConnectionManager.connect();
+        logger.info('SQLite connection manager initialized successfully');
+      }
+    } else {
+      throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
+    }
+
+    // Mark as initialized
+    RepositoryFactory.isInitialized = true;
+    logger.info(
+      `Repository factory initialized with ${RepositoryFactory.dbType} database`
+    );
+  } catch (error) {
+    logger.error('Failed to initialize RepositoryFactory', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw error;
+  }
+})();
+
+// Wait for initialization to complete
+await RepositoryFactory.initializationPromise;
 ```
 
 ### 3. **Standardized Repository Creation**
@@ -86,23 +138,61 @@ return new SqliteApiKeyRepository(RepositoryFactory.sqliteConnectionManager.getC
 
 ### 4. **Proper Resource Cleanup**
 
-Enhanced the `close()` method to properly disconnect the SQLite connection manager:
+Enhanced the `close()` method to properly disconnect the SQLite connection manager and reset the initialization state:
 
 ```typescript
-} else if (
-  RepositoryFactory.dbType === 'sqlite' &&
-  RepositoryFactory.sqliteConnectionManager
-) {
-  // Properly disconnect the shared SQLite connection manager
-  try {
-    await RepositoryFactory.sqliteConnectionManager.disconnect();
-    RepositoryFactory.sqliteConnectionManager = null;
-    logger.info('SQLite connection manager disconnected successfully');
-  } catch (error) {
-    logger.warn('Failed to disconnect SQLite connection manager', {
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
+/**
+ * Closes the database connection
+ */
+static async close(): Promise<void> {
+  // Wait for any ongoing initialization to complete before attempting to close
+  if (RepositoryFactory.initializationPromise) {
+    try {
+      await RepositoryFactory.initializationPromise;
+    } catch (error) {
+      // If initialization failed, log and continue with cleanup
+      logger.warn('Initialization was in progress but failed during close', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
+
+  if (!RepositoryFactory.isInitialized) {
+    logger.warn('RepositoryFactory not initialized. Nothing to close.');
+    return;
+  }
+
+  if (RepositoryFactory.dbType === 'postgresql' && RepositoryFactory.client) {
+    try {
+      await RepositoryFactory.client.end();
+      logger.info('PostgreSQL client closed successfully');
+    } catch (e) {
+      logger.warn('Failed to close PostgreSQL client', {
+        errorMessage: e instanceof Error ? e.message : String(e),
+      });
+    }
+    RepositoryFactory.client = null;
+  } else if (
+    RepositoryFactory.dbType === 'sqlite' &&
+    RepositoryFactory.sqliteConnectionManager
+  ) {
+    // Properly disconnect the shared SQLite connection manager
+    try {
+      await RepositoryFactory.sqliteConnectionManager.disconnect();
+      RepositoryFactory.sqliteConnectionManager = null;
+      logger.info('SQLite connection manager disconnected successfully');
+    } catch (error) {
+      logger.warn('Failed to disconnect SQLite connection manager', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Reset initialization state
+  RepositoryFactory.isInitialized = false;
+  // Reset initialization promise
+  RepositoryFactory.initializationPromise = null;
+  logger.info('Repository factory closed');
 }
 ```
 
@@ -112,18 +202,25 @@ Enhanced the `close()` method to properly disconnect the SQLite connection manag
 - Single SQLite connection per application instance
 - Eliminates multiple Database instance creation
 - Proper connection pooling and management
+- Thread-safe initialization prevents duplicate connections
 
-### 2. **Consistent Architecture**
+### 2. **Concurrency Protection**
+- Promise-based mutex pattern prevents race conditions
+- Ensures only one initialization process runs at a time
+- Subsequent calls wait for the first initialization to complete
+- Prevents resource duplication in high-load environments
+
+### 3. **Consistent Architecture**
 - All repositories now use the same connection management pattern
 - Centralized resource tracking and cleanup
 - Matches PostgreSQL's centralized client management
 
-### 3. **Improved Reliability**
+### 4. **Improved Reliability**
 - Proper connection state management
 - Graceful error handling during cleanup
 - Prevention of resource leaks
 
-### 4. **Better Testing**
+### 5. **Better Testing**
 - Predictable resource lifecycle
 - Easier test isolation
 - Comprehensive test coverage for resource management

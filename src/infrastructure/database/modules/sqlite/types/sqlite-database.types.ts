@@ -277,17 +277,6 @@ export interface SqliteTransactionContext {
 }
 
 /**
- * Database health check result
- */
-export interface SqliteDatabaseHealth {
-  connected: boolean;
-  responseTime: number;
-  lastError?: Error;
-  connectionAttempts: number;
-  uptime: number;
-}
-
-/**
  * Configuration for database monitoring
  */
 export interface SqliteMonitoringConfig {

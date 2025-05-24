@@ -5,7 +5,7 @@
  * and the Data Mapper pattern with Drizzle ORM.
  */
 
-import { eq, or, like, sql } from 'drizzle-orm';
+import { eq, and, like, sql } from 'drizzle-orm';
 import { User, UserRole, UserPermission } from '@domains/user/user.entity';
 import {
   UserRepository,
@@ -91,8 +91,8 @@ export class SqliteUserRepository implements UserRepository {
           passwordHash: params.passwordHash || undefined,
           firstName: obj.firstName as string | null,
           lastName: obj.lastName as string | null,
-          roles: JSON.stringify(obj.roles),
-          permissions: JSON.stringify(obj.permissions),
+          roles: JSON.stringify(obj.roles ?? []),
+          permissions: JSON.stringify(obj.permissions ?? []),
           isActive: obj.isActive ? 1 : 0,
           lastLogin,
           metadata: obj.metadata ? JSON.stringify(obj.metadata) : null,
@@ -309,7 +309,15 @@ export class SqliteUserRepository implements UserRepository {
       // Log query
       queryLogger.logQuery(
         'UPDATE User',
-        [id, SensitiveValue.from(updateValues)],
+        [
+          id,
+          SensitiveValue.from({
+            ...updateValues,
+            ...(updateValues.passwordHash
+              ? { passwordHash: '[REDACTED]' }
+              : {}),
+          }),
+        ],
         duration,
         'sqlite'
       );
@@ -392,7 +400,7 @@ export class SqliteUserRepository implements UserRepository {
       if (conditions.length === 1) {
         query = query.where(conditions[0]) as typeof query;
       } else if (conditions.length > 1) {
-        query = query.where(or(...conditions)) as typeof query;
+        query = query.where(and(...conditions)) as typeof query;
       }
 
       // Apply pagination
@@ -450,7 +458,7 @@ export class SqliteUserRepository implements UserRepository {
       if (conditions.length === 1) {
         query = query.where(conditions[0]) as typeof query;
       } else if (conditions.length > 1) {
-        query = query.where(or(...conditions)) as typeof query;
+        query = query.where(and(...conditions)) as typeof query;
       }
 
       // Execute query

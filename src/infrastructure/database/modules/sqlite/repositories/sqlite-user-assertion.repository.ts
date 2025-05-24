@@ -48,29 +48,23 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
    * @param record The record containing fields to update
    * @returns A properly typed update object for Drizzle ORM
    */
-  private constructDrizzleUpdateSet(record: Record<string, unknown>): {
-    [key in
-      | typeof userAssertions.status.name
-      | typeof userAssertions.metadata.name
-      | typeof userAssertions.addedAt.name]?: string | number;
-  } {
-    // Define a properly typed update object for Drizzle
-    type DrizzleUpdateSet = {
-      [key in
-        | typeof userAssertions.status.name
-        | typeof userAssertions.metadata.name
-        | typeof userAssertions.addedAt.name]?: string | number;
-    };
-
-    const updateSet: DrizzleUpdateSet = {};
+  private constructDrizzleUpdateSet(record: Record<string, unknown>) {
+    // Create an update set with explicitly typed fields matching the schema
+    // This provides compile-time type safety when passing the result to Drizzle's .set() method
+    // and ensures consistency with the database schema structure
+    const updateSet: {
+      status?: string;
+      metadata?: string;
+      addedAt?: number; // Must be number for SQLite integer field
+    } = {};
 
     if (record.status !== undefined) {
-      updateSet[userAssertions.status.name] = String(record.status);
+      updateSet.status = String(record.status);
     }
 
     if (record.metadata !== undefined) {
       // Use proper JSON conversion to prevent data loss
-      updateSet[userAssertions.metadata.name] =
+      updateSet.metadata =
         typeof record.metadata === 'string'
           ? record.metadata
           : SqliteTypeConverters.safeJsonStringify(
@@ -81,7 +75,7 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
 
     // Handle addedAt field (used also to track updates)
     if (record.addedAt !== undefined) {
-      updateSet[userAssertions.addedAt.name] =
+      updateSet.addedAt =
         typeof record.addedAt === 'number'
           ? record.addedAt
           : record.addedAt instanceof Date
@@ -163,19 +157,29 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         const entityData = userAssertion.toObject();
 
         // Create update values for conflict case - preserve only the fields we want to update
-        const updateValues = {
-          // Update metadata if present in the entity
-          metadata: entityData.metadata
-            ? SqliteTypeConverters.safeJsonStringify(
-                entityData.metadata,
-                'metadata'
-              )
-            : undefined,
-          // Update status if present in the entity
-          status: entityData.status || 'active',
-          // Always update the timestamp to track modifications
-          addedAt: now,
-        };
+        // Build the object dynamically to avoid including undefined values
+        const updateValues: Record<string, string | number> = {};
+
+        // Add timestamp for tracking modifications - always include this
+        updateValues.addedAt = now;
+
+        // Only add status if it's defined, otherwise use default
+        if (entityData.status) {
+          updateValues.status = entityData.status;
+        } else {
+          updateValues.status = 'active';
+        }
+
+        // Only add metadata if it's defined and can be converted to a string
+        if (entityData.metadata) {
+          const metadataString = SqliteTypeConverters.safeJsonStringify(
+            entityData.metadata,
+            'metadata'
+          );
+          if (metadataString) {
+            updateValues.metadata = metadataString;
+          }
+        }
 
         // Use a single atomic operation with INSERT ... ON CONFLICT DO UPDATE
         // This ensures we don't have race conditions with concurrent transactions
