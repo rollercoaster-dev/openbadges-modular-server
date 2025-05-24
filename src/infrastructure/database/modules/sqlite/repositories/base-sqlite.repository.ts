@@ -9,6 +9,7 @@ import type { Database } from 'bun:sqlite';
 import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
 import { logger, queryLogger } from '@utils/logging/logger.service';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import { DrizzleTransaction } from '../types/sqlite-database.types';
 import { Shared } from 'openbadges-types';
 
 // Create compile-time type alias to avoid runtime import dependency
@@ -26,9 +27,9 @@ export interface BaseOperationContext {
 
 /**
  * Transaction callback function type
- * Uses any to match Drizzle's transaction callback signature
+ * Uses the proper DrizzleTransaction type for type safety
  */
-export type TransactionCallback<T> = (tx: any) => Promise<T>;
+export type TransactionCallback<T> = (tx: DrizzleTransaction) => Promise<T>;
 
 /**
  * Abstract base class for SQLite repositories
