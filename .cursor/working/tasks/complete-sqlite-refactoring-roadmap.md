@@ -18,18 +18,18 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 #### Phase 2: BadgeClass Repository Refactoring
 **Status**: Ready to start
 **Dependencies**: None (can start immediately)
-**Estimated Time**: 9-14 hours
+**Estimated Time**: 9–14 hours
 
-#### Phase 3: Assertion Repository Refactoring  
+#### Phase 3: Assertion Repository Refactoring
 **Status**: Waiting for BadgeClass completion
 **Dependencies**: BadgeClass repository must be completed first
-**Estimated Time**: 14-20 hours
+**Estimated Time**: 14–20 hours
 
 ## Detailed Implementation Sequence
 
 ### Phase 2: BadgeClass Repository Refactoring
 
-#### 2.1 BadgeClass Mapper Enhancement (2-3 hours)
+#### 2.1 BadgeClass Mapper Enhancement (2–3 hours)
 **File**: `src/infrastructure/database/modules/sqlite/mappers/sqlite-badge-class.mapper.ts`
 - [ ] Remove all `@ts-ignore` comments
 - [ ] Add explicit return types
@@ -37,7 +37,7 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 - [ ] Add comprehensive validation
 - [ ] Follow Issuer mapper patterns exactly
 
-#### 2.2 BadgeClass Repository Refactoring (3-4 hours)
+#### 2.2 BadgeClass Repository Refactoring (3–4 hours)
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository.ts`
 - [ ] Update constructor to use `SqliteConnectionManager`
 - [ ] Remove all type safety violations
@@ -45,22 +45,22 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 - [ ] Follow Issuer repository patterns exactly
 - [ ] Add comprehensive CRUD operations
 
-#### 2.3 Repository Coordinator Enhancement (1-2 hours)
+#### 2.3 Repository Coordinator Enhancement (1–2 hours)
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-repository.coordinator.ts`
 - [ ] Add BadgeClass operations
 - [ ] Implement cross-repository operations
 - [ ] Add transaction support for complex operations
 - [ ] Enhance error handling
 
-#### 2.4 Database Service Enhancement (1-2 hours)
+#### 2.4 Database Service Enhancement (1–2 hours)
 **File**: `src/infrastructure/database/modules/sqlite/services/sqlite-database.service.ts`
 - [ ] Add BadgeClass operations to service layer
 - [ ] Implement proper delegation
 - [ ] Add coordinated operations
 - [ ] Enhance error handling and logging
 
-#### 2.5 Test Updates (2-3 hours)
-**Files**: 
+#### 2.5 Test Updates (2–3 hours)
+**Files**:
 - `tests/infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository.spec.ts`
 - `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts`
 - [ ] Update repository tests for new architecture
@@ -70,7 +70,7 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 
 ### Phase 3: Assertion Repository Refactoring
 
-#### 3.1 Assertion Mapper Enhancement (3-4 hours)
+#### 3.1 Assertion Mapper Enhancement (3–4 hours)
 **File**: `src/infrastructure/database/modules/sqlite/mappers/sqlite-assertion.mapper.ts`
 - [ ] Remove all `@ts-ignore` comments
 - [ ] Add explicit return types
@@ -78,7 +78,7 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 - [ ] Implement proper error handling
 - [ ] Add comprehensive validation
 
-#### 3.2 Assertion Repository Refactoring (4-6 hours)
+#### 3.2 Assertion Repository Refactoring (4–6 hours)
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.ts`
 - [ ] Update constructor to use `SqliteConnectionManager`
 - [ ] Remove all type safety violations
@@ -86,22 +86,22 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 - [ ] Implement consistent error handling and logging
 - [ ] Follow Issuer repository patterns exactly
 
-#### 3.3 Repository Coordinator Final Enhancement (2-3 hours)
+#### 3.3 Repository Coordinator Final Enhancement (2–3 hours)
 **File**: `src/infrastructure/database/modules/sqlite/repositories/sqlite-repository.coordinator.ts`
 - [ ] Add Assertion operations
 - [ ] Implement complex business operations (revoke, verify)
 - [ ] Add bulk operations
 - [ ] Complete transaction support
 
-#### 3.4 Database Service Final Enhancement (2-3 hours)
+#### 3.4 Database Service Final Enhancement (2–3 hours)
 **File**: `src/infrastructure/database/modules/sqlite/services/sqlite-database.service.ts`
 - [ ] Add Assertion operations to service layer
 - [ ] Implement coordinated operations
 - [ ] Add utility operations (badge ecosystem creation)
 - [ ] Complete error handling and logging
 
-#### 3.5 Final Test Updates (3-4 hours)
-**Files**: 
+#### 3.5 Final Test Updates (3–4 hours)
+**Files**:
 - `tests/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.spec.ts`
 - `tests/infrastructure/database/modules/sqlite/sqlite.database.test.ts`
 - [ ] Update repository tests for new architecture
@@ -160,19 +160,19 @@ This document provides a comprehensive roadmap for completing the SQLite databas
 
 ## Timeline and Resource Allocation
 
-### Phase 2: BadgeClass (Week 1-2)
-- **Days 1-2**: Mapper and Repository refactoring
+### Phase 2: BadgeClass (Week 1–2)
+- **Days 1–2**: Mapper and Repository refactoring
 - **Day 3**: Coordinator and Service updates
 - **Day 4**: Test updates and validation
 - **Day 5**: Integration testing and bug fixes
 
-### Phase 3: Assertion (Week 3-4)
-- **Days 1-3**: Mapper and Repository refactoring (more complex)
+### Phase 3: Assertion (Week 3–4)
+- **Days 1–3**: Mapper and Repository refactoring (more complex)
 - **Day 4**: Coordinator and Service final updates
-- **Days 5-6**: Test updates and comprehensive validation
+- **Days 5–6**: Test updates and comprehensive validation
 - **Day 7**: Final integration testing and documentation
 
-### Total Timeline: 2-4 weeks depending on availability
+### Total Timeline: 2–4 weeks depending on availability
 
 ## Quality Gates
 

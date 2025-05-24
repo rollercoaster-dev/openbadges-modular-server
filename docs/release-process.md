@@ -123,7 +123,7 @@ If your changes include breaking changes, make sure to include `BREAKING CHANGE:
 
 Example:
 
-```
+```text
 feat!: change API endpoint format
 
 BREAKING CHANGE: The API endpoint format has changed from /api/v1/resource to /api/resource/v1.

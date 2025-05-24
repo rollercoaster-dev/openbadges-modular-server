@@ -26,7 +26,7 @@ This document outlines the plan to refactor the SQLite BadgeClass repository imp
 - [ ] No stale client references after database reconnections
 
 ### Pattern Consistency ✅
-- [ ] Follows exact same pattern as `SqliteIssuerRepository`
+- [ ] Follows same pattern as `SqliteIssuerRepository`
 - [ ] Repository coordinator passes `SqliteConnectionManager` to repositories
 - [ ] Consistent error handling and logging patterns
 - [ ] Same operation context and metrics logging approach

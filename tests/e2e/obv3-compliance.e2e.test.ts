@@ -62,8 +62,8 @@ async function checkDatabaseConnectionIssue(
   // Clone the response to avoid consuming it
   const clonedResponse = response.clone();
 
-  // Check for any error status code
-  if (response.status >= 400) {
+  // Check for server error status codes (5xx) - client errors (4xx) should not be skipped
+  if (response.status >= 500) {
     let responseBody = '';
     try {
       responseBody = await clonedResponse.text();
@@ -78,14 +78,14 @@ async function checkDatabaseConnectionIssue(
       body: responseBody,
     });
 
-    // Check for common database error messages
-    const databaseErrorKeywords = [
-      'Failed to connect',
+    // Check for common database error messages (using Set to avoid duplicates)
+    const databaseErrorKeywords = new Set([
+      'failed to connect',
       'database',
-      'NOT NULL constraint failed',
+      'not null constraint failed',
       'null value in column',
       'violates not-null constraint',
-      'UNIQUE constraint failed',
+      'unique constraint failed',
       'foreign key constraint fails',
       'no such table',
       'database is locked',
@@ -98,12 +98,8 @@ async function checkDatabaseConnectionIssue(
       'database connection failed',
       'database connection error',
       'database connection timeout',
-      'database connection refused',
-      'database connection failed',
-      'database connection error',
-      'database connection timeout',
-      'Server initialization failed',
-    ];
+      'server initialization failed',
+    ]);
 
     // Check if any of the database error keywords are in the response body
     for (const keyword of databaseErrorKeywords) {
@@ -306,11 +302,16 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     // Delete created resources in reverse order
     if (createdResources.assertionId) {
       try {
-        await fetch(`${ASSERTIONS_ENDPOINT}/${createdResources.assertionId}`, {
-          method: 'DELETE',
-          headers: { 'X-API-Key': API_KEY },
+        const deleteRes = await fetch(
+          `${ASSERTIONS_ENDPOINT}/${createdResources.assertionId}`,
+          {
+            method: 'DELETE',
+            headers: { 'X-API-Key': API_KEY },
+          }
+        );
+        logger.info(`Deleted test assertion: ${createdResources.assertionId}`, {
+          status: deleteRes.status,
         });
-        logger.info(`Deleted test assertion: ${createdResources.assertionId}`);
       } catch (error) {
         logger.warn(
           `Failed to delete test assertion: ${createdResources.assertionId}`,
@@ -322,7 +323,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     if (createdResources.badgeClassId) {
       try {
-        await fetch(
+        const deleteRes = await fetch(
           `${BADGE_CLASSES_ENDPOINT}/${createdResources.badgeClassId}`,
           {
             method: 'DELETE',
@@ -330,7 +331,10 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           }
         );
         logger.info(
-          `Deleted test badge class: ${createdResources.badgeClassId}`
+          `Deleted test badge class: ${createdResources.badgeClassId}`,
+          {
+            status: deleteRes.status,
+          }
         );
       } catch (error) {
         logger.warn(
@@ -343,11 +347,16 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     if (createdResources.issuerId) {
       try {
-        await fetch(`${ISSUERS_ENDPOINT}/${createdResources.issuerId}`, {
-          method: 'DELETE',
-          headers: { 'X-API-Key': API_KEY },
+        const deleteRes = await fetch(
+          `${ISSUERS_ENDPOINT}/${createdResources.issuerId}`,
+          {
+            method: 'DELETE',
+            headers: { 'X-API-Key': API_KEY },
+          }
+        );
+        logger.info(`Deleted test issuer: ${createdResources.issuerId}`, {
+          status: deleteRes.status,
         });
-        logger.info(`Deleted test issuer: ${createdResources.issuerId}`);
       } catch (error) {
         logger.warn(
           `Failed to delete test issuer: ${createdResources.issuerId}`,

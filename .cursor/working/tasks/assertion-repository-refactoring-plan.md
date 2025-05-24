@@ -26,7 +26,7 @@ This document outlines the plan to refactor the SQLite Assertion repository impl
 - [ ] No stale client references after database reconnections
 
 ### Pattern Consistency ✅
-- [ ] Follows exact same pattern as `SqliteIssuerRepository`
+- [ ] Follows same pattern as `SqliteIssuerRepository`
 - [ ] Repository coordinator passes `SqliteConnectionManager` to repositories
 - [ ] Consistent error handling and logging patterns
 - [ ] Same operation context and metrics logging approach
@@ -197,7 +197,7 @@ src/infrastructure/database/modules/sqlite/
 
 1. **Complete BadgeClass repository refactoring first** (dependency)
 2. **Start with Phase 1: Update Assertion repository constructor and connection management**
-3. **Follow exact same pattern as SqliteIssuerRepository**
+3. **Follow same pattern as SqliteIssuerRepository**
 4. **Update repository coordinator to pass SqliteConnectionManager**
 5. **Test thoroughly to ensure no stale client issues**
 6. **Verify all existing functionality works correctly**
