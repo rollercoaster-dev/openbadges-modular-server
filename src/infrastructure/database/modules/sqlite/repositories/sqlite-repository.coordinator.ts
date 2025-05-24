@@ -20,6 +20,7 @@ import {
   SqliteTransactionContext,
   SqliteOperationContext,
   DrizzleTransaction,
+  SqliteEntityType,
 } from '../types/sqlite-database.types';
 import { issuers, badgeClasses, assertions } from '../schema';
 
@@ -491,7 +492,7 @@ export class SqliteRepositoryCoordinator {
    */
   private determineEntityTypeFromOperation(
     operation: string
-  ): SqliteOperationContext['entityType'] {
+  ): SqliteEntityType {
     const lowerOp = operation.toLowerCase();
 
     if (lowerOp.includes('issuer')) {

@@ -11,6 +11,7 @@ import {
   SqliteOperationContext,
   SqliteQueryMetrics,
   DrizzleTransaction,
+  SqliteEntityType,
 } from '../types/sqlite-database.types';
 import { Shared } from 'openbadges-types';
 import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
@@ -55,7 +56,7 @@ export abstract class BaseSqliteRepository {
   /**
    * Abstract method that subclasses must implement to specify their entity type
    */
-  protected abstract getEntityType(): 'issuer' | 'badgeClass' | 'assertion' | 'user' | 'platform' | 'apiKey' | 'platformUser' | 'userAssertion';
+  protected abstract getEntityType(): SqliteEntityType;
 
   /**
    * Abstract method that subclasses must implement to specify their table name
@@ -89,7 +90,9 @@ export abstract class BaseSqliteRepository {
   /**
    * Determines query type from operation string
    */
-  private determineQueryType(operation: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' {
+  private determineQueryType(
+    operation: string
+  ): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' {
     const upperOp = operation.toUpperCase();
     if (upperOp.includes('SELECT')) return 'SELECT';
     if (upperOp.includes('INSERT')) return 'INSERT';
@@ -107,10 +110,10 @@ export abstract class BaseSqliteRepository {
   ): Promise<T> {
     try {
       const result = await operation();
-      
+
       // Log successful operation (assuming 1 row affected for non-query operations)
       this.logQueryMetrics(context, 1);
-      
+
       return result;
     } catch (error) {
       this.logError(context, error);
@@ -127,14 +130,14 @@ export abstract class BaseSqliteRepository {
   ): Promise<T> {
     try {
       const db = this.getDatabase();
-      
+
       const result = await db.transaction(async (tx) => {
         return await operation(tx);
       });
-      
+
       // Log successful transaction
       this.logQueryMetrics(context, 1);
-      
+
       return result;
     } catch (error) {
       this.logError(context, error);
@@ -169,10 +172,10 @@ export abstract class BaseSqliteRepository {
   ): Promise<T[]> {
     try {
       const result = await query();
-      
+
       // Log query metrics with actual row count
       this.logQueryMetrics(context, result.length);
-      
+
       return result;
     } catch (error) {
       this.logError(context, error);
@@ -189,10 +192,10 @@ export abstract class BaseSqliteRepository {
   ): Promise<T | null> {
     try {
       const result = await query();
-      
+
       // Log query metrics
       this.logQueryMetrics(context, result.length);
-      
+
       // Return null if not found, otherwise return the first result
       return result.length > 0 ? result[0] : null;
     } catch (error) {
@@ -210,10 +213,10 @@ export abstract class BaseSqliteRepository {
   ): Promise<T | null> {
     try {
       const result = await update();
-      
+
       // Log update metrics
       this.logQueryMetrics(context, result.length);
-      
+
       // Return null if no rows were updated, otherwise return the updated record
       return result.length > 0 ? result[0] : null;
     } catch (error) {
@@ -231,11 +234,11 @@ export abstract class BaseSqliteRepository {
   ): Promise<boolean> {
     try {
       const result = await deleteOp();
-      
+
       // Log delete metrics
       const rowsAffected = Array.isArray(result) ? result.length : 0;
       this.logQueryMetrics(context, rowsAffected);
-      
+
       // Return true if any rows were deleted
       return rowsAffected > 0;
     } catch (error) {

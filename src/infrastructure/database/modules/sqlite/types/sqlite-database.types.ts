@@ -261,19 +261,30 @@ export type OpenBadgesCriteriaType = OB2.Criteria | OB3.Criteria;
 export type OpenBadgesAlignmentType = OB2.AlignmentObject[] | OB3.Alignment[];
 
 /**
+ * Centralized entity type definitions for type safety and maintainability
+ */
+export const SQLITE_ENTITY_TYPES = [
+  'issuer',
+  'badgeClass',
+  'assertion',
+  'user',
+  'platform',
+  'apiKey',
+  'platformUser',
+  'userAssertion',
+] as const;
+
+/**
+ * SQLite entity type union derived from the centralized definition
+ */
+export type SqliteEntityType = (typeof SQLITE_ENTITY_TYPES)[number];
+
+/**
  * Database operation context for logging and debugging
  */
 export interface SqliteOperationContext {
   operation: string;
-  entityType:
-    | 'issuer'
-    | 'badgeClass'
-    | 'assertion'
-    | 'user'
-    | 'platform'
-    | 'apiKey'
-    | 'platformUser'
-    | 'userAssertion';
+  entityType: SqliteEntityType;
   entityId?: Shared.IRI;
   startTime: number;
   metadata?: Record<string, unknown>;
