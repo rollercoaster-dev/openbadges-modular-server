@@ -16,7 +16,7 @@ describe('SqlitePragmaManager Production Logging', () => {
   beforeEach(() => {
     // Store original NODE_ENV
     originalNodeEnv = process.env.NODE_ENV;
-    
+
     // Set up logger spies
     loggerInfoSpy = spyOn(logger, 'info');
     loggerWarnSpy = spyOn(logger, 'warn');
@@ -30,7 +30,7 @@ describe('SqlitePragmaManager Production Logging', () => {
     } else {
       delete process.env.NODE_ENV;
     }
-    
+
     // Restore spies
     loggerInfoSpy?.mockRestore();
     loggerWarnSpy?.mockRestore();
@@ -40,11 +40,9 @@ describe('SqlitePragmaManager Production Logging', () => {
   it('should log detailed information in development mode', () => {
     // Set development environment
     process.env.NODE_ENV = 'development';
-    
+
     const client = new Database(':memory:');
     const config = {
-      maxConnectionAttempts: 3,
-      connectionRetryDelayMs: 1000,
       sqliteBusyTimeout: 5000,
       sqliteSyncMode: 'NORMAL' as const,
       sqliteCacheSize: 10000,
@@ -68,11 +66,9 @@ describe('SqlitePragmaManager Production Logging', () => {
   it('should only log failures in production mode', () => {
     // Set production environment
     process.env.NODE_ENV = 'production';
-    
+
     const client = new Database(':memory:');
     const config = {
-      maxConnectionAttempts: 3,
-      connectionRetryDelayMs: 1000,
       sqliteBusyTimeout: 5000,
       sqliteSyncMode: 'NORMAL' as const,
       sqliteCacheSize: 10000,
@@ -96,10 +92,10 @@ describe('SqlitePragmaManager Production Logging', () => {
   it('should log production-friendly failure messages', () => {
     // Set production environment
     process.env.NODE_ENV = 'production';
-    
+
     // Create a mock client that will fail on certain PRAGMA settings
     const client = new Database(':memory:');
-    
+
     // Mock the exec method to simulate a failure on foreign_keys
     const originalExec = client.exec.bind(client);
     client.exec = (sql: string) => {
@@ -110,8 +106,6 @@ describe('SqlitePragmaManager Production Logging', () => {
     };
 
     const config = {
-      maxConnectionAttempts: 3,
-      connectionRetryDelayMs: 1000,
       sqliteBusyTimeout: 5000,
       sqliteSyncMode: 'NORMAL' as const,
       sqliteCacheSize: 10000,

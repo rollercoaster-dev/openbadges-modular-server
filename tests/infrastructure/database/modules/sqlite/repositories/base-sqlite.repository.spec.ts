@@ -159,13 +159,13 @@ describe('BaseSqliteRepository', () => {
     it('should correctly determine query types', () => {
       const testCases: Array<{
         operation: string;
-        expectedType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+        expectedType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'UNKNOWN';
       }> = [
         { operation: 'INSERT Test', expectedType: 'INSERT' },
         { operation: 'UPDATE Test', expectedType: 'UPDATE' },
         { operation: 'DELETE Test', expectedType: 'DELETE' },
         { operation: 'SELECT Test', expectedType: 'SELECT' },
-        { operation: 'UNKNOWN Operation', expectedType: 'SELECT' }, // fallback
+        { operation: 'UNKNOWN Operation', expectedType: 'UNKNOWN' }, // fallback
       ];
 
       testCases.forEach(({ operation, expectedType }) => {

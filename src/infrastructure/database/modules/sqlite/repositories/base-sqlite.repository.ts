@@ -71,7 +71,8 @@ export abstract class BaseSqliteRepository {
    */
   protected logQueryMetrics(
     context: SqliteOperationContext,
-    rowsAffected: number
+    rowsAffected: number,
+    queryParams?: unknown[]
   ): SqliteQueryMetrics {
     const metrics: SqliteQueryMetrics = {
       duration: Date.now() - context.startTime,
@@ -80,9 +81,13 @@ export abstract class BaseSqliteRepository {
       tableName: this.getTableName(),
     };
 
+    // Use provided query parameters if available, otherwise fall back to entityId
+    const logParams =
+      queryParams || (context.entityId ? [context.entityId] : undefined);
+
     queryLogger.logQuery(
       context.operation,
-      context.entityId ? [context.entityId] : undefined,
+      logParams,
       metrics.duration,
       'sqlite'
     );
@@ -95,13 +100,13 @@ export abstract class BaseSqliteRepository {
    */
   private determineQueryType(
     operation: string
-  ): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' {
+  ): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'UNKNOWN' {
     const upperOp = operation.toUpperCase();
     if (upperOp.includes('SELECT')) return 'SELECT';
     if (upperOp.includes('INSERT')) return 'INSERT';
     if (upperOp.includes('UPDATE')) return 'UPDATE';
     if (upperOp.includes('DELETE')) return 'DELETE';
-    return 'SELECT'; // Default fallback
+    return 'UNKNOWN'; // Return UNKNOWN instead of guessing
   }
 
   /**
@@ -109,13 +114,14 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeOperation<T>(
     context: SqliteOperationContext,
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
+    rowsAffected?: number
   ): Promise<T> {
     try {
       const result = await operation();
 
-      // Log successful operation (assuming 1 row affected for non-query operations)
-      this.logQueryMetrics(context, 1);
+      // Log successful operation with provided or default row count
+      this.logQueryMetrics(context, rowsAffected ?? 1);
 
       return result;
     } catch (error) {
@@ -129,7 +135,8 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeTransaction<T>(
     context: SqliteOperationContext,
-    operation: (tx: DrizzleTransaction) => Promise<T>
+    operation: (tx: DrizzleTransaction) => Promise<T>,
+    rowsAffected?: number
   ): Promise<T> {
     try {
       const db = this.getDatabase();
@@ -138,8 +145,8 @@ export abstract class BaseSqliteRepository {
         return await operation(tx);
       });
 
-      // Log successful transaction
-      this.logQueryMetrics(context, 1);
+      // Log successful transaction with provided or default row count
+      this.logQueryMetrics(context, rowsAffected ?? 1);
 
       return result;
     } catch (error) {
@@ -171,13 +178,14 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeQuery<T>(
     context: SqliteOperationContext,
-    query: () => Promise<T[]>
+    query: () => Promise<T[]>,
+    queryParams?: unknown[]
   ): Promise<T[]> {
     try {
       const result = await query();
 
-      // Log query metrics with actual row count
-      this.logQueryMetrics(context, result.length);
+      // Log query metrics with actual row count and parameters
+      this.logQueryMetrics(context, result.length, queryParams);
 
       return result;
     } catch (error) {
@@ -191,13 +199,14 @@ export abstract class BaseSqliteRepository {
    */
   protected async executeSingleQuery<T>(
     context: SqliteOperationContext,
-    query: () => Promise<T[]>
+    query: () => Promise<T[]>,
+    queryParams?: unknown[]
   ): Promise<T | null> {
     try {
       const result = await query();
 
-      // Log query metrics
-      this.logQueryMetrics(context, result.length);
+      // Log query metrics with parameters
+      this.logQueryMetrics(context, result.length, queryParams);
 
       // Return null if not found, otherwise return the first result
       return result.length > 0 ? result[0] : null;

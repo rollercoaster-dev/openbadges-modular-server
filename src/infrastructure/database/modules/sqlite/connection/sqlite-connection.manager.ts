@@ -558,8 +558,18 @@ export class SqliteConnectionManager {
    */
   private applyConfigurationPragmas(): void {
     try {
+      // Extract only PRAGMA-related properties from the full connection config
+      const pragmaConfig = {
+        sqliteBusyTimeout: this.config.sqliteBusyTimeout,
+        sqliteSyncMode: this.config.sqliteSyncMode,
+        sqliteCacheSize: this.config.sqliteCacheSize,
+      };
+
       // Use the centralized PRAGMA manager for consistent application
-      const result = SqlitePragmaManager.applyPragmas(this.client, this.config);
+      const result = SqlitePragmaManager.applyPragmas(
+        this.client,
+        pragmaConfig
+      );
 
       // Log successful application in development mode only
       // (Failures are already logged by the PRAGMA manager in both dev and production)

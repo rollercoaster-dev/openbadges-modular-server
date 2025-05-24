@@ -212,7 +212,7 @@ export interface TypeConversionResult<T> {
 export interface SqliteQueryMetrics {
   duration: number;
   rowsAffected: number;
-  queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'UNKNOWN';
   tableName?: string;
 }
 

@@ -108,10 +108,8 @@ export class SqliteModule implements DatabaseModuleInterface {
     config: Partial<SqliteModuleConfig>
   ): void {
     try {
-      // Convert module config to connection config format for PRAGMA manager
-      const connectionConfig = {
-        maxConnectionAttempts: config.maxConnectionAttempts ?? 3,
-        connectionRetryDelayMs: config.connectionRetryDelayMs ?? 1000,
+      // Extract only PRAGMA-related properties for the PRAGMA manager
+      const pragmaConfig = {
         sqliteBusyTimeout: Math.max(100, config.sqliteBusyTimeout ?? 5000),
         sqliteSyncMode: config.sqliteSyncMode ?? ('NORMAL' as const),
         sqliteCacheSize: Math.max(1000, config.sqliteCacheSize ?? 10000),
@@ -119,10 +117,7 @@ export class SqliteModule implements DatabaseModuleInterface {
 
       // Use centralized PRAGMA manager for consistent application
       try {
-        const result = SqlitePragmaManager.applyPragmas(
-          client,
-          connectionConfig
-        );
+        const result = SqlitePragmaManager.applyPragmas(client, pragmaConfig);
 
         // Log successful application in development mode only
         // (Failures are already logged by the PRAGMA manager in both dev and production)

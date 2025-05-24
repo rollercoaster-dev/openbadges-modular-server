@@ -10,14 +10,13 @@ import { logger } from '@utils/logging/logger.service';
 import { sanitizeObject } from '@utils/security/sanitize';
 
 /**
- * Configuration interface for SQLite PRAGMA settings
+ * Configuration interface for SQLite PRAGMA settings only
+ * Excludes connection management properties that are not used for PRAGMA configuration
  */
 export interface SqlitePragmaConfig {
-  maxConnectionAttempts: number;
-  connectionRetryDelayMs: number;
   sqliteBusyTimeout: number;
   sqliteSyncMode: 'OFF' | 'NORMAL' | 'FULL';
-  sqliteCacheSize?: number; // Make optional to match SqliteConnectionConfig
+  sqliteCacheSize?: number;
 }
 
 /**

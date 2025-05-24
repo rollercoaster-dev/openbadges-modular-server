@@ -49,12 +49,8 @@ export class SqliteIssuerRepository
       const issuerWithId = Issuer.create(issuer);
 
       // Convert domain entity to database record
+      // The mapper handles timestamp setting, so no need to set them manually
       const record = this.mapper.toPersistence(issuerWithId);
-
-      // Ensure timestamps are set
-      const now = this.getCurrentTimestamp();
-      record.createdAt = now;
-      record.updatedAt = now;
 
       // Insert into database within the transaction
       const insertResult = await tx.insert(issuers).values(record).returning();
@@ -84,10 +80,14 @@ export class SqliteIssuerRepository
       this.logUnboundedQueryWarning('findAll');
     }
 
-    const result = await this.executeQuery(context, async () => {
-      const db = this.getDatabase();
-      return db.select().from(issuers).limit(limit).offset(offset);
-    });
+    const result = await this.executeQuery(
+      context,
+      async () => {
+        const db = this.getDatabase();
+        return db.select().from(issuers).limit(limit).offset(offset);
+      },
+      [limit, offset] // Forward calculated parameters to logger
+    );
 
     // Convert database records to domain entities
     return result.map((record) => this.mapper.toDomain(record));
@@ -119,13 +119,17 @@ export class SqliteIssuerRepository
     this.validateEntityId(id, 'find issuer by ID');
     const context = this.createOperationContext('SELECT Issuer by ID', id);
 
-    const result = await this.executeSingleQuery(context, async () => {
-      const db = this.getDatabase();
-      return db
-        .select()
-        .from(issuers)
-        .where(eq(issuers.id, id as string));
-    });
+    const result = await this.executeSingleQuery(
+      context,
+      async () => {
+        const db = this.getDatabase();
+        return db
+          .select()
+          .from(issuers)
+          .where(eq(issuers.id, id as string));
+      },
+      [id] // Forward ID parameter to logger
+    );
 
     // Convert database record to domain entity if found
     return result ? this.mapper.toDomain(result) : null;
@@ -165,11 +169,9 @@ export class SqliteIssuerRepository
       });
 
       // Convert to database record but exclude id to avoid updating primary key
+      // The mapper handles timestamp setting, so no need to set updatedAt manually
       const { id: _discard, ...updatable } =
         this.mapper.toPersistence(mergedIssuer);
-
-      // Ensure updatedAt timestamp is set
-      updatable.updatedAt = this.getCurrentTimestamp();
 
       const updateResult = await tx
         .update(issuers)
