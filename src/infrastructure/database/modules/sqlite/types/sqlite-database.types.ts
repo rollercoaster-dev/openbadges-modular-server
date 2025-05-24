@@ -265,7 +265,15 @@ export type OpenBadgesAlignmentType = OB2.AlignmentObject[] | OB3.Alignment[];
  */
 export interface SqliteOperationContext {
   operation: string;
-  entityType: 'issuer' | 'badgeClass' | 'assertion';
+  entityType:
+    | 'issuer'
+    | 'badgeClass'
+    | 'assertion'
+    | 'user'
+    | 'platform'
+    | 'apiKey'
+    | 'platformUser'
+    | 'userAssertion';
   entityId?: Shared.IRI;
   startTime: number;
   metadata?: Record<string, unknown>;

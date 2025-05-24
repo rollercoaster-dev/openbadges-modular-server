@@ -8,15 +8,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { BaseSqliteRepository } from '@infrastructure/database/modules/sqlite/repositories/base-sqlite.repository';
 import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
+import { SqliteOperationContext } from '@infrastructure/database/modules/sqlite/types/sqlite-database.types';
 import { Shared } from 'openbadges-types';
-
-// Type for operation context used in tests
-interface OperationContext {
-  operation: string;
-  entityType: string;
-  entityId?: Shared.IRI;
-  startTime: number;
-}
 
 // Test implementation of BaseSqliteRepository
 class TestSqliteRepository extends BaseSqliteRepository {
@@ -33,40 +26,43 @@ class TestSqliteRepository extends BaseSqliteRepository {
     return this.createOperationContext(operation, entityId);
   }
 
-  public testLogQueryMetrics(context: OperationContext, rowsAffected: number) {
+  public testLogQueryMetrics(
+    context: SqliteOperationContext,
+    rowsAffected: number
+  ) {
     return this.logQueryMetrics(context, rowsAffected);
   }
 
   public testExecuteOperation<T>(
-    context: OperationContext,
+    context: SqliteOperationContext,
     operation: () => Promise<T>
   ) {
     return this.executeOperation(context, operation);
   }
 
   public testExecuteQuery<T>(
-    context: OperationContext,
+    context: SqliteOperationContext,
     query: () => Promise<T[]>
   ) {
     return this.executeQuery(context, query);
   }
 
   public testExecuteSingleQuery<T>(
-    context: OperationContext,
+    context: SqliteOperationContext,
     query: () => Promise<T[]>
   ) {
     return this.executeSingleQuery(context, query);
   }
 
   public testExecuteUpdate<T>(
-    context: OperationContext,
+    context: SqliteOperationContext,
     update: () => Promise<T[]>
   ) {
     return this.executeUpdate(context, update);
   }
 
   public testExecuteDelete(
-    context: OperationContext,
+    context: SqliteOperationContext,
     deleteOp: () => Promise<unknown[]>
   ) {
     return this.executeDelete(context, deleteOp);
@@ -161,7 +157,10 @@ describe('BaseSqliteRepository', () => {
     });
 
     it('should correctly determine query types', () => {
-      const testCases = [
+      const testCases: Array<{
+        operation: string;
+        expectedType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+      }> = [
         { operation: 'INSERT Test', expectedType: 'INSERT' },
         { operation: 'UPDATE Test', expectedType: 'UPDATE' },
         { operation: 'DELETE Test', expectedType: 'DELETE' },
