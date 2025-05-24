@@ -113,6 +113,7 @@ export class SqlitePragmaManager {
         error: errorMsg,
         critical: true,
       });
+      result.criticalSettingsApplied = false; // Explicitly set flag for clarity
       logger.error(errorMsg, {
         setting: 'journal_mode',
         error: sanitizeObject({
@@ -120,7 +121,6 @@ export class SqlitePragmaManager {
         }),
       });
       // Allow initialization to continue - connection manager will retry
-      // Note: criticalSettingsApplied will be set to false after all settings are applied
     }
 
     // Apply busy timeout setting (CRITICAL for concurrency)

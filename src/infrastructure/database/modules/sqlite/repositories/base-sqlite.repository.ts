@@ -96,16 +96,19 @@ export abstract class BaseSqliteRepository {
   }
 
   /**
-   * Determines query type from operation string
+   * Determines query type from operation string using word boundary regex for accuracy
    */
   private determineQueryType(
     operation: string
   ): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'UNKNOWN' {
     const upperOp = operation.toUpperCase();
-    if (upperOp.includes('SELECT')) return 'SELECT';
-    if (upperOp.includes('INSERT')) return 'INSERT';
-    if (upperOp.includes('UPDATE')) return 'UPDATE';
-    if (upperOp.includes('DELETE')) return 'DELETE';
+
+    // Use word boundaries to ensure we match complete words, not substrings
+    if (/\bSELECT\b/.test(upperOp)) return 'SELECT';
+    if (/\bINSERT\b/.test(upperOp)) return 'INSERT';
+    if (/\bUPDATE\b/.test(upperOp)) return 'UPDATE';
+    if (/\bDELETE\b/.test(upperOp)) return 'DELETE';
+
     return 'UNKNOWN'; // Return UNKNOWN instead of guessing
   }
 

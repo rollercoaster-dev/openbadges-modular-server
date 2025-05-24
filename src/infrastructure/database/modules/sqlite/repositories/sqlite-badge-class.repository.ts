@@ -14,7 +14,6 @@ import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Add SensitiveValue import
 
 export class SqliteBadgeClassRepository
   extends BaseSqliteRepository
@@ -151,38 +150,44 @@ export class SqliteBadgeClassRepository
       id as Shared.IRI
     );
 
-    const existingBadgeClass = await this.findById(id);
-    if (!existingBadgeClass) {
-      return null;
-    }
+    return this.executeTransaction(context, async (tx) => {
+      // Perform SELECT and UPDATE within the same transaction to prevent TOCTOU race condition
+      const existing = await tx
+        .select()
+        .from(badgeClasses)
+        .where(eq(badgeClasses.id, id))
+        .limit(1);
 
-    const partialExistingData = existingBadgeClass.toPartial();
-    const mergedData: Partial<BadgeClass> = {
-      ...partialExistingData,
-      ...badgeClass,
-    };
+      if (existing.length === 0) {
+        return null;
+      }
 
-    const mergedBadgeClass = BadgeClass.create(mergedData);
+      // Convert database record to domain entity for merging
+      const existingBadgeClass = this.mapper.toDomain(existing[0]);
 
-    const record = { ...this.mapper.toPersistence(mergedBadgeClass) };
-    delete (record as Partial<typeof record>).id;
-    delete (record as Partial<typeof record>).createdAt;
+      const partialExistingData = existingBadgeClass.toPartial();
+      const mergedData: Partial<BadgeClass> = {
+        ...partialExistingData,
+        ...badgeClass,
+      };
 
-    const result = await this.executeUpdate(
-      context,
-      async (db) => {
-        return db
-          .update(badgeClasses)
-          .set(record)
-          .where(eq(badgeClasses.id, id))
-          .returning();
-      },
-      [id, new SensitiveValue(record)] // Pass id and record for logging
-    );
+      const mergedBadgeClass = BadgeClass.create(mergedData);
 
-    return result
-      ? this.mapper.toDomain(result as typeof badgeClasses.$inferSelect)
-      : null;
+      // Use destructuring instead of delete operator for better performance
+      const {
+        id: _ignore,
+        createdAt: _ca,
+        ...updatable
+      } = this.mapper.toPersistence(mergedBadgeClass);
+
+      const updated = await tx
+        .update(badgeClasses)
+        .set(updatable)
+        .where(eq(badgeClasses.id, id))
+        .returning();
+
+      return this.mapper.toDomain(updated[0]);
+    });
   }
 
   async delete(id: string): Promise<boolean> {

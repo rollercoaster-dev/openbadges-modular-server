@@ -28,7 +28,7 @@ describe('SqlitePragmaManager Production Logging', () => {
     if (originalNodeEnv !== undefined) {
       process.env.NODE_ENV = originalNodeEnv;
     } else {
-      delete process.env.NODE_ENV;
+      process.env.NODE_ENV = undefined;
     }
 
     // Restore spies

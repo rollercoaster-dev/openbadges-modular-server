@@ -210,7 +210,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     expect(log.params?.[0]).toBeInstanceOf(SensitiveValue);
   });
 
-  it('should log queries on update (findById + update)', async () => {
+  it('should log queries on update (transaction-based)', async () => {
     const createdAssertion = await repository.create(createTestAssertionData());
     queryLogger.clearLogs(); // Clear logs from setup
 
@@ -218,22 +218,14 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     await repository.update(createdAssertion.id, updateData);
 
     const logs = queryLogger.getLogs();
-    expect(logs.length).toBe(2);
+    expect(logs.length).toBe(1); // Now wrapped in a single transaction
 
-    // Check findById log
-    const findLog = logs[0];
-    expect(findLog.query).toBe('SELECT Assertion by ID');
-    expect(findLog.params).toEqual([createdAssertion.id]);
-    expect(findLog.database).toBe('sqlite');
-
-    // Check update log
-    const updateLog = logs[1];
+    // Check transaction log
+    const updateLog = logs[0];
     expect(updateLog.query).toBe('UPDATE Assertion');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeArrayOfSize(2);
-    expect(updateLog.params?.[0]).toBe(createdAssertion.id);
-    expect(updateLog.params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(updateLog.params).toEqual([createdAssertion.id]);
   });
 
   it('should log query on delete', async () => {
@@ -253,7 +245,7 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
   });
 
   // Add tests for revoke and verify similarly, checking logs for underlying operations
-  it('should log queries on revoke (findById * 2 + update)', async () => {
+  it('should log queries on revoke (transaction-based)', async () => {
     const createdAssertion = await repository.create(createTestAssertionData());
     queryLogger.clearLogs(); // Clear logs from setup
 
@@ -261,27 +253,24 @@ describe('SqliteAssertionRepository Integration - Query Logging', () => {
     await repository.revoke(createdAssertion.id, reason);
 
     const logs = queryLogger.getLogs();
-    expect(logs.length).toBe(4); // findById (revoke) -> findById (update) -> update -> findById (update's internal findById)
+    expect(logs.length).toBe(3); // findById (revoke) + update (transaction) + revoke (transaction)
 
     // Check logs (simplified check, focus on query names)
-    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke's transaction
-    expect(logs[1].query).toBe('SELECT Assertion by ID'); // From findById in update (called within transaction)
-    expect(logs[2].query).toBe('UPDATE Assertion'); // From executeUpdate in update (called within transaction)
-    expect(logs[3].query).toBe('REVOKE Assertion'); // From executeTransaction after its callback completes
+    expect(logs[0].query).toBe('SELECT Assertion by ID'); // From findById in revoke
+    expect(logs[1].query).toBe('UPDATE Assertion'); // From update method (transaction-based)
+    expect(logs[2].query).toBe('REVOKE Assertion'); // From revoke transaction
+
+    // Verify parameters for the initial findById
+    expect(logs[0].params).toEqual([createdAssertion.id]);
+    expect(logs[0].database).toBe('sqlite');
 
     // Verify parameters for the UPDATE operation
-    expect(logs[2].params).toBeArrayOfSize(2);
-    expect(logs[2].params?.[0]).toBe(createdAssertion.id);
-    expect(logs[2].params?.[1]).toBeInstanceOf(SensitiveValue);
-    expect(logs[2].database).toBe('sqlite');
-
-    // Verify parameters for the final SELECT Assertion by ID (from update's internal findById)
     expect(logs[1].params).toEqual([createdAssertion.id]);
     expect(logs[1].database).toBe('sqlite');
 
-    // Verify parameters for the initial SELECT Assertion by ID (from revoke's findById)
-    expect(logs[0].params).toEqual([createdAssertion.id]);
-    expect(logs[0].database).toBe('sqlite');
+    // Verify parameters for the REVOKE operation
+    expect(logs[2].params).toEqual([createdAssertion.id]);
+    expect(logs[2].database).toBe('sqlite');
   });
 
   it('should log query on verify (findById)', async () => {

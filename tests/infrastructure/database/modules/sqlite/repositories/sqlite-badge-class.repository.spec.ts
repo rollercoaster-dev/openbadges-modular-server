@@ -8,7 +8,7 @@ import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { toIRI } from '@utils/types/iri-utils';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Re-import SensitiveValue
+
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
@@ -133,20 +133,14 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
 
     const logs = queryLogger.getLogs();
 
-    // Expect logs for findById (in update) and the actual UPDATE
-    expect(logs).toBeArrayOfSize(2);
+    // Expect single transaction log for the update operation
+    expect(logs).toBeArrayOfSize(1);
 
-    const findLog = logs[0];
-    expect(findLog.query).toBe('SELECT BadgeClass by ID');
-    expect(findLog.params?.[0]).toBe(testBadgeData.id);
-
-    const updateLog = logs[1];
+    const updateLog = logs[0];
     expect(updateLog.query).toBe('UPDATE BadgeClass');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeArrayOfSize(2);
-    expect(updateLog.params?.[0]).toBe(testBadgeData.id);
-    expect(updateLog.params?.[1]).toBeInstanceOf(SensitiveValue);
+    expect(updateLog.params).toEqual([testBadgeData.id]);
   });
 
   it('should log query on delete', async () => {

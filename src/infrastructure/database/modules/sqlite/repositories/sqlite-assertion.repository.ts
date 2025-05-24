@@ -145,6 +145,8 @@ export class SqliteAssertionRepository
     const result = await this.executeQuery(
       context,
       async (db) => {
+        // Note: Drizzle's sql template literal provides automatic parameter binding
+        // The ${recipientId} is safely bound as a parameter, not concatenated as raw SQL
         return db
           .select()
           .from(assertions)
@@ -166,37 +168,40 @@ export class SqliteAssertionRepository
   ): Promise<Assertion | null> {
     const context = this.createOperationContext('UPDATE Assertion', id);
 
-    const existingAssertion = await this.findById(id);
-    if (!existingAssertion) {
-      return null;
-    }
+    return this.executeTransaction(context, async (tx) => {
+      // Perform SELECT and UPDATE within the same transaction to prevent TOCTOU race condition
+      const existing = await tx
+        .select()
+        .from(assertions)
+        .where(eq(assertions.id, id as string))
+        .limit(1);
 
-    const mergedAssertion = Assertion.create({
-      ...existingAssertion,
-      ...assertion,
-    } as Partial<Assertion>);
+      if (existing.length === 0) {
+        return null;
+      }
 
-    const {
-      id: _ignore,
-      createdAt: _ca,
-      ...updatable
-    } = this.mapper.toPersistence(mergedAssertion);
+      // Convert database record to domain entity for merging
+      const existingAssertion = this.mapper.toDomain(existing[0]);
 
-    const result = await this.executeUpdate(
-      context,
-      async (db) => {
-        return db
-          .update(assertions)
-          .set(updatable)
-          .where(eq(assertions.id, id as string))
-          .returning();
-      },
-      [id, new SensitiveValue(updatable)] // Pass id and updatable data for logging
-    );
+      const mergedAssertion = Assertion.create({
+        ...existingAssertion,
+        ...assertion,
+      } as Partial<Assertion>);
 
-    return result
-      ? this.mapper.toDomain(result as typeof assertions.$inferSelect)
-      : null;
+      const {
+        id: _ignore,
+        createdAt: _ca,
+        ...updatable
+      } = this.mapper.toPersistence(mergedAssertion);
+
+      const updated = await tx
+        .update(assertions)
+        .set(updatable)
+        .where(eq(assertions.id, id as string))
+        .returning();
+
+      return this.mapper.toDomain(updated[0]);
+    });
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {

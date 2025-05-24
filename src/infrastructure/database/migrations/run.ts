@@ -222,6 +222,20 @@ async function runSqliteMigrations() {
       // Continue execution even if this fails
     }
 
+    // Create custom indexes after migrations are complete
+    try {
+      logger.info('Creating custom indexes after migrations...');
+      const { SqliteModule } = await import('../modules/sqlite/sqlite.module');
+      const sqliteModule = new SqliteModule();
+      sqliteModule.createIndexesAfterMigrations(sqlite);
+      logger.info('Custom indexes created successfully after migrations.');
+    } catch (error) {
+      logger.warn('Failed to create custom indexes after migrations', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Non-critical - continue
+    }
+
     // Close database connection
     sqlite.close();
 

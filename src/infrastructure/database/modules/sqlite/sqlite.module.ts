@@ -143,26 +143,13 @@ export class SqliteModule implements DatabaseModuleInterface {
         );
       }
 
-      // Create custom indexes for JSON fields (if not exists)
-      // Note: This safely checks for table existence before creating indexes
-      // If migrations haven't run yet, indexes will be skipped and can be created later
-      try {
-        this.createCustomIndexes(client);
-
-        if (process.env.NODE_ENV !== 'production') {
-          logger.info('SQLite custom indexes created successfully');
-        }
-      } catch (error) {
-        const errorMsg = `Failed to create custom indexes: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        logger.warn(errorMsg, {
-          setting: 'customIndexes',
-          error: sanitizeObject({
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        });
-        // Non-critical - continue initialization
+      // Note: Custom indexes are NOT created during initial optimization
+      // They should be created after migrations using createIndexesAfterMigrations()
+      // This prevents silent no-ops when migrations haven't run yet
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info(
+          'SQLite initial optimizations complete. Custom indexes should be created after migrations.'
+        );
       }
     } catch (error) {
       // Log unexpected errors but allow initialization to continue
