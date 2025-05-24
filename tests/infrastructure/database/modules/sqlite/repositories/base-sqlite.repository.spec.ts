@@ -6,10 +6,17 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { BaseSqliteRepository } from '@infrastructure/database/modules/sqlite/repositories/base-sqlite.repository';
 import { SqliteConnectionManager } from '@infrastructure/database/modules/sqlite/connection/sqlite-connection.manager';
 import { Shared } from 'openbadges-types';
+
+// Type for operation context used in tests
+interface OperationContext {
+  operation: string;
+  entityType: string;
+  entityId?: Shared.IRI;
+  startTime: number;
+}
 
 // Test implementation of BaseSqliteRepository
 class TestSqliteRepository extends BaseSqliteRepository {
@@ -26,27 +33,42 @@ class TestSqliteRepository extends BaseSqliteRepository {
     return this.createOperationContext(operation, entityId);
   }
 
-  public testLogQueryMetrics(context: any, rowsAffected: number) {
+  public testLogQueryMetrics(context: OperationContext, rowsAffected: number) {
     return this.logQueryMetrics(context, rowsAffected);
   }
 
-  public testExecuteOperation<T>(context: any, operation: () => Promise<T>) {
+  public testExecuteOperation<T>(
+    context: OperationContext,
+    operation: () => Promise<T>
+  ) {
     return this.executeOperation(context, operation);
   }
 
-  public testExecuteQuery<T>(context: any, query: () => Promise<T[]>) {
+  public testExecuteQuery<T>(
+    context: OperationContext,
+    query: () => Promise<T[]>
+  ) {
     return this.executeQuery(context, query);
   }
 
-  public testExecuteSingleQuery<T>(context: any, query: () => Promise<T[]>) {
+  public testExecuteSingleQuery<T>(
+    context: OperationContext,
+    query: () => Promise<T[]>
+  ) {
     return this.executeSingleQuery(context, query);
   }
 
-  public testExecuteUpdate<T>(context: any, update: () => Promise<T[]>) {
+  public testExecuteUpdate<T>(
+    context: OperationContext,
+    update: () => Promise<T[]>
+  ) {
     return this.executeUpdate(context, update);
   }
 
-  public testExecuteDelete(context: any, deleteOp: () => Promise<unknown[]>) {
+  public testExecuteDelete(
+    context: OperationContext,
+    deleteOp: () => Promise<unknown[]>
+  ) {
     return this.executeDelete(context, deleteOp);
   }
 
@@ -71,7 +93,7 @@ describe('BaseSqliteRepository', () => {
   beforeEach(async () => {
     // Create in-memory SQLite database for testing
     client = new Database(':memory:');
-    
+
     // Initialize connection manager
     connectionManager = new SqliteConnectionManager(client, {
       sqliteBusyTimeout: 1000,
@@ -100,7 +122,10 @@ describe('BaseSqliteRepository', () => {
       const operation = 'TEST_OPERATION';
       const entityId = 'test-entity-id' as Shared.IRI;
 
-      const context = repository.testCreateOperationContext(operation, entityId);
+      const context = repository.testCreateOperationContext(
+        operation,
+        entityId
+      );
 
       expect(context.operation).toBe(operation);
       expect(context.entityType).toBe('issuer');
@@ -157,9 +182,12 @@ describe('BaseSqliteRepository', () => {
       const context = repository.testCreateOperationContext('TEST_OPERATION');
       const expectedResult = { id: 'test-id', name: 'test-name' };
 
-      const result = await repository.testExecuteOperation(context, async () => {
-        return expectedResult;
-      });
+      const result = await repository.testExecuteOperation(
+        context,
+        async () => {
+          return expectedResult;
+        }
+      );
 
       expect(result).toEqual(expectedResult);
     });
@@ -210,9 +238,12 @@ describe('BaseSqliteRepository', () => {
         { id: '2', name: 'Item 2' },
       ];
 
-      const result = await repository.testExecuteSingleQuery(context, async () => {
-        return queryResults;
-      });
+      const result = await repository.testExecuteSingleQuery(
+        context,
+        async () => {
+          return queryResults;
+        }
+      );
 
       expect(result).toEqual(queryResults[0]);
     });
@@ -220,9 +251,12 @@ describe('BaseSqliteRepository', () => {
     it('should return null when query returns no data', async () => {
       const context = repository.testCreateOperationContext('SELECT Test');
 
-      const result = await repository.testExecuteSingleQuery(context, async () => {
-        return [];
-      });
+      const result = await repository.testExecuteSingleQuery(
+        context,
+        async () => {
+          return [];
+        }
+      );
 
       expect(result).toBeNull();
     });
@@ -281,7 +315,7 @@ describe('BaseSqliteRepository', () => {
         'https://example.com/entity/123' as Shared.IRI,
       ];
 
-      validIds.forEach(id => {
+      validIds.forEach((id) => {
         expect(() => {
           repository.testValidateEntityId(id, 'test operation');
         }).not.toThrow();
@@ -292,11 +326,11 @@ describe('BaseSqliteRepository', () => {
       const invalidIds = [
         '' as Shared.IRI,
         '   ' as Shared.IRI,
-        null as any,
-        undefined as any,
+        null as unknown as Shared.IRI,
+        undefined as unknown as Shared.IRI,
       ];
 
-      invalidIds.forEach(id => {
+      invalidIds.forEach((id) => {
         expect(() => {
           repository.testValidateEntityId(id, 'test operation');
         }).toThrow();
@@ -307,7 +341,7 @@ describe('BaseSqliteRepository', () => {
   describe('getCurrentTimestamp', () => {
     it('should return a valid timestamp', () => {
       const timestamp = repository.testGetCurrentTimestamp();
-      
+
       expect(timestamp).toBeTypeOf('number');
       expect(timestamp).toBeGreaterThan(0);
       expect(timestamp).toBeLessThanOrEqual(Date.now());
@@ -321,7 +355,10 @@ describe('BaseSqliteRepository', () => {
     });
 
     it('should create error message with details', () => {
-      const message = repository.testCreateErrorMessage('update', 'entity not found');
+      const message = repository.testCreateErrorMessage(
+        'update',
+        'entity not found'
+      );
       expect(message).toBe('Failed to update issuer: entity not found');
     });
   });
