@@ -15,6 +15,7 @@ import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class PostgresIssuerRepository
   extends BasePostgresRepository
@@ -76,10 +77,12 @@ export class PostgresIssuerRepository
     return this.executeSingleQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .select()
           .from(issuers)
-          .where(eq(issuers.id, id as string));
+          .where(eq(issuers.id, dbId));
         return result.map((record) => this.mapper.toDomain(record));
       },
       [id]
@@ -112,10 +115,12 @@ export class PostgresIssuerRepository
     return this.executeUpdate(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .update(issuers)
           .set(record)
-          .where(eq(issuers.id, id as string))
+          .where(eq(issuers.id, dbId))
           .returning();
         return result.map((record) => this.mapper.toDomain(record));
       },
@@ -128,10 +133,9 @@ export class PostgresIssuerRepository
     const context = this.createOperationContext('DELETE Issuer', id);
 
     return this.executeDelete(context, async (db) => {
-      return await db
-        .delete(issuers)
-        .where(eq(issuers.id, id as string))
-        .returning();
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
+      return await db.delete(issuers).where(eq(issuers.id, dbId)).returning();
     });
   }
 }

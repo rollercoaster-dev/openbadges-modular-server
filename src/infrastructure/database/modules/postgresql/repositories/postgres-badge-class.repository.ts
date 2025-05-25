@@ -15,6 +15,7 @@ import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class PostgresBadgeClassRepository
   extends BasePostgresRepository
@@ -82,10 +83,12 @@ export class PostgresBadgeClassRepository
     return this.executeSingleQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .select()
           .from(badgeClasses)
-          .where(eq(badgeClasses.id, id as string));
+          .where(eq(badgeClasses.id, dbId));
         return result.map((record) => this.mapper.toDomain(record));
       },
       [id]
@@ -102,10 +105,12 @@ export class PostgresBadgeClassRepository
     return this.executeQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbIssuerId = convertUuid(issuerId as string, 'postgresql', 'to');
         const result = await db
           .select()
           .from(badgeClasses)
-          .where(eq(badgeClasses.issuerId, issuerId as string));
+          .where(eq(badgeClasses.issuerId, dbIssuerId));
         return result.map((record) => this.mapper.toDomain(record));
       },
       [issuerId]
@@ -139,10 +144,12 @@ export class PostgresBadgeClassRepository
     return this.executeUpdate(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .update(badgeClasses)
           .set(record)
-          .where(eq(badgeClasses.id, id as string))
+          .where(eq(badgeClasses.id, dbId))
           .returning();
         return result.map((record) => this.mapper.toDomain(record));
       },
@@ -155,9 +162,11 @@ export class PostgresBadgeClassRepository
     const context = this.createOperationContext('DELETE BadgeClass', id);
 
     return this.executeDelete(context, async (db) => {
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
       return await db
         .delete(badgeClasses)
-        .where(eq(badgeClasses.id, id as string))
+        .where(eq(badgeClasses.id, dbId))
         .returning();
     });
   }

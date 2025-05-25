@@ -15,6 +15,7 @@ import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class PostgresAssertionRepository
   extends BasePostgresRepository
@@ -79,10 +80,12 @@ export class PostgresAssertionRepository
     return this.executeSingleQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .select()
           .from(assertions)
-          .where(eq(assertions.id, id as string));
+          .where(eq(assertions.id, dbId));
         return result.map((record) => this.mapper.toDomain(record));
       },
       [id]
@@ -99,10 +102,16 @@ export class PostgresAssertionRepository
     return this.executeQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbBadgeClassId = convertUuid(
+          badgeClassId as string,
+          'postgresql',
+          'to'
+        );
         const result = await db
           .select()
           .from(assertions)
-          .where(eq(assertions.badgeClassId, badgeClassId as string));
+          .where(eq(assertions.badgeClassId, dbBadgeClassId));
         return result.map((record) => this.mapper.toDomain(record));
       },
       [badgeClassId]
@@ -172,10 +181,12 @@ export class PostgresAssertionRepository
     return this.executeUpdate(
       context,
       async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
         const result = await db
           .update(assertions)
           .set(record)
-          .where(eq(assertions.id, id as string))
+          .where(eq(assertions.id, dbId))
           .returning();
         return result.map((record) => this.mapper.toDomain(record));
       },
@@ -188,9 +199,11 @@ export class PostgresAssertionRepository
     const context = this.createOperationContext('DELETE Assertion', id);
 
     return this.executeDelete(context, async (db) => {
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
       return await db
         .delete(assertions)
-        .where(eq(assertions.id, id as string))
+        .where(eq(assertions.id, dbId))
         .returning();
     });
   }
