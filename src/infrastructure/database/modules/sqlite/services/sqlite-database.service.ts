@@ -8,7 +8,11 @@
 import { Issuer } from '@domains/issuer/issuer.entity';
 import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
 import { Assertion } from '@domains/assertion/assertion.entity';
-import { DatabaseInterface } from '@infrastructure/database/interfaces/database.interface';
+import {
+  DatabaseInterface,
+  DatabaseQueryOptions,
+  DatabaseHealth,
+} from '@infrastructure/database/interfaces/database.interface';
 import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { SqliteRepositoryCoordinator } from '../repositories/sqlite-repository.coordinator';
@@ -18,7 +22,7 @@ import { SqliteAssertionRepository } from '../repositories/sqlite-assertion.repo
 import { logger } from '@utils/logging/logger.service';
 import {
   SqliteOperationContext,
-  SqliteDatabaseHealth,
+  SqlitePaginationParams,
 } from '../types/sqlite-database.types';
 
 /**
@@ -130,6 +134,38 @@ export class SqliteDatabaseService implements DatabaseInterface {
         error: error instanceof Error ? error.message : String(error),
         operation: context.operation,
         issuerId: id,
+        duration: Date.now() - context.startTime,
+      });
+      throw error;
+    }
+  }
+
+  async getAllIssuers(options?: DatabaseQueryOptions): Promise<Issuer[]> {
+    const context = this.createOperationContext('GET All Issuers', 'issuer');
+
+    try {
+      // Convert DatabaseQueryOptions to SqlitePaginationParams
+      const pagination: SqlitePaginationParams | undefined = options?.pagination
+        ? {
+            limit: options.pagination.limit,
+            offset: options.pagination.offset,
+          }
+        : undefined;
+
+      const result = await this.issuerRepository.findAll(pagination);
+
+      this.logDebugConditional('All issuers retrieved', {
+        operation: context.operation,
+        count: result.length,
+        pagination: pagination || 'default',
+        duration: Date.now() - context.startTime,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to get all issuers', {
+        error: error instanceof Error ? error.message : String(error),
+        operation: context.operation,
         duration: Date.now() - context.startTime,
       });
       throw error;
@@ -272,7 +308,47 @@ export class SqliteDatabaseService implements DatabaseInterface {
     }
   }
 
-  async getBadgeClassesByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
+  async getAllBadgeClasses(
+    options?: DatabaseQueryOptions
+  ): Promise<BadgeClass[]> {
+    const context = this.createOperationContext(
+      'GET All BadgeClasses',
+      'badgeClass'
+    );
+
+    try {
+      // Convert DatabaseQueryOptions to SqlitePaginationParams
+      const pagination: SqlitePaginationParams | undefined = options?.pagination
+        ? {
+            limit: options.pagination.limit,
+            offset: options.pagination.offset,
+          }
+        : undefined;
+
+      const result = await this.badgeClassRepository.findAll(pagination);
+
+      this.logDebugConditional('All badge classes retrieved', {
+        operation: context.operation,
+        count: result.length,
+        pagination: pagination || 'default',
+        duration: Date.now() - context.startTime,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to get all badge classes', {
+        error: error instanceof Error ? error.message : String(error),
+        operation: context.operation,
+        duration: Date.now() - context.startTime,
+      });
+      throw error;
+    }
+  }
+
+  async getBadgeClassesByIssuer(
+    issuerId: Shared.IRI,
+    _options?: DatabaseQueryOptions
+  ): Promise<BadgeClass[]> {
     const context = this.createOperationContext(
       'GET BadgeClasses by Issuer',
       'badgeClass',
@@ -422,8 +498,44 @@ export class SqliteDatabaseService implements DatabaseInterface {
     }
   }
 
+  async getAllAssertions(options?: DatabaseQueryOptions): Promise<Assertion[]> {
+    const context = this.createOperationContext(
+      'GET All Assertions',
+      'assertion'
+    );
+
+    try {
+      // Convert DatabaseQueryOptions to SqlitePaginationParams
+      const pagination: SqlitePaginationParams | undefined = options?.pagination
+        ? {
+            limit: options.pagination.limit,
+            offset: options.pagination.offset,
+          }
+        : undefined;
+
+      const result = await this.assertionRepository.findAll(pagination);
+
+      this.logDebugConditional('All assertions retrieved', {
+        operation: context.operation,
+        count: result.length,
+        pagination: pagination || 'default',
+        duration: Date.now() - context.startTime,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to get all assertions', {
+        error: error instanceof Error ? error.message : String(error),
+        operation: context.operation,
+        duration: Date.now() - context.startTime,
+      });
+      throw error;
+    }
+  }
+
   async getAssertionsByBadgeClass(
-    badgeClassId: Shared.IRI
+    badgeClassId: Shared.IRI,
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by BadgeClass',
@@ -456,17 +568,18 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getAssertionsByRecipient(
-    recipientId: Shared.IRI
+    recipientId: string,
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by Recipient',
       'assertion',
-      recipientId
+      recipientId as Shared.IRI
     );
 
     try {
       const result = await this.assertionRepository.findByRecipient(
-        recipientId
+        recipientId as Shared.IRI
       );
 
       this.logDebugConditional('Assertions retrieved by recipient', {
@@ -613,7 +726,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   // Health and monitoring
-  async getHealth(): Promise<SqliteDatabaseHealth> {
+  async getHealth(): Promise<DatabaseHealth> {
     try {
       const connectionHealth = await this.connectionManager.getHealth();
       const repositoryHealth =
@@ -627,12 +740,14 @@ export class SqliteDatabaseService implements DatabaseInterface {
           ? (repositoryHealth as { overall: boolean }).overall
           : false;
 
+      // Convert SqliteDatabaseHealth to DatabaseHealth
       return {
         connected: connectionHealth.connected && repoStatus,
         responseTime: connectionHealth.responseTime,
         lastError: connectionHealth.lastError,
         connectionAttempts: connectionHealth.connectionAttempts,
         uptime: connectionHealth.uptime,
+        configuration: connectionHealth.configuration || {},
       };
     } catch (error) {
       logger.error('Failed to get database health', {
@@ -645,6 +760,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
         lastError: error instanceof Error ? error : new Error(String(error)),
         connectionAttempts: 0,
         uptime: 0,
+        configuration: {},
       };
     }
   }
@@ -656,6 +772,39 @@ export class SqliteDatabaseService implements DatabaseInterface {
     } catch {
       return false;
     }
+  }
+
+  // Connection management methods
+  async close(): Promise<void> {
+    return this.connectionManager.close();
+  }
+
+  // Configuration and utility methods
+  getConfiguration(): Record<string, unknown> {
+    const stats = this.connectionManager.getConnectionStats();
+    return {
+      module: 'sqlite',
+      state: stats.state,
+      attempts: stats.attempts,
+      uptime: stats.uptime,
+      hasError: stats.hasError,
+      lastError: stats.lastError,
+    };
+  }
+
+  async validateConnection(): Promise<boolean> {
+    try {
+      return (
+        this.connectionManager.isConnected() &&
+        (await this.connectionManager.performHealthCheck())
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  getModuleName(): string {
+    return 'sqlite';
   }
 
   // Utility methods for coordinated operations
