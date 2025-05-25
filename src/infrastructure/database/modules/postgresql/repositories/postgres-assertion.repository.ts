@@ -2,117 +2,152 @@
  * PostgreSQL implementation of the Assertion repository
  *
  * This class implements the AssertionRepository interface using PostgreSQL
- * and the Data Mapper pattern.
+ * and the Data Mapper pattern with the base repository class.
  */
 
 import { eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Assertion } from '@domains/assertion/assertion.entity';
 import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
 import { PostgresAssertionMapper } from '../mappers/postgres-assertion.mapper';
 import { Shared } from 'openbadges-types';
-import { queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { BasePostgresRepository } from './base-postgres.repository';
+import { PostgresEntityType } from '../types/postgres-database.types';
 
-export class PostgresAssertionRepository implements AssertionRepository {
-  private db: ReturnType<typeof drizzle>;
+export class PostgresAssertionRepository
+  extends BasePostgresRepository
+  implements AssertionRepository
+{
   private mapper: PostgresAssertionMapper;
 
   constructor(client: postgres.Sql) {
-    this.db = drizzle(client);
+    super(client);
     this.mapper = new PostgresAssertionMapper();
   }
 
+  /**
+   * Returns the entity type for this repository
+   */
+  protected getEntityType(): PostgresEntityType {
+    return 'assertion';
+  }
+
+  /**
+   * Returns the table name for this repository
+   */
+  protected getTableName(): string {
+    return 'assertions';
+  }
+
   async create(assertion: Omit<Assertion, 'id'>): Promise<Assertion> {
+    const context = this.createOperationContext('CREATE Assertion');
+
     // Convert domain entity to database record
-    // The mapper now returns the correct shape for insertion (InferInsertModel)
-    // and handles required field validation internally.
     const record = this.mapper.toPersistence(assertion);
 
-    // Insert into database
-    const startTime = Date.now();
-    const result = await this.db.insert(assertions).values(record).returning();
-    const duration = Date.now() - startTime;
-
-    // Log query
-    queryLogger.logQuery(
-      'INSERT Assertion (PG)',
-      [SensitiveValue.from(record)], // Wrap sensitive record data
-      duration,
-      'postgresql'
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db
+          .insert(assertions)
+          .values(record)
+          .returning();
+        return this.mapper.toDomain(result[0]);
+      },
+      1
     );
-
-    // Convert database record back to domain entity
-    return this.mapper.toDomain(result[0]);
   }
 
   async findAll(): Promise<Assertion[]> {
-    // Query database to get all assertions
-    const startTime = Date.now();
-    const result = await this.db.select().from(assertions);
-    const duration = Date.now() - startTime;
+    const context = this.createOperationContext('SELECT All Assertions');
 
-    // Log query
-    queryLogger.logQuery('SELECT All Assertions (PG)', undefined, duration, 'postgresql');
+    // Log warning for unbounded query
+    this.logUnboundedQueryWarning('findAll');
 
-    // Convert database records to domain entities
-    return result.map(record => this.mapper.toDomain(record));
+    return this.executeQuery(context, async (db) => {
+      const result = await db.select().from(assertions);
+      return result.map((record) => this.mapper.toDomain(record));
+    });
   }
 
   async findById(id: Shared.IRI): Promise<Assertion | null> {
-    // Query database
-    const startTime = Date.now();
-    const result = await this.db.select().from(assertions).where(eq(assertions.id, id as string));
-    const duration = Date.now() - startTime;
+    this.validateEntityId(id, 'findById');
+    const context = this.createOperationContext('SELECT Assertion by ID', id);
 
-    // Log query (assuming id is not sensitive)
-    queryLogger.logQuery('SELECT Assertion by ID (PG)', [id], duration, 'postgresql');
-
-    // Return null if not found
-    if (!result.length) {
-      return null;
-    }
-
-    // Convert database record to domain entity
-    return this.mapper.toDomain(result[0]);
+    return this.executeSingleQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(assertions)
+          .where(eq(assertions.id, id as string));
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [id]
+    );
   }
 
   async findByBadgeClass(badgeClassId: Shared.IRI): Promise<Assertion[]> {
-    // Query database
-    const startTime = Date.now();
-    const result = await this.db.select().from(assertions).where(eq(assertions.badgeClassId, badgeClassId as string));
-    const duration = Date.now() - startTime;
+    this.validateEntityId(badgeClassId, 'findByBadgeClass');
+    const context = this.createOperationContext(
+      'SELECT Assertions by BadgeClass',
+      badgeClassId
+    );
 
-    // Log query (assuming badgeClassId is not sensitive)
-    queryLogger.logQuery('SELECT Assertions by BadgeClass (PG)', [badgeClassId], duration, 'postgresql');
-
-    // Convert database records to domain entities
-    return result.map(record => this.mapper.toDomain(record));
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(assertions)
+          .where(eq(assertions.badgeClassId, badgeClassId as string));
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [badgeClassId]
+    );
   }
 
   async findByRecipient(recipientId: string): Promise<Assertion[]> {
-    // Handle different recipient identity formats
-    // The recipient field is a JSON object with either 'id' or 'identity' field
-    const startTime = Date.now();
-    const result = await this.db.select().from(assertions)
-      .where(sql`(${assertions.recipient}->>'identity' = ${recipientId}) OR (${assertions.recipient}->>'id' = ${recipientId})`);
-    const duration = Date.now() - startTime;
+    if (
+      !recipientId ||
+      typeof recipientId !== 'string' ||
+      recipientId.trim().length === 0
+    ) {
+      throw new Error(
+        `Invalid recipient ID provided for findByRecipient: ${recipientId}`
+      );
+    }
 
-    // Log query (wrap recipientId as potentially sensitive)
-    queryLogger.logQuery(
-      'SELECT Assertions by Recipient (PG)',
-      [SensitiveValue.from(recipientId)],
-      duration,
-      'postgresql'
+    const context = this.createOperationContext(
+      'SELECT Assertions by Recipient'
     );
 
-    // Convert database records to domain entities
-    return result.map(record => this.mapper.toDomain(record));
+    return this.executeQuery(
+      context,
+      async (db) => {
+        // Handle different recipient identity formats
+        // The recipient field is a JSON object with either 'id' or 'identity' field
+        const result = await db
+          .select()
+          .from(assertions)
+          .where(
+            sql`(${assertions.recipient}->>'identity' = ${recipientId}) OR (${assertions.recipient}->>'id' = ${recipientId})`
+          );
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [SensitiveValue.from(recipientId)]
+    );
   }
 
-  async update(id: Shared.IRI, assertion: Partial<Assertion>): Promise<Assertion | null> {
+  async update(
+    id: Shared.IRI,
+    assertion: Partial<Assertion>
+  ): Promise<Assertion | null> {
+    this.validateEntityId(id, 'update');
+    const context = this.createOperationContext('UPDATE Assertion', id);
+
     // Check if assertion exists
     const existingAssertion = await this.findById(id);
     if (!existingAssertion) {
@@ -120,49 +155,44 @@ export class PostgresAssertionRepository implements AssertionRepository {
     }
 
     // Create a merged entity
-    // Get the existing assertion as a plain object while preserving prototype information
-    const existingData = Object.assign(Object.create(Object.getPrototypeOf(existingAssertion)), existingAssertion);
+    const existingData = Object.assign(
+      Object.create(Object.getPrototypeOf(existingAssertion)),
+      existingAssertion
+    );
 
     // Create a merged assertion
     const mergedAssertion = Assertion.create({
       ...existingData,
-      ...assertion
+      ...assertion,
     } as Partial<Assertion>);
 
     // Convert to database record
     const record = this.mapper.toPersistence(mergedAssertion);
 
-    // Update in database
-    const startTime = Date.now();
-    const result = await this.db.update(assertions)
-      .set(record)
-      .where(eq(assertions.id, id as string))
-      .returning();
-    const duration = Date.now() - startTime;
-
-    // Log query
-    queryLogger.logQuery(
-      'UPDATE Assertion (PG)',
-      [id, SensitiveValue.from(record)], // Log ID and sensitive record data
-      duration,
-      'postgresql'
+    return this.executeUpdate(
+      context,
+      async (db) => {
+        const result = await db
+          .update(assertions)
+          .set(record)
+          .where(eq(assertions.id, id as string))
+          .returning();
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [id, SensitiveValue.from(record)]
     );
-
-    // Convert database record back to domain entity
-    return this.mapper.toDomain(result[0]);
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {
-    // Delete from database
-    const startTime = Date.now();
-    const result = await this.db.delete(assertions).where(eq(assertions.id, id as string)).returning();
-    const duration = Date.now() - startTime;
+    this.validateEntityId(id, 'delete');
+    const context = this.createOperationContext('DELETE Assertion', id);
 
-    // Log query (assuming id is not sensitive)
-    queryLogger.logQuery('DELETE Assertion (PG)', [id], duration, 'postgresql');
-
-    // Return true if something was deleted
-    return result.length > 0;
+    return this.executeDelete(context, async (db) => {
+      return await db
+        .delete(assertions)
+        .where(eq(assertions.id, id as string))
+        .returning();
+    });
   }
 
   async revoke(id: Shared.IRI, reason: string): Promise<Assertion | null> {
@@ -177,7 +207,7 @@ export class PostgresAssertionRepository implements AssertionRepository {
     // Update the assertion with revocation information
     return this.update(id, {
       revoked: true,
-      revocationReason: reason
+      revocationReason: reason,
     } as Partial<Assertion>);
   }
 
@@ -196,7 +226,7 @@ export class PostgresAssertionRepository implements AssertionRepository {
     if (assertion.revoked) {
       return {
         isValid: false,
-        reason: assertion.revocationReason || 'Assertion has been revoked'
+        reason: assertion.revocationReason || 'Assertion has been revoked',
       };
     }
 
