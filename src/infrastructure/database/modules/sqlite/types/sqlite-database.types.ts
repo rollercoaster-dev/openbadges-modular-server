@@ -212,7 +212,7 @@ export interface TypeConversionResult<T> {
 export interface SqliteQueryMetrics {
   duration: number;
   rowsAffected: number;
-  queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'UNKNOWN';
   tableName?: string;
 }
 
@@ -261,11 +261,30 @@ export type OpenBadgesCriteriaType = OB2.Criteria | OB3.Criteria;
 export type OpenBadgesAlignmentType = OB2.AlignmentObject[] | OB3.Alignment[];
 
 /**
+ * Centralized entity type definitions for type safety and maintainability
+ */
+export const SQLITE_ENTITY_TYPES = [
+  'issuer',
+  'badgeClass',
+  'assertion',
+  'user',
+  'platform',
+  'apiKey',
+  'platformUser',
+  'userAssertion',
+] as const;
+
+/**
+ * SQLite entity type union derived from the centralized definition
+ */
+export type SqliteEntityType = (typeof SQLITE_ENTITY_TYPES)[number];
+
+/**
  * Database operation context for logging and debugging
  */
 export interface SqliteOperationContext {
   operation: string;
-  entityType: 'issuer' | 'badgeClass' | 'assertion';
+  entityType: SqliteEntityType;
   entityId?: Shared.IRI;
   startTime: number;
   metadata?: Record<string, unknown>;
@@ -341,6 +360,36 @@ export interface SqliteMonitoringConfig {
   slowQueryThreshold: number;
   maxLoggedQueries: number;
 }
+
+/**
+ * Pagination parameters for database queries
+ */
+export interface SqlitePaginationParams {
+  /**
+   * Maximum number of records to return
+   * @default 100
+   */
+  limit?: number;
+
+  /**
+   * Number of records to skip
+   * @default 0
+   */
+  offset?: number;
+}
+
+/**
+ * Default pagination configuration to prevent unbounded queries
+ */
+export const DEFAULT_PAGINATION: Required<SqlitePaginationParams> = {
+  limit: 100,
+  offset: 0,
+} as const;
+
+/**
+ * Maximum allowed limit to prevent excessive memory usage
+ */
+export const MAX_PAGINATION_LIMIT = 1000;
 
 /**
  * Type for Drizzle transactions - uses the actual SQLite transaction type

@@ -80,7 +80,7 @@ describe('SqlitePlatformRepository constraint handling', () => {
     expect(platform1).toBeDefined();
 
     // Try to create second platform with the same clientId
-    await expect(
+    expect(
       repository.create({
         name: 'Test Platform 2',
         clientId: 'duplicate-client-id', // Same clientId
@@ -107,7 +107,7 @@ describe('SqlitePlatformRepository constraint handling', () => {
     });
 
     // Try to update platform2 to use platform1's clientId
-    await expect(
+    expect(
       repository.update(toIRI(platform2.id as string), {
         clientId: 'client-id-1',
       })

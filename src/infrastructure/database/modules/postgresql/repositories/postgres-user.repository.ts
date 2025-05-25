@@ -18,6 +18,7 @@ import {
 import { users } from '../schema';
 import { Shared } from 'openbadges-types';
 import { logger } from '@utils/logging/logger.service';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 /**
  * PostgreSQL implementation of the User repository
@@ -46,7 +47,7 @@ export class PostgresUserRepository implements UserRepository {
 
       // Insert into database
       await this.db.insert(users).values({
-        id: obj.id as string,
+        id: convertUuid(obj.id as string, 'postgresql', 'to'),
         username: obj.username as string,
         email: obj.email as string,
         passwordHash: obj.passwordHash as string | null,
@@ -78,11 +79,14 @@ export class PostgresUserRepository implements UserRepository {
    */
   async findById(id: Shared.IRI): Promise<User | null> {
     try {
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
+
       // Query database
       const result = await this.db
         .select()
         .from(users)
-        .where(eq(users.id, id as string));
+        .where(eq(users.id, dbId));
 
       // Return null if not found
       if (!result.length) {
@@ -206,11 +210,11 @@ export class PostgresUserRepository implements UserRepository {
       if (params.metadata !== undefined)
         updateValues.metadata = params.metadata;
 
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
+
       // Update in database
-      await this.db
-        .update(users)
-        .set(updateValues)
-        .where(eq(users.id, id as string));
+      await this.db.update(users).set(updateValues).where(eq(users.id, dbId));
 
       return mergedUser;
     } catch (error) {
@@ -230,10 +234,13 @@ export class PostgresUserRepository implements UserRepository {
    */
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
+
       // Delete from database
       const result = await this.db
         .delete(users)
-        .where(eq(users.id, id as string))
+        .where(eq(users.id, dbId))
         .returning({ id: users.id });
 
       // Return true if deleted, false otherwise
@@ -393,7 +400,7 @@ export class PostgresUserRepository implements UserRepository {
 
     // Create user entity
     return User.create({
-      id: record.id as Shared.IRI,
+      id: convertUuid(record.id as string, 'postgresql', 'from') as Shared.IRI,
       username: record.username as string,
       email: record.email as string,
       passwordHash: record.passwordHash as string | undefined,

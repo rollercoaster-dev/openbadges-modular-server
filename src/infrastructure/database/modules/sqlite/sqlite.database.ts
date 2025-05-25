@@ -15,10 +15,11 @@ import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from './connection/sqlite-connection.manager';
 import { SqliteDatabaseService } from './services/sqlite-database.service';
 import { logger } from '@utils/logging/logger.service';
+import { SqliteConnectionConfig } from './types/sqlite-database.types';
 import {
-  SqliteConnectionConfig,
-  SqliteDatabaseHealth,
-} from './types/sqlite-database.types';
+  DatabaseHealth,
+  DatabaseQueryOptions,
+} from '@infrastructure/database/interfaces/database.interface';
 
 /**
  * SQLite Database implementation using the service layer pattern
@@ -122,6 +123,10 @@ export class SqliteDatabase implements DatabaseInterface {
     return this.databaseService.getIssuerById(id);
   }
 
+  async getAllIssuers(options?: DatabaseQueryOptions): Promise<Issuer[]> {
+    return this.databaseService.getAllIssuers(options);
+  }
+
   async updateIssuer(
     id: Shared.IRI,
     issuer: Partial<Issuer>
@@ -144,7 +149,16 @@ export class SqliteDatabase implements DatabaseInterface {
     return this.databaseService.getBadgeClassById(id);
   }
 
-  async getBadgeClassesByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
+  async getAllBadgeClasses(
+    options?: DatabaseQueryOptions
+  ): Promise<BadgeClass[]> {
+    return this.databaseService.getAllBadgeClasses(options);
+  }
+
+  async getBadgeClassesByIssuer(
+    issuerId: Shared.IRI,
+    _options?: DatabaseQueryOptions
+  ): Promise<BadgeClass[]> {
     return this.databaseService.getBadgeClassesByIssuer(issuerId);
   }
 
@@ -170,14 +184,20 @@ export class SqliteDatabase implements DatabaseInterface {
     return this.databaseService.getAssertionById(id);
   }
 
+  async getAllAssertions(options?: DatabaseQueryOptions): Promise<Assertion[]> {
+    return this.databaseService.getAllAssertions(options);
+  }
+
   async getAssertionsByBadgeClass(
-    badgeClassId: Shared.IRI
+    badgeClassId: Shared.IRI,
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
     return this.databaseService.getAssertionsByBadgeClass(badgeClassId);
   }
 
   async getAssertionsByRecipient(
-    recipientId: Shared.IRI
+    recipientId: string,
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
     return this.databaseService.getAssertionsByRecipient(recipientId);
   }
@@ -207,12 +227,29 @@ export class SqliteDatabase implements DatabaseInterface {
   }
 
   // Health and utility methods
-  async getHealth(): Promise<SqliteDatabaseHealth> {
+  async getHealth(): Promise<DatabaseHealth> {
     return this.databaseService.getHealth();
   }
 
   async performHealthCheck(): Promise<boolean> {
     return this.databaseService.performHealthCheck();
+  }
+
+  // Additional interface methods
+  async close(): Promise<void> {
+    return this.databaseService.close();
+  }
+
+  getConfiguration(): Record<string, unknown> {
+    return this.databaseService.getConfiguration();
+  }
+
+  async validateConnection(): Promise<boolean> {
+    return this.databaseService.validateConnection();
+  }
+
+  getModuleName(): string {
+    return this.databaseService.getModuleName();
   }
 
   // Utility methods for coordinated operations

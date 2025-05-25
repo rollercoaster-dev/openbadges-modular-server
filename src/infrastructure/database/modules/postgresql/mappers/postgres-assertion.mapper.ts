@@ -6,7 +6,11 @@
  */
 
 import { Assertion } from '@domains/assertion/assertion.entity';
-import { convertJson, safeConvertToDate } from '@infrastructure/database/utils/type-conversion';
+import {
+  convertJson,
+  safeConvertToDate,
+  convertUuid,
+} from '@infrastructure/database/utils/type-conversion';
 import { toIRI } from '@utils/types/iri-utils';
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { assertions } from '../schema';
@@ -29,38 +33,77 @@ export class PostgresAssertionMapper {
     if (!record) return null as unknown as Assertion;
 
     // Map JSON fields, ensuring type correctness
-    const domainRecipient = convertJson<OB2.IdentityObject | OB3.CredentialSubject>(record.recipient as OB2.IdentityObject | OB3.CredentialSubject, 'postgresql', 'from');
-    const domainEvidence = convertJson<OB2.Evidence[] | OB3.Evidence[] | undefined>(record.evidence as OB2.Evidence[] | OB3.Evidence[], 'postgresql', 'from');
-    const domainVerification = convertJson<OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus | undefined>(record.verification as OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus, 'postgresql', 'from');
-    const domainAdditionalFieldsRaw = convertJson<Record<string, unknown>>(record.additionalFields as Record<string, unknown>, 'postgresql', 'from');
-    const domainAdditionalFields = typeof domainAdditionalFieldsRaw === 'object' && domainAdditionalFieldsRaw !== null ? domainAdditionalFieldsRaw : {};
+    const domainRecipient = convertJson<
+      OB2.IdentityObject | OB3.CredentialSubject
+    >(
+      record.recipient as OB2.IdentityObject | OB3.CredentialSubject,
+      'postgresql',
+      'from'
+    );
+    const domainEvidence = convertJson<
+      OB2.Evidence[] | OB3.Evidence[] | undefined
+    >(record.evidence as OB2.Evidence[] | OB3.Evidence[], 'postgresql', 'from');
+    const domainVerification = convertJson<
+      OB2.VerificationObject | OB3.Proof | OB3.CredentialStatus | undefined
+    >(
+      record.verification as
+        | OB2.VerificationObject
+        | OB3.Proof
+        | OB3.CredentialStatus,
+      'postgresql',
+      'from'
+    );
+    const domainAdditionalFieldsRaw = convertJson<Record<string, unknown>>(
+      record.additionalFields as Record<string, unknown>,
+      'postgresql',
+      'from'
+    );
+    const domainAdditionalFields =
+      typeof domainAdditionalFieldsRaw === 'object' &&
+      domainAdditionalFieldsRaw !== null
+        ? domainAdditionalFieldsRaw
+        : {};
 
     // Create and return the domain entity
     return Assertion.create({
-      // Use toIRI for IRI fields, record values should be string (UUID)
-      id: toIRI(record.id),
-      badgeClass: toIRI(record.badgeClassId),
+      // Convert UUID to URN format for application use
+      id: toIRI(convertUuid(record.id, 'postgresql', 'from')),
+      badgeClass: toIRI(convertUuid(record.badgeClassId, 'postgresql', 'from')),
       // Ensure mapped JSON fields match entity type (object/array, not string/null)
-      recipient: typeof domainRecipient === 'object' && domainRecipient !== null ? domainRecipient : undefined,
+      recipient:
+        typeof domainRecipient === 'object' && domainRecipient !== null
+          ? domainRecipient
+          : undefined,
       // Convert Date objects from DB to ISO strings for the entity
       issuedOn: record.issuedOn.toISOString(),
       expires: record.expires ? record.expires.toISOString() : undefined, // Can be null
       evidence: Array.isArray(domainEvidence) ? domainEvidence : undefined,
-      verification: typeof domainVerification === 'object' && domainVerification !== null ? domainVerification : undefined,
+      verification:
+        typeof domainVerification === 'object' && domainVerification !== null
+          ? domainVerification
+          : undefined,
       // revoked is expected to be boolean by Assertion.create? Check entity.
       revoked: this.mapRevokedFromDb(record.revoked), // Use helper method
       revocationReason: record.revocationReason,
       // Spread the checked additional fields
-      ...domainAdditionalFields
+      ...domainAdditionalFields,
     });
   }
 
   /** Helper to map revoked status from DB JSONB to domain boolean */
   private mapRevokedFromDb(revokedDbValue: unknown): boolean {
     // Cast input as Drizzle infers jsonb as unknown | null
-    const revokedDomainValue = convertJson<Record<string, unknown> | null>(revokedDbValue as Record<string, unknown>, 'postgresql', 'from');
+    const revokedDomainValue = convertJson<Record<string, unknown> | null>(
+      revokedDbValue as Record<string, unknown>,
+      'postgresql',
+      'from'
+    );
     // Basic check: if the JSONB value exists and has a truthy 'status' property, consider it revoked (boolean for now)
-    if (typeof revokedDomainValue === 'object' && revokedDomainValue !== null && 'status' in revokedDomainValue) {
+    if (
+      typeof revokedDomainValue === 'object' &&
+      revokedDomainValue !== null &&
+      'status' in revokedDomainValue
+    ) {
       return !!revokedDomainValue['status'];
     }
     return false; // Default to not revoked if structure doesn't match
@@ -79,28 +122,46 @@ export class PostgresAssertionMapper {
     // Validate required fields for insertion
     // Check for badgeClass property or badge property (from toObject)
     if (!entity.badgeClass && !('badge' in entity)) {
-      throw new Error('Assertion entity must have a badgeClass or badge property (IRI) for persistence.');
+      throw new Error(
+        'Assertion entity must have a badgeClass or badge property (IRI) for persistence.'
+      );
     }
     if (!entity.recipient) {
-      throw new Error('Assertion entity must have a recipient for persistence.');
+      throw new Error(
+        'Assertion entity must have a recipient for persistence.'
+      );
     }
 
     // Create and return the database record suitable for insertion
     // Construct the object based on schema requirements for insert, including ID if provided.
     const recordToInsert = {
-      // Include ID if provided in the entity
-      ...(entity.id && { id: entity.id as string }),
-      // Use badgeClass if available, otherwise use badge (from toObject)
-      badgeClassId: (entity.badgeClass || entity['badge']) as string, // Map from entity.badgeClass (IRI) and cast to string
+      // Include ID if provided in the entity (convert URN to UUID for PostgreSQL)
+      ...(entity.id && {
+        id: convertUuid(entity.id as string, 'postgresql', 'to'),
+      }),
+      // Use badgeClass if available, otherwise use badge (from toObject) - convert URN to UUID
+      badgeClassId: convertUuid(
+        (entity.badgeClass || entity['badge']) as string,
+        'postgresql',
+        'to'
+      ),
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
       // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
       ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),
       expires: safeConvertToDate(entity.expires), // Use safe conversion
       evidence: convertJson(entity.evidence, 'postgresql', 'to'),
       verification: convertJson(entity.verification, 'postgresql', 'to'),
-      revoked: convertJson(entity.revoked ? { status: true } : null, 'postgresql', 'to'),
+      revoked: convertJson(
+        entity.revoked ? { status: true } : null,
+        'postgresql',
+        'to'
+      ),
       revocationReason: entity.revocationReason,
-      additionalFields: convertJson(entity['additionalFields'], 'postgresql', 'to'),
+      additionalFields: convertJson(
+        entity['additionalFields'],
+        'postgresql',
+        'to'
+      ),
       // DO NOT include createdAt, updatedAt - let the database handle these
     };
     // Cast the fully constructed object to the expected insert model type before returning.

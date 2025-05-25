@@ -3,7 +3,11 @@ import {
   convertJson,
   convertTimestamp,
   convertUuid,
-  convertBoolean
+  convertBoolean,
+  urnToUuid,
+  uuidToUrn,
+  isValidUuid,
+  isValidUrn,
 } from '@/infrastructure/database/utils/type-conversion';
 
 describe('Database Type Conversion Utilities', () => {
@@ -49,7 +53,11 @@ describe('Database Type Conversion Utilities', () => {
       // Type assertion for TypeScript
       if (result && typeof result === 'object') {
         const typedResult = result as Record<string, unknown>;
-        if ('nested' in typedResult && typedResult.nested && typeof typedResult.nested === 'object') {
+        if (
+          'nested' in typedResult &&
+          typedResult.nested &&
+          typeof typedResult.nested === 'object'
+        ) {
           const nested = typedResult.nested as { foo: string };
           expect(nested.foo).toBe('bar');
         }
@@ -91,37 +99,176 @@ describe('Database Type Conversion Utilities', () => {
 
     it('should convert to Date objects for PostgreSQL when direction is "to"', () => {
       expect(convertTimestamp(testDate, 'postgresql', 'to')).toEqual(testDate);
-      expect(convertTimestamp(testTimestamp, 'postgresql', 'to')).toBeInstanceOf(Date);
-      expect(convertTimestamp(testTimestamp, 'postgresql', 'to')).toEqual(testDate);
-      expect(convertTimestamp('2023-01-01T12:00:00Z', 'postgresql', 'to')).toBeInstanceOf(Date);
+
+      // Split chained assertions for clearer diagnostics
+      const timestampResult = convertTimestamp(
+        testTimestamp,
+        'postgresql',
+        'to'
+      );
+      expect(timestampResult).toBeInstanceOf(Date);
+      expect(timestampResult).toEqual(testDate);
+
+      const stringResult = convertTimestamp(
+        '2023-01-01T12:00:00Z',
+        'postgresql',
+        'to'
+      );
+      expect(stringResult).toBeInstanceOf(Date);
     });
 
     it('should convert to numbers for SQLite when direction is "to"', () => {
       expect(convertTimestamp(testDate, 'sqlite', 'to')).toEqual(testTimestamp);
-      expect(convertTimestamp(testTimestamp, 'sqlite', 'to')).toEqual(testTimestamp);
-      expect(convertTimestamp('2023-01-01T12:00:00Z', 'sqlite', 'to')).toEqual(testTimestamp);
+      expect(convertTimestamp(testTimestamp, 'sqlite', 'to')).toEqual(
+        testTimestamp
+      );
+      expect(convertTimestamp('2023-01-01T12:00:00Z', 'sqlite', 'to')).toEqual(
+        testTimestamp
+      );
     });
 
     it('should convert to Date objects when direction is "from"', () => {
-      expect(convertTimestamp(testDate, 'postgresql', 'from')).toEqual(testDate);
-      expect(convertTimestamp(testTimestamp, 'sqlite', 'from')).toBeInstanceOf(Date);
-      expect(convertTimestamp(testTimestamp, 'sqlite', 'from')).toEqual(testDate);
+      expect(convertTimestamp(testDate, 'postgresql', 'from')).toEqual(
+        testDate
+      );
+
+      // Split chained assertions for clearer diagnostics
+      const sqliteResult = convertTimestamp(testTimestamp, 'sqlite', 'from');
+      expect(sqliteResult).toBeInstanceOf(Date);
+      expect(sqliteResult).toEqual(testDate);
     });
   });
 
   describe('convertUuid', () => {
     const testUuid = '123e4567-e89b-12d3-a456-426614174000';
+    const testUrn = 'urn:uuid:123e4567-e89b-12d3-a456-426614174000';
 
     it('should handle null and undefined values', () => {
       expect(convertUuid(null, 'postgresql', 'to')).toBeNull();
       expect(convertUuid(undefined, 'postgresql', 'to')).toBeUndefined();
+      expect(convertUuid(null, 'sqlite', 'to')).toBeNull();
+      expect(convertUuid(undefined, 'sqlite', 'to')).toBeUndefined();
     });
 
-    it('should pass through UUID strings for both database types', () => {
-      expect(convertUuid(testUuid, 'postgresql', 'to')).toEqual(testUuid);
+    it('should pass through values for SQLite (no conversion needed)', () => {
       expect(convertUuid(testUuid, 'sqlite', 'to')).toEqual(testUuid);
-      expect(convertUuid(testUuid, 'postgresql', 'from')).toEqual(testUuid);
+      expect(convertUuid(testUrn, 'sqlite', 'to')).toEqual(testUrn);
       expect(convertUuid(testUuid, 'sqlite', 'from')).toEqual(testUuid);
+      expect(convertUuid(testUrn, 'sqlite', 'from')).toEqual(testUrn);
+    });
+
+    it('should convert URN to UUID for PostgreSQL when direction is "to"', () => {
+      expect(convertUuid(testUrn, 'postgresql', 'to')).toEqual(testUuid);
+      expect(convertUuid(testUuid, 'postgresql', 'to')).toEqual(testUuid); // Already plain UUID
+    });
+
+    it('should convert UUID to URN for PostgreSQL when direction is "from"', () => {
+      expect(convertUuid(testUuid, 'postgresql', 'from')).toEqual(testUrn);
+      expect(convertUuid(testUrn, 'postgresql', 'from')).toEqual(testUrn); // Already URN
+    });
+  });
+
+  describe('urnToUuid', () => {
+    const testUuid = '123e4567-e89b-12d3-a456-426614174000';
+    const testUrn = 'urn:uuid:123e4567-e89b-12d3-a456-426614174000';
+
+    it('should extract UUID from valid URN format', () => {
+      expect(urnToUuid(testUrn)).toEqual(testUuid);
+    });
+
+    it('should return plain UUID unchanged if already in UUID format', () => {
+      expect(urnToUuid(testUuid)).toEqual(testUuid);
+    });
+
+    it('should handle invalid URN format gracefully', () => {
+      expect(urnToUuid('urn:uuid:invalid-uuid')).toEqual(
+        'urn:uuid:invalid-uuid'
+      );
+      expect(urnToUuid('not-a-urn')).toEqual('not-a-urn');
+      expect(urnToUuid('urn:invalid:format')).toEqual('urn:invalid:format');
+    });
+
+    it('should handle non-string input gracefully', () => {
+      expect(urnToUuid(null)).toEqual(null);
+      expect(urnToUuid(undefined)).toEqual(undefined);
+      expect(urnToUuid(123)).toEqual(123);
+    });
+  });
+
+  describe('uuidToUrn', () => {
+    const testUuid = '123e4567-e89b-12d3-a456-426614174000';
+    const testUrn = 'urn:uuid:123e4567-e89b-12d3-a456-426614174000';
+
+    it('should convert valid UUID to URN format', () => {
+      expect(uuidToUrn(testUuid)).toEqual(testUrn);
+    });
+
+    it('should return URN unchanged if already in URN format', () => {
+      expect(uuidToUrn(testUrn)).toEqual(testUrn);
+    });
+
+    it('should handle invalid UUID format gracefully', () => {
+      expect(uuidToUrn('invalid-uuid')).toEqual('invalid-uuid');
+      expect(uuidToUrn('not-a-uuid')).toEqual('not-a-uuid');
+    });
+
+    it('should handle non-string input gracefully', () => {
+      expect(uuidToUrn(null)).toEqual(null);
+      expect(uuidToUrn(undefined)).toEqual(undefined);
+      expect(uuidToUrn(123)).toEqual(123);
+    });
+  });
+
+  describe('isValidUuid', () => {
+    it('should validate correct UUID formats', () => {
+      expect(isValidUuid('123e4567-e89b-12d3-a456-426614174000')).toBe(true);
+      expect(isValidUuid('550e8400-e29b-41d4-a716-446655440000')).toBe(true);
+      expect(isValidUuid('6ba7b810-9dad-11d1-80b4-00c04fd430c8')).toBe(true);
+    });
+
+    it('should reject invalid UUID formats', () => {
+      expect(isValidUuid('invalid-uuid')).toBe(false);
+      expect(isValidUuid('123e4567-e89b-12d3-a456')).toBe(false); // Too short
+      expect(isValidUuid('123e4567-e89b-12d3-a456-426614174000-extra')).toBe(
+        false
+      ); // Too long
+      expect(isValidUuid('urn:uuid:123e4567-e89b-12d3-a456-426614174000')).toBe(
+        false
+      ); // URN format
+      expect(isValidUuid('')).toBe(false);
+    });
+
+    it('should handle non-string input', () => {
+      expect(isValidUuid(null)).toBe(false);
+      expect(isValidUuid(undefined)).toBe(false);
+      expect(isValidUuid(123)).toBe(false);
+    });
+  });
+
+  describe('isValidUrn', () => {
+    it('should validate correct URN formats', () => {
+      expect(isValidUrn('urn:uuid:123e4567-e89b-12d3-a456-426614174000')).toBe(
+        true
+      );
+      expect(isValidUrn('urn:uuid:550e8400-e29b-41d4-a716-446655440000')).toBe(
+        true
+      );
+    });
+
+    it('should reject invalid URN formats', () => {
+      expect(isValidUrn('123e4567-e89b-12d3-a456-426614174000')).toBe(false); // Plain UUID
+      expect(isValidUrn('urn:uuid:invalid-uuid')).toBe(false); // Invalid UUID part
+      expect(
+        isValidUrn('urn:invalid:123e4567-e89b-12d3-a456-426614174000')
+      ).toBe(false); // Wrong URN type
+      expect(isValidUrn('not-a-urn')).toBe(false);
+      expect(isValidUrn('')).toBe(false);
+    });
+
+    it('should handle non-string input', () => {
+      expect(isValidUrn(null)).toBe(false);
+      expect(isValidUrn(undefined)).toBe(false);
+      expect(isValidUrn(123)).toBe(false);
     });
   });
 

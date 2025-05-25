@@ -8,6 +8,7 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import type { Database } from 'bun:sqlite';
 import { logger } from '@utils/logging/logger.service';
+import { SqlitePragmaManager } from '../utils/sqlite-pragma.manager';
 import {
   SqliteConnectionConfig,
   SqliteConnectionConfigInput,
@@ -204,16 +205,7 @@ export class SqliteConnectionManager {
 
     try {
       // Perform WAL checkpoint to ensure all data is written
-      try {
-        this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
-      } catch (checkpointError) {
-        logger.warn('Error during WAL checkpoint', {
-          errorMessage:
-            checkpointError instanceof Error
-              ? checkpointError.message
-              : String(checkpointError),
-        });
-      }
+      this.performWalCheckpoint();
 
       // Mark the connection as logically disconnected without closing the client
       // This allows the client to be reused for reconnection
@@ -252,16 +244,7 @@ export class SqliteConnectionManager {
 
     try {
       // Perform WAL checkpoint to ensure all data is written
-      try {
-        this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
-      } catch (checkpointError) {
-        logger.warn('Error during WAL checkpoint', {
-          errorMessage:
-            checkpointError instanceof Error
-              ? checkpointError.message
-              : String(checkpointError),
-        });
-      }
+      this.performWalCheckpoint();
 
       // Actually close the database connection
       if (typeof this.client.close === 'function') {
@@ -373,89 +356,9 @@ export class SqliteConnectionManager {
         await this.testConnection();
         connected = true;
 
-        // Get PRAGMA values to include in health check
+        // Get PRAGMA configuration details if connected
         if (connected) {
-          try {
-            // Get busy_timeout setting
-            const busyTimeoutResult = this.client
-              .query('PRAGMA busy_timeout;')
-              .get() as { busy_timeout?: number } | null;
-            if (busyTimeoutResult && 'busy_timeout' in busyTimeoutResult) {
-              configInfo.busyTimeout = busyTimeoutResult.busy_timeout;
-              configInfo.appliedSettings.busyTimeout = true;
-            }
-
-            // Get synchronous mode
-            const syncModeResult = this.client
-              .query('PRAGMA synchronous;')
-              .get() as { synchronous?: number | string } | null;
-            if (syncModeResult && 'synchronous' in syncModeResult) {
-              configInfo.syncMode = String(syncModeResult.synchronous);
-              configInfo.appliedSettings.syncMode = true;
-            }
-
-            // Get cache size
-            const cacheSizeResult = this.client
-              .query('PRAGMA cache_size;')
-              .get() as { cache_size?: number } | null;
-            if (cacheSizeResult && 'cache_size' in cacheSizeResult) {
-              configInfo.cacheSize = cacheSizeResult.cache_size;
-              configInfo.appliedSettings.cacheSize = true;
-            }
-
-            // Get journal mode
-            const journalModeResult = this.client
-              .query('PRAGMA journal_mode;')
-              .get() as { journal_mode?: string } | null;
-            if (journalModeResult && 'journal_mode' in journalModeResult) {
-              configInfo.journalMode = String(journalModeResult.journal_mode);
-            }
-
-            // Check foreign keys status
-            const foreignKeysResult = this.client
-              .query('PRAGMA foreign_keys;')
-              .get() as { foreign_keys?: number } | null;
-            if (foreignKeysResult && 'foreign_keys' in foreignKeysResult) {
-              configInfo.foreignKeys = Boolean(foreignKeysResult.foreign_keys);
-              configInfo.appliedSettings.foreignKeys = true;
-            }
-
-            // Get temp_store setting
-            const tempStoreResult = this.client
-              .query('PRAGMA temp_store;')
-              .get() as { temp_store?: number } | null;
-            if (
-              tempStoreResult &&
-              'temp_store' in tempStoreResult &&
-              tempStoreResult.temp_store === 2
-            ) {
-              // 2 = MEMORY
-              configInfo.appliedSettings.tempStore = true;
-            }
-
-            // Estimate memory usage (if available)
-            try {
-              const memoryUsed = this.client
-                .query('PRAGMA memory_used;')
-                .get() as { memory_used?: number } | null;
-              if (memoryUsed && 'memory_used' in memoryUsed) {
-                configInfo.memoryUsage = memoryUsed.memory_used;
-              }
-            } catch {
-              // Memory usage stats not available in all SQLite versions
-            }
-          } catch (configError) {
-            // Log but don't fail the health check due to config info issues
-            logger.warn(
-              'Error getting SQLite configuration details during health check',
-              {
-                error:
-                  configError instanceof Error
-                    ? configError.message
-                    : String(configError),
-              }
-            );
-          }
+          this.populateConfigurationInfo(configInfo);
         }
       }
       responseTime = Date.now() - startTime;
@@ -553,188 +456,154 @@ export class SqliteConnectionManager {
   }
 
   /**
-   * Applies SQLite configuration parameters using PRAGMA statements
-   * This method applies the configuration parameters from the config object to the SQLite client
+   * Populates configuration information by querying SQLite PRAGMA settings
    */
+  private populateConfigurationInfo(
+    configInfo: SqliteDatabaseHealth['configuration']
+  ): void {
+    try {
+      // Get busy_timeout setting
+      this.queryPragmaSetting(
+        'PRAGMA busy_timeout;',
+        'busy_timeout',
+        (result) => {
+          configInfo.busyTimeout = result.busy_timeout as number;
+          configInfo.appliedSettings.busyTimeout = true;
+        }
+      );
+
+      // Get synchronous mode
+      this.queryPragmaSetting(
+        'PRAGMA synchronous;',
+        'synchronous',
+        (result) => {
+          configInfo.syncMode = String(result.synchronous);
+          configInfo.appliedSettings.syncMode = true;
+        }
+      );
+
+      // Get cache size
+      this.queryPragmaSetting('PRAGMA cache_size;', 'cache_size', (result) => {
+        configInfo.cacheSize = result.cache_size as number;
+        configInfo.appliedSettings.cacheSize = true;
+      });
+
+      // Get journal mode
+      this.queryPragmaSetting(
+        'PRAGMA journal_mode;',
+        'journal_mode',
+        (result) => {
+          configInfo.journalMode = String(result.journal_mode);
+        }
+      );
+
+      // Check foreign keys status
+      this.queryPragmaSetting(
+        'PRAGMA foreign_keys;',
+        'foreign_keys',
+        (result) => {
+          configInfo.foreignKeys = Boolean(result.foreign_keys);
+          configInfo.appliedSettings.foreignKeys = true;
+        }
+      );
+
+      // Get temp_store setting
+      this.queryPragmaSetting('PRAGMA temp_store;', 'temp_store', (result) => {
+        if (result.temp_store === 2) {
+          // 2 = MEMORY
+          configInfo.appliedSettings.tempStore = true;
+        }
+      });
+
+      // Estimate memory usage (if available)
+      try {
+        this.queryPragmaSetting(
+          'PRAGMA memory_used;',
+          'memory_used',
+          (result) => {
+            configInfo.memoryUsage = result.memory_used as number;
+          }
+        );
+      } catch {
+        // Memory usage stats not available in all SQLite versions
+      }
+    } catch (configError) {
+      // Log but don't fail the health check due to config info issues
+      logger.warn(
+        'Error getting SQLite configuration details during health check',
+        {
+          error:
+            configError instanceof Error
+              ? configError.message
+              : String(configError),
+        }
+      );
+    }
+  }
+
   /**
-   * Applies SQLite configuration parameters via PRAGMA statements
-   * with enhanced error handling to differentiate between mandatory and optional settings.
+   * Helper method to query a single PRAGMA setting and process the result
+   */
+  private queryPragmaSetting<T extends Record<string, unknown>>(
+    query: string,
+    expectedKey: string,
+    processor: (result: T) => void
+  ): void {
+    const result = this.client.query(query).get() as T | null;
+    if (result && expectedKey in result) {
+      processor(result);
+    }
+  }
+
+  /**
+   * Performs a WAL checkpoint to ensure all data is written to disk
+   * Used by both disconnect() and close() methods
+   */
+  private performWalCheckpoint(): void {
+    try {
+      this.client.prepare('PRAGMA wal_checkpoint(FULL)').run();
+    } catch (checkpointError) {
+      logger.warn('Error during WAL checkpoint', {
+        errorMessage:
+          checkpointError instanceof Error
+            ? checkpointError.message
+            : String(checkpointError),
+      });
+    }
+  }
+
+  /**
+   * Applies SQLite configuration parameters using the centralized PRAGMA manager
    */
   private applyConfigurationPragmas(): void {
-    // Track which settings were successfully applied
-    const appliedSettings = {
-      busyTimeout: false,
-      syncMode: false,
-      cacheSize: false,
-      foreignKeys: false,
-      tempStore: false,
-    };
-
-    // Record any non-critical errors to report them together
-    const nonCriticalErrors: Array<{ setting: string; error: string }> = [];
-
     try {
-      // ----- CRITICAL SETTINGS (Application should not continue if these fail) -----
+      // Extract only PRAGMA-related properties from the full connection config
+      const pragmaConfig = {
+        sqliteBusyTimeout: this.config.sqliteBusyTimeout,
+        sqliteSyncMode: this.config.sqliteSyncMode,
+        sqliteCacheSize: this.config.sqliteCacheSize,
+      };
 
-      // Apply busy timeout setting (CRITICAL)
-      if (
-        typeof this.config.sqliteBusyTimeout === 'number' &&
-        this.config.sqliteBusyTimeout > 0
-      ) {
-        try {
-          this.client.exec(
-            `PRAGMA busy_timeout = ${this.config.sqliteBusyTimeout};`
-          );
-          appliedSettings.busyTimeout = true;
-        } catch (error) {
-          const errorMsg = `Failed to set SQLite busy_timeout (CRITICAL for concurrency): ${
-            error instanceof Error ? error.message : String(error)
-          }`;
-          logger.error(errorMsg, {
-            requestedValue: this.config.sqliteBusyTimeout,
-            category: 'CRITICAL_SETTING',
-          });
-          throw new Error(errorMsg); // Critical setting - halt initialization
-        }
-      } else {
-        logger.warn(
-          'SQLite busy_timeout not configured or invalid value - using SQLite default',
-          {
-            providedValue: this.config.sqliteBusyTimeout,
-          }
-        );
-      }
+      // Use the centralized PRAGMA manager for consistent application
+      const result = SqlitePragmaManager.applyPragmas(
+        this.client,
+        pragmaConfig
+      );
 
-      // Apply synchronous mode setting (CRITICAL for data integrity)
-      if (this.config.sqliteSyncMode) {
-        try {
-          this.client.exec(
-            `PRAGMA synchronous = ${this.config.sqliteSyncMode};`
-          );
-          appliedSettings.syncMode = true;
-        } catch (error) {
-          const errorMsg = `Failed to set SQLite synchronous mode (CRITICAL for data integrity): ${
-            error instanceof Error ? error.message : String(error)
-          }`;
-          logger.error(errorMsg, {
-            requestedValue: this.config.sqliteSyncMode,
-            category: 'CRITICAL_SETTING',
-          });
-          throw new Error(errorMsg); // Critical setting - halt initialization
-        }
-      } else {
-        logger.warn(
-          'SQLite synchronous mode not configured - using SQLite default',
-          {
-            defaultValue: 'FULL',
-          }
-        );
-      }
-
-      // ----- IMPORTANT BUT NON-CRITICAL SETTINGS (Continue with warnings) -----
-
-      // Enable foreign keys constraint checking (IMPORTANT)
-      try {
-        this.client.exec('PRAGMA foreign_keys = ON;');
-        appliedSettings.foreignKeys = true;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        nonCriticalErrors.push({
-          setting: 'foreign_keys',
-          error: errorMessage,
-        });
-        logger.warn(
-          'Failed to enable SQLite foreign_keys (continuing with SQLite default)',
-          {
-            errorMessage,
-            category: 'IMPORTANT_SETTING',
-          }
-        );
-      }
-
-      // ----- OPTIONAL PERFORMANCE SETTINGS (Continue with fallback) -----
-
-      // Apply cache size setting (OPTIONAL - performance only)
-      if (
-        typeof this.config.sqliteCacheSize === 'number' &&
-        this.config.sqliteCacheSize > 0
-      ) {
-        try {
-          this.client.exec(
-            `PRAGMA cache_size = ${this.config.sqliteCacheSize};`
-          );
-          appliedSettings.cacheSize = true;
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          nonCriticalErrors.push({
-            setting: 'cache_size',
-            error: errorMessage,
-          });
-          logger.warn(
-            'Failed to set SQLite cache_size (continuing with SQLite default)',
-            {
-              errorMessage,
-              requestedValue: this.config.sqliteCacheSize,
-              category: 'OPTIONAL_SETTING',
-            }
-          );
-        }
-      }
-
-      // Set temp store to memory for better performance (OPTIONAL)
-      try {
-        this.client.exec('PRAGMA temp_store = MEMORY;');
-        appliedSettings.tempStore = true;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        nonCriticalErrors.push({
-          setting: 'temp_store',
-          error: errorMessage,
-        });
-        logger.warn(
-          'Failed to set SQLite temp_store to MEMORY (continuing with SQLite default)',
-          {
-            errorMessage,
-            category: 'OPTIONAL_SETTING',
-          }
-        );
-      }
-
-      // Log applied configurations in non-production environments
+      // Log successful application in development mode only
+      // (Failures are already logged by the PRAGMA manager in both dev and production)
       if (process.env.NODE_ENV !== 'production') {
-        logger.info('SQLite configuration parameters applied:', {
-          busyTimeout: appliedSettings.busyTimeout
-            ? this.config.sqliteBusyTimeout
-            : 'default',
-          syncMode: appliedSettings.syncMode
-            ? this.config.sqliteSyncMode
-            : 'default',
-          cacheSize: appliedSettings.cacheSize
-            ? this.config.sqliteCacheSize
-            : 'default',
-          foreignKeys: appliedSettings.foreignKeys ? 'ON' : 'default',
-          tempStore: appliedSettings.tempStore ? 'MEMORY' : 'default',
+        logger.info('SQLite PRAGMA settings applied via centralized manager', {
+          appliedSettings: result.appliedSettings,
+          criticalSettingsApplied: result.criticalSettingsApplied,
+          failedSettingsCount: result.failedSettings.length,
         });
-
-        // If any non-critical errors occurred, log them together for easier debugging
-        if (nonCriticalErrors.length > 0) {
-          logger.warn(
-            `${nonCriticalErrors.length} non-critical SQLite settings failed to apply`,
-            {
-              errors: nonCriticalErrors,
-            }
-          );
-        }
       }
     } catch (error) {
-      // This will only catch errors not already handled in the individual try/catch blocks
-      // These would be truly unexpected errors or critical setting failures
-      logger.error('Critical error applying SQLite configuration parameters', {
-        error: error instanceof Error ? error.stack : String(error),
-        appliedSettingsBeforeError: appliedSettings,
+      // Critical PRAGMA settings failed - this should halt initialization
+      logger.error('Critical SQLite PRAGMA settings failed to apply', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error; // Re-throw to halt initialization
     }

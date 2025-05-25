@@ -8,7 +8,7 @@ import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { toIRI } from '@utils/types/iri-utils';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
@@ -87,7 +87,7 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
     expect(log.query).toBe('INSERT BadgeClass');
     expect(log.database).toBe('sqlite');
     expect(log.duration).toBeGreaterThanOrEqual(0);
-    expect(log.params).toBeArrayOfSize(1);
+    expect(log.params).toBeUndefined();
   });
 
   it('should log query on findAll', async () => {
@@ -133,30 +133,14 @@ describe('SqliteBadgeClassRepository Integration - Query Logging', () => {
 
     const logs = queryLogger.getLogs();
 
-    // Expect logs for findById (in update) and the actual UPDATE
-    expect(logs).toBeArrayOfSize(2);
+    // Expect single transaction log for the update operation
+    expect(logs).toBeArrayOfSize(1);
 
-    const findLog = logs[0];
-    expect(findLog.query).toBe('SELECT BadgeClass by ID');
-    expect(findLog.params?.[0]).toBe(testBadgeData.id);
-
-    const updateLog = logs[1];
+    const updateLog = logs[0];
     expect(updateLog.query).toBe('UPDATE BadgeClass');
     expect(updateLog.database).toBe('sqlite');
     expect(updateLog.duration).toBeGreaterThanOrEqual(0);
-    expect(updateLog.params).toBeArrayOfSize(2);
-    expect(updateLog.params?.[0]).toBe(testBadgeData.id);
-
-    // Check the second parameter (updated data)
-    // The second parameter should be a SensitiveValue instance
-    const sensitiveParam = updateLog.params?.[1];
-    expect(sensitiveParam).toBeInstanceOf(SensitiveValue);
-
-    // Since SensitiveValue's value property is private, we can't directly access it
-    // Instead, we'll verify the object has the expected string representation
-    // The SensitiveValue class redacts its contents when converted to a string
-    const paramString = String(sensitiveParam);
-    expect(paramString).toBe('[REDACTED]');
+    expect(updateLog.params).toEqual([testBadgeData.id]);
   });
 
   it('should log query on delete', async () => {

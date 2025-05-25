@@ -20,6 +20,7 @@ import {
   SqliteTransactionContext,
   SqliteOperationContext,
   DrizzleTransaction,
+  SqliteEntityType,
 } from '../types/sqlite-database.types';
 import { issuers, badgeClasses, assertions } from '../schema';
 
@@ -343,12 +344,12 @@ export class SqliteRepositoryCoordinator {
         // Count assertions that will be deleted
         if (badgeClassIds.length > 0) {
           if (badgeClassIds.length) {
-            const { count } = await tx
+            const result = await tx
               .select({ count: sql<number>`count(*)` })
               .from(assertions)
               .where(inArray(assertions.badgeClassId, badgeClassIds))
-              .limit(1) // sqlite optimisation – single row
-              .get(); // drizzle: pluck the first row only
+              .limit(1); // sqlite optimisation – single row
+            const { count } = result[0]; // drizzle: pluck the first row only
             assertionsDeleted = count;
           }
         }
@@ -491,7 +492,7 @@ export class SqliteRepositoryCoordinator {
    */
   private determineEntityTypeFromOperation(
     operation: string
-  ): SqliteOperationContext['entityType'] {
+  ): SqliteEntityType {
     const lowerOp = operation.toLowerCase();
 
     if (lowerOp.includes('issuer')) {

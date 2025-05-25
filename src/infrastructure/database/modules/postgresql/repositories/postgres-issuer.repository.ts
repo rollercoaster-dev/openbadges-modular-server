@@ -2,80 +2,100 @@
  * PostgreSQL implementation of the Issuer repository
  *
  * This class implements the IssuerRepository interface using PostgreSQL
- * and the Data Mapper pattern.
+ * and the Data Mapper pattern with the base repository class.
  */
 
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Issuer } from '@domains/issuer/issuer.entity';
 import type { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { issuers } from '../schema';
 import { PostgresIssuerMapper } from '../mappers/postgres-issuer.mapper';
 import { Shared } from 'openbadges-types';
-import { queryLogger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import { BasePostgresRepository } from './base-postgres.repository';
+import { PostgresEntityType } from '../types/postgres-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
-export class PostgresIssuerRepository implements IssuerRepository {
-  private db: ReturnType<typeof drizzle>;
+export class PostgresIssuerRepository
+  extends BasePostgresRepository
+  implements IssuerRepository
+{
   private mapper: PostgresIssuerMapper;
 
   constructor(client: postgres.Sql) {
-    this.db = drizzle(client);
+    super(client);
     this.mapper = new PostgresIssuerMapper();
   }
 
+  /**
+   * Returns the entity type for this repository
+   */
+  protected getEntityType(): PostgresEntityType {
+    return 'issuer';
+  }
+
+  /**
+   * Returns the table name for this repository
+   */
+  protected getTableName(): string {
+    return 'issuers';
+  }
+
   async create(issuer: Omit<Issuer, 'id'>): Promise<Issuer> {
+    const context = this.createOperationContext('CREATE Issuer');
+
     // Convert domain entity to database record
-    // The mapper now returns the correct shape for insertion (IssuerInsertModel)
-    // and handles required field validation internally.
     const record = this.mapper.toPersistence(issuer);
-    const startTime = Date.now();
-    const result = await this.db.insert(issuers).values(record).returning();
-    const duration = Date.now() - startTime;
 
-    // Log query
-    queryLogger.logQuery(
-      'INSERT Issuer (PG)',
-      [SensitiveValue.from(record)],
-      duration,
-      'postgresql'
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db.insert(issuers).values(record).returning();
+        return this.mapper.toDomain(result[0]);
+      },
+      1
     );
-
-    // Convert database record back to domain entity
-    return this.mapper.toDomain(result[0]);
   }
 
   async findAll(): Promise<Issuer[]> {
-    const startTime = Date.now();
-    const result = await this.db.select().from(issuers);
-    const duration = Date.now() - startTime;
+    const context = this.createOperationContext('SELECT All Issuers');
 
-    // Log query
-    queryLogger.logQuery('SELECT All Issuers (PG)', undefined, duration, 'postgresql');
+    // Log warning for unbounded query
+    this.logUnboundedQueryWarning('findAll');
 
-    // Convert database records to domain entities
-    return result.map(record => this.mapper.toDomain(record));
+    return this.executeQuery(context, async (db) => {
+      const result = await db.select().from(issuers);
+      return result.map((record) => this.mapper.toDomain(record));
+    });
   }
 
   async findById(id: Shared.IRI): Promise<Issuer | null> {
-    const startTime = Date.now();
-    const result = await this.db.select().from(issuers).where(eq(issuers.id, id as string));
-    const duration = Date.now() - startTime;
+    this.validateEntityId(id, 'findById');
+    const context = this.createOperationContext('SELECT Issuer by ID', id);
 
-    // Log query (assuming id is not sensitive)
-    queryLogger.logQuery('SELECT Issuer by ID (PG)', [id], duration, 'postgresql');
-
-    // Return null if not found
-    if (!result.length) {
-      return null;
-    }
-
-    // Convert database record to domain entity
-    return this.mapper.toDomain(result[0]);
+    return this.executeSingleQuery(
+      context,
+      async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
+        const result = await db
+          .select()
+          .from(issuers)
+          .where(eq(issuers.id, dbId));
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [id]
+    );
   }
 
-  async update(id: Shared.IRI, issuer: Partial<Issuer>): Promise<Issuer | null> {
+  async update(
+    id: Shared.IRI,
+    issuer: Partial<Issuer>
+  ): Promise<Issuer | null> {
+    this.validateEntityId(id, 'update');
+    const context = this.createOperationContext('UPDATE Issuer', id);
+
     // Check if issuer exists
     const existingIssuer = await this.findById(id);
     if (!existingIssuer) {
@@ -83,48 +103,39 @@ export class PostgresIssuerRepository implements IssuerRepository {
     }
 
     // Create a merged object with updated properties
-    // Spread existing properties first, then override with update properties
-    // Ensure we preserve the original ID
     const mergedProps: Partial<Issuer> = {
       ...existingIssuer,
       ...issuer,
-      id: existingIssuer.id // Ensure we keep the original ID
+      id: existingIssuer.id, // Ensure we keep the original ID
     };
 
     // Convert to database record
-    // Pass the merged properties directly to the mapper
     const record = this.mapper.toPersistence(mergedProps);
 
-    // Update in database
-    const startTime = Date.now();
-    const result = await this.db.update(issuers)
-      .set(record)
-      .where(eq(issuers.id, id as string))
-      .returning();
-    const duration = Date.now() - startTime;
-
-    // Log query
-    queryLogger.logQuery(
-      'UPDATE Issuer (PG)',
-      [id, SensitiveValue.from(record)],
-      duration,
-      'postgresql'
+    return this.executeUpdate(
+      context,
+      async (db) => {
+        // Convert URN to UUID for PostgreSQL query
+        const dbId = convertUuid(id as string, 'postgresql', 'to');
+        const result = await db
+          .update(issuers)
+          .set(record)
+          .where(eq(issuers.id, dbId))
+          .returning();
+        return result.map((record) => this.mapper.toDomain(record));
+      },
+      [id, SensitiveValue.from(record)]
     );
-
-    // Convert database record back to domain entity
-    return this.mapper.toDomain(result[0]);
   }
 
   async delete(id: Shared.IRI): Promise<boolean> {
-    // Delete from database
-    const startTime = Date.now();
-    const result = await this.db.delete(issuers).where(eq(issuers.id, id as string)).returning();
-    const duration = Date.now() - startTime;
+    this.validateEntityId(id, 'delete');
+    const context = this.createOperationContext('DELETE Issuer', id);
 
-    // Log query (assuming id is not sensitive)
-    queryLogger.logQuery('DELETE Issuer (PG)', [id], duration, 'postgresql');
-
-    // Return true if something was deleted
-    return result.length > 0;
+    return this.executeDelete(context, async (db) => {
+      // Convert URN to UUID for PostgreSQL query
+      const dbId = convertUuid(id as string, 'postgresql', 'to');
+      return await db.delete(issuers).where(eq(issuers.id, dbId)).returning();
+    });
   }
 }
