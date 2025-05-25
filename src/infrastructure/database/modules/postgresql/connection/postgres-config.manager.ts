@@ -227,7 +227,7 @@ export class PostgresConfigManager {
         const value = unit ? `${setting}${unit}` : setting;
 
         // Type assertion is safe here because we control the mapping
-        (config as any)[configKey] = value;
+        (config as Record<string, unknown>)[configKey] = value;
 
         // Mark as successfully retrieved
         const appliedKey = this.getAppliedSettingKey(configKey);
