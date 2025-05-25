@@ -131,13 +131,21 @@ export class PostgresConfigManager {
 
   /**
    * Sets a session-level parameter
+   * Uses proper identifier quoting to prevent SQL injection
    */
   private async setSessionParameter(
     parameter: string,
     value: string
   ): Promise<void> {
+    // Validate parameter name to prevent injection
+    if (!this.isValidParameterName(parameter)) {
+      throw new Error(`Invalid PostgreSQL parameter name: ${parameter}`);
+    }
+
     try {
-      await this.client`SET ${this.client(parameter)} = ${value}`;
+      // Use postgres.unsafe for identifier quoting to prevent SQL injection
+      // The parameter name must be treated as an identifier, not a value
+      await this.client.unsafe(`SET ${parameter} = $1`, [value]);
     } catch (error) {
       logger.warn(`Failed to set PostgreSQL parameter ${parameter}`, {
         parameter,
@@ -146,6 +154,16 @@ export class PostgresConfigManager {
       });
       throw error;
     }
+  }
+
+  /**
+   * Validates PostgreSQL parameter names to prevent injection
+   */
+  private isValidParameterName(parameter: string): boolean {
+    // PostgreSQL parameter names must be valid identifiers
+    // They can contain letters, digits, and underscores, and must start with a letter or underscore
+    const parameterPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    return parameterPattern.test(parameter) && parameter.length <= 63; // PostgreSQL identifier length limit
   }
 
   /**

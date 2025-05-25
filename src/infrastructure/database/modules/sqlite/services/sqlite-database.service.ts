@@ -345,10 +345,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     }
   }
 
-  async getBadgeClassesByIssuer(
-    issuerId: Shared.IRI,
-    _options?: DatabaseQueryOptions
-  ): Promise<BadgeClass[]> {
+  async getBadgeClassesByIssuer(issuerId: Shared.IRI): Promise<BadgeClass[]> {
     const context = this.createOperationContext(
       'GET BadgeClasses by Issuer',
       'badgeClass',
@@ -534,8 +531,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
   }
 
   async getAssertionsByBadgeClass(
-    badgeClassId: Shared.IRI,
-    _options?: DatabaseQueryOptions
+    badgeClassId: Shared.IRI
   ): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by BadgeClass',
@@ -567,10 +563,7 @@ export class SqliteDatabaseService implements DatabaseInterface {
     }
   }
 
-  async getAssertionsByRecipient(
-    recipientId: string,
-    _options?: DatabaseQueryOptions
-  ): Promise<Assertion[]> {
+  async getAssertionsByRecipient(recipientId: string): Promise<Assertion[]> {
     const context = this.createOperationContext(
       'GET Assertions by Recipient',
       'assertion',

@@ -16,6 +16,7 @@ import {
   DatabaseInterface,
   DatabaseQueryOptions,
   DatabaseHealth,
+  DatabaseHealthError,
 } from '../../interfaces/database.interface';
 import { issuers, badgeClasses, assertions } from './schema';
 import { logger } from '../../../../utils/logging/logger.service';
@@ -25,6 +26,9 @@ export class PostgresqlDatabase implements DatabaseInterface {
   private db: ReturnType<typeof drizzle> | null = null;
   private connected: boolean = false;
   private config: Record<string, unknown>;
+  private connectionStartedAt: number | null = null;
+  private connectionAttempts = 0;
+  private lastError: DatabaseHealthError | null = null;
 
   constructor(config: Record<string, unknown>) {
     this.config = config;
@@ -33,25 +37,37 @@ export class PostgresqlDatabase implements DatabaseInterface {
   async connect(): Promise<void> {
     if (this.connected) return;
 
+    this.connectionAttempts++;
+
     try {
       // Validate connection string before creating client
       if (
         typeof this.config['connectionString'] !== 'string' ||
         !this.config['connectionString']
       ) {
+        const error = new Error(
+          'Invalid or missing PostgreSQL connection string in configuration'
+        );
         logger.error(
           'Invalid or missing PostgreSQL connection string in configuration'
         );
-        throw new Error(
-          'Invalid or missing PostgreSQL connection string in configuration'
-        );
+        this.lastError = this.toSerializableError(error);
+        throw error;
       }
+
       this.client = postgres(this.config['connectionString']);
       this.db = drizzle(this.client);
       this.connected = true;
+      this.connectionStartedAt = Date.now();
+      this.lastError = null; // Clear any previous errors on successful connection
     } catch (error) {
-      logger.error('Failed to connect to PostgreSQL database', { error });
-      throw error;
+      const connectionError =
+        error instanceof Error ? error : new Error(String(error));
+      this.lastError = this.toSerializableError(connectionError);
+      logger.error('Failed to connect to PostgreSQL database', {
+        error: connectionError,
+      });
+      throw connectionError;
     }
   }
 
@@ -66,9 +82,15 @@ export class PostgresqlDatabase implements DatabaseInterface {
       this.client = null;
       this.db = null;
       this.connected = false;
+      this.connectionStartedAt = null;
     } catch (error) {
-      logger.error('Failed to disconnect from PostgreSQL database', { error });
-      throw error;
+      const disconnectionError =
+        error instanceof Error ? error : new Error(String(error));
+      this.lastError = this.toSerializableError(disconnectionError);
+      logger.error('Failed to disconnect from PostgreSQL database', {
+        error: disconnectionError,
+      });
+      throw disconnectionError;
     }
   }
 
@@ -80,6 +102,21 @@ export class PostgresqlDatabase implements DatabaseInterface {
     if (!this.connected || !this.db) {
       throw new Error('Database is not connected');
     }
+  }
+
+  /**
+   * Converts an Error object to a serializable DatabaseHealthError
+   */
+  private toSerializableError(error: unknown): DatabaseHealthError {
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+        stack: error.stack,
+      };
+    }
+    return {
+      message: String(error),
+    };
   }
 
   // Issuer operations
@@ -209,10 +246,10 @@ export class PostgresqlDatabase implements DatabaseInterface {
               'publicKey',
             ].includes(key)
         )
-        .reduce(
-          (obj, [key, value]) => ({ ...obj, [key]: value }),
-          {} as Record<string, unknown>
-        );
+        .reduce((obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        }, {} as Record<string, unknown>);
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,
@@ -438,10 +475,10 @@ export class PostgresqlDatabase implements DatabaseInterface {
               'tags',
             ].includes(key)
         )
-        .reduce(
-          (obj, [key, value]) => ({ ...obj, [key]: value }),
-          {} as Record<string, unknown>
-        );
+        .reduce((obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        }, {} as Record<string, unknown>);
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,
@@ -756,10 +793,10 @@ export class PostgresqlDatabase implements DatabaseInterface {
               'revocationReason',
             ].includes(key)
         )
-        .reduce(
-          (obj, [key, value]) => ({ ...obj, [key]: value }),
-          {} as Record<string, unknown>
-        );
+        .reduce((obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        }, {} as Record<string, unknown>);
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,
@@ -808,11 +845,24 @@ export class PostgresqlDatabase implements DatabaseInterface {
   }
 
   // Missing interface methods
-  async getAllIssuers(_options?: DatabaseQueryOptions): Promise<Issuer[]> {
+  async getAllIssuers(options?: DatabaseQueryOptions): Promise<Issuer[]> {
     this.ensureConnected();
 
-    // For now, implement without pagination - this should be enhanced later
-    const result = await this.db!.select().from(issuers);
+    // Extract pagination parameters with defaults
+    const { limit = 50, offset = 0 } = options?.pagination ?? {};
+
+    // Validate pagination parameters
+    if (limit <= 0 || limit > 1000) {
+      throw new Error(`Invalid limit: ${limit}. Must be between 1 and 1000.`);
+    }
+    if (offset < 0) {
+      throw new Error(`Invalid offset: ${offset}. Must be 0 or greater.`);
+    }
+
+    const result = await this.db!.select()
+      .from(issuers)
+      .limit(limit)
+      .offset(offset);
 
     return result.map((record) =>
       Issuer.create({
@@ -831,12 +881,25 @@ export class PostgresqlDatabase implements DatabaseInterface {
   }
 
   async getAllBadgeClasses(
-    _options?: DatabaseQueryOptions
+    options?: DatabaseQueryOptions
   ): Promise<BadgeClass[]> {
     this.ensureConnected();
 
-    // For now, implement without pagination - this should be enhanced later
-    const result = await this.db!.select().from(badgeClasses);
+    // Extract pagination parameters with defaults
+    const { limit = 50, offset = 0 } = options?.pagination ?? {};
+
+    // Validate pagination parameters
+    if (limit <= 0 || limit > 1000) {
+      throw new Error(`Invalid limit: ${limit}. Must be between 1 and 1000.`);
+    }
+    if (offset < 0) {
+      throw new Error(`Invalid offset: ${offset}. Must be 0 or greater.`);
+    }
+
+    const result = await this.db!.select()
+      .from(badgeClasses)
+      .limit(limit)
+      .offset(offset);
 
     return result.map((record) =>
       BadgeClass.create({
@@ -857,13 +920,24 @@ export class PostgresqlDatabase implements DatabaseInterface {
     );
   }
 
-  async getAllAssertions(
-    _options?: DatabaseQueryOptions
-  ): Promise<Assertion[]> {
+  async getAllAssertions(options?: DatabaseQueryOptions): Promise<Assertion[]> {
     this.ensureConnected();
 
-    // For now, implement without pagination - this should be enhanced later
-    const result = await this.db!.select().from(assertions);
+    // Extract pagination parameters with defaults
+    const { limit = 50, offset = 0 } = options?.pagination ?? {};
+
+    // Validate pagination parameters
+    if (limit <= 0 || limit > 1000) {
+      throw new Error(`Invalid limit: ${limit}. Must be between 1 and 1000.`);
+    }
+    if (offset < 0) {
+      throw new Error(`Invalid offset: ${offset}. Must be 0 or greater.`);
+    }
+
+    const result = await this.db!.select()
+      .from(assertions)
+      .limit(limit)
+      .offset(offset);
 
     return result.map((record) =>
       Assertion.create({
@@ -901,16 +975,24 @@ export class PostgresqlDatabase implements DatabaseInterface {
         connected = true;
       }
       responseTime = Date.now() - startTime;
-    } catch (_error) {
+    } catch (error) {
       responseTime = Date.now() - startTime;
+      // Update last error if health check fails
+      this.lastError = this.toSerializableError(error);
     }
+
+    // Calculate actual uptime in milliseconds since connection started
+    const uptime =
+      this.connectionStartedAt && connected
+        ? Date.now() - this.connectionStartedAt
+        : 0;
 
     return {
       connected,
       responseTime,
-      uptime: Date.now(), // Simple implementation
-      connectionAttempts: 1, // Simple implementation
-      lastError: undefined,
+      uptime, // Now returns elapsed time since connection, not current epoch
+      connectionAttempts: this.connectionAttempts, // Now returns actual attempt count
+      lastError: this.lastError,
       configuration: this.config,
     };
   }

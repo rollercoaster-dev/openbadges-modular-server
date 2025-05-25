@@ -157,9 +157,9 @@ export class SqliteDatabase implements DatabaseInterface {
 
   async getBadgeClassesByIssuer(
     issuerId: Shared.IRI,
-    options?: DatabaseQueryOptions
+    _options?: DatabaseQueryOptions
   ): Promise<BadgeClass[]> {
-    return this.databaseService.getBadgeClassesByIssuer(issuerId, options);
+    return this.databaseService.getBadgeClassesByIssuer(issuerId);
   }
 
   async updateBadgeClass(
@@ -190,19 +190,16 @@ export class SqliteDatabase implements DatabaseInterface {
 
   async getAssertionsByBadgeClass(
     badgeClassId: Shared.IRI,
-    options?: DatabaseQueryOptions
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
-    return this.databaseService.getAssertionsByBadgeClass(
-      badgeClassId,
-      options
-    );
+    return this.databaseService.getAssertionsByBadgeClass(badgeClassId);
   }
 
   async getAssertionsByRecipient(
     recipientId: string,
-    options?: DatabaseQueryOptions
+    _options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
-    return this.databaseService.getAssertionsByRecipient(recipientId, options);
+    return this.databaseService.getAssertionsByRecipient(recipientId);
   }
 
   async updateAssertion(

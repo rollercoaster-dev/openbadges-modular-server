@@ -248,12 +248,64 @@ This checklist translates the research, planning, and simplification tasks into 
         - Created `PostgresConfigManager` for session-level configuration
         - Added runtime configuration monitoring and database statistics
         - Validation for configuration settings and memory formats
-    -   [🚧] **Phase 4.2: Cross-Module Coordination**
+    -   [🚧] **Phase 4.2: PostgreSQL UUID Conversion (CRITICAL)**
       -   [✅] Enhance `DatabaseInterface` for better abstraction
         - Added health monitoring and diagnostics methods
         - Enhanced with pagination and query options support
         - Added transaction support (optional for databases that support it)
         - Added utility methods for connection validation and module identification
+      -   [🔴] **Critical: Fix UUID Format Mismatch (63 test failures)**
+        - **Root Cause**: Application generates URN format (`urn:uuid:...`) but PostgreSQL expects plain UUID format
+        - **Error**: `PostgresError: invalid input syntax for type uuid: "urn:uuid:..."`
+        - **Impact**: All PostgreSQL repository operations failing
+      -   [ ] **Task 4.2.1: Enhance UUID Conversion Utilities**
+        - [ ] Extend `src/infrastructure/database/utils/type-conversion.ts` with UUID conversion functions
+        - [ ] Implement `urnToUuid(urn: string): string` - Extract UUID from URN format
+        - [ ] Implement `uuidToUrn(uuid: string): Shared.IRI` - Convert UUID to URN format
+        - [ ] Implement `isValidUrn(value: string): boolean` - Validate URN format
+        - [ ] Add PostgreSQL-specific conversion logic to existing `convertUuid()` function
+        - [ ] Maintain SQLite compatibility (no breaking changes)
+        - [ ] Add comprehensive error handling for invalid formats
+        - [ ] Write unit tests for all conversion functions
+      -   [ ] **Task 4.2.2: Fix PostgreSQL Mappers (Leverage Existing BasePostgresRepository)**
+        - [ ] Update `postgres-issuer.mapper.ts`:
+          - [ ] Modify `toPersistence()`: Convert `entity.id` from URN to UUID for database storage
+          - [ ] Modify `toDomain()`: Convert `record.id` from UUID to URN for application use
+          - [ ] Apply existing logging patterns from base repository
+        - [ ] Update `postgres-badge-class.mapper.ts`:
+          - [ ] Modify `toPersistence()`: Convert `entity.id` and `entity.issuer` from URN to UUID
+          - [ ] Modify `toDomain()`: Convert `record.id` and `record.issuerId` from UUID to URN
+          - [ ] Test foreign key relationships with UUID conversion
+        - [ ] Update `postgres-assertion.mapper.ts`:
+          - [ ] Modify `toPersistence()`: Convert `entity.id` and `entity.badgeClass` from URN to UUID
+          - [ ] Modify `toDomain()`: Convert `record.id` and `record.badgeClassId` from UUID to URN
+          - [ ] Test foreign key relationships with UUID conversion
+      -   [ ] **Task 4.2.3: Enhance Repository Query Operations (Use Existing BasePostgresRepository)**
+        - [ ] Update `postgres-issuer.repository.ts`:
+          - [ ] Ensure `findById()`, `update()`, `delete()` operations convert ID parameters
+          - [ ] Apply existing error handling patterns from base repository
+        - [ ] Update `postgres-badge-class.repository.ts`:
+          - [ ] Fix `findByIssuer()` to convert issuer ID parameter from URN to UUID
+          - [ ] Ensure all query operations handle ID conversion
+        - [ ] Update `postgres-assertion.repository.ts`:
+          - [ ] Fix `findByBadgeClass()` and `findByRecipient()` operations
+          - [ ] Ensure all query operations handle ID conversion
+        - [ ] Update `base-postgres.repository.ts`:
+          - [ ] Enhance `validateEntityId()` to accept both URN and UUID formats
+          - [ ] Add conversion helpers for common operations
+          - [ ] Apply existing logging patterns to UUID conversion errors
+      -   [ ] **Task 4.2.4: Fix Test Infrastructure (Apply Existing Patterns)**
+        - [ ] Update `postgres-test-helper.ts`:
+          - [ ] Add UUID conversion handling in test data creation
+          - [ ] Apply existing connection management patterns
+          - [ ] Improve error logging using existing patterns
+        - [ ] Update PostgreSQL repository tests:
+          - [ ] Fix `postgres-issuer.repository.test.ts` - ensure test data uses correct ID formats
+          - [ ] Fix `postgres-badge-class.repository.test.ts` - fix hardcoded UUID references
+          - [ ] Fix `postgres-assertion.repository.test.ts` - test foreign key relationships
+        - [ ] Update E2E tests:
+          - [ ] Fix `openBadgesCompliance.e2e.test.ts` for PostgreSQL
+          - [ ] Ensure complete workflows work end-to-end
       -   [ ] Improve `DatabaseFactory` for consistent module creation
       -   [ ] Standardize repository interfaces across modules
     -   [ ] **Phase 4.3: Application Integration**
@@ -301,7 +353,17 @@ Based on Phase 1-3 analysis and the "Separate but Coordinated" strategy (Option 
 - Enhanced logging strategy with environment-based conditionals
 - All tests passing, no breaking changes
 
-**Next Priority**: Apply similar patterns to PostgreSQL module for consistency.
+**Phase 4.1 Status**: PostgreSQL Module Enhancement completed with architectural improvements:
+- Created `BasePostgresRepository` abstract class (60% code reduction)
+- Implemented PostgreSQL connection manager with state management
+- Added centralized configuration management
+- Standardized logging and error handling patterns
+
+**CRITICAL NEXT PRIORITY**: Phase 4.2 PostgreSQL UUID Conversion (2 days estimated)
+- **Root Cause**: UUID format mismatch causing 63 test failures
+- **Solution**: Leverage existing architecture to add UUID conversion utilities
+- **Approach**: Extend existing `type-conversion.ts` and enhance PostgreSQL mappers
+- **Timeline**: Reduced from 4.5 days to 2 days by leveraging completed architectural work
 
 ## Progress Summary
 
@@ -362,11 +424,30 @@ Based on Phase 1-3 analysis and the "Separate but Coordinated" strategy (Option 
 
 ### Next Steps
 
-1. **Commit and Push Changes**: All type and linting fixes ready for commit
-2. **Wait for CodeRabbit Review**: Automated code review feedback on all recent changes
-3. **Address Review Feedback**: Implement any suggested improvements
-4. **Proceed with Phase 4**: Continue with cross-module coordination and application integration
-5. **Incremental Progress**: Continue pushing focused commits for each completed task
+1. **IMMEDIATE: Phase 4.2 PostgreSQL UUID Conversion (CRITICAL - 2 days)**
+   - [ ] **Day 1**: Implement UUID conversion utilities in existing `type-conversion.ts`
+   - [ ] **Day 1**: Update PostgreSQL mappers using existing `BasePostgresRepository` patterns
+   - [ ] **Day 2**: Fix repository query operations and test infrastructure
+   - [ ] **Day 2**: Validate 0 PostgreSQL test failures and 398+ total tests passing
+2. **Commit and Push Changes**: All type and linting fixes ready for commit
+3. **Wait for CodeRabbit Review**: Automated code review feedback on all recent changes
+4. **Address Review Feedback**: Implement any suggested improvements
+5. **Continue Phase 4.3**: Application integration after PostgreSQL UUID fixes complete
+6. **Incremental Progress**: Continue pushing focused commits for each completed task
+
+### Success Metrics for Phase 4.2 (PostgreSQL UUID Conversion)
+
+**Technical Success**:
+- [ ] **0 PostgreSQL test failures** (currently 63 failing due to UUID format mismatch)
+- [ ] **398+ total tests passing** (maintain existing refactor success + fix PostgreSQL failures)
+- [ ] **No SQLite regression** (all existing SQLite functionality preserved)
+- [ ] **Consistent architecture** across SQLite and PostgreSQL modules using existing patterns
+
+**Process Success**:
+- [ ] **Leverage existing architecture** (`BasePostgresRepository`, connection management, logging)
+- [ ] **Extend existing utilities** (`type-conversion.ts`) rather than create new files
+- [ ] **Apply existing patterns** (error handling, logging, testing) to UUID conversion
+- [ ] **Maintain incremental commit strategy** for reviewable changes
 <environment_details>
 # VSCode Visible Files
 .cursor/working/tasks/db-system-refactor.md

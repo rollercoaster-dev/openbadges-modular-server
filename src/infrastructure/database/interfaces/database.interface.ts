@@ -12,14 +12,24 @@ import { Assertion } from '../../../domains/assertion/assertion.entity';
 import { Shared } from 'openbadges-types';
 
 /**
+ * Serializable error information for database health
+ */
+export interface DatabaseHealthError {
+  message: string;
+  stack?: string;
+}
+
+/**
  * Database health information
+ *
+ * Note: uptime is measured in milliseconds since connection was established
  */
 export interface DatabaseHealth {
   connected: boolean;
   responseTime: number;
-  uptime: number;
+  uptime: number; // Uptime in milliseconds since connection established
   connectionAttempts: number;
-  lastError?: Error;
+  lastError?: DatabaseHealthError; // Serializable error format instead of Error object
   configuration: Record<string, unknown>;
 }
 
