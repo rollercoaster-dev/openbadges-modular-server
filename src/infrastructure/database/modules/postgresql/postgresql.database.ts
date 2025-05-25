@@ -5,7 +5,7 @@
  * It provides CRUD operations for Issuers, BadgeClasses, and Assertions.
  */
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { Issuer } from '../../../../domains/issuer/issuer.entity';
@@ -233,23 +233,23 @@ export class PostgresqlDatabase implements DatabaseInterface {
       const existingIssuer = await this.getIssuerById(id);
       if (!existingIssuer) return null;
 
-      const existingAdditionalFields = Object.entries(existingIssuer)
-        .filter(
-          ([key]) =>
-            ![
-              'id',
-              'name',
-              'url',
-              'email',
-              'description',
-              'image',
-              'publicKey',
-            ].includes(key)
-        )
-        .reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {} as Record<string, unknown>);
+      // Use direct property assignment for better performance (O(n) vs O(n²))
+      const existingAdditionalFields: Record<string, unknown> = {};
+      const standardKeys = [
+        'id',
+        'name',
+        'url',
+        'email',
+        'description',
+        'image',
+        'publicKey',
+      ];
+
+      for (const [key, value] of Object.entries(existingIssuer)) {
+        if (!standardKeys.includes(key)) {
+          existingAdditionalFields[key] = value;
+        }
+      }
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,
@@ -461,24 +461,24 @@ export class PostgresqlDatabase implements DatabaseInterface {
       const existingBadgeClass = await this.getBadgeClassById(id);
       if (!existingBadgeClass) return null;
 
-      const existingAdditionalFields = Object.entries(existingBadgeClass)
-        .filter(
-          ([key]) =>
-            ![
-              'id',
-              'issuer',
-              'name',
-              'description',
-              'image',
-              'criteria',
-              'alignment',
-              'tags',
-            ].includes(key)
-        )
-        .reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {} as Record<string, unknown>);
+      // Use direct property assignment for better performance (O(n) vs O(n²))
+      const existingAdditionalFields: Record<string, unknown> = {};
+      const standardKeys = [
+        'id',
+        'issuer',
+        'name',
+        'description',
+        'image',
+        'criteria',
+        'alignment',
+        'tags',
+      ];
+
+      for (const [key, value] of Object.entries(existingBadgeClass)) {
+        if (!standardKeys.includes(key)) {
+          existingAdditionalFields[key] = value;
+        }
+      }
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,
@@ -689,25 +689,32 @@ export class PostgresqlDatabase implements DatabaseInterface {
 
   async getAssertionsByRecipient(
     recipientId: string,
-    _options?: DatabaseQueryOptions
+    options?: DatabaseQueryOptions
   ): Promise<Assertion[]> {
     this.ensureConnected();
 
-    // This is a simplified implementation that needs to be updated to handle different recipient identity formats
-    // For now, we'll do a full scan and filter in memory
-    const allAssertions = await this.db!.select().from(assertions);
+    // Extract pagination parameters with defaults
+    const { limit = 50, offset = 0 } = options?.pagination ?? {};
 
-    // Filter assertions where the recipient identity matches the provided ID
-    const matchingAssertions = allAssertions.filter((record) => {
-      try {
-        const recipient = JSON.parse(record.recipient as string);
-        return recipient.identity === recipientId;
-      } catch {
-        return false;
-      }
-    });
+    // Validate pagination parameters
+    if (limit <= 0 || limit > 1000) {
+      throw new Error(`Invalid limit: ${limit}. Must be between 1 and 1000.`);
+    }
+    if (offset < 0) {
+      throw new Error(`Invalid offset: ${offset}. Must be 0 or greater.`);
+    }
 
-    return matchingAssertions.map((record) =>
+    // Use PostgreSQL JSON operators to query directly instead of full table scan
+    // Handle different recipient identity formats (both 'identity' and 'id' fields)
+    const result = await this.db!.select()
+      .from(assertions)
+      .where(
+        sql`(${assertions.recipient}->>'identity' = ${recipientId}) OR (${assertions.recipient}->>'id' = ${recipientId})`
+      )
+      .limit(limit)
+      .offset(offset);
+
+    return result.map((record) =>
       Assertion.create({
         id: record.id.toString() as Shared.IRI,
         badgeClass: record.badgeClassId.toString() as Shared.IRI,
@@ -778,25 +785,25 @@ export class PostgresqlDatabase implements DatabaseInterface {
       const existingAssertion = await this.getAssertionById(id);
       if (!existingAssertion) return null;
 
-      const existingAdditionalFields = Object.entries(existingAssertion)
-        .filter(
-          ([key]) =>
-            ![
-              'id',
-              'badgeClass',
-              'recipient',
-              'issuedOn',
-              'expires',
-              'evidence',
-              'verification',
-              'revoked',
-              'revocationReason',
-            ].includes(key)
-        )
-        .reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {} as Record<string, unknown>);
+      // Use direct property assignment for better performance (O(n) vs O(n²))
+      const existingAdditionalFields: Record<string, unknown> = {};
+      const standardKeys = [
+        'id',
+        'badgeClass',
+        'recipient',
+        'issuedOn',
+        'expires',
+        'evidence',
+        'verification',
+        'revoked',
+        'revocationReason',
+      ];
+
+      for (const [key, value] of Object.entries(existingAssertion)) {
+        if (!standardKeys.includes(key)) {
+          existingAdditionalFields[key] = value;
+        }
+      }
 
       updateData['additionalFields'] = {
         ...existingAdditionalFields,

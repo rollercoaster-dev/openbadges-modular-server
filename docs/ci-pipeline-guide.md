@@ -59,7 +59,7 @@ This is a common issue that can have several causes:
 
 #### b. Environment Variable Differences
 - **Symptom**: Undefined values or missing configuration errors
-- **Solution**: Compare local and CI environment variables, ensure all required variables are set in CI
+- **Solution**: Compare local and CI environment variables, and ensure all required variables are set in CI
 - **Fix Example**: Add missing environment variables to the workflow file
 
 #### c. Path Resolution Problems

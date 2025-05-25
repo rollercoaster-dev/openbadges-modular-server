@@ -10,6 +10,7 @@ import { Shared } from 'openbadges-types';
 import type { InferInsertModel } from 'drizzle-orm';
 import { badgeClasses } from '../schema';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
+import { safeParseJson } from '@utils/json-utils';
 
 export class PostgresBadgeClassMapper {
   /**
@@ -19,22 +20,6 @@ export class PostgresBadgeClassMapper {
    */
   toDomain(record: Record<string, unknown>): BadgeClass {
     if (!record) return null as unknown as BadgeClass;
-
-    // Helper function to safely parse JSON
-    const safeParseJson = <T>(json: unknown, defaultValue: T): T => {
-      if (typeof json === 'string') {
-        try {
-          return JSON.parse(json);
-        } catch (_error) {
-          return defaultValue;
-        }
-      }
-      // If it's already an object (less common from DB but possible), return it
-      if (typeof json === 'object' && json !== null) {
-        return json as T;
-      }
-      return defaultValue;
-    };
 
     // Extract the standard fields from the record, asserting types
     const id = record['id'] as string | undefined;
@@ -97,12 +82,13 @@ export class PostgresBadgeClassMapper {
       'tags',
       'type',
     ];
-    const additionalFields = Object.keys(entity)
-      .filter((key) => !standardKeys.includes(key) && key !== 'constructor') // Exclude standard keys and constructor
-      .reduce((acc, key) => {
-        acc[key] = entity[key];
-        return acc;
-      }, {} as Record<string, unknown>);
+    // Use direct property assignment for better performance (O(n) vs O(n²))
+    const additionalFields: Record<string, unknown> = {};
+    for (const key of Object.keys(entity)) {
+      if (!standardKeys.includes(key) && key !== 'constructor') {
+        additionalFields[key] = entity[key];
+      }
+    }
     const additionalFieldsJson =
       Object.keys(additionalFields).length > 0
         ? JSON.stringify(additionalFields)

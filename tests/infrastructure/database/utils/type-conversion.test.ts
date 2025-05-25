@@ -99,15 +99,22 @@ describe('Database Type Conversion Utilities', () => {
 
     it('should convert to Date objects for PostgreSQL when direction is "to"', () => {
       expect(convertTimestamp(testDate, 'postgresql', 'to')).toEqual(testDate);
-      expect(
-        convertTimestamp(testTimestamp, 'postgresql', 'to')
-      ).toBeInstanceOf(Date);
-      expect(convertTimestamp(testTimestamp, 'postgresql', 'to')).toEqual(
-        testDate
+
+      // Split chained assertions for clearer diagnostics
+      const timestampResult = convertTimestamp(
+        testTimestamp,
+        'postgresql',
+        'to'
       );
-      expect(
-        convertTimestamp('2023-01-01T12:00:00Z', 'postgresql', 'to')
-      ).toBeInstanceOf(Date);
+      expect(timestampResult).toBeInstanceOf(Date);
+      expect(timestampResult).toEqual(testDate);
+
+      const stringResult = convertTimestamp(
+        '2023-01-01T12:00:00Z',
+        'postgresql',
+        'to'
+      );
+      expect(stringResult).toBeInstanceOf(Date);
     });
 
     it('should convert to numbers for SQLite when direction is "to"', () => {
@@ -124,12 +131,11 @@ describe('Database Type Conversion Utilities', () => {
       expect(convertTimestamp(testDate, 'postgresql', 'from')).toEqual(
         testDate
       );
-      expect(convertTimestamp(testTimestamp, 'sqlite', 'from')).toBeInstanceOf(
-        Date
-      );
-      expect(convertTimestamp(testTimestamp, 'sqlite', 'from')).toEqual(
-        testDate
-      );
+
+      // Split chained assertions for clearer diagnostics
+      const sqliteResult = convertTimestamp(testTimestamp, 'sqlite', 'from');
+      expect(sqliteResult).toBeInstanceOf(Date);
+      expect(sqliteResult).toEqual(testDate);
     });
   });
 

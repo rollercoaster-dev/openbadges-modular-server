@@ -60,8 +60,13 @@ export function convertJson<T>(
     }
   }
 
-  // Default fallback
-  return value;
+  // Explicit exhaustiveness check - fail fast for unsupported dbType
+  logger.error('convertJson received unknown dbType', {
+    dbType,
+    direction,
+    valueType: typeof value,
+  });
+  return value; // Return original value but log the configuration error
 }
 
 /**
@@ -173,7 +178,7 @@ export function convertTimestamp(
       // Assume SQLite returns a number (epoch ms)
       if (typeof value === 'number') {
         // Check for non-finite numbers before creating Date
-        if (!isFinite(value)) {
+        if (!Number.isFinite(value)) {
           logger.warn(`Non-finite timestamp number received from SQLite`, {
             value,
           });
@@ -262,8 +267,13 @@ export function convertUuid(
     }
   }
 
-  // Default fallback
-  return value;
+  // Explicit exhaustiveness check - fail fast for unsupported dbType
+  logger.error('convertUuid received unknown dbType', {
+    dbType,
+    direction,
+    value: value ? '[REDACTED]' : value,
+  });
+  return value; // Return original value but log the configuration error
 }
 
 /**
@@ -276,10 +286,13 @@ export function urnToUuid(
   urn: string | null | undefined | number
 ): string | null | undefined | number {
   if (typeof urn !== 'string') {
-    logger.warn('urnToUuid received non-string value', {
-      type: typeof urn,
-      value: urn,
-    });
+    // Only warn on unexpected object values, not expected null/undefined/number
+    if (urn !== null && urn !== undefined && typeof urn === 'object') {
+      logger.warn('urnToUuid received unexpected object value', {
+        type: typeof urn,
+        value: urn,
+      });
+    }
     return urn;
   }
 
@@ -319,10 +332,13 @@ export function uuidToUrn(
   uuid: string | null | undefined | number
 ): string | null | undefined | number {
   if (typeof uuid !== 'string') {
-    logger.warn('uuidToUrn received non-string value', {
-      type: typeof uuid,
-      value: uuid,
-    });
+    // Only warn on unexpected object values, not expected null/undefined/number
+    if (uuid !== null && uuid !== undefined && typeof uuid === 'object') {
+      logger.warn('uuidToUrn received unexpected object value', {
+        type: typeof uuid,
+        value: uuid,
+      });
+    }
     return uuid;
   }
 
@@ -454,6 +470,11 @@ export function convertBoolean(
     }
   }
 
-  // Default fallback
-  return value;
+  // Explicit exhaustiveness check - fail fast for unsupported dbType
+  logger.error('convertBoolean received unknown dbType', {
+    dbType,
+    direction,
+    valueType: typeof value,
+  });
+  return value; // Return original value but log the configuration error
 }

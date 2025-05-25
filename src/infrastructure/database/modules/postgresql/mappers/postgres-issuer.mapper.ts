@@ -11,6 +11,7 @@ import {
   convertJson,
   convertUuid,
 } from '@infrastructure/database/utils/type-conversion';
+import { safeParseJson } from '@utils/json-utils';
 import { InferInsertModel } from 'drizzle-orm';
 import { issuers } from '../schema';
 import { logger } from '@utils/logging/logger.service';
@@ -70,37 +71,19 @@ export class PostgresIssuerMapper {
     const domainImage =
       typeof image === 'string' ? (image as Shared.IRI) : undefined; // Assuming image is IRI or null/undefined
 
-    // Attempt to parse publicKey if it's a JSON string, otherwise handle object/undefined
-    let domainPublicKey: Record<string, unknown> | undefined = undefined;
-    if (typeof publicKey === 'string') {
-      try {
-        const parsedKey = JSON.parse(publicKey);
-        // Ensure the parsed result is a non-null, non-array object
-        if (
-          parsedKey &&
-          typeof parsedKey === 'object' &&
-          !Array.isArray(parsedKey)
-        ) {
-          domainPublicKey = parsedKey as Record<string, unknown>;
-        }
-      } catch (e) {
-        logger.warn(
-          `Failed to parse publicKey JSON string in PostgresIssuerMapper`,
-          {
-            publicKeyString: publicKey, // Avoid logging potentially large raw key
-            error: e instanceof Error ? e.message : String(e),
-          }
-        );
-        // Leave domainPublicKey as undefined if parsing fails
-      }
-    } else if (
-      publicKey &&
-      typeof publicKey === 'object' &&
-      !Array.isArray(publicKey)
-    ) {
-      // If it's already a valid object in the record (less likely but possible)
-      domainPublicKey = publicKey as Record<string, unknown>;
-    }
+    // Parse publicKey using shared utility, ensuring it's a valid object
+    const domainPublicKey = safeParseJson<Record<string, unknown>>(
+      publicKey,
+      undefined
+    );
+
+    // Additional validation to ensure it's a non-array object if parsed
+    const validatedPublicKey =
+      domainPublicKey &&
+      typeof domainPublicKey === 'object' &&
+      !Array.isArray(domainPublicKey)
+        ? domainPublicKey
+        : undefined;
 
     try {
       // Create and return the domain entity
@@ -111,7 +94,7 @@ export class PostgresIssuerMapper {
         email: domainEmail,
         description: domainDescription,
         image: domainImage,
-        publicKey: domainPublicKey,
+        publicKey: validatedPublicKey,
         ...safeAdditionalFields, // Spread the validated object
       });
     } catch (error) {
