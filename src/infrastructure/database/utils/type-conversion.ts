@@ -255,10 +255,10 @@ export function convertUuid(
   if (dbType === 'postgresql') {
     if (direction === 'to') {
       // Convert from app (URN format) to PostgreSQL (plain UUID)
-      return urnToUuid(value);
+      return urnToUuid(value) as string;
     } else {
       // Convert from PostgreSQL (plain UUID) to app (URN format)
-      return uuidToUrn(value);
+      return uuidToUrn(value) as string;
     }
   }
 
@@ -272,7 +272,9 @@ export function convertUuid(
  * @param urn The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
  * @returns The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") or original value if not URN format
  */
-export function urnToUuid(urn: string): string {
+export function urnToUuid(
+  urn: string | null | undefined | number
+): string | null | undefined | number {
   if (typeof urn !== 'string') {
     logger.warn('urnToUuid received non-string value', {
       type: typeof urn,
@@ -313,7 +315,9 @@ export function urnToUuid(urn: string): string {
  * @param uuid The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
  * @returns The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
  */
-export function uuidToUrn(uuid: string): string {
+export function uuidToUrn(
+  uuid: string | null | undefined | number
+): string | null | undefined | number {
   if (typeof uuid !== 'string') {
     logger.warn('uuidToUrn received non-string value', {
       type: typeof uuid,
@@ -343,7 +347,9 @@ export function uuidToUrn(uuid: string): string {
  * @param value The string to validate
  * @returns True if the string is a valid UUID format
  */
-export function isValidUuid(value: string): boolean {
+export function isValidUuid(
+  value: string | null | undefined | number
+): boolean {
   if (typeof value !== 'string') {
     return false;
   }
@@ -360,7 +366,7 @@ export function isValidUuid(value: string): boolean {
  * @param value The string to validate
  * @returns True if the string is a valid URN format
  */
-export function isValidUrn(value: string): boolean {
+export function isValidUrn(value: string | null | undefined | number): boolean {
   if (typeof value !== 'string') {
     return false;
   }

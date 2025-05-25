@@ -183,11 +183,8 @@ describe('Database Type Conversion Utilities', () => {
     });
 
     it('should handle non-string input gracefully', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(urnToUuid(null)).toEqual(null);
-      // @ts-expect-error Testing runtime behavior
       expect(urnToUuid(undefined)).toEqual(undefined);
-      // @ts-expect-error Testing runtime behavior
       expect(urnToUuid(123)).toEqual(123);
     });
   });
@@ -210,11 +207,8 @@ describe('Database Type Conversion Utilities', () => {
     });
 
     it('should handle non-string input gracefully', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(uuidToUrn(null)).toEqual(null);
-      // @ts-expect-error Testing runtime behavior
       expect(uuidToUrn(undefined)).toEqual(undefined);
-      // @ts-expect-error Testing runtime behavior
       expect(uuidToUrn(123)).toEqual(123);
     });
   });
@@ -239,11 +233,8 @@ describe('Database Type Conversion Utilities', () => {
     });
 
     it('should handle non-string input', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUuid(null)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUuid(undefined)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUuid(123)).toBe(false);
     });
   });
@@ -269,11 +260,8 @@ describe('Database Type Conversion Utilities', () => {
     });
 
     it('should handle non-string input', () => {
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUrn(null)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUrn(undefined)).toBe(false);
-      // @ts-expect-error Testing runtime behavior
       expect(isValidUrn(123)).toBe(false);
     });
   });
