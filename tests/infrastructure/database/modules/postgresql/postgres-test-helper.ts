@@ -49,7 +49,7 @@ function buildConnectionString(): string {
     (isCI ? 'postgres' : 'testpassword');
   const database = process.env[ENV_VARS.PG_TEST_DATABASE] || 'openbadges_test';
 
-  return `postgres://${user}:${password}@${host}:${port}/${database}`;
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 }
 
 // Default connection string based on environment
@@ -616,6 +616,9 @@ export async function insertTestData(
   data: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   try {
+    // Validate table name to prevent SQL injection
+    validateDatabaseName(tableName);
+
     // Convert the data for PostgreSQL compatibility (clone to avoid mutating input)
     // Use structuredClone if available, fallback to JSON parse/stringify for older environments
     const convertedData =

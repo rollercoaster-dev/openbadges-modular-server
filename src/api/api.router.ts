@@ -396,11 +396,13 @@ function createVersionedRouter(
     validateBadgeClassMiddleware(),
     async (c) => {
       const id = c.req.param('id');
+      let body: UpdateBadgeClassDto | undefined;
       try {
-        const body = await c.req.json();
+        // Read the body once at the beginning
+        body = await c.req.json<UpdateBadgeClassDto>();
         const result = await badgeClassController.updateBadgeClass(
           id,
-          body as UpdateBadgeClassDto,
+          body,
           version
         );
         if (!result) {
@@ -412,8 +414,38 @@ function createVersionedRouter(
         return c.json(result);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.error('PUT /badge-classes/:id failed', { error: message, id });
-        return c.json({ error: 'Bad Request', message }, 400);
+        // Use the already parsed body for logging
+        if (message.includes('Invalid IRI')) {
+          logger.error('PUT /badge-classes/:id invalid IRI', {
+            error: message,
+            id,
+            body,
+          });
+          return c.json(
+            { error: 'Bad Request', message: 'Invalid badge class ID' },
+            400
+          );
+        }
+        if (message.includes('permission')) {
+          logger.error('PUT /badge-classes/:id forbidden', {
+            error: message,
+            id,
+            body,
+          });
+          return c.json({ error: 'Forbidden', message }, 403);
+        }
+        logger.error('PUT /badge-classes/:id failed', {
+          error: message,
+          id,
+          body,
+        });
+        if (
+          message.toLowerCase().includes('invalid') ||
+          message.toLowerCase().includes('validation')
+        ) {
+          return c.json({ error: 'Bad Request', message }, 400);
+        }
+        return c.json({ error: 'Internal Server Error' }, 500);
       }
     }
   );

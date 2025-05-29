@@ -1,20 +1,7 @@
 import { it, expect, describe } from 'bun:test';
+import { validateDatabaseName } from '../modules/postgresql/postgres-test-helper';
 
 describe('Database Name Validation', () => {
-  function validateDatabaseName(dbName: string): boolean {
-    // This is the same regex used in postgres-test-helper.ts
-    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName);
-  }
-
-  function testValidationThrows(dbName: string): void {
-    // Simulate the validation logic from postgres-test-helper.ts
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
-      throw new Error(
-        `Invalid database name format: ${dbName}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
-      );
-    }
-  }
-
   describe('Valid database names', () => {
     const validNames = [
       'openbadges_test',
@@ -31,8 +18,7 @@ describe('Database Name Validation', () => {
 
     validNames.forEach((name) => {
       it(`should accept "${name}"`, () => {
-        expect(validateDatabaseName(name)).toBe(true);
-        expect(() => testValidationThrows(name)).not.toThrow();
+        expect(() => validateDatabaseName(name)).not.toThrow();
       });
     });
   });
@@ -62,8 +48,7 @@ describe('Database Name Validation', () => {
 
     invalidNames.forEach(({ name, reason }) => {
       it(`should reject "${name}" (${reason})`, () => {
-        expect(validateDatabaseName(name)).toBe(false);
-        expect(() => testValidationThrows(name)).toThrow(
+        expect(() => validateDatabaseName(name)).toThrow(
           `Invalid database name format: ${name}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
         );
       });
@@ -86,8 +71,7 @@ describe('Database Name Validation', () => {
 
     sqlInjectionAttempts.forEach((injection) => {
       it(`should block SQL injection attempt: "${injection}"`, () => {
-        expect(validateDatabaseName(injection)).toBe(false);
-        expect(() => testValidationThrows(injection)).toThrow();
+        expect(() => validateDatabaseName(injection)).toThrow();
       });
     });
   });
@@ -95,26 +79,22 @@ describe('Database Name Validation', () => {
   describe('Edge cases', () => {
     it('should handle very long valid names', () => {
       const longValidName = 'a'.repeat(100) + '_test_123';
-      expect(validateDatabaseName(longValidName)).toBe(true);
-      expect(() => testValidationThrows(longValidName)).not.toThrow();
+      expect(() => validateDatabaseName(longValidName)).not.toThrow();
     });
 
     it('should handle very long invalid names', () => {
       const longInvalidName = '1' + 'a'.repeat(100);
-      expect(validateDatabaseName(longInvalidName)).toBe(false);
-      expect(() => testValidationThrows(longInvalidName)).toThrow();
+      expect(() => validateDatabaseName(longInvalidName)).toThrow();
     });
 
     it('should handle Unicode characters', () => {
       const unicodeName = 'test_café_db';
-      expect(validateDatabaseName(unicodeName)).toBe(false);
-      expect(() => testValidationThrows(unicodeName)).toThrow();
+      expect(() => validateDatabaseName(unicodeName)).toThrow();
     });
 
     it('should handle mixed case with underscores and numbers', () => {
       const mixedName = 'Test_DB_123_End';
-      expect(validateDatabaseName(mixedName)).toBe(true);
-      expect(() => testValidationThrows(mixedName)).not.toThrow();
+      expect(() => validateDatabaseName(mixedName)).not.toThrow();
     });
   });
 });

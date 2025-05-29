@@ -93,8 +93,8 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(noAuthResponse.status);
+    // Verify the response status code - should reject unauthenticated requests
+    expect([401, 403]).toContain(noAuthResponse.status);
     logger.info(
       `No auth request responded with status ${noAuthResponse.status}`
     );
@@ -113,8 +113,8 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(invalidAuthResponse.status);
+    // Verify the response status code - should reject invalid authentication
+    expect([401, 403]).toContain(invalidAuthResponse.status);
     logger.info(
       `Invalid auth request responded with status ${invalidAuthResponse.status}`
     );
@@ -133,8 +133,8 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(validAuthResponse.status);
+    // Verify the response status code - should accept valid authentication
+    expect([200]).toContain(validAuthResponse.status);
     logger.info(
       `Valid auth request responded with status ${validAuthResponse.status}`
     );

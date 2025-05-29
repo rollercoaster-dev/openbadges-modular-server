@@ -5,19 +5,6 @@
  * This script tests the database name validation logic without actually creating databases
  */
 
-import { logger } from './src/utils/logging/logger.service';
-import { validateDatabaseName } from './tests/infrastructure/database/modules/postgresql/postgres-test-helper';
-
-// Test the database name validation using the actual function from postgres-test-helper.ts
-function testValidateDatabaseName(dbName: string): boolean {
-  try {
-    validateDatabaseName(dbName);
-    return true;
-  } catch (_error) {
-    return false;
-  }
-}
-
 // Test cases
 const testCases = [
   // Valid names
@@ -62,21 +49,6 @@ logger.info('Database name validation tests completed', {
   passed: allTestsPassed,
 });
 
-// Test the actual validation logic from postgres-test-helper.ts
-function testDatabaseNameValidation(dbName: string): boolean {
-  try {
-    // Use the actual validation function from postgres-test-helper.ts
-    validateDatabaseName(dbName);
-    return true;
-  } catch (_error) {
-    logger.warn('Database name validation failed', {
-      dbName,
-      error: _error instanceof Error ? _error.message : String(_error),
-    });
-    return false;
-  }
-}
-
 // Test implementation validation
 logger.info('Testing implementation validation logic');
 const implementationTests = [
@@ -86,8 +58,24 @@ const implementationTests = [
   'test;DROP TABLE users;--',
 ];
 
+let implementationTestsPassed = true;
 implementationTests.forEach((dbName) => {
-  testDatabaseNameValidation(dbName);
+  const result = testValidateDatabaseName(dbName);
+  if (!result && (dbName === 'openbadges_test' || dbName === 'test_db_123')) {
+    implementationTestsPassed = false;
+    logger.error('Expected valid database name failed validation', { dbName });
+  }
+  if (
+    result &&
+    (dbName === '123invalid' || dbName === 'test;DROP TABLE users;--')
+  ) {
+    implementationTestsPassed = false;
+    logger.error('Expected invalid database name passed validation', {
+      dbName,
+    });
+  }
 });
+
+allTestsPassed = allTestsPassed && implementationTestsPassed;
 
 process.exit(allTestsPassed ? 0 : 1);

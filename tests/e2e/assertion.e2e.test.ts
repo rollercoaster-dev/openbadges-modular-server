@@ -1,5 +1,6 @@
 // test/e2e/assertion.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
+import { createHash } from 'crypto';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
@@ -128,7 +129,8 @@ describe('Assertion API - E2E', () => {
           recipient: {
             type: 'email',
             identity:
-              'sha256$' + Buffer.from('test@example.com').toString('hex'),
+              'sha256$' +
+              createHash('sha256').update('test@example.com').digest('hex'),
             hashed: true,
             salt: 'test',
           },

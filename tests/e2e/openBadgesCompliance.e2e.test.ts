@@ -1,5 +1,6 @@
 // test/e2e/openBadgesCompliance.e2e.test.ts
 import { describe, it, afterAll, beforeAll } from 'bun:test';
+import { createHash } from 'crypto';
 import { logger } from '@/utils/logging/logger.service';
 
 import { setupTestApp, stopTestServer } from './setup-test-app';
@@ -374,7 +375,8 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           recipient: {
             type: 'email',
             identity:
-              'sha256$' + Buffer.from('test@example.com').toString('hex'),
+              'sha256$' +
+              createHash('sha256').update('test@example.com').digest('hex'),
             hashed: true,
             salt: 'test',
           },
