@@ -322,26 +322,30 @@ export async function setupTestApp(
                   try {
                     await client.unsafe(statement);
                   } catch (error) {
-                    // If tables already exist, that's fine
-                    if (
-                      error.message &&
-                      error.message.includes('already exists')
-                    ) {
+                    // Check if this is an "already exists" error that we can safely ignore
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    const isAlreadyExistsError =
+                      errorMessage.includes('already exists') ||
+                      (errorMessage.includes('relation') &&
+                        errorMessage.includes('does not exist'));
+
+                    if (isAlreadyExistsError) {
                       logger.info(
                         'Table already exists, continuing with next statement'
                       );
                     } else {
+                      // For non-"already exists" errors, log and abort migration
                       logger.error(
-                        'Error applying PostgreSQL migration statement',
+                        'Fatal error applying PostgreSQL migration statement',
                         {
-                          error:
-                            error instanceof Error
-                              ? error.message
-                              : String(error),
+                          error: errorMessage,
                           statement: statement.substring(0, 100) + '...', // Log first 100 chars
                         }
                       );
-                      // Continue with next statement instead of failing completely
+                      throw new Error(
+                        `Test migration failed on statement: ${errorMessage}`
+                      );
                     }
                   }
                 }
@@ -386,26 +390,30 @@ export async function setupTestApp(
                     try {
                       await client.unsafe(statement);
                     } catch (error) {
-                      // If tables already exist, that's fine
-                      if (
-                        error.message &&
-                        error.message.includes('already exists')
-                      ) {
+                      // Check if this is an "already exists" error that we can safely ignore
+                      const errorMessage =
+                        error instanceof Error ? error.message : String(error);
+                      const isAlreadyExistsError =
+                        errorMessage.includes('already exists') ||
+                        (errorMessage.includes('relation') &&
+                          errorMessage.includes('does not exist'));
+
+                      if (isAlreadyExistsError) {
                         logger.info(
                           'Table already exists, continuing with next statement'
                         );
                       } else {
+                        // For non-"already exists" errors, log and abort migration
                         logger.error(
-                          'Error applying original PostgreSQL migration statement',
+                          'Fatal error applying original PostgreSQL migration statement',
                           {
-                            error:
-                              error instanceof Error
-                                ? error.message
-                                : String(error),
+                            error: errorMessage,
                             statement: statement.substring(0, 100) + '...', // Log first 100 chars
                           }
                         );
-                        // Continue with next statement instead of failing completely
+                        throw new Error(
+                          `Test migration failed on original statement: ${errorMessage}`
+                        );
                       }
                     }
                   }

@@ -586,9 +586,8 @@ describe('Badge Class API - E2E', () => {
         body: JSON.stringify(updateData),
       });
 
-      // The API may return 400 (validation error) or 404 (not found)
-      // Both are acceptable behaviors for PUT operations on non-existent resources
-      expect([400, 404]).toContain(res.status);
+      // The API should return 404 for PUT operations on non-existent resources
+      expect(res.status).toBe(404);
     });
   });
 
@@ -632,7 +631,7 @@ describe('Badge Class API - E2E', () => {
 
       // The API may return 200 (idempotent delete) or 404 (not found)
       // Both are acceptable behaviors for DELETE operations
-      expect([200, 404]).toContain(res.status);
+      expect(res.status).toBe(404);
     });
   });
 });

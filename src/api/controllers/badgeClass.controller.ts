@@ -32,10 +32,13 @@ type ValidatedUpdateBadgeClassData = z.infer<typeof UpdateBadgeClassSchema>;
 /**
  * Maps validated badge class data to an internal BadgeClass entity format
  * @param data Validated badge class data from Zod schema
+ * @param options Configuration options for mapping
+ * @param options.allowId Whether to allow mapping the id field (default: false)
  * @returns Data mapped to Partial<BadgeClass> format
  */
 function mapToBadgeClassEntity(
-  data: ValidatedCreateBadgeClassData | ValidatedUpdateBadgeClassData
+  data: ValidatedCreateBadgeClassData | ValidatedUpdateBadgeClassData,
+  { allowId = false } = {}
 ): Partial<BadgeClass> {
   // Create a clean object with only the properties needed for the BadgeClass entity
   const mappedData: Partial<BadgeClass> = {};
@@ -61,8 +64,9 @@ function mapToBadgeClassEntity(
   }
 
   // Handle other properties
-  if ('id' in data && data.id !== undefined)
+  if (allowId && 'id' in data && data.id !== undefined) {
     mappedData.id = data.id as Shared.IRI;
+  }
   if (data.tags !== undefined) mappedData.tags = data.tags;
   if (data.alignment !== undefined) {
     // For simplicity, we'll just pass the alignment through and let the entity handle it
@@ -81,7 +85,7 @@ export class BadgeClassController {
   /**
    * Constructor
    * @param badgeClassRepository The badge class repository
-   * @param issuerRepository The issuer repository (optional for validation)
+   * @param issuerRepository The issuer repository (optional for backward compatibility)
    */
   constructor(
     private badgeClassRepository: BadgeClassRepository,
@@ -132,6 +136,18 @@ export class BadgeClassController {
     try {
       // Validate incoming data using Zod schema first!
       const validatedData = CreateBadgeClassSchema.parse(data);
+
+      // Ensure referenced issuer exists
+      if (validatedData.issuer && this.issuerRepository) {
+        const issuer = await this.issuerRepository.findById(
+          toIRI(validatedData.issuer) as Shared.IRI
+        );
+        if (!issuer) {
+          throw new BadRequestError(
+            `Referenced issuer '${validatedData.issuer}' does not exist`
+          );
+        }
+      }
 
       // Create badge class entity using the mapping function
       const badgeClass = BadgeClass.create(
@@ -232,14 +248,14 @@ export class BadgeClassController {
       // Validate incoming data using Zod schema first!
       const validatedData = UpdateBadgeClassSchema.parse(data);
 
-      // If issuer is being updated, validate that the issuer exists
+      // Ensure referenced issuer exists
       if (validatedData.issuer && this.issuerRepository) {
-        const issuerExists = await this.issuerRepository.findById(
+        const issuer = await this.issuerRepository.findById(
           toIRI(validatedData.issuer) as Shared.IRI
         );
-        if (!issuerExists) {
+        if (!issuer) {
           throw new BadRequestError(
-            `Issuer with ID ${validatedData.issuer} does not exist`
+            `Referenced issuer '${validatedData.issuer}' does not exist`
           );
         }
       }
@@ -247,7 +263,7 @@ export class BadgeClassController {
       // Use validated data mapped to entity format
       const updatedBadgeClass = await this.badgeClassRepository.update(
         toIRI(id) as Shared.IRI,
-        mapToBadgeClassEntity(validatedData)
+        mapToBadgeClassEntity(validatedData, { allowId: true })
       );
       if (!updatedBadgeClass) {
         return null;

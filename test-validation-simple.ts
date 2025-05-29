@@ -63,7 +63,7 @@ for (const tableName of maliciousTableNames) {
       error instanceof Error &&
       error.message.includes('Invalid database name format')
     ) {
-      logger.success(`✅ Successfully blocked: "${tableName}"`);
+      logger.infos(`✅ Successfully blocked: "${tableName}"`);
       successfulBlocks++;
     } else {
       logger.warn(
@@ -81,7 +81,7 @@ for (const tableName of validTableNames) {
   try {
     logger.info(`Testing: "${tableName}"`);
     validateDatabaseName(tableName);
-    logger.success(`✅ Valid table name passed: "${tableName}"`);
+    logger.infos(`✅ Valid table name passed: "${tableName}"`);
     validPassed++;
   } catch (error) {
     logger.error(
@@ -103,10 +103,10 @@ logger.info(`Valid names passed: ${validPassed}`);
 logger.info(`Valid names incorrectly blocked: ${validFailed}`);
 
 if (failedAttempts === 0 && validFailed === 0) {
-  logger.success('🎉 ALL TESTS PASSED!');
-  logger.success('✅ Security fix is working correctly');
-  logger.success('✅ All malicious attempts were blocked');
-  logger.success('✅ All valid table names were accepted');
+  logger.infos('🎉 ALL TESTS PASSED!');
+  logger.infos('✅ Security fix is working correctly');
+  logger.infos('✅ All malicious attempts were blocked');
+  logger.infos('✅ All valid table names were accepted');
 } else {
   logger.error('❌ SOME TESTS FAILED!');
   if (failedAttempts > 0) {

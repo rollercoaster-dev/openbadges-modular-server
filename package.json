@@ -10,6 +10,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc --noEmit --skipLibCheck",
+    "check:all": "bun run lint && bun run typecheck && bun run test",
     "test": "DB_TYPE=sqlite bun test",
     "test:coverage": "DB_TYPE=sqlite bun test --coverage",
     "test:core": "bun test --pattern \"!tests/infrastructure/database/**\"",

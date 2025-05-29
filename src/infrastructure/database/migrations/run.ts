@@ -109,19 +109,38 @@ async function runSqliteMigrations(): Promise<void> {
               );
               sqlite.exec(statement + ';');
             } catch (stmtError) {
-              // Log the error but continue with other statements
-              logger.error(
-                `Error executing SQL statement: ${statement.substring(
-                  0,
-                  100
-                )}...`,
-                {
-                  error:
-                    stmtError instanceof Error
-                      ? stmtError.message
-                      : String(stmtError),
-                }
-              );
+              // Check if this is an "already exists" error that we can safely ignore
+              const errorMessage =
+                stmtError instanceof Error
+                  ? stmtError.message
+                  : String(stmtError);
+              const isAlreadyExistsError =
+                errorMessage.includes('already exists') ||
+                errorMessage.includes('SQLITE_CONSTRAINT');
+
+              if (isAlreadyExistsError) {
+                logger.info(
+                  `Table/index already exists, continuing: ${statement.substring(
+                    0,
+                    50
+                  )}...`
+                );
+              } else {
+                // For non-"already exists" errors, log and abort migration
+                logger.error(
+                  `Fatal error executing SQL statement: ${statement.substring(
+                    0,
+                    100
+                  )}...`,
+                  {
+                    error: errorMessage,
+                    statement: statement.substring(0, 200),
+                  }
+                );
+                throw new Error(
+                  `Migration failed on statement: ${errorMessage}`
+                );
+              }
             }
           }
         }
@@ -170,19 +189,38 @@ async function runSqliteMigrations(): Promise<void> {
                 );
                 sqlite.exec(statement + ';');
               } catch (stmtError) {
-                // Log the error but continue with other statements
-                logger.error(
-                  `Error executing SQL statement: ${statement.substring(
-                    0,
-                    100
-                  )}...`,
-                  {
-                    error:
-                      stmtError instanceof Error
-                        ? stmtError.message
-                        : String(stmtError),
-                  }
-                );
+                // Check if this is an "already exists" error that we can safely ignore
+                const errorMessage =
+                  stmtError instanceof Error
+                    ? stmtError.message
+                    : String(stmtError);
+                const isAlreadyExistsError =
+                  errorMessage.includes('already exists') ||
+                  errorMessage.includes('SQLITE_CONSTRAINT');
+
+                if (isAlreadyExistsError) {
+                  logger.info(
+                    `Table/index already exists, continuing: ${statement.substring(
+                      0,
+                      50
+                    )}...`
+                  );
+                } else {
+                  // For non-"already exists" errors, log and abort migration
+                  logger.error(
+                    `Fatal error executing SQL statement: ${statement.substring(
+                      0,
+                      100
+                    )}...`,
+                    {
+                      error: errorMessage,
+                      statement: statement.substring(0, 200),
+                    }
+                  );
+                  throw new Error(
+                    `Migration failed on statement: ${errorMessage}`
+                  );
+                }
               }
             }
           }
@@ -193,8 +231,12 @@ async function runSqliteMigrations(): Promise<void> {
         }
       }
     } catch (error) {
-      logger.warn('Error applying SQL directly:', error);
-      // Continue execution even if this fails
+      logger.error('SQLite migration failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Re-throw to prevent application from starting with a broken database state
+      throw error;
     }
 
     // Create custom indexes after migrations are complete
@@ -286,19 +328,39 @@ async function runPostgresMigrations(): Promise<void> {
             // Execute the statement directly
             await client.unsafe(statement + ';');
           } catch (stmtError) {
-            // Log the error but continue with other statements
-            logger.warn(
-              `Error executing SQL statement: ${statement.substring(
-                0,
-                100
-              )}...`,
-              {
-                error:
-                  stmtError instanceof Error
-                    ? stmtError.message
-                    : String(stmtError),
-              }
-            );
+            // Check if this is an "already exists" error that we can safely ignore
+            const errorMessage =
+              stmtError instanceof Error
+                ? stmtError.message
+                : String(stmtError);
+            const isAlreadyExistsError =
+              errorMessage.includes('already exists') ||
+              (errorMessage.includes('relation') &&
+                errorMessage.includes('does not exist'));
+
+            if (isAlreadyExistsError) {
+              logger.info(
+                `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
+                  0,
+                  50
+                )}...`
+              );
+            } else {
+              // For non-"already exists" errors, log and abort migration
+              logger.error(
+                `Fatal error executing PostgreSQL statement: ${statement.substring(
+                  0,
+                  100
+                )}...`,
+                {
+                  error: errorMessage,
+                  statement: statement.substring(0, 200),
+                }
+              );
+              throw new Error(
+                `PostgreSQL migration failed on statement: ${errorMessage}`
+              );
+            }
           }
         }
 
@@ -335,8 +397,12 @@ async function runPostgresMigrations(): Promise<void> {
         }
       }
     } catch (error) {
-      logger.warn('Error applying SQL directly:', error);
-      // Continue execution even if this fails
+      logger.error('PostgreSQL migration failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Re-throw to prevent application from starting with a broken database state
+      throw error;
     }
 
     // Close database connection

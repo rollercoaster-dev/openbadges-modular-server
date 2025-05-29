@@ -1,16 +1,7 @@
 /**
  * Middleware for validating Open Badges entities
  *
- * This filefunction formatZodErrors(result: any): Record<string, string[]> {
-  const formattedErrors: Record<string, string[]> = {};
-
-  // Default error when we can't process the result
-  if (!result || (result.success === true)) {
-    return { general: ['Unknown validation error'] };
-  }
-
-  if (result.error && result.error.errors) {
-    result.error.errors.forEach(err => {tains middleware functions for validating entities
+ * This file contains middleware functions for validating entities
  * before they are processed by the controllers.
  */
 

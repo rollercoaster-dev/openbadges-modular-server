@@ -187,8 +187,12 @@ function createVersionedRouter(
   );
 
   router.get('/badge-classes', requireAuth(), async (c) => {
-    const result = await badgeClassController.getAllBadgeClasses(version);
-    return c.json(result);
+    try {
+      const result = await badgeClassController.getAllBadgeClasses(version);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, { endpoint: 'GET /badge-classes' });
+    }
   });
 
   router.get('/badge-classes/:id', requireAuth(), async (c) => {
@@ -211,12 +215,19 @@ function createVersionedRouter(
   });
 
   router.get('/issuers/:id/badge-classes', requireAuth(), async (c) => {
-    const id = c.req.param('id');
-    const result = await badgeClassController.getBadgeClassesByIssuer(
-      id,
-      version
-    );
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getBadgeClassesByIssuer(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /issuers/:id/badge-classes',
+        id: c.req.param('id'),
+      });
+    }
   });
 
   router.put(
@@ -351,8 +362,12 @@ function createVersionedRouter(
   );
 
   router.get('/assertions', requireAuth(), async (c) => {
-    const result = await assertionController.getAllAssertions(version);
-    return c.json(result);
+    try {
+      const result = await assertionController.getAllAssertions(version);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, { endpoint: 'GET /assertions' });
+    }
   });
 
   router.get('/assertions/:id', requireAuth(), async (c) => {
@@ -387,12 +402,19 @@ function createVersionedRouter(
   });
 
   router.get('/badge-classes/:id/assertions', requireAuth(), async (c) => {
-    const id = c.req.param('id');
-    const result = await assertionController.getAssertionsByBadgeClass(
-      id,
-      version
-    );
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.getAssertionsByBadgeClass(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /badge-classes/:id/assertions',
+        id: c.req.param('id'),
+      });
+    }
   });
 
   router.put(
@@ -453,21 +475,28 @@ function createVersionedRouter(
 
   // Verification routes
   router.get('/assertions/:id/verify', async (c) => {
-    const id = c.req.param('id');
-    const result = await assertionController.verifyAssertion(id);
-    // If assertion not found, return 404
-    if (
-      result.isValid === false &&
-      result.hasValidSignature === false &&
-      typeof result.details === 'string' &&
-      result.details.toLowerCase().includes('not found')
-    ) {
-      return c.json(
-        { error: 'Assertion not found', details: result.details },
-        404
-      );
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.verifyAssertion(id);
+      // If assertion not found, return 404
+      if (
+        result.isValid === false &&
+        result.hasValidSignature === false &&
+        typeof result.details === 'string' &&
+        result.details.toLowerCase().includes('not found')
+      ) {
+        return c.json(
+          { error: 'Assertion not found', details: result.details },
+          404
+        );
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /assertions/:id/verify',
+        id: c.req.param('id'),
+      });
     }
-    return c.json(result);
   });
 
   router.post('/assertions/:id/sign', requireAuth(), async (c) => {
