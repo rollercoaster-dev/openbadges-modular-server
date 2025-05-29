@@ -87,7 +87,7 @@ describe('Badge Class API - E2E', () => {
         } catch {
           // Server not ready yet
         }
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         retries--;
       }
       if (retries === 0) throw new Error('Server failed to become ready');

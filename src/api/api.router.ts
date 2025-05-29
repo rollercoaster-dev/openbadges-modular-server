@@ -205,12 +205,10 @@ function createVersionedRouter(
       if (error instanceof Error && error.message.includes('permission')) {
         return c.json({ error: 'Forbidden', message: errorMessage }, 403);
       }
+      logger.error('Unhandled issuer creation error', { error: errorMessage });
       return c.json(
-        {
-          error: 'Bad Request',
-          message: error instanceof Error ? error.message : String(error),
-        },
-        400
+        { error: 'Internal Server Error', message: 'Unexpected server error' },
+        500
       );
     }
   });
@@ -389,28 +387,32 @@ function createVersionedRouter(
     return c.json(result);
   });
 
-  router.put('/badge-classes/:id', async (c) => {
-    const id = c.req.param('id');
-    try {
-      const body = await c.req.json();
-      const result = await badgeClassController.updateBadgeClass(
-        id,
-        body as UpdateBadgeClassDto,
-        version
-      );
-      if (!result) {
-        return c.json(
-          { error: 'Not Found', message: 'Badge class not found' },
-          404
+  router.put(
+    '/badge-classes/:id',
+    validateBadgeClassMiddleware(),
+    async (c) => {
+      const id = c.req.param('id');
+      try {
+        const body = await c.req.json();
+        const result = await badgeClassController.updateBadgeClass(
+          id,
+          body as UpdateBadgeClassDto,
+          version
         );
+        if (!result) {
+          return c.json(
+            { error: 'Not Found', message: 'Badge class not found' },
+            404
+          );
+        }
+        return c.json(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('PUT /badge-classes/:id failed', { error: message, id });
+        return c.json({ error: 'Bad Request', message }, 400);
       }
-      return c.json(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error('PUT /badge-classes/:id failed', { error: message, id });
-      return c.json({ error: 'Bad Request', message }, 400);
     }
-  });
+  );
 
   router.delete('/badge-classes/:id', async (c) => {
     try {
