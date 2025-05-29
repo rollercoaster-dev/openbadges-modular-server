@@ -430,7 +430,7 @@ export async function cleanupTestData(client: postgres.Sql): Promise<void> {
 
     for (const table of tables) {
       try {
-        await client`DELETE FROM ${client(table)};`;
+        await client`DELETE FROM ${client.unsafe(table)};`;
         if (DEBUG_CONNECTION) {
           logger.debug(`Cleaned data from table: ${table}`);
         }
@@ -499,13 +499,9 @@ export async function insertTestData(
       }
     });
 
-    // Build the insert query dynamically
-    const columns = Object.keys(convertedData);
-    const values = Object.values(convertedData);
-
+    // Build the insert query dynamically using postgres-js helper
     const result = await client`
-      INSERT INTO ${client(tableName)} (${client(columns)})
-      VALUES (${client(values)})
+      INSERT INTO ${client(tableName)} ${client(convertedData)}
       RETURNING *
     `;
 
@@ -584,7 +580,7 @@ export async function isDatabaseAvailable(
           );
 
           logger.info(`Attempting to create database ${dbName}`);
-          await pgClient`CREATE DATABASE ${pgClient(
+          await pgClient`CREATE DATABASE ${pgClient.unsafe(
             dbName || 'openbadges_test'
           )};`;
           await pgClient.end();
