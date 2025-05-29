@@ -51,7 +51,8 @@ describe('Badge Class API - E2E', () => {
   beforeAll(async () => {
     // Get an available port to avoid conflicts
     TEST_PORT = await getAvailablePort();
-    process.env.TEST_PORT = TEST_PORT.toString();
+    /* pass TEST_PORT to setupTestApp(), config, … without exporting it
+     * to global process.env to keep the scope local to this suite */
 
     // Set up API URLs after getting the port
     const host = config.server.host ?? '127.0.0.1';
@@ -66,7 +67,7 @@ describe('Badge Class API - E2E', () => {
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
-      const result = await setupTestApp();
+      const result = await setupTestApp(TEST_PORT);
       server = result.server as BunServer;
       logger.info('E2E Test: Server started successfully');
 
@@ -133,7 +134,7 @@ describe('Badge Class API - E2E', () => {
 
     // Release the allocated port
     if (TEST_PORT) {
-      releasePort(TEST_PORT);
+      await releasePort(TEST_PORT);
     }
   });
 

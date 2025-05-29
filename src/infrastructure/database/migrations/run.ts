@@ -18,34 +18,9 @@ import { logger } from '@/utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
- * Runs database migrations
- */
-async function runMigrations() {
-  // DEBUG: Log the raw environment variable
-  // console.log('DEBUG process.env.DB_TYPE:', process.env.DB_TYPE); // Removed debug line
-  logger.info('Running database migrations...');
-  logger.info(`Database type: ${config.database.type}`);
-
-  try {
-    if (config.database.type === 'sqlite') {
-      await runSqliteMigrations();
-    } else if (config.database.type === 'postgresql') {
-      await runPostgresMigrations();
-    } else {
-      throw new Error(`Unsupported database type: ${config.database.type}`);
-    }
-
-    logger.info('Migrations completed successfully.');
-  } catch (error) {
-    logger.error('Error running migrations:', error);
-    process.exit(1);
-  }
-}
-
-/**
  * Runs SQLite migrations
  */
-async function runSqliteMigrations() {
+async function runSqliteMigrations(): Promise<void> {
   logger.info('Running SQLite migrations...');
 
   // Get SQLite file path
@@ -249,7 +224,7 @@ async function runSqliteMigrations() {
 /**
  * Runs PostgreSQL migrations
  */
-async function runPostgresMigrations() {
+async function runPostgresMigrations(): Promise<void> {
   logger.info('Running PostgreSQL migrations...');
 
   // Get PostgreSQL connection string
@@ -371,6 +346,31 @@ async function runPostgresMigrations() {
   } catch (error) {
     logger.error('PostgreSQL migration error', error);
     throw error;
+  }
+}
+
+/**
+ * Runs database migrations
+ */
+async function runMigrations() {
+  // DEBUG: Log the raw environment variable
+  // console.log('DEBUG process.env.DB_TYPE:', process.env.DB_TYPE); // Removed debug line
+  logger.info('Running database migrations...');
+  logger.info(`Database type: ${config.database.type}`);
+
+  try {
+    if (config.database.type === 'sqlite') {
+      await runSqliteMigrations();
+    } else if (config.database.type === 'postgresql') {
+      await runPostgresMigrations();
+    } else {
+      throw new Error(`Unsupported database type: ${config.database.type}`);
+    }
+
+    logger.info('Migrations completed successfully.');
+  } catch (error) {
+    logger.error('Error running migrations:', error);
+    process.exit(1);
   }
 }
 

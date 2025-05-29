@@ -58,6 +58,26 @@ app.get('/', (c) =>
 // Database instance for graceful shutdown
 // We create the database but don't need to store the reference
 
+/**
+ * Sets up graceful shutdown handlers for the server
+ * @param server The HTTP server instance
+ */
+function setupGracefulShutdown(server: unknown): void {
+  // Initialize the shutdown service
+  ShutdownService.init(server);
+
+  // Register custom shutdown hooks if needed
+  ShutdownService.registerHook(async () => {
+    // Custom shutdown logic can be added here
+    logger.info('Executing custom shutdown hook...');
+
+    // For example, you might want to save application state
+    // or perform other cleanup operations
+
+    return Promise.resolve();
+  });
+}
+
 // Async function to setup repositories and controllers
 export async function setupApp(): Promise<Hono> {
   try {
@@ -191,23 +211,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-/**
- * Sets up graceful shutdown handlers for the server
- * @param server The HTTP server instance
- */
-function setupGracefulShutdown(server: unknown) {
-  // Initialize the shutdown service
-  ShutdownService.init(server);
-
-  // Register custom shutdown hooks if needed
-  ShutdownService.registerHook(async () => {
-    // Custom shutdown logic can be added here
-    logger.info('Executing custom shutdown hook...');
-
-    // For example, you might want to save application state
-    // or perform other cleanup operations
-
-    return Promise.resolve();
-  });
-}

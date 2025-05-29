@@ -124,14 +124,15 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     try {
       // Get an available port
       TEST_PORT = await getAvailablePort();
-      process.env.TEST_PORT = TEST_PORT.toString();
+      /* pass TEST_PORT to setupTestApp(), config, … without exporting it
+       * to global process.env to keep the scope local to this suite */
       API_URL = `http://localhost:${TEST_PORT}`;
       ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
       BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
       ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
 
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
-      const result = await setupTestApp();
+      const result = await setupTestApp(TEST_PORT);
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait longer for the server to be fully ready in CI environments

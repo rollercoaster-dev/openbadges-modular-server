@@ -5,6 +5,23 @@
  * This script tests the database name validation logic without actually creating databases
  */
 
+import { logger } from './src/utils/logging/logger.service';
+import { validateDatabaseName } from './tests/infrastructure/database/modules/postgresql/postgres-test-helper';
+
+/**
+ * Test wrapper for validateDatabaseName that returns boolean instead of throwing
+ * @param dbName The database name to validate
+ * @returns true if valid, false if invalid
+ */
+function testValidateDatabaseName(dbName: string): boolean {
+  try {
+    validateDatabaseName(dbName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Test cases
 const testCases = [
   // Valid names

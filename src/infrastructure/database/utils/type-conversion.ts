@@ -8,6 +8,106 @@
 import { logger } from '@utils/logging/logger.service';
 
 /**
+ * Validates if a string is a valid UUID format
+ *
+ * @param value The string to validate
+ * @returns True if the string is a valid UUID format
+ */
+export function isValidUuid(
+  value: string | null | undefined | number
+): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  // UUID v4 regex pattern
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+}
+
+/**
+ * Extracts a plain UUID from a URN format string
+ *
+ * @param urn The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+ * @returns The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") or original value if not URN format
+ */
+export function urnToUuid(
+  urn: string | null | undefined | number
+): string | null | undefined | number {
+  if (typeof urn !== 'string') {
+    // Only warn on unexpected object values, not expected null/undefined/number
+    if (urn !== null && urn !== undefined && typeof urn === 'object') {
+      logger.warn('urnToUuid received unexpected object value', {
+        type: typeof urn,
+        value: urn,
+      });
+    }
+    return urn;
+  }
+
+  // Check if it's already in URN format
+  if (urn.startsWith('urn:uuid:')) {
+    const uuid = urn.substring(9); // Remove 'urn:uuid:' prefix
+
+    // Validate the extracted UUID format
+    if (isValidUuid(uuid)) {
+      return uuid;
+    } else {
+      logger.warn('Invalid UUID extracted from URN', {
+        urn,
+        extractedUuid: uuid,
+      });
+      return urn; // Return original if extraction failed
+    }
+  }
+
+  // If it's already a plain UUID, validate and return
+  if (isValidUuid(urn)) {
+    return urn;
+  }
+
+  // If it's neither URN nor valid UUID, log warning and return original
+  logger.warn('Value is neither valid URN nor UUID format', { value: urn });
+  return urn;
+}
+
+/**
+ * Converts a plain UUID to URN format
+ *
+ * @param uuid The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+ * @returns The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+ */
+export function uuidToUrn(
+  uuid: string | null | undefined | number
+): string | null | undefined | number {
+  if (typeof uuid !== 'string') {
+    // Only warn on unexpected object values, not expected null/undefined/number
+    if (uuid !== null && uuid !== undefined && typeof uuid === 'object') {
+      logger.warn('uuidToUrn received unexpected object value', {
+        type: typeof uuid,
+        value: uuid,
+      });
+    }
+    return uuid;
+  }
+
+  // If it's already in URN format, return as-is
+  if (uuid.startsWith('urn:uuid:')) {
+    return uuid;
+  }
+
+  // If it's a valid plain UUID, convert to URN format
+  if (isValidUuid(uuid)) {
+    return `urn:uuid:${uuid}`;
+  }
+
+  // If it's not a valid UUID, log warning and return original
+  logger.warn('Value is not a valid UUID for URN conversion', { value: uuid });
+  return uuid;
+}
+
+/**
  * Converts a value to/from JSON for database storage
  *
  * PostgreSQL can store JSON directly using jsonb type
@@ -274,106 +374,6 @@ export function convertUuid(
     value: value ? '[REDACTED]' : value,
   });
   return value; // Return original value but log the configuration error
-}
-
-/**
- * Extracts a plain UUID from a URN format string
- *
- * @param urn The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
- * @returns The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") or original value if not URN format
- */
-export function urnToUuid(
-  urn: string | null | undefined | number
-): string | null | undefined | number {
-  if (typeof urn !== 'string') {
-    // Only warn on unexpected object values, not expected null/undefined/number
-    if (urn !== null && urn !== undefined && typeof urn === 'object') {
-      logger.warn('urnToUuid received unexpected object value', {
-        type: typeof urn,
-        value: urn,
-      });
-    }
-    return urn;
-  }
-
-  // Check if it's already in URN format
-  if (urn.startsWith('urn:uuid:')) {
-    const uuid = urn.substring(9); // Remove 'urn:uuid:' prefix
-
-    // Validate the extracted UUID format
-    if (isValidUuid(uuid)) {
-      return uuid;
-    } else {
-      logger.warn('Invalid UUID extracted from URN', {
-        urn,
-        extractedUuid: uuid,
-      });
-      return urn; // Return original if extraction failed
-    }
-  }
-
-  // If it's already a plain UUID, validate and return
-  if (isValidUuid(urn)) {
-    return urn;
-  }
-
-  // If it's neither URN nor valid UUID, log warning and return original
-  logger.warn('Value is neither valid URN nor UUID format', { value: urn });
-  return urn;
-}
-
-/**
- * Converts a plain UUID to URN format
- *
- * @param uuid The plain UUID string (e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
- * @returns The URN format string (e.g., "urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
- */
-export function uuidToUrn(
-  uuid: string | null | undefined | number
-): string | null | undefined | number {
-  if (typeof uuid !== 'string') {
-    // Only warn on unexpected object values, not expected null/undefined/number
-    if (uuid !== null && uuid !== undefined && typeof uuid === 'object') {
-      logger.warn('uuidToUrn received unexpected object value', {
-        type: typeof uuid,
-        value: uuid,
-      });
-    }
-    return uuid;
-  }
-
-  // If it's already in URN format, return as-is
-  if (uuid.startsWith('urn:uuid:')) {
-    return uuid;
-  }
-
-  // If it's a valid plain UUID, convert to URN format
-  if (isValidUuid(uuid)) {
-    return `urn:uuid:${uuid}`;
-  }
-
-  // If it's not a valid UUID, log warning and return original
-  logger.warn('Value is not a valid UUID for URN conversion', { value: uuid });
-  return uuid;
-}
-
-/**
- * Validates if a string is a valid UUID format
- *
- * @param value The string to validate
- * @returns True if the string is a valid UUID format
- */
-export function isValidUuid(
-  value: string | null | undefined | number
-): boolean {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  // UUID v4 regex pattern
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(value);
 }
 
 /**

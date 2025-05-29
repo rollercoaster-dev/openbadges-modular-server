@@ -10,40 +10,6 @@ import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 
 /**
- * Reset the database to a clean state
- */
-export async function resetDatabase(): Promise<void> {
-  const dbType = process.env.DB_TYPE || config.database.type;
-
-  logger.info('Resetting database', {
-    dbType,
-    sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE,
-    postgresUrl: process.env.DATABASE_URL
-      ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@')
-      : undefined,
-  });
-
-  try {
-    if (dbType === 'sqlite') {
-      await resetSqliteDatabase();
-    } else if (dbType === 'postgresql') {
-      await resetPostgresDatabase();
-    } else {
-      throw new Error(`Unsupported database type: ${dbType}`);
-    }
-    logger.info('Database reset completed successfully');
-  } catch (error) {
-    logger.error('Failed to reset database', {
-      // Changed from warn to error
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    // Re-throw the error to ensure test failures are visible
-    throw error;
-  }
-}
-
-/**
  * Reset a SQLite database by deleting all data
  *
  * This is a simplified version that doesn't try to access the internal client directly.
@@ -216,6 +182,40 @@ async function resetPostgresDatabase(): Promise<void> {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
+    throw error;
+  }
+}
+
+/**
+ * Reset the database to a clean state
+ */
+export async function resetDatabase(): Promise<void> {
+  const dbType = process.env.DB_TYPE || config.database.type;
+
+  logger.info('Resetting database', {
+    dbType,
+    sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE,
+    postgresUrl: process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@')
+      : undefined,
+  });
+
+  try {
+    if (dbType === 'sqlite') {
+      await resetSqliteDatabase();
+    } else if (dbType === 'postgresql') {
+      await resetPostgresDatabase();
+    } else {
+      throw new Error(`Unsupported database type: ${dbType}`);
+    }
+    logger.info('Database reset completed successfully');
+  } catch (error) {
+    logger.error('Failed to reset database', {
+      // Changed from warn to error
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    // Re-throw the error to ensure test failures are visible
     throw error;
   }
 }

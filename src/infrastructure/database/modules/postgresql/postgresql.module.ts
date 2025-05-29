@@ -20,7 +20,7 @@ export class PostgresqlModule implements DatabaseModuleInterface {
   ): Promise<DatabaseInterface> {
     // Set default configuration values if not provided
     const defaultConnectionString =
-      'postgres://postgres:postgres@localhost:5432/openbadges';
+      'postgres://user:password@localhost:5432/openbadges_dev';
 
     // Use type-safe config access with runtime guards
     const connectionString =

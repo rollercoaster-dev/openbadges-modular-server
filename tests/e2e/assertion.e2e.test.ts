@@ -37,7 +37,8 @@ describe('Assertion API - E2E', () => {
   beforeAll(async () => {
     // Get an available port to avoid conflicts
     TEST_PORT = await getAvailablePort();
-    process.env.TEST_PORT = TEST_PORT.toString();
+    /* pass TEST_PORT to setupTestApp(), config, … without exporting it
+     * to global process.env to keep the scope local to this suite */
 
     // Set up API URLs after getting the port
     const host = config.server.host ?? '127.0.0.1';
@@ -49,7 +50,7 @@ describe('Assertion API - E2E', () => {
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
-      const result = await setupTestApp();
+      const result = await setupTestApp(TEST_PORT);
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready

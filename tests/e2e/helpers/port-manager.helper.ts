@@ -16,6 +16,9 @@ import { logger } from '@/utils/logging/logger.service';
 // Cache of allocated ports to avoid conflicts within the same process
 const allocatedPorts = new Set<number>();
 
+// Mutex to prevent concurrent port allocation
+let portAllocationMutex: Promise<void> = Promise.resolve();
+
 /**
  * Gets an available ephemeral port from the OS
  * @param preferredPort Optional preferred port number
@@ -24,26 +27,39 @@ const allocatedPorts = new Set<number>();
 export async function getAvailablePort(
   preferredPort?: number
 ): Promise<number> {
-  try {
-    const port = await getPort({
-      port: preferredPort
-        ? [preferredPort, ...portNumbers(10000, 20000)]
-        : portNumbers(10000, 20000),
-      host: '0.0.0.0',
-    });
+  // Use a mutex to prevent concurrent port allocation
+  return new Promise<number>((resolve, reject) => {
+    portAllocationMutex = portAllocationMutex
+      .then(async () => {
+        try {
+          // Add a small random delay to reduce race conditions between test files
+          await new Promise((resolveDelay) =>
+            setTimeout(resolveDelay, Math.random() * 100)
+          );
 
-    // Track the allocated port
-    allocatedPorts.add(port);
+          const port = await getPort({
+            port: preferredPort
+              ? [preferredPort, ...portNumbers(10000, 20000)]
+              : portNumbers(10000, 20000),
+            host: '0.0.0.0',
+            exclude: Array.from(allocatedPorts), // Exclude already allocated ports
+          });
 
-    logger.info(`Allocated port ${port} for E2E test`);
-    return port;
-  } catch (error) {
-    logger.error('Failed to get available port', {
-      error: error instanceof Error ? error.message : String(error),
-      preferredPort,
-    });
-    throw error;
-  }
+          // Track the allocated port
+          allocatedPorts.add(port);
+
+          logger.info(`Allocated port ${port} for E2E test`);
+          resolve(port);
+        } catch (error) {
+          logger.error('Failed to get available port', {
+            error: error instanceof Error ? error.message : String(error),
+            preferredPort,
+          });
+          reject(error);
+        }
+      })
+      .catch(reject);
+  });
 }
 
 /**

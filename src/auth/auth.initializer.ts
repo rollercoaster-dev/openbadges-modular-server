@@ -16,71 +16,6 @@ import { RepositoryFactory } from '../infrastructure/repository.factory';
 import { UserRole } from '../domains/user/user.entity';
 
 /**
- * Initialize the authentication system
- * @returns A promise that resolves when initialization is complete
- */
-export async function initializeAuthentication(): Promise<void> {
-  if (!config.auth?.enabled) {
-    logger.info('Authentication is disabled');
-    return;
-  }
-
-  // Create admin user if it doesn't exist
-  await createAdminUserIfNeeded();
-
-  logger.info('Initializing authentication system');
-
-  try {
-    // Initialize API key authentication if enabled
-    if (config.auth.adapters.apiKey?.enabled) {
-      const apiKeyAdapter = new ApiKeyAdapter({
-        providerName: 'api-key',
-        config: {
-          keys: config.auth.adapters.apiKey.keys || {}
-        }
-      });
-      registerAuthAdapter(apiKeyAdapter);
-      logger.info(`API Key authentication enabled (${Object.keys(config.auth.adapters.apiKey.keys || {}).length} keys configured)`);
-    }
-
-    // Initialize Basic authentication if enabled
-    if (config.auth.adapters.basicAuth?.enabled) {
-      const basicAuthAdapter = new BasicAuthAdapter({
-        providerName: 'basic-auth',
-        config: {
-          credentials: config.auth.adapters.basicAuth.credentials || {}
-        }
-      });
-      registerAuthAdapter(basicAuthAdapter);
-      logger.info(`Basic Authentication enabled (${Object.keys(config.auth.adapters.basicAuth.credentials || {}).length} credentials configured)`);
-    }
-
-    // Initialize OAuth2 authentication if enabled
-    if (config.auth.adapters.oauth2?.enabled) {
-      const oauth2Adapter = new OAuth2Adapter({
-        providerName: 'oauth2',
-        config: {
-          jwksUri: config.auth.adapters.oauth2.jwksUri,
-          introspectionEndpoint: config.auth.adapters.oauth2.introspectionEndpoint,
-          clientId: config.auth.adapters.oauth2.clientId,
-          clientSecret: config.auth.adapters.oauth2.clientSecret,
-          userIdClaim: config.auth.adapters.oauth2.userIdClaim,
-          audience: config.auth.adapters.oauth2.audience,
-          issuer: config.auth.adapters.oauth2.issuer
-        }
-      });
-      registerAuthAdapter(oauth2Adapter);
-      logger.info('OAuth2 authentication enabled');
-    }
-
-    logger.info('Authentication system initialized successfully');
-  } catch (error) {
-    logger.logError('Failed to initialize authentication system', error as Error);
-    throw error;
-  }
-}
-
-/**
  * Create an admin user if it doesn't exist
  */
 async function createAdminUserIfNeeded(): Promise<void> {
@@ -115,15 +50,95 @@ async function createAdminUserIfNeeded(): Promise<void> {
     }
 
     // Create admin user
-    await userService.createUser({
-      username: adminUsername,
-      email: adminEmail,
-      roles: [UserRole.ADMIN],
-      isActive: true
-    }, adminPassword);
+    await userService.createUser(
+      {
+        username: adminUsername,
+        email: adminEmail,
+        roles: [UserRole.ADMIN],
+        isActive: true,
+      },
+      adminPassword
+    );
 
     logger.info(`Created admin user '${adminUsername}'`);
   } catch (error) {
     logger.logError('Failed to create admin user', error as Error);
+  }
+}
+
+/**
+ * Initialize the authentication system
+ * @returns A promise that resolves when initialization is complete
+ */
+export async function initializeAuthentication(): Promise<void> {
+  if (!config.auth?.enabled) {
+    logger.info('Authentication is disabled');
+    return;
+  }
+
+  // Create admin user if it doesn't exist
+  await createAdminUserIfNeeded();
+
+  logger.info('Initializing authentication system');
+
+  try {
+    // Initialize API key authentication if enabled
+    if (config.auth.adapters.apiKey?.enabled) {
+      const apiKeyAdapter = new ApiKeyAdapter({
+        providerName: 'api-key',
+        config: {
+          keys: config.auth.adapters.apiKey.keys || {},
+        },
+      });
+      registerAuthAdapter(apiKeyAdapter);
+      logger.info(
+        `API Key authentication enabled (${
+          Object.keys(config.auth.adapters.apiKey.keys || {}).length
+        } keys configured)`
+      );
+    }
+
+    // Initialize Basic authentication if enabled
+    if (config.auth.adapters.basicAuth?.enabled) {
+      const basicAuthAdapter = new BasicAuthAdapter({
+        providerName: 'basic-auth',
+        config: {
+          credentials: config.auth.adapters.basicAuth.credentials || {},
+        },
+      });
+      registerAuthAdapter(basicAuthAdapter);
+      logger.info(
+        `Basic Authentication enabled (${
+          Object.keys(config.auth.adapters.basicAuth.credentials || {}).length
+        } credentials configured)`
+      );
+    }
+
+    // Initialize OAuth2 authentication if enabled
+    if (config.auth.adapters.oauth2?.enabled) {
+      const oauth2Adapter = new OAuth2Adapter({
+        providerName: 'oauth2',
+        config: {
+          jwksUri: config.auth.adapters.oauth2.jwksUri,
+          introspectionEndpoint:
+            config.auth.adapters.oauth2.introspectionEndpoint,
+          clientId: config.auth.adapters.oauth2.clientId,
+          clientSecret: config.auth.adapters.oauth2.clientSecret,
+          userIdClaim: config.auth.adapters.oauth2.userIdClaim,
+          audience: config.auth.adapters.oauth2.audience,
+          issuer: config.auth.adapters.oauth2.issuer,
+        },
+      });
+      registerAuthAdapter(oauth2Adapter);
+      logger.info('OAuth2 authentication enabled');
+    }
+
+    logger.info('Authentication system initialized successfully');
+  } catch (error) {
+    logger.logError(
+      'Failed to initialize authentication system',
+      error as Error
+    );
+    throw error;
   }
 }

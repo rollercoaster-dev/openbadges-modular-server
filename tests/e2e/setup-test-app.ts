@@ -27,40 +27,55 @@ import {
 } from '@/auth/middleware/auth.middleware';
 import { isPostgresAvailable } from '../helpers/database-availability';
 
+// Global flag to track PostgreSQL availability for conditional test skipping
+let isPgAvailable = false;
+
 // Check if PostgreSQL is available when DB_TYPE is postgresql
 const pgConnectionString =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/openbadges_test';
-const checkPgAvailability = async (): Promise<void> => {
+
+const checkPgAvailability = async (): Promise<boolean> => {
   if (process.env.DB_TYPE === 'postgresql') {
     try {
-      const isPgAvailable = await isPostgresAvailable(pgConnectionString);
+      isPgAvailable = await isPostgresAvailable(pgConnectionString);
       if (!isPgAvailable) {
         logger.warn(
-          'PostgreSQL is not available, skipping PostgreSQL E2E tests'
+          'PostgreSQL is not available, PostgreSQL E2E tests will be skipped'
         );
-        process.exit(0); // Exit gracefully
+        // Skip PG tests without terminating the runner
+        return false;
       }
+      logger.info('PostgreSQL is available for E2E tests');
+      return true;
     } catch (error) {
       logger.error('Error checking PostgreSQL availability', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
       logger.warn(
-        'Assuming PostgreSQL is not available, skipping PostgreSQL E2E tests'
+        'Assuming PostgreSQL is not available, PostgreSQL E2E tests will be skipped'
       );
-      process.exit(0); // Exit gracefully
+      // Skip PG tests without terminating the runner
+      isPgAvailable = false;
+      return false;
     }
   }
+  // For SQLite or other database types, return true (available)
+  return true;
 };
 
-// Run the check before any tests
+// Export the availability flag for use in tests
+export { isPgAvailable };
+
+// Run the check before any tests (but don't exit on failure)
 checkPgAvailability().catch((error) => {
   logger.error('Unhandled error in PostgreSQL availability check', {
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
   });
-  process.exit(1); // Exit with error
+  // Set flag to false but don't exit - let tests handle the unavailability
+  isPgAvailable = false;
 });
 
 // Create a function to create a new Hono app instance
@@ -103,7 +118,9 @@ function createApp() {
 }
 
 // Async function to setup repositories and controllers
-export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
+export async function setupTestApp(
+  port?: number
+): Promise<{ app: Hono; server: unknown }> {
   // Create a new app instance for each test
   const app = createApp();
   try {
@@ -135,8 +152,8 @@ export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
     logger.info('Database configuration for E2E tests', {
       type: dbConfig.type,
       connectionString: dbConfig.connectionString
-        .toString()
-        .replace(/:[^:@]+@/, ':***@'), // Mask password
+        ? dbConfig.connectionString.replace(/:[^:@]+@/, ':***@')
+        : 'N/A', // safely handle sqlite / undefined cases
       sqliteFile: dbConfig.sqliteFile,
       isCI: process.env.CI === 'true',
       nodeEnv: process.env.NODE_ENV,
@@ -171,8 +188,8 @@ export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
         dbConfig: {
           type: dbConfig.type,
           connectionString: dbConfig.connectionString
-            .toString()
-            .replace(/:[^:@]+@/, ':***@'),
+            ? dbConfig.connectionString.replace(/:[^:@]+@/, ':***@')
+            : 'N/A', // safely handle sqlite / undefined cases
         },
       });
       throw error; // Re-throw to fail the test
@@ -447,8 +464,8 @@ export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
         dbConfig: {
           type: dbConfig.type,
           connectionString: dbConfig.connectionString
-            .toString()
-            .replace(/:[^:@]+@/, ':***@'),
+            ? dbConfig.connectionString.replace(/:[^:@]+@/, ':***@')
+            : 'N/A', // safely handle sqlite / undefined cases
         },
       });
       logger.warn('Continuing without database - tests will be skipped');
@@ -519,7 +536,7 @@ export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
     app.use(createErrorHandlerMiddleware());
 
     // Start the server with Bun
-    const testPort = parseInt(process.env.TEST_PORT || '3001');
+    const testPort = port || parseInt(process.env.TEST_PORT || '3001');
     logger.info(
       `Starting test server on port ${testPort} with host ${config.server.host}`
     );
@@ -563,7 +580,7 @@ export async function setupTestApp(): Promise<{ app: Hono; server: unknown }> {
       return c.json({ error: 'Server initialization failed' }, 500);
     });
 
-    const testPort = parseInt(process.env.TEST_PORT || '3001');
+    const testPort = port || parseInt(process.env.TEST_PORT || '3001');
     logger.info(
       `Starting minimal error server on port ${testPort} with host ${
         config.server.host || '0.0.0.0'

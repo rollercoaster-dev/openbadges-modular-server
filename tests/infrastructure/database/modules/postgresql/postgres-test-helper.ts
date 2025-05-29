@@ -49,11 +49,15 @@ function buildConnectionString(): string {
     (isCI ? 'postgres' : 'testpassword');
   const database = process.env[ENV_VARS.PG_TEST_DATABASE] || 'openbadges_test';
 
-  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(
+    password
+  )}@${host}:${port}/${database}`;
 }
 
 // Default connection string based on environment
-export const DEFAULT_TEST_CONNECTION_STRING = buildConnectionString();
+export function getDefaultTestConnectionString(): string {
+  return buildConnectionString();
+}
 
 // Add debug logging for connection attempts
 const DEBUG_CONNECTION = true;
@@ -202,7 +206,7 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
   const connString =
     connectionString ||
     process.env.TEST_DATABASE_URL ||
-    DEFAULT_TEST_CONNECTION_STRING;
+    getDefaultTestConnectionString();
 
   if (DEBUG_CONNECTION) {
     logger.info('Creating PostgreSQL client', {
@@ -693,7 +697,7 @@ export async function isDatabaseAvailable(
     const connString =
       connectionString ||
       process.env.TEST_DATABASE_URL ||
-      DEFAULT_TEST_CONNECTION_STRING;
+      getDefaultTestConnectionString();
 
     if (DEBUG_CONNECTION) {
       logger.info('Attempting to connect to PostgreSQL', {
