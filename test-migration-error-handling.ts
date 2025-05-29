@@ -112,7 +112,7 @@ function testSQLiteErrorHandling() {
   }
 
   if (aborted) {
-    logger.infos('✅ Test 1 PASSED: Syntax error correctly aborted migration');
+    logger.info('✅ Test 1 PASSED: Syntax error correctly aborted migration');
   } else {
     logger.error('❌ Test 1 FAILED: Syntax error did not abort migration');
   }
@@ -170,7 +170,7 @@ function testSQLiteErrorHandling() {
   }
 
   if (continuedAfterAlreadyExists) {
-    logger.infos(
+    logger.info(
       '✅ Test 2 PASSED: "Already exists" error correctly continued migration'
     );
   } else {
@@ -236,7 +236,7 @@ function testPostgreSQLErrorHandling() {
     }
 
     if (aborted) {
-      logger.infos(
+      logger.info(
         '✅ Test 1 PASSED: PostgreSQL syntax error correctly aborted migration'
       );
     } else {
@@ -256,7 +256,7 @@ async function runTests() {
   testPostgreSQLErrorHandling();
 
   logger.info('='.repeat(60));
-  logger.infos('✅ Migration error handling tests completed');
+  logger.info('✅ Migration error handling tests completed');
   logger.info(
     'Summary: Fatal SQL errors (syntax errors, etc.) should now abort migrations'
   );

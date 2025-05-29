@@ -300,36 +300,17 @@ function createVersionedRouter(
       const id = c.req.param('id');
       const deleted = await badgeClassController.deleteBadgeClass(id);
       if (!deleted) {
-        return c.json(
-          { error: 'Not Found', message: 'Badge class not found' },
-          404
-        );
+        return sendNotFoundError(c, 'Badge class', {
+          endpoint: 'DELETE /badge-classes/:id',
+          id,
+        });
       }
       return c.body(null, 204);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('Invalid IRI')) {
-        logger.error('DELETE /badge-classes/:id invalid IRI', {
-          error: message,
-          id: c.req.param('id'),
-        });
-        return c.json(
-          { error: 'Bad Request', message: 'Invalid badge class ID' },
-          400
-        );
-      }
-      if (message.includes('permission')) {
-        logger.error('DELETE /badge-classes/:id forbidden', {
-          error: message,
-          id: c.req.param('id'),
-        });
-        return c.json({ error: 'Forbidden', message }, 403);
-      }
-      logger.error('DELETE /badge-classes/:id failed', {
-        error: message,
+      return sendApiError(c, error, {
+        endpoint: 'DELETE /badge-classes/:id',
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -382,22 +363,10 @@ function createVersionedRouter(
       }
       return c.json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('Invalid IRI')) {
-        logger.error('GET /assertions/:id invalid IRI', {
-          error: message,
-          id: c.req.param('id'),
-        });
-        return c.json(
-          { error: 'Bad Request', message: 'Invalid assertion ID' },
-          400
-        );
-      }
-      logger.error('GET /assertions/:id failed', {
-        error: message,
+      return sendApiError(c, error, {
+        endpoint: 'GET /assertions/:id',
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
