@@ -1,6 +1,5 @@
 // test/e2e/assertion.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
@@ -13,6 +12,21 @@ let ASSERTIONS_ENDPOINT: string;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
+
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Server instance for the test
 let server: unknown = null;
@@ -31,9 +45,6 @@ describe('Assertion API - E2E', () => {
 
     // Log the API URL for debugging
     logger.info(`E2E Test: Using API URL: ${API_URL}`);
-
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);

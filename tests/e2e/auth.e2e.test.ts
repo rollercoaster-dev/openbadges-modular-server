@@ -1,6 +1,5 @@
 // test/e2e/auth.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
@@ -13,6 +12,21 @@ let ISSUERS_ENDPOINT: string;
 // Valid and invalid API keys for testing
 const VALID_API_KEY = 'verysecretkeye2e';
 const INVALID_API_KEY = 'invalidkey';
+
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Server instance for the test
 let server: unknown = null;
@@ -28,9 +42,6 @@ describe('Authentication - E2E', () => {
     const host = config.server.host ?? '127.0.0.1';
     API_URL = `http://${host}:${TEST_PORT}`;
     ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);

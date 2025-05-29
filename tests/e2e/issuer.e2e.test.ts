@@ -16,7 +16,6 @@ import {
 import { logger } from '@/utils/logging/logger.service';
 import { TestDataHelper } from './helpers/test-data.helper';
 import { resetDatabase } from './helpers/database-reset.helper';
-import { config } from '@/config/config';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 // Import only the types we need
 import { IssuerResponseDto } from '@/api/dtos';
@@ -27,14 +26,20 @@ let TEST_PORT: number;
 let API_URL: string;
 let ISSUERS_ENDPOINT: string;
 
-// Use SQLite by default for tests, but allow overriding via environment variables
-// This ensures tests can run in both SQLite and PostgreSQL environments
+// Ensure DB-related env-vars are set **before** any module import that may read them
 if (!process.env.DB_TYPE) {
   process.env.DB_TYPE = 'sqlite';
 }
 if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
   process.env.SQLITE_DB_PATH = ':memory:';
 }
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Note: We don't need to use the database-test-filter here because
 // the setup-test-app.ts file already checks if the database is available
@@ -65,9 +70,6 @@ describe('Issuer API - E2E', () => {
 
     // Log the API URL for debugging
     logger.info(`E2E Test: Using API URL: ${API_URL}`);
-
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
