@@ -182,7 +182,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
 
     // Release the port for reuse
     if (TEST_PORT) {
-      await releasePort(TEST_PORT);
+      releasePort(TEST_PORT);
     }
   });
 

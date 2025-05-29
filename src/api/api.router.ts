@@ -8,7 +8,14 @@
 import { Hono } from 'hono';
 
 import { logger } from '../utils/logging/logger.service';
-import { CreateIssuerDto, UpdateIssuerDto, CreateBadgeClassDto, UpdateBadgeClassDto, CreateAssertionDto, UpdateAssertionDto } from './dtos';
+import {
+  CreateIssuerDto,
+  UpdateIssuerDto,
+  CreateBadgeClassDto,
+  UpdateBadgeClassDto,
+  CreateAssertionDto,
+  UpdateAssertionDto,
+} from './dtos';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
@@ -16,7 +23,11 @@ import { VersionController } from './controllers/version.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
-import { validateIssuerMiddleware, validateBadgeClassMiddleware, validateAssertionMiddleware } from '../utils/validation/validation-middleware';
+import {
+  validateIssuerMiddleware,
+  validateBadgeClassMiddleware,
+  validateAssertionMiddleware,
+} from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
 import { AuthController } from '../auth/auth.controller';
@@ -43,7 +54,7 @@ export async function createApiRouter(
   assertionController: AssertionController,
   backpackController?: BackpackController,
   userController?: UserController,
-  authController?: AuthController,
+  authController?: AuthController
 ): Promise<Hono> {
   // Create the router
   const router = new Hono();
@@ -62,7 +73,10 @@ export async function createApiRouter(
   router.get('/docs', (c) => {
     // Set custom headers for Swagger UI to work properly
     c.header('Content-Type', 'text/html');
-    c.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; connect-src 'self'");
+    c.header(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; connect-src 'self'"
+    );
 
     // Return the Swagger UI HTML
     return c.html(`
@@ -122,8 +136,18 @@ export async function createApiRouter(
   // Validation middleware is applied per route
 
   // Version-specific routes
-  const v2Router = createVersionedRouter(BadgeVersion.V2, issuerController, badgeClassController, assertionController);
-  const v3Router = createVersionedRouter(BadgeVersion.V3, issuerController, badgeClassController, assertionController);
+  const v2Router = createVersionedRouter(
+    BadgeVersion.V2,
+    issuerController,
+    badgeClassController,
+    assertionController
+  );
+  const v3Router = createVersionedRouter(
+    BadgeVersion.V3,
+    issuerController,
+    badgeClassController,
+    assertionController
+  );
 
   // Mount version-specific routers
   router.route('/v2', v2Router);
@@ -134,8 +158,12 @@ export async function createApiRouter(
   // Compose versioned, user, backpack, auth routers
   if (backpackController) {
     // Get the platform repository from the repository factory
-    const platformRepository = await RepositoryFactory.createPlatformRepository();
-    router.route('/api/v1', createBackpackRouter(backpackController, platformRepository));
+    const platformRepository =
+      await RepositoryFactory.createPlatformRepository();
+    router.route(
+      '/api/v1',
+      createBackpackRouter(backpackController, platformRepository)
+    );
   }
   if (userController) {
     router.route('/users', createUserRouter(userController));
@@ -171,12 +199,19 @@ function createVersionedRouter(
       const result = await issuerController.createIssuer(body, version);
       return c.json(result, 201);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error('POST /issuers failed', { error: errorMessage, body });
       if (error instanceof Error && error.message.includes('permission')) {
         return c.json({ error: 'Forbidden', message: errorMessage }, 403);
       }
-      return c.json({ error: 'Bad Request', message: error instanceof Error ? error.message : String(error) }, 400);
+      return c.json(
+        {
+          error: 'Bad Request',
+          message: error instanceof Error ? error.message : String(error),
+        },
+        400
+      );
     }
   });
 
@@ -185,7 +220,9 @@ function createVersionedRouter(
       const result = await issuerController.getAllIssuers(version);
       return c.json(result);
     } catch (error) {
-      logger.error('GET /issuers failed', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('GET /issuers failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
@@ -201,10 +238,19 @@ function createVersionedRouter(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('Invalid IRI')) {
-        logger.error('GET /issuers/:id invalid IRI', { error: message, id: c.req.param('id') });
-        return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
+        logger.error('GET /issuers/:id invalid IRI', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid issuer ID' },
+          400
+        );
       }
-      logger.error('GET /issuers/:id failed', { error: message, id: c.req.param('id') });
+      logger.error('GET /issuers/:id failed', {
+        error: message,
+        id: c.req.param('id'),
+      });
       return c.json({ error: 'Internal Server Error', message }, 500);
     }
   });
@@ -224,11 +270,22 @@ function createVersionedRouter(
       const message = error instanceof Error ? error.message : String(error);
       // Use the already parsed body for logging
       if (message.includes('Invalid IRI')) {
-        logger.error('PUT /issuers/:id invalid IRI', { error: message, id, body });
-        return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
+        logger.error('PUT /issuers/:id invalid IRI', {
+          error: message,
+          id,
+          body,
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid issuer ID' },
+          400
+        );
       }
       if (message.includes('permission')) {
-        logger.error('PUT /issuers/:id forbidden', { error: message, id, body });
+        logger.error('PUT /issuers/:id forbidden', {
+          error: message,
+          id,
+          body,
+        });
         return c.json({ error: 'Forbidden', message }, 403);
       }
       logger.error('PUT /issuers/:id failed', { error: message, id, body });
@@ -247,14 +304,26 @@ function createVersionedRouter(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('Invalid IRI')) {
-        logger.error('DELETE /issuers/:id invalid IRI', { error: message, id: c.req.param('id') });
-        return c.json({ error: 'Bad Request', message: 'Invalid issuer ID' }, 400);
+        logger.error('DELETE /issuers/:id invalid IRI', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid issuer ID' },
+          400
+        );
       }
       if (message.includes('permission')) {
-        logger.error('DELETE /issuers/:id forbidden', { error: message, id: c.req.param('id') });
+        logger.error('DELETE /issuers/:id forbidden', {
+          error: message,
+          id: c.req.param('id'),
+        });
         return c.json({ error: 'Forbidden', message }, 403);
       }
-      logger.error('DELETE /issuers/:id failed', { error: message, id: c.req.param('id') });
+      logger.error('DELETE /issuers/:id failed', {
+        error: message,
+        id: c.req.param('id'),
+      });
       return c.json({ error: 'Internal Server Error', message }, 500);
     }
   });
@@ -263,7 +332,10 @@ function createVersionedRouter(
   router.post('/badge-classes', validateBadgeClassMiddleware(), async (c) => {
     try {
       const body = await c.req.json();
-      const result = await badgeClassController.createBadgeClass(body as CreateBadgeClassDto, version);
+      const result = await badgeClassController.createBadgeClass(
+        body as CreateBadgeClassDto,
+        version
+      );
       return c.json(result, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -278,24 +350,59 @@ function createVersionedRouter(
   });
 
   router.get('/badge-classes/:id', async (c) => {
-    const id = c.req.param('id');
-    const result = await badgeClassController.getBadgeClassById(id, version);
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getBadgeClassById(id, version);
+      if (!result) {
+        return c.json(
+          { error: 'Not Found', message: 'Badge class not found' },
+          404
+        );
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('GET /badge-classes/:id invalid IRI', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid badge class ID' },
+          400
+        );
+      }
+      logger.error('GET /badge-classes/:id failed', {
+        error: message,
+        id: c.req.param('id'),
+      });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   router.get('/issuers/:id/badge-classes', async (c) => {
     const id = c.req.param('id');
-    const result = await badgeClassController.getBadgeClassesByIssuer(id, version);
+    const result = await badgeClassController.getBadgeClassesByIssuer(
+      id,
+      version
+    );
     return c.json(result);
   });
 
-  router.put('/badge-classes/:id', validateBadgeClassMiddleware(), async (c) => {
+  router.put('/badge-classes/:id', async (c) => {
     const id = c.req.param('id');
     try {
       const body = await c.req.json();
-      const result = await badgeClassController.updateBadgeClass(id, body as UpdateBadgeClassDto, version);
+      const result = await badgeClassController.updateBadgeClass(
+        id,
+        body as UpdateBadgeClassDto,
+        version
+      );
       if (!result) {
-        return c.json({ error: 'Not Found', message: 'Badge class not found' }, 404);
+        return c.json(
+          { error: 'Not Found', message: 'Badge class not found' },
+          404
+        );
       }
       return c.json(result);
     } catch (error) {
@@ -306,9 +413,41 @@ function createVersionedRouter(
   });
 
   router.delete('/badge-classes/:id', async (c) => {
-    const id = c.req.param('id');
-    const result = await badgeClassController.deleteBadgeClass(id);
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const deleted = await badgeClassController.deleteBadgeClass(id);
+      if (!deleted) {
+        return c.json(
+          { error: 'Not Found', message: 'Badge class not found' },
+          404
+        );
+      }
+      return c.body(null, 204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('DELETE /badge-classes/:id invalid IRI', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid badge class ID' },
+          400
+        );
+      }
+      if (message.includes('permission')) {
+        logger.error('DELETE /badge-classes/:id forbidden', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json({ error: 'Forbidden', message }, 403);
+      }
+      logger.error('DELETE /badge-classes/:id failed', {
+        error: message,
+        id: c.req.param('id'),
+      });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   // Assertion routes
@@ -316,13 +455,23 @@ function createVersionedRouter(
     try {
       const body = await c.req.json();
       const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
-      const result = await assertionController.createAssertion(body as CreateAssertionDto, version, sign);
+      const result = await assertionController.createAssertion(
+        body as CreateAssertionDto,
+        version,
+        sign
+      );
       return c.json(result, 201);
     } catch (error) {
-      logger.error('POST /assertions failed', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('POST /assertions failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       // Handle BadRequestError specifically
-      if (error instanceof Error && (error.name === 'BadRequestError' || error.message.includes('does not exist'))) {
+      if (
+        error instanceof Error &&
+        (error.name === 'BadRequestError' ||
+          error.message.includes('does not exist'))
+      ) {
         return c.json({ error: 'Bad Request', message: error.message }, 400);
       }
 
@@ -332,7 +481,13 @@ function createVersionedRouter(
       }
 
       // Default error handling
-      return c.json({ error: 'Internal Server Error', message: error instanceof Error ? error.message : String(error) }, 500);
+      return c.json(
+        {
+          error: 'Internal Server Error',
+          message: error instanceof Error ? error.message : String(error),
+        },
+        500
+      );
     }
   });
 
@@ -349,7 +504,10 @@ function createVersionedRouter(
 
   router.get('/badge-classes/:id/assertions', async (c) => {
     const id = c.req.param('id');
-    const result = await assertionController.getAssertionsByBadgeClass(id, version);
+    const result = await assertionController.getAssertionsByBadgeClass(
+      id,
+      version
+    );
     return c.json(result);
   });
 
@@ -357,9 +515,16 @@ function createVersionedRouter(
     const id = c.req.param('id');
     try {
       const body = await c.req.json();
-      const result = await assertionController.updateAssertion(id, body as UpdateAssertionDto, version);
+      const result = await assertionController.updateAssertion(
+        id,
+        body as UpdateAssertionDto,
+        version
+      );
       if (!result) {
-        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+        return c.json(
+          { error: 'Not Found', message: 'Assertion not found' },
+          404
+        );
       }
       return c.json(result);
     } catch (error) {
@@ -376,12 +541,18 @@ function createVersionedRouter(
     const id = c.req.param('id');
     try {
       const body = await c.req.json();
-      const reason = typeof body === 'object' && body !== null && 'reason' in body ? String(body.reason) : 'No reason provided';
+      const reason =
+        typeof body === 'object' && body !== null && 'reason' in body
+          ? String(body.reason)
+          : 'No reason provided';
       const result = await assertionController.revokeAssertion(id, reason);
       return c.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.error('POST /assertions/:id/revoke failed', { error: message, id });
+      logger.error('POST /assertions/:id/revoke failed', {
+        error: message,
+        id,
+      });
       if (message.includes('permission')) {
         return c.json({ error: 'Forbidden', message }, 403);
       }
@@ -400,7 +571,10 @@ function createVersionedRouter(
       typeof result.details === 'string' &&
       result.details.toLowerCase().includes('not found')
     ) {
-      return c.json({ error: 'Assertion not found', details: result.details }, 404);
+      return c.json(
+        { error: 'Assertion not found', details: result.details },
+        404
+      );
     }
     return c.json(result);
   });
@@ -409,9 +583,16 @@ function createVersionedRouter(
     const id = c.req.param('id');
     try {
       const keyId = c.req.query('keyId') || 'default';
-      const result = await assertionController.signAssertion(id, keyId as string, version);
+      const result = await assertionController.signAssertion(
+        id,
+        keyId as string,
+        version
+      );
       if (!result) {
-        return c.json({ error: 'Not Found', message: 'Assertion not found' }, 404);
+        return c.json(
+          { error: 'Not Found', message: 'Assertion not found' },
+          404
+        );
       }
       return c.json(result);
     } catch (error) {

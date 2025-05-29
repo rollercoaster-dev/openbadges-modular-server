@@ -18,7 +18,9 @@ export async function resetDatabase(): Promise<void> {
   logger.info('Resetting database', {
     dbType,
     sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE,
-    postgresUrl: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@') : undefined
+    postgresUrl: process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@')
+      : undefined,
   });
 
   try {
@@ -31,9 +33,10 @@ export async function resetDatabase(): Promise<void> {
     }
     logger.info('Database reset completed successfully');
   } catch (error) {
-    logger.error('Failed to reset database', { // Changed from warn to error
+    logger.error('Failed to reset database', {
+      // Changed from warn to error
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     // Re-throw the error to ensure test failures are visible
     throw error;
@@ -64,14 +67,15 @@ async function resetSqliteDatabase(): Promise<void> {
       'platforms',
       'roles',
       'api_keys',
-      'users'
+      'users',
     ];
 
     logger.info('Resetting database tables', { tables });
 
     // Get direct access to the SQLite database
     const { Database } = require('bun:sqlite');
-    const sqliteFile = process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || ':memory:';
+    const sqliteFile =
+      process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE || ':memory:';
     logger.debug(`Using SQLite database at: ${sqliteFile}`);
     const sqliteDb = new Database(sqliteFile);
 
@@ -86,17 +90,26 @@ async function resetSqliteDatabase(): Promise<void> {
 
         // Verify the deletion by counting rows
         try {
-          const count = sqliteDb.query(`SELECT COUNT(*) as count FROM ${table}`).get();
-          logger.debug(`Deleted all data from ${table}, remaining rows: ${count?.count || 0}`);
+          const count = sqliteDb
+            .query(`SELECT COUNT(*) as count FROM ${table}`)
+            .get();
+          logger.debug(
+            `Deleted all data from ${table}, remaining rows: ${
+              count?.count || 0
+            }`
+          );
         } catch (countError) {
           logger.debug(`Could not count rows in ${table}`, {
-            error: countError instanceof Error ? countError.message : String(countError)
+            error:
+              countError instanceof Error
+                ? countError.message
+                : String(countError),
           });
         }
       } catch (error) {
         // Table might not exist, which is fine
         logger.debug(`Error deleting from ${table}`, {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -104,14 +117,11 @@ async function resetSqliteDatabase(): Promise<void> {
     // Re-enable foreign key constraints
     sqliteDb.run('PRAGMA foreign_keys = ON');
 
-    // Add a small delay to ensure all operations are complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     logger.info('SQLite database reset successfully');
   } catch (error) {
     logger.error('Failed to reset SQLite database', {
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     throw error;
   }
@@ -141,19 +151,21 @@ async function resetPostgresDatabase(): Promise<void> {
       'platforms',
       'roles',
       'api_keys',
-      'users'
+      'users',
     ];
 
     // Get direct access to the PostgreSQL database
     const postgres = await import('postgres');
-    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/openbadges_test';
+    const connectionString =
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:postgres@localhost:5432/openbadges_test';
 
     try {
       const pgClient = postgres.default(connectionString, {
         max: 1,
         connect_timeout: 10,
         idle_timeout: 10,
-        max_lifetime: 60
+        max_lifetime: 60,
       });
 
       try {
@@ -169,7 +181,7 @@ async function resetPostgresDatabase(): Promise<void> {
           } catch (error) {
             // Table might not exist, which is fine
             logger.debug(`Error deleting from ${table}`, {
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
             });
           }
         }
@@ -182,14 +194,17 @@ async function resetPostgresDatabase(): Promise<void> {
           await pgClient.end();
         } catch (closeError) {
           logger.warn('Error closing PostgreSQL connection', {
-            error: closeError instanceof Error ? closeError.message : String(closeError)
+            error:
+              closeError instanceof Error
+                ? closeError.message
+                : String(closeError),
           });
         }
       }
     } catch (error) {
       logger.error('Failed to connect to PostgreSQL database', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       // Re-throw the error to ensure test failures are visible
       throw error;
@@ -199,7 +214,7 @@ async function resetPostgresDatabase(): Promise<void> {
   } catch (error) {
     logger.error('Failed to reset PostgreSQL database', {
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     throw error;
   }

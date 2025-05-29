@@ -16,7 +16,6 @@ import {
 import { logger } from '@/utils/logging/logger.service';
 import { TestDataHelper } from './helpers/test-data.helper';
 import { resetDatabase } from './helpers/database-reset.helper';
-import { config } from '@/config/config';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 // Import only the types we need
 import { BadgeClassResponseDto } from '@/api/dtos';
@@ -27,14 +26,15 @@ let TEST_PORT: number;
 let API_URL: string;
 let BADGE_CLASSES_ENDPOINT: string;
 
-// Use SQLite by default for tests, but allow overriding via environment variables
-// This ensures tests can run in both SQLite and PostgreSQL environments
+// Ensure DB-related env-vars are set **before** any module import that may read them
 if (!process.env.DB_TYPE) {
   process.env.DB_TYPE = 'sqlite';
 }
 if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
   process.env.SQLITE_DB_PATH = ':memory:';
 }
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // API key for protected endpoints - use the one from environment variables
 const API_KEY =
@@ -94,9 +94,6 @@ describe('Badge Class API - E2E', () => {
     try {
       await resetDatabase();
       logger.info('Badge Class E2E tests: Reset database');
-
-      // Add a small delay to ensure the database reset is complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       logger.error('Failed to reset database', {
         error: error instanceof Error ? error.message : String(error),
@@ -285,9 +282,8 @@ describe('Badge Class API - E2E', () => {
         headers: { 'X-API-Key': API_KEY },
       });
 
-      // The API may return 200 (empty result) or 404 (not found)
-      // Both are acceptable behaviors for GET operations
-      expect([200, 404]).toContain(res.status);
+      // The API should return 404 for a non-existent resource
+      expect(res.status).toBe(404);
     });
 
     it('should list all badge classes', async () => {
@@ -342,7 +338,7 @@ describe('Badge Class API - E2E', () => {
   });
 
   describe('Update Badge Class', () => {
-    it('should update an existing badge class', async () => {
+    it('should update an existing badge class with valid data', async () => {
       try {
         // Reset database to ensure a clean state
         await resetDatabase();
@@ -400,7 +396,6 @@ describe('Badge Class API - E2E', () => {
           criteria: {
             narrative: 'Updated test requirements',
           },
-          id: badgeClassId,
         };
 
         logger.info(
@@ -440,49 +435,120 @@ describe('Badge Class API - E2E', () => {
           badgeClassId,
         });
 
-        // Verify response status - API may return 400 for validation issues
-        expect([200, 204, 400]).toContain(res.status);
+        // Verify response status - expect only success codes for valid data
+        expect([200, 204]).toContain(res.status);
 
-        // Only verify update if the operation was successful
-        if (res.status === 200 || res.status === 204) {
-          // Add a small delay to ensure the update is processed
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        // Add a small delay to ensure the update is processed
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-          // Fetch again to confirm update
-          const getRes = await fetch(
-            `${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`,
-            {
-              method: 'GET',
-              headers: { 'X-API-Key': API_KEY },
-            }
-          );
+        // Fetch again to confirm update
+        const getRes = await fetch(
+          `${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`,
+          {
+            method: 'GET',
+            headers: { 'X-API-Key': API_KEY },
+          }
+        );
 
-          const getBody = await getRes.clone().text();
-          logger.info(
-            `Get updated badge class response: status=${getRes.status}, body=${getBody}`
-          );
+        const getBody = await getRes.clone().text();
+        logger.info(
+          `Get updated badge class response: status=${getRes.status}, body=${getBody}`
+        );
 
-          expect(getRes.status).toBe(200);
-          const body = (await getRes.json()) as BadgeClassResponseDto;
+        expect(getRes.status).toBe(200);
+        const body = (await getRes.json()) as BadgeClassResponseDto;
 
-          // Verify the updated fields
-          expect(body.name).toBe(updateData.name);
-          expect(body.description).toBe(updateData.description);
-          expect(body.issuer.toString()).toBe(issuerId);
-          // Verify the ID hasn't changed
-          expect(body.id.toString()).toBe(badgeClassId);
-        } else {
-          // If the API returned 400, log the error for debugging
-          logger.info(
-            `Update returned ${res.status}, response already logged above`
-          );
-        }
+        // Verify the updated fields
+        expect(body.name).toBe(updateData.name);
+        expect(body.description).toBe(updateData.description);
+        expect(body.issuer.toString()).toBe(issuerId);
+        // Verify the ID hasn't changed
+        expect(body.id.toString()).toBe(badgeClassId);
       } catch (error) {
         logger.error('Error in update badge class test', {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
         throw error;
+      }
+    });
+
+    it('should fail to update badge class with invalid data', async () => {
+      // Create test issuer and badge class
+      const { id: issuerId } = await TestDataHelper.createIssuer();
+      const { id: badgeClassId } = await TestDataHelper.createBadgeClass(
+        issuerId
+      );
+
+      // Test cases for invalid data
+      const invalidUpdateTests = [
+        {
+          name: 'missing required name field',
+          data: {
+            description: 'Updated description.',
+            type: 'BadgeClass',
+            issuer: issuerId,
+            criteria: {
+              narrative: 'Updated requirements',
+            },
+            // name is missing
+          },
+        },
+        {
+          name: 'invalid issuer ID',
+          data: {
+            name: 'Updated Badge Class Name',
+            description: 'Updated description.',
+            type: 'BadgeClass',
+            issuer: '00000000-0000-4000-a000-000000000999', // Non-existent issuer
+            criteria: {
+              narrative: 'Updated requirements',
+            },
+          },
+        },
+        {
+          name: 'missing required criteria field',
+          data: {
+            name: 'Updated Badge Class Name',
+            description: 'Updated description.',
+            type: 'BadgeClass',
+            issuer: issuerId,
+            // criteria is missing
+          },
+        },
+      ];
+
+      for (const testCase of invalidUpdateTests) {
+        logger.info(`Testing invalid update: ${testCase.name}`);
+
+        // Execute test with invalid data
+        const res = await fetch(`${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(testCase.data),
+        });
+
+        // Log the response for debugging
+        const responseText = await res.text();
+        logger.debug(
+          `Invalid update test '${testCase.name}' response: status=${res.status}, body=${responseText}`
+        );
+
+        // Verify response status - expect validation error for invalid data
+        expect(res.status).toBe(400);
+
+        // Verify error response contains error information
+        if (responseText) {
+          try {
+            const body = JSON.parse(responseText);
+            expect(body.error).toBeDefined();
+          } catch {
+            // Response might not be JSON, which is also acceptable for error responses
+          }
+        }
       }
     });
 
@@ -544,9 +610,8 @@ describe('Badge Class API - E2E', () => {
         headers: { 'X-API-Key': API_KEY },
       });
 
-      // After deletion, the API may return 200 (empty result) or 404 (not found)
-      // Both are acceptable behaviors
-      expect([200, 404]).toContain(getRes.status);
+      // After deletion, the API should return 404 (not found)
+      expect(getRes.status).toBe(404);
     });
 
     it('should handle deleting non-existent badge class gracefully', async () => {
