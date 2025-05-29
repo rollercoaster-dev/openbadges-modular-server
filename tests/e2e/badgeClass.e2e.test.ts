@@ -78,8 +78,19 @@ describe('Badge Class API - E2E', () => {
         apiKey: API_KEY ? 'set' : 'not set',
       });
 
-      // Wait for the server to be fully ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait for server to be ready with health check
+      let retries = 50; // 5 seconds max
+      while (retries > 0) {
+        try {
+          const healthRes = await fetch(`${API_URL}/health`, { method: 'GET' });
+          if (healthRes.status === 200) break;
+        } catch {
+          // Server not ready yet
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries--;
+      }
+      if (retries === 0) throw new Error('Server failed to become ready');
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
@@ -296,9 +307,6 @@ describe('Badge Class API - E2E', () => {
         name: `Test Badge Class ${Date.now().toString()}`,
       });
 
-      // Add a small delay to ensure the badge class is fully created
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       // Execute test
       const res = await fetch(BADGE_CLASSES_ENDPOINT, {
         method: 'GET',
@@ -342,9 +350,6 @@ describe('Badge Class API - E2E', () => {
       try {
         // Reset database to ensure a clean state
         await resetDatabase();
-
-        // Add a small delay after database reset
-        await new Promise((resolve) => setTimeout(resolve, 200));
 
         // Create a test issuer and badge class
         const { id: issuerId } = await TestDataHelper.createIssuer();
@@ -438,10 +443,7 @@ describe('Badge Class API - E2E', () => {
         // Verify response status - expect only success codes for valid data
         expect([200, 204]).toContain(res.status);
 
-        // Add a small delay to ensure the update is processed
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Fetch again to confirm update
+        // Fetch again to confirm update (immediate verification without arbitrary delay)
         const getRes = await fetch(
           `${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`,
           {
