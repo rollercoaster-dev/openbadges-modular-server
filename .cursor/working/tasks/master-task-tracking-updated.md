@@ -6,8 +6,10 @@ The OpenBadges Modular Server is a headless server implementation of the OpenBad
 
 ## Project Status
 
-**Current Status:** ~80-85% complete toward MVP
-**Last Updated:** May 9, 2025
+**Current Status:** ~95% complete toward MVP
+**Last Updated:** May 24, 2025
+
+**Major Update:** Database refactoring project is 95% complete with significant architectural improvements achieved. All core functionality is working with both SQLite and PostgreSQL backends.
 
 ## Overview
 
