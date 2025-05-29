@@ -23,15 +23,15 @@ describe('Assertion API - E2E', () => {
     // Get an available port to avoid conflicts
     TEST_PORT = await getAvailablePort();
     process.env.TEST_PORT = TEST_PORT.toString();
-    
+
     // Set up API URLs after getting the port
     const host = config.server.host ?? '127.0.0.1';
     API_URL = `http://${host}:${TEST_PORT}`;
     ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
-    
+
     // Log the API URL for debugging
     logger.info(`E2E Test: Using API URL: ${API_URL}`);
-    
+
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
@@ -41,11 +41,11 @@ describe('Assertion API - E2E', () => {
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -61,7 +61,7 @@ describe('Assertion API - E2E', () => {
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     }
@@ -81,8 +81,8 @@ describe('Assertion API - E2E', () => {
       assertionsResponse = await fetch(ASSERTIONS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': API_KEY
-        }
+          'X-API-Key': API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to fetch assertions', { error });
@@ -91,11 +91,16 @@ describe('Assertion API - E2E', () => {
 
     // Verify the response status code
     if (assertionsResponse.status !== 200) {
-  const body = await assertionsResponse.text();
-  logger.error(`GET /v3/assertions failed`, { status: assertionsResponse.status, body });
-}
-expect(assertionsResponse.status).toBe(200);
-    logger.info(`Assertions endpoint responded with status ${assertionsResponse.status}`);
+      const body = await assertionsResponse.text();
+      logger.error(`GET /v3/assertions failed`, {
+        status: assertionsResponse.status,
+        body,
+      });
+    }
+    expect(assertionsResponse.status).toBe(200);
+    logger.info(
+      `Assertions endpoint responded with status ${assertionsResponse.status}`
+    );
 
     // Test the assertion POST endpoint
     let assertionPostResponse: Response;
@@ -104,20 +109,21 @@ expect(assertionsResponse.status).toBe(200);
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
           type: 'Assertion',
           recipient: {
             type: 'email',
-            identity: 'sha256$' + Buffer.from('test@example.com').toString('hex'),
+            identity:
+              'sha256$' + Buffer.from('test@example.com').toString('hex'),
             hashed: true,
-            salt: 'test'
+            salt: 'test',
           },
           badge: '00000000-0000-4000-a000-000000000004', // A valid UUID format
-          issuedOn: new Date().toISOString()
-        })
+          issuedOn: new Date().toISOString(),
+        }),
       });
     } catch (error) {
       logger.error('Failed to test assertion POST endpoint', { error });
@@ -126,22 +132,30 @@ expect(assertionsResponse.status).toBe(200);
 
     // Verify the response status code
     if (assertionPostResponse.status !== 400) {
-  const body = await assertionPostResponse.text();
-  logger.error(`POST /v3/assertions failed (should be 400)`, { status: assertionPostResponse.status, body });
-}
-expect(assertionPostResponse.status).toBe(400);
-    logger.info(`Assertion POST endpoint responded with status ${assertionPostResponse.status}`);
+      const body = await assertionPostResponse.text();
+      logger.error(`POST /v3/assertions failed (should be 400)`, {
+        status: assertionPostResponse.status,
+        body,
+      });
+    }
+    expect(assertionPostResponse.status).toBe(400);
+    logger.info(
+      `Assertion POST endpoint responded with status ${assertionPostResponse.status}`
+    );
 
     // Test the verification endpoint with a dummy assertion ID
     const dummyAssertionId = '00000000-0000-4000-a000-000000000005'; // A valid UUID format
     let verifyResponse: Response;
     try {
-      verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {
-        method: 'GET',
-        headers: {
-          'X-API-Key': API_KEY
+      verifyResponse = await fetch(
+        `${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': API_KEY,
+          },
         }
-      });
+      );
     } catch (error) {
       logger.error(`Failed to test verification endpoint`, { error });
       throw error;
@@ -149,11 +163,16 @@ expect(assertionPostResponse.status).toBe(400);
 
     // Verify the response status code
     if (verifyResponse.status !== 404) {
-  const body = await verifyResponse.text();
-  logger.error(`GET /v3/assertions/:id/verify failed (should be 404)`, { status: verifyResponse.status, body });
-}
-expect(verifyResponse.status).toBe(404);
-    logger.info(`Verification endpoint responded with status ${verifyResponse.status}`);
+      const body = await verifyResponse.text();
+      logger.error(`GET /v3/assertions/:id/verify failed (should be 404)`, {
+        status: verifyResponse.status,
+        body,
+      });
+    }
+    expect(verifyResponse.status).toBe(404);
+    logger.info(
+      `Verification endpoint responded with status ${verifyResponse.status}`
+    );
   });
 
   // No cleanup needed in this simplified test

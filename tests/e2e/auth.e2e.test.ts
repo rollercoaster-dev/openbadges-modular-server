@@ -23,12 +23,12 @@ describe('Authentication - E2E', () => {
     // Get an available port to avoid conflicts
     TEST_PORT = await getAvailablePort();
     process.env.TEST_PORT = TEST_PORT.toString();
-    
+
     // Set up API URLs after getting the port
     const host = config.server.host ?? '127.0.0.1';
     API_URL = `http://${host}:${TEST_PORT}`;
     ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-    
+
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
@@ -38,11 +38,11 @@ describe('Authentication - E2E', () => {
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -58,7 +58,7 @@ describe('Authentication - E2E', () => {
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     }
@@ -84,7 +84,9 @@ describe('Authentication - E2E', () => {
 
     // Verify the response status code
     expect([200, 400, 401, 403, 500]).toContain(noAuthResponse.status);
-    logger.info(`No auth request responded with status ${noAuthResponse.status}`);
+    logger.info(
+      `No auth request responded with status ${noAuthResponse.status}`
+    );
 
     // Test with invalid authentication
     let invalidAuthResponse: Response;
@@ -92,8 +94,8 @@ describe('Authentication - E2E', () => {
       invalidAuthResponse = await fetch(ISSUERS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': INVALID_API_KEY
-        }
+          'X-API-Key': INVALID_API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to make request with invalid auth', { error });
@@ -102,7 +104,9 @@ describe('Authentication - E2E', () => {
 
     // Verify the response status code
     expect([200, 400, 401, 403, 500]).toContain(invalidAuthResponse.status);
-    logger.info(`Invalid auth request responded with status ${invalidAuthResponse.status}`);
+    logger.info(
+      `Invalid auth request responded with status ${invalidAuthResponse.status}`
+    );
 
     // Test with valid authentication
     let validAuthResponse: Response;
@@ -110,8 +114,8 @@ describe('Authentication - E2E', () => {
       validAuthResponse = await fetch(ISSUERS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': VALID_API_KEY
-        }
+          'X-API-Key': VALID_API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to make request with valid auth', { error });
@@ -120,7 +124,9 @@ describe('Authentication - E2E', () => {
 
     // Verify the response status code
     expect([200, 400, 401, 403, 500]).toContain(validAuthResponse.status);
-    logger.info(`Valid auth request responded with status ${validAuthResponse.status}`);
+    logger.info(
+      `Valid auth request responded with status ${validAuthResponse.status}`
+    );
   });
 
   it('should verify public endpoints', async () => {
@@ -128,7 +134,7 @@ describe('Authentication - E2E', () => {
     let healthResponse: Response;
     try {
       healthResponse = await fetch(`${API_URL}/health`, {
-        method: 'GET'
+        method: 'GET',
       });
     } catch (error) {
       logger.error('Failed to access health endpoint', { error });
@@ -137,13 +143,15 @@ describe('Authentication - E2E', () => {
 
     // Verify the response status code
     expect([200, 404, 500]).toContain(healthResponse.status);
-    logger.info(`Health endpoint responded with status ${healthResponse.status}`);
+    logger.info(
+      `Health endpoint responded with status ${healthResponse.status}`
+    );
 
     // Test the docs endpoint
     let docsResponse: Response;
     try {
       docsResponse = await fetch(`${API_URL}/docs`, {
-        method: 'GET'
+        method: 'GET',
       });
     } catch (error) {
       logger.error('Failed to access docs endpoint', { error });

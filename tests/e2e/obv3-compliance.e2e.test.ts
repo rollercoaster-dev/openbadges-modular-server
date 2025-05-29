@@ -33,25 +33,6 @@ const createdResources: {
   assertionId?: string;
 } = {};
 
-/**
- * Helper function to wait until server is healthy with retry logic
- * @param url Base URL of the server
- * @param timeoutMs Maximum time to wait in milliseconds
- */
-async function waitUntilHealthy(url: string, timeoutMs = 10_000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const res = await fetch(`${url}/health`);
-      if (res.ok) return;
-    } catch {
-      /* ignore connection errors during startup */
-    }
-    await new Promise((r) => setTimeout(r, 300));
-  }
-  throw new Error('Test server did not become healthy in time');
-}
-
 // Helper function to check for database connection issues
 async function checkDatabaseConnectionIssue(
   response: Response
@@ -258,24 +239,30 @@ async function isAcceptableValidationError(
 describe('OpenBadges v3.0 Compliance - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+    process.env.TEST_PORT = TEST_PORT.toString();
+
+    // Set up API URLs after getting the port
+    API_URL = `http://localhost:${TEST_PORT}`;
+    ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
+    BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+    ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
+    // Log the API URL for debugging
+    logger.info(`E2E Test: Using API URL: ${API_URL}`);
+
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
     try {
-      // Get an available port
-      TEST_PORT = await getAvailablePort();
-      API_URL = `http://localhost:${TEST_PORT}`;
-      ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-      BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
-      ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
-
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
       const result = await setupTestApp();
       server = result.server;
       logger.info('E2E Test: Server started successfully');
-      // Wait for the server to be fully ready with health check
-      await waitUntilHealthy(API_URL);
-      logger.info('E2E Test: Server health check passed');
+
+      // Wait for the server to be fully ready
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
@@ -300,9 +287,9 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       }
     }
 
-    // Release the port for reuse
+    // Release the allocated port
     if (TEST_PORT) {
-      await releasePort(TEST_PORT);
+      releasePort(TEST_PORT);
     }
   });
 

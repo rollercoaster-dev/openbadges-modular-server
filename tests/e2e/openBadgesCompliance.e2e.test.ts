@@ -9,7 +9,10 @@ import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 // No need for complex types in this simplified test
 
 // Enhanced helper function to check for issues and provide detailed logging
-async function checkResponseIssues(response: Response, endpoint: string): Promise<boolean> {
+async function checkResponseIssues(
+  response: Response,
+  endpoint: string
+): Promise<boolean> {
   // Clone the response to avoid consuming it
   const clonedResponse = response.clone();
 
@@ -17,7 +20,7 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
   logger.debug(`Response from ${endpoint}:`, {
     status: response.status,
     statusText: response.statusText,
-    headers: Object.fromEntries(response.headers.entries())
+    headers: Object.fromEntries(response.headers.entries()),
   });
 
   // Check for any error status code
@@ -34,7 +37,7 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
     // Log the full error response
     logger.error(`Error response from ${endpoint}:`, {
       status: response.status,
-      body: responseBody
+      body: responseBody,
     });
 
     // Check for common database error messages
@@ -62,7 +65,7 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
       'database connection error',
       'database connection timeout',
       'Server initialization failed',
-      'Internal Server Error'
+      'Internal Server Error',
     ];
 
     // Check if any of the database error keywords are in the response body
@@ -73,9 +76,11 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
       }
     }
 
-    if (responseBody.includes('authentication') ||
-        responseBody.includes('unauthorized') ||
-        responseBody.includes('forbidden')) {
+    if (
+      responseBody.includes('authentication') ||
+      responseBody.includes('unauthorized') ||
+      responseBody.includes('forbidden')
+    ) {
       logger.warn('Authentication issue detected. Skipping test.');
       return true;
     }
@@ -83,7 +88,9 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
     // Log other errors but don't skip the test
     logger.warn(`Error detected in ${endpoint} but continuing test:`, {
       status: response.status,
-      bodyPreview: responseBody.substring(0, 200) + (responseBody.length > 200 ? '...' : '')
+      bodyPreview:
+        responseBody.substring(0, 200) +
+        (responseBody.length > 200 ? '...' : ''),
     });
   }
 
@@ -129,7 +136,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       // Wait longer for the server to be fully ready in CI environments
       const waitTime = process.env.CI === 'true' ? 5000 : 2000;
       logger.info(`Waiting ${waitTime}ms for server to be fully ready...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
 
       // Verify server is ready by checking health endpoint
       logger.info('Verifying server health...');
@@ -141,18 +148,18 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         } else {
           logger.warn('Server health check failed', {
             status: healthResponse.status,
-            statusText: healthResponse.statusText
+            statusText: healthResponse.statusText,
           });
         }
       } catch (error) {
         logger.warn('Failed to check server health', {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -168,7 +175,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     }
@@ -190,32 +197,37 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         method: 'GET',
         headers: {
           'X-API-Key': API_KEY,
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       // Log the response for debugging
       logger.debug('Issuers response', {
         status: issuersResponse.status,
         statusText: issuersResponse.statusText,
-        headers: Object.fromEntries(issuersResponse.headers.entries())
+        headers: Object.fromEntries(issuersResponse.headers.entries()),
       });
     } catch (error) {
       logger.error('Failed to fetch issuers', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
 
     // Check for issues with the response
-    const hasIssuerIssues = await checkResponseIssues(issuersResponse, 'issuers endpoint');
+    const hasIssuerIssues = await checkResponseIssues(
+      issuersResponse,
+      'issuers endpoint'
+    );
     if (hasIssuerIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Issuers endpoint responded with status ${issuersResponse.status}`);
+      logger.info(
+        `Issuers endpoint responded with status ${issuersResponse.status}`
+      );
     }
 
     // Test the badge classes endpoint
@@ -225,32 +237,37 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         method: 'GET',
         headers: {
           'X-API-Key': API_KEY,
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       // Log the response for debugging
       logger.debug('Badge classes response', {
         status: badgeClassesResponse.status,
         statusText: badgeClassesResponse.statusText,
-        headers: Object.fromEntries(badgeClassesResponse.headers.entries())
+        headers: Object.fromEntries(badgeClassesResponse.headers.entries()),
       });
     } catch (error) {
       logger.error('Failed to fetch badge classes', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
 
     // Check for issues with the response
-    const hasBadgeClassIssues = await checkResponseIssues(badgeClassesResponse, 'badge classes endpoint');
+    const hasBadgeClassIssues = await checkResponseIssues(
+      badgeClassesResponse,
+      'badge classes endpoint'
+    );
     if (hasBadgeClassIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Badge classes endpoint responded with status ${badgeClassesResponse.status}`);
+      logger.info(
+        `Badge classes endpoint responded with status ${badgeClassesResponse.status}`
+      );
     }
 
     // Test the assertions endpoint
@@ -260,36 +277,43 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         method: 'GET',
         headers: {
           'X-API-Key': API_KEY,
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       // Log the response for debugging
       logger.debug('Assertions response', {
         status: assertionsResponse.status,
         statusText: assertionsResponse.statusText,
-        headers: Object.fromEntries(assertionsResponse.headers.entries())
+        headers: Object.fromEntries(assertionsResponse.headers.entries()),
       });
     } catch (error) {
       logger.error('Failed to fetch assertions', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
 
     // Check for issues with the response
-    const hasAssertionIssues = await checkResponseIssues(assertionsResponse, 'assertions endpoint');
+    const hasAssertionIssues = await checkResponseIssues(
+      assertionsResponse,
+      'assertions endpoint'
+    );
     if (hasAssertionIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Assertions endpoint responded with status ${assertionsResponse.status}`);
+      logger.info(
+        `Assertions endpoint responded with status ${assertionsResponse.status}`
+      );
     }
 
     // If we got this far, the API is available and responding correctly
-    logger.info('OpenBadges v3.0 API endpoints are available and responding correctly');
+    logger.info(
+      'OpenBadges v3.0 API endpoints are available and responding correctly'
+    );
   });
 
   it('should verify OpenBadges v3.0 badge class endpoint', async () => {
@@ -300,7 +324,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
@@ -309,9 +333,9 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           description: 'A test badge class',
           issuer: '00000000-0000-4000-a000-000000000006', // A valid UUID format
           criteria: {
-            narrative: 'Complete the test'
-          }
-        })
+            narrative: 'Complete the test',
+          },
+        }),
       });
     } catch (error) {
       logger.error('Failed to test badge class POST endpoint', { error });
@@ -319,13 +343,18 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     // Check for issues with the response
-    const hasBadgeClassPostIssues = await checkResponseIssues(badgeClassPostResponse, 'badge class POST endpoint');
+    const hasBadgeClassPostIssues = await checkResponseIssues(
+      badgeClassPostResponse,
+      'badge class POST endpoint'
+    );
     if (hasBadgeClassPostIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Badge class POST endpoint responded with status ${badgeClassPostResponse.status}`);
+      logger.info(
+        `Badge class POST endpoint responded with status ${badgeClassPostResponse.status}`
+      );
     }
   });
 
@@ -337,20 +366,21 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
           type: 'Assertion',
           recipient: {
             type: 'email',
-            identity: 'sha256$' + Buffer.from('test@example.com').toString('hex'),
+            identity:
+              'sha256$' + Buffer.from('test@example.com').toString('hex'),
             hashed: true,
-            salt: 'test'
+            salt: 'test',
           },
           badge: '00000000-0000-4000-a000-000000000007', // A valid UUID format
-          issuedOn: new Date().toISOString()
-        })
+          issuedOn: new Date().toISOString(),
+        }),
       });
     } catch (error) {
       logger.error('Failed to test assertion POST endpoint', { error });
@@ -358,13 +388,18 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     }
 
     // Check for issues with the response
-    const hasAssertionPostIssues = await checkResponseIssues(assertionPostResponse, 'assertion POST endpoint');
+    const hasAssertionPostIssues = await checkResponseIssues(
+      assertionPostResponse,
+      'assertion POST endpoint'
+    );
     if (hasAssertionPostIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Assertion POST endpoint responded with status ${assertionPostResponse.status}`);
+      logger.info(
+        `Assertion POST endpoint responded with status ${assertionPostResponse.status}`
+      );
     }
   });
 
@@ -373,25 +408,33 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     const dummyAssertionId = '00000000-0000-4000-a000-000000000008'; // A valid UUID format
     let verifyResponse: Response;
     try {
-      verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {
-        method: 'GET',
-        headers: {
-          'X-API-Key': API_KEY
+      verifyResponse = await fetch(
+        `${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': API_KEY,
+          },
         }
-      });
+      );
     } catch (error) {
       logger.error(`Failed to test verification endpoint`, { error });
       throw error;
     }
 
     // Check for issues with the response
-    const hasVerifyIssues = await checkResponseIssues(verifyResponse, 'verification endpoint');
+    const hasVerifyIssues = await checkResponseIssues(
+      verifyResponse,
+      'verification endpoint'
+    );
     if (hasVerifyIssues) {
       logger.warn('Skipping further assertions due to detected issues');
     } else {
       // Verify the response status code - allow any status code in CI environment
       // This is necessary because we might get different status codes depending on the database configuration
-      logger.info(`Verification endpoint responded with status ${verifyResponse.status}`);
+      logger.info(
+        `Verification endpoint responded with status ${verifyResponse.status}`
+      );
     }
   });
 

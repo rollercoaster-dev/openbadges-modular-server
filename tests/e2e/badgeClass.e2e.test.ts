@@ -53,15 +53,15 @@ describe('Badge Class API - E2E', () => {
     // Get an available port to avoid conflicts
     TEST_PORT = await getAvailablePort();
     process.env.TEST_PORT = TEST_PORT.toString();
-    
+
     // Set up API URLs after getting the port
     const host = config.server.host ?? '127.0.0.1';
     API_URL = `http://${host}:${TEST_PORT}`;
     BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
-    
+
     // Log the API URL for debugging
     logger.info(`E2E Test: Using API URL: ${API_URL}`);
-    
+
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
