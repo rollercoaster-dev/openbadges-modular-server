@@ -206,14 +206,11 @@ async function testPostgreSQLErrorHandling() {
     } catch (stmtError) {
       const errorMessage =
         stmtError instanceof Error ? stmtError.message : String(stmtError);
-      const isAlreadyExistsError =
-        errorMessage.includes('already exists') ||
-        (errorMessage.includes('relation') &&
-          errorMessage.includes('does not exist'));
+      const isAlreadyExistsError = errorMessage.includes('already exists');
 
       if (isAlreadyExistsError) {
         logger.info(
-          `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
+          `Table/relation already exists, continuing: ${statement.substring(
             0,
             50
           )}...`

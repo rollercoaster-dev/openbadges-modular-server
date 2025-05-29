@@ -247,10 +247,10 @@ function createVersionedRouter(
           version
         );
         if (!result) {
-          return c.json(
-            { error: 'Not Found', message: 'Badge class not found' },
-            404
-          );
+          return sendNotFoundError(c, 'Badge class', {
+            endpoint: 'PUT /badge-classes/:id',
+            id,
+          });
         }
         return c.json(result);
       } catch (error) {
@@ -324,10 +324,10 @@ function createVersionedRouter(
       const id = c.req.param('id');
       const result = await assertionController.getAssertionById(id, version);
       if (!result) {
-        return c.json(
-          { error: 'Not Found', message: 'Assertion not found' },
-          404
-        );
+        return sendNotFoundError(c, 'Assertion', {
+          endpoint: 'GET /assertions/:id',
+          id,
+        });
       }
       return c.json(result);
     } catch (error) {
@@ -370,10 +370,10 @@ function createVersionedRouter(
           version
         );
         if (!result) {
-          return c.json(
-            { error: 'Not Found', message: 'Assertion not found' },
-            404
-          );
+          return sendNotFoundError(c, 'Assertion', {
+            endpoint: 'PUT /assertions/:id',
+            id,
+          });
         }
         return c.json(result);
       } catch (error) {
@@ -418,10 +418,11 @@ function createVersionedRouter(
         typeof result.details === 'string' &&
         result.details.toLowerCase().includes('not found')
       ) {
-        return c.json(
-          { error: 'Assertion not found', details: result.details },
-          404
-        );
+        return sendNotFoundError(c, 'Assertion', {
+          endpoint: 'GET /assertions/:id/verify',
+          id,
+          details: result.details,
+        });
       }
       return c.json(result);
     } catch (error) {
@@ -442,10 +443,10 @@ function createVersionedRouter(
         version
       );
       if (!result) {
-        return c.json(
-          { error: 'Not Found', message: 'Assertion not found' },
-          404
-        );
+        return sendNotFoundError(c, 'Assertion', {
+          endpoint: 'POST /assertions/:id/sign',
+          id,
+        });
       }
       return c.json(result);
     } catch (error) {

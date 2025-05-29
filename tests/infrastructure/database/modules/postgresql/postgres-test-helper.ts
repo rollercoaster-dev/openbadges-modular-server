@@ -101,7 +101,10 @@ export function generateTestData(
 
   // Convert any URN format IDs to plain UUIDs for PostgreSQL
   Object.keys(baseData).forEach((key) => {
-    if (key.toLowerCase().includes('id') && typeof baseData[key] === 'string') {
+    if (
+      (key === 'id' || key.endsWith('Id') || key.endsWith('_id')) &&
+      typeof baseData[key] === 'string'
+    ) {
       const value = baseData[key] as string;
       if (value.startsWith('urn:uuid:')) {
         const convertedValue = convertUuid(value, 'postgresql', 'to');
@@ -626,14 +629,14 @@ export async function insertTestData(
     // Convert the data for PostgreSQL compatibility (clone to avoid mutating input)
     // Use structuredClone if available, fallback to JSON parse/stringify for older environments
     const convertedData =
-      typeof structuredClone !== 'undefined'
-        ? structuredClone(data)
-        : JSON.parse(JSON.stringify(data));
+      typeof globalThis.structuredClone === 'function'
+        ? globalThis.structuredClone(data)
+        : require('node:util').structuredClone; // Node ≥ 17
 
     // Convert any URN format IDs to plain UUIDs
     Object.keys(convertedData).forEach((key) => {
       if (
-        key.toLowerCase().includes('id') &&
+        (key === 'id' || key.endsWith('Id') || key.endsWith('_id')) &&
         typeof convertedData[key] === 'string'
       ) {
         const value = convertedData[key] as string;

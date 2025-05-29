@@ -89,8 +89,18 @@ describeAnyDatabase('Database Conditional E2E Tests', () => {
       // Initialize test data helper
       TestDataHelper.initialize(API_URL, API_KEY);
 
-      // Wait for the server to be fully ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Check server readiness with a simple health check
+      const maxRetries = 10;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          await fetch(`${API_URL}/health`);
+          break;
+        } catch {
+          if (i === maxRetries - 1)
+            throw new Error('Server failed to become ready');
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
@@ -110,6 +120,7 @@ describeAnyDatabase('Database Conditional E2E Tests', () => {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
+      throw error; // Fail the test if database reset fails
     }
   });
 

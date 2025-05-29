@@ -296,7 +296,11 @@ const found = await issuerRepo.findById(issuer.id);
 
 ---
 
-**Next Steps**: 
-- Review [UUID Conversion Guide](./uuid-conversion-guide.md) for data format handling
-- See [Repository Implementation Guide](./repository-implementation-guide.md) for extending repositories
-- Check [Connection Manager Deep Dive](./connection-manager-deep-dive.md) for advanced connection patterns
+**Related Documentation**: 
+- [UUID Conversion Guide](./uuid-conversion-guide.md) *(if available)*
+- Repository Implementation Guide *(planned)*
+- Connection Manager Deep Dive *(planned)*
+
+**See Also**:
+- [Database Refactor Plan](../.cursor/working/tasks/archive/database-refactoring/db-system-refactor.md)
+- [Project Status Summary](../.cursor/working/tasks/project-status-summary.md)

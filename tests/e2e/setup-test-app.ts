@@ -109,7 +109,7 @@ function createApp() {
       environment: process.env.NODE_ENV,
       database: {
         type: process.env.DB_TYPE || 'unknown',
-        connected: true,
+        connected: RepositoryFactory.isConnected(),
       },
     });
   });

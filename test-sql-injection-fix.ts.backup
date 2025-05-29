@@ -144,24 +144,6 @@ async function testSQLInjectionProtection(): Promise<TestResult> {
           failedAttempts,
         },
       };
-    } else {
-      logger.error('❌ SECURITY VULNERABILITY DETECTED!');
-      logger.error(`${failedAttempts} malicious attempts were not blocked`);
-      return {
-        success: false,
-        message: `Security vulnerability detected: ${failedAttempts} malicious attempts were not blocked`,
-        details: {
-          totalAttempts: maliciousTableNames.length,
-          successfulBlocks,
-          failedAttempts,
-        },
-      };
-    }
-  } finally {
-    await client.end();
-  }
-}
-
 // Run the test
 testSQLInjectionProtection()
   .then((result) => {
@@ -187,4 +169,22 @@ testSQLInjectionProtection()
       logger.error(`Stack trace: ${error.stack}`);
     }
     process.exit(2); // Exit with different code for execution errors
-  });
+  });     success: false,
+        message: `Security vulnerability detected: ${failedAttempts} malicious attempts were not blocked`,
+        details: {
+          totalAttempts: maliciousTableNames.length,
+          successfulBlocks,
+          failedAttempts,
+        },
+      };
+    }
+  } finally {
+    await client.end();
+  }
+}
+
+// Run the test
+testSQLInjectionProtection().catch((error) => {
+  logger.error('Test failed:', error);
+  process.exit(1);
+});

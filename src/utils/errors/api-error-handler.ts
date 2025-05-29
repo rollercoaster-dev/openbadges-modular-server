@@ -68,14 +68,22 @@ function classifyError(error: unknown): ErrorClassification {
     };
   }
 
+  // Resource not found errors
+  if (message.toLowerCase().includes('does not exist')) {
+    return {
+      statusCode: 404,
+      errorType: 'Not Found',
+      message,
+    };
+  }
+
   // BadRequestError and validation errors
   if (
     error instanceof BadRequestError ||
     error instanceof ValidationError ||
     (error instanceof Error && error.name === 'BadRequestError') ||
     message.toLowerCase().includes('invalid') ||
-    message.toLowerCase().includes('validation') ||
-    message.toLowerCase().includes('does not exist')
+    message.toLowerCase().includes('validation')
   ) {
     return {
       statusCode: 400,

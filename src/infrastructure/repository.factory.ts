@@ -455,4 +455,12 @@ export class RepositoryFactory {
     RepositoryFactory.initializationPromise = null;
     logger.info('Repository factory closed');
   }
+
+  /**
+   * Check if the repository factory is initialized and connected
+   * @returns true if the factory is initialized and has a working database connection
+   */
+  static isConnected(): boolean {
+    return RepositoryFactory.isInitialized;
+  }
 }
