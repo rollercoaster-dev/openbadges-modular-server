@@ -58,7 +58,7 @@ async function runCommand(command, args) {
       return { success: false, output: stderr || stdout };
     }
   } catch (error) {
-    logger.error(`⚠️ Failed to run ${command}:`, error.message);
+    logger.error(`⚠️ Failed to run ${command}: ${error.message}`);
     logger.warn(`\n⚠️ Commit will proceed. Please fix any issues when possible.`);
     return { success: false, output: error.message };
   }
