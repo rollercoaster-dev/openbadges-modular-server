@@ -1,10 +1,10 @@
 // test/e2e/openBadgesCompliance.e2e.test.ts
 import { describe, it, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
 // No need for complex types in this simplified test
 
@@ -92,21 +92,12 @@ async function checkResponseIssues(response: Response, endpoint: string): Promis
 
 // Base URL for the API
 
-// Use a consistent port from environment variables or a default
-const TEST_PORT = parseInt(process.env.TEST_PORT || '3001');
-process.env.TEST_PORT = TEST_PORT.toString();
-
-// Log the port being used
-logger.info(`Using test port: ${TEST_PORT}`);
-
-// Base URL for the API
-const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
-const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
-const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
-
-// Log the API URL for debugging
-logger.info(`E2E Test: Using API URL: ${API_URL}`);
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let ISSUERS_ENDPOINT: string;
+let BADGE_CLASSES_ENDPOINT: string;
+let ASSERTIONS_ENDPOINT: string;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
@@ -123,6 +114,14 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     process.env['NODE_ENV'] = 'test';
 
     try {
+      // Get an available port
+      TEST_PORT = await getAvailablePort();
+      process.env.TEST_PORT = TEST_PORT.toString();
+      API_URL = `http://localhost:${TEST_PORT}`;
+      ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
+      BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+      ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
       const result = await setupTestApp();
       server = result.server;
@@ -172,6 +171,11 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           stack: error instanceof Error ? error.stack : undefined
         });
       }
+    }
+
+    // Release the port for reuse
+    if (TEST_PORT) {
+      await releasePort(TEST_PORT);
     }
   });
 

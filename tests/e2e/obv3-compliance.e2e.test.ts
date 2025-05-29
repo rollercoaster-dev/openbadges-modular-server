@@ -1,6 +1,5 @@
 //test/e2e/obv3-compliance.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll, afterEach } from 'bun:test';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { hashData } from '@/utils/crypto/signature';
@@ -9,19 +8,17 @@ import {
   EXAMPLE_ISSUER_URL,
   VC_V2_CONTEXT_URL,
 } from '@/constants/urls';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
 // Database type is set in setup-test-app.ts
 // We always use PostgreSQL for E2E tests for consistency
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
-process.env.TEST_PORT = TEST_PORT.toString();
-
-// Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
-const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
-const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
-const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let ISSUERS_ENDPOINT: string;
+let BADGE_CLASSES_ENDPOINT: string;
+let ASSERTIONS_ENDPOINT: string;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
@@ -265,6 +262,13 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     process.env['NODE_ENV'] = 'test';
 
     try {
+      // Get an available port
+      TEST_PORT = await getAvailablePort();
+      API_URL = `http://localhost:${TEST_PORT}`;
+      ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
+      BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+      ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
       const result = await setupTestApp();
       server = result.server;
@@ -294,6 +298,11 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           stack: error instanceof Error ? error.stack : undefined,
         });
       }
+    }
+
+    // Release the port for reuse
+    if (TEST_PORT) {
+      await releasePort(TEST_PORT);
     }
   });
 

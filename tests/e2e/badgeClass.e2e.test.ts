@@ -20,10 +20,12 @@ import { config } from '@/config/config';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 // Import only the types we need
 import { BadgeClassResponseDto } from '@/api/dtos';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
-process.env.TEST_PORT = TEST_PORT.toString();
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let BADGE_CLASSES_ENDPOINT: string;
 
 // Use SQLite by default for tests, but allow overriding via environment variables
 // This ensures tests can run in both SQLite and PostgreSQL environments
@@ -33,13 +35,6 @@ if (!process.env.DB_TYPE) {
 if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
   process.env.SQLITE_DB_PATH = ':memory:';
 }
-
-// Base URL for the API
-const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
-const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
-
-// Log the API URL for debugging
-logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
 // API key for protected endpoints - use the one from environment variables
 const API_KEY =
@@ -55,6 +50,18 @@ let server: BunServer | null = null;
 describe('Badge Class API - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+    process.env.TEST_PORT = TEST_PORT.toString();
+    
+    // Set up API URLs after getting the port
+    const host = config.server.host ?? '127.0.0.1';
+    API_URL = `http://${host}:${TEST_PORT}`;
+    BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`;
+    
+    // Log the API URL for debugging
+    logger.info(`E2E Test: Using API URL: ${API_URL}`);
+    
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
@@ -114,6 +121,11 @@ describe('Badge Class API - E2E', () => {
           stack: error instanceof Error ? error.stack : undefined,
         });
       }
+    }
+
+    // Release the allocated port
+    if (TEST_PORT) {
+      releasePort(TEST_PORT);
     }
   });
 

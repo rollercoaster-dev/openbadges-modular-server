@@ -4,19 +4,12 @@ import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
-process.env.TEST_PORT = TEST_PORT.toString();
-
-// Base URL for the API
-const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
-// const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
-// const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`; // Not used in this simplified test
-const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
-
-// Log the API URL for debugging
-logger.info(`E2E Test: Using API URL: ${API_URL}`);
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let ASSERTIONS_ENDPOINT: string;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
@@ -27,6 +20,18 @@ let server: unknown = null;
 describe('Assertion API - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+    process.env.TEST_PORT = TEST_PORT.toString();
+    
+    // Set up API URLs after getting the port
+    const host = config.server.host ?? '127.0.0.1';
+    API_URL = `http://${host}:${TEST_PORT}`;
+    ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+    
+    // Log the API URL for debugging
+    logger.info(`E2E Test: Using API URL: ${API_URL}`);
+    
     // Set environment variables for the test server
     process.env['NODE_ENV'] = 'test';
 
@@ -59,6 +64,11 @@ describe('Assertion API - E2E', () => {
           stack: error instanceof Error ? error.stack : undefined
         });
       }
+    }
+
+    // Release the allocated port
+    if (TEST_PORT) {
+      releasePort(TEST_PORT);
     }
   });
 
