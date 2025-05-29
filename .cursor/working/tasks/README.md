@@ -65,13 +65,13 @@ Contains completed planning documents:
 
 ## File Organization
 
-```
+```text
 .cursor/working/tasks/
 ├── README.md (this file)
 ├── database-project-roadmap-consolidated.md (MAIN DATABASE ROADMAP)
 ├── project-status-summary.md (EXECUTIVE SUMMARY)
 ├── master-task-tracking-updated.md (MASTER TRACKING)
-├── todo/ (remaining tasks)
+├── to-do/ (remaining tasks)
 ├── completed/ (completed tasks)
 └── archive/
     └── database-refactoring/ (archived database work)
@@ -82,7 +82,7 @@ Contains completed planning documents:
 1. **For new database work**: Check `database-project-roadmap-consolidated.md` first
 2. **For project status**: Review `project-status-summary.md`
 3. **For historical context**: Browse `archive/database-refactoring/`
-4. **For other tasks**: Check `todo/` directory
+4. **For other tasks**: Check `to-do/` directory
 
 ## Last Updated
 May 24, 2025 - Comprehensive review and consolidation completed

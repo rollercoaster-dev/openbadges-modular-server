@@ -34,7 +34,7 @@ The OpenBadges Modular Server implements a **dual-database architecture** suppor
 
 ## Core Components
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Application Layer                        │
 ├─────────────────────────────────────────────────────────────┤
@@ -117,7 +117,7 @@ abstract class BaseRepository {
 
 ### Repository Hierarchy
 
-```
+```text
 BaseRepository (Abstract)
 ├── BaseSqliteRepository
 │   ├── SqliteIssuerRepository

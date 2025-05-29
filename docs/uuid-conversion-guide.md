@@ -14,7 +14,7 @@ This document explains the UUID conversion system and data format differences be
 
 ## Overview
 
-The OpenBadges Modular Server handles a critical data format challenge: **PostgreSQL requires plain UUID format while the application generates URN format identifiers**. The system implements sophisticated conversion utilities to maintain data consistency across database types.
+The OpenBadges Modular Server handles a critical data-format challenge: **PostgreSQL requires plain UUID format, while the application generates URN-format identifiers**. The system implements sophisticated conversion utilities to maintain data consistency across database types.
 
 ### The Challenge
 
@@ -275,7 +275,7 @@ const importedData = sqliteRecords.map(record => ({
 
 #### 1. PostgreSQL UUID Format Error
 
-```
+```text
 PostgresError: invalid input syntax for type uuid: "urn:uuid:..."
 ```
 
@@ -284,7 +284,7 @@ PostgresError: invalid input syntax for type uuid: "urn:uuid:..."
 
 #### 2. Application Receives Plain UUID
 
-```
+```text
 Error: Expected URN format but received plain UUID
 ```
 
@@ -293,7 +293,7 @@ Error: Expected URN format but received plain UUID
 
 #### 3. Invalid UUID Format
 
-```
+```text
 Warning: Value is neither valid URN nor UUID format
 ```
 

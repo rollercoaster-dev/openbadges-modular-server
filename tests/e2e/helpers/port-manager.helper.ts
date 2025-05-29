@@ -66,3 +66,18 @@ export function clearAllocatedPorts(): void {
   allocatedPorts.clear();
   logger.debug(`Cleared ${count} allocated ports`);
 }
+
+// Cleanup allocated ports on process exit for improved robustness
+process.on('exit', () => {
+  clearAllocatedPorts();
+});
+
+process.on('SIGINT', () => {
+  clearAllocatedPorts();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  clearAllocatedPorts();
+  process.exit(0);
+});

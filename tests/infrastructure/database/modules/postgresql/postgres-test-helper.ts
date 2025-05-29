@@ -410,42 +410,64 @@ export async function cleanupTestData(client: postgres.Sql): Promise<void> {
   try {
     logger.info('Starting cleanup of PostgreSQL test data');
 
-    // Disable triggers to avoid foreign key constraint issues during cleanup
-    await client`SET session_replication_role = 'replica';`;
-
-    // Delete all data from tables in reverse order to handle foreign key constraints
-    const tables = [
-      'user_assertions',
-      'user_roles',
-      'platform_users',
-      'assertions',
-      'badge_classes',
-      'issuers',
-      'platforms',
-      'roles',
-      'api_keys',
-      'users',
-    ];
-
-    for (const table of tables) {
+    // Wrap the cleanup in a transaction for safety
+    await client.begin(async (trx) => {
+      // Check if user has superuser privileges before setting session_replication_role
+      let hasSuperuserPrivileges = false;
       try {
-        await client`DELETE FROM ${client.unsafe(table)};`;
-        if (DEBUG_CONNECTION) {
-          logger.debug(`Cleaned data from table: ${table}`);
-        }
-      } catch (tableError) {
-        // Log but don't fail if table doesn't exist
-        logger.warn(`Failed to clean data from table ${table}`, {
+        const result =
+          await trx`SELECT current_setting('is_superuser') as is_superuser;`;
+        hasSuperuserPrivileges = result[0]?.is_superuser === 'on';
+      } catch (checkError) {
+        logger.debug('Could not check superuser privileges', {
           error:
-            tableError instanceof Error
-              ? tableError.message
-              : String(tableError),
+            checkError instanceof Error
+              ? checkError.message
+              : String(checkError),
         });
       }
-    }
 
-    // Re-enable triggers
-    await client`SET session_replication_role = 'origin';`;
+      // Disable triggers to avoid foreign key constraint issues during cleanup (if superuser)
+      if (hasSuperuserPrivileges) {
+        await trx`SET session_replication_role = 'replica';`;
+      }
+
+      // Delete all data from tables in reverse order to handle foreign key constraints
+      const tables = [
+        'user_assertions',
+        'user_roles',
+        'platform_users',
+        'assertions',
+        'badge_classes',
+        'issuers',
+        'platforms',
+        'roles',
+        'api_keys',
+        'users',
+      ];
+
+      for (const table of tables) {
+        try {
+          await trx`DELETE FROM ${trx.unsafe(table)};`;
+          if (DEBUG_CONNECTION) {
+            logger.debug(`Cleaned data from table: ${table}`);
+          }
+        } catch (tableError) {
+          // Log but don't fail if table doesn't exist
+          logger.warn(`Failed to clean data from table ${table}`, {
+            error:
+              tableError instanceof Error
+                ? tableError.message
+                : String(tableError),
+          });
+        }
+      }
+
+      // Re-enable triggers (if superuser)
+      if (hasSuperuserPrivileges) {
+        await trx`SET session_replication_role = 'origin';`;
+      }
+    });
 
     logger.info('Successfully cleaned up test data from PostgreSQL database');
   } catch (error) {
@@ -482,8 +504,8 @@ export async function insertTestData(
   data: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   try {
-    // Convert the data for PostgreSQL compatibility
-    const convertedData = { ...data };
+    // Convert the data for PostgreSQL compatibility (clone to avoid mutating input)
+    const convertedData = structuredClone(data);
 
     // Convert any URN format IDs to plain UUIDs
     Object.keys(convertedData).forEach((key) => {
@@ -494,13 +516,17 @@ export async function insertTestData(
         const value = convertedData[key] as string;
         if (value.startsWith('urn:uuid:')) {
           convertedData[key] = convertUuid(value, 'postgresql', 'to');
+        } else if (!isValidUuid(value)) {
+          // If it's not a valid UUID, generate a new one
+          convertedData[key] = generateTestUuid();
         }
       }
     });
 
     // Build the insert query dynamically using postgres-js helper
+    // Use unsafe() for table name since it's controlled in tests, not user input
     const result = await client`
-      INSERT INTO ${client(tableName)} ${client(convertedData)}
+      INSERT INTO ${client.unsafe(tableName)} ${client(convertedData)}
       RETURNING *
     `;
 
@@ -574,9 +600,22 @@ export async function isDatabaseAvailable(
           }
 
           // Connect to default postgres database to create the test database
-          const pgClient = postgres(
-            connString.replace(dbName || '', 'postgres')
-          );
+          // Use URL object for safer connection string manipulation
+          let pgConnString: string;
+          try {
+            const url = new URL(connString);
+            url.pathname = '/postgres';
+            pgConnString = url.toString();
+          } catch (urlError) {
+            // Fallback to string replacement if URL parsing fails
+            logger.warn(
+              'URL parsing failed, using string replacement fallback',
+              { error: String(urlError) }
+            );
+            pgConnString = connString.replace(dbName || '', 'postgres');
+          }
+
+          const pgClient = postgres(pgConnString);
 
           logger.info(`Attempting to create database ${dbName}`);
           await pgClient`CREATE DATABASE ${pgClient.unsafe(

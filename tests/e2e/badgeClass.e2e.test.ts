@@ -179,7 +179,7 @@ describe('Badge Class API - E2E', () => {
       expect(body.name).toBe(badgeClassData.name);
       expect(body.description).toBe(badgeClassData.description);
       expect(body.issuer.toString()).toBe(issuerId);
-      // Badge classes are returned as Achievement type in Open Badges 3.0
+      // API intentionally maps BadgeClass input → Achievement output (OBv3 specification)
       expect(body.type).toEqual(['Achievement']);
     });
 
