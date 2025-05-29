@@ -499,9 +499,34 @@ function createVersionedRouter(
   });
 
   router.get('/assertions/:id', async (c) => {
-    const id = c.req.param('id');
-    const result = await assertionController.getAssertionById(id, version);
-    return c.json(result);
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.getAssertionById(id, version);
+      if (!result) {
+        return c.json(
+          { error: 'Not Found', message: 'Assertion not found' },
+          404
+        );
+      }
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Invalid IRI')) {
+        logger.error('GET /assertions/:id invalid IRI', {
+          error: message,
+          id: c.req.param('id'),
+        });
+        return c.json(
+          { error: 'Bad Request', message: 'Invalid assertion ID' },
+          400
+        );
+      }
+      logger.error('GET /assertions/:id failed', {
+        error: message,
+        id: c.req.param('id'),
+      });
+      return c.json({ error: 'Internal Server Error', message }, 500);
+    }
   });
 
   router.get('/badge-classes/:id/assertions', async (c) => {

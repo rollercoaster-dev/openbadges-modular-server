@@ -398,6 +398,7 @@ describe('Badge Class API - E2E', () => {
           description: 'Updated description.',
           type: 'BadgeClass',
           issuer: issuerId,
+          image: 'https://example.com/updated-badge.png',
           criteria: {
             narrative: 'Updated test requirements',
           },
@@ -490,6 +491,7 @@ describe('Badge Class API - E2E', () => {
             description: 'Updated description.',
             type: 'BadgeClass',
             issuer: issuerId,
+            image: 'https://example.com/badge.png',
             criteria: {
               narrative: 'Updated requirements',
             },
@@ -503,6 +505,7 @@ describe('Badge Class API - E2E', () => {
             description: 'Updated description.',
             type: 'BadgeClass',
             issuer: '00000000-0000-4000-a000-000000000999', // Non-existent issuer
+            image: 'https://example.com/badge.png',
             criteria: {
               narrative: 'Updated requirements',
             },
@@ -515,6 +518,7 @@ describe('Badge Class API - E2E', () => {
             description: 'Updated description.',
             type: 'BadgeClass',
             issuer: issuerId,
+            image: 'https://example.com/badge.png',
             // criteria is missing
           },
         },
@@ -564,6 +568,7 @@ describe('Badge Class API - E2E', () => {
         description: 'Updated description.',
         type: 'BadgeClass',
         issuer: issuerId,
+        image: 'https://example.com/updated-badge.png',
         criteria: {
           narrative: 'Updated requirements',
         },
