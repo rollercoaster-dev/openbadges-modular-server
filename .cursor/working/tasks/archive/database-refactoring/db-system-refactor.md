@@ -456,47 +456,7 @@ Based on Phase 1-3 analysis and the "Separate but Coordinated" strategy (Option 
 - [ ] **Extend existing utilities** (`type-conversion.ts`) rather than create new files
 - [ ] **Apply existing patterns** (error handling, logging, testing) to UUID conversion
 - [ ] **Maintain incremental commit strategy** for reviewable changes
-<environment_details>
-# VSCode Visible Files
-.cursor/working/tasks/db-system-refactor.md
-
-# VSCode Open Tabs
-tests/domains/assertion/assertion.entity.test.ts
-src/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.ts
-.cursor/working/tasks/db-system-refactor.md
-
-# Current Time
-5/24/2025, 7:41:56 PM (Europe/Berlin, UTC+2:00)
-
-# Context Window Usage
-63,856 / 1,048.576K tokens used (6%)
-
-# Current Mode
-ACT MODE
-</environment_details>
 
 </final_file_content>
 
 IMPORTANT: For any future changes to this file, use the final_file_content shown above as your reference. This content reflects the current state of the file, including any auto-formatting (e.g., if you used single quotes but the formatter converted them to double quotes). Always base your SEARCH/REPLACE operations on this final version to ensure accuracy.
-
-<environment_details>
-# VSCode Visible Files
-.cursor/working/tasks/db-system-refactor.md
-
-# VSCode Open Tabs
-tests/domains/assertion/assertion.entity.test.ts
-src/infrastructure/database/modules/sqlite/repositories/base-sqlite.repository.ts
-src/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.ts
-tests/infrastructure/database/modules/sqlite/repositories/sqlite-assertion.repository.spec.ts
-tests/infrastructure/database/modules/sqlite/repositories/sqlite-badge-class.repository.spec.ts
-.cursor/working/tasks/db-system-refactor.md
-
-# Current Time
-5/24/2025, 7:52:23 PM (Europe/Berlin, UTC+2:00)
-
-# Context Window Usage
-397,627 / 1,048.576K tokens used (38%)
-
-# Current Mode
-ACT MODE
-</environment_details>

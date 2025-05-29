@@ -15,18 +15,45 @@ import {
 } from '@infrastructure/database/utils/type-conversion';
 import crypto from 'crypto';
 
-// Default connection strings for tests
-const DEFAULT_LOCAL_TEST_CONNECTION_STRING = `postgres://testuser:testpassword@localhost:5433/openbadges_test`;
-const DEFAULT_CI_TEST_CONNECTION_STRING =
-  'postgres://postgres:postgres@localhost:5432/openbadges_test';
+// Environment variable names for PostgreSQL test configuration
+const ENV_VARS = {
+  TEST_DATABASE_URL: 'TEST_DATABASE_URL',
+  PG_TEST_HOST: 'PG_TEST_HOST',
+  PG_TEST_PORT: 'PG_TEST_PORT',
+  PG_TEST_USER: 'PG_TEST_USER',
+  PG_TEST_PASSWORD: 'PG_TEST_PASSWORD',
+  PG_TEST_DATABASE: 'PG_TEST_DATABASE',
+} as const;
 
 // Determine if running in CI environment
 const isCI = process.env.CI === 'true';
 
+/**
+ * Builds a PostgreSQL connection string from environment variables or defaults
+ * @returns PostgreSQL connection string
+ */
+function buildConnectionString(): string {
+  // Check if a complete connection string is provided
+  if (process.env[ENV_VARS.TEST_DATABASE_URL]) {
+    return process.env[ENV_VARS.TEST_DATABASE_URL];
+  }
+
+  // Build connection string from individual components
+  const host =
+    process.env[ENV_VARS.PG_TEST_HOST] || (isCI ? 'localhost' : 'localhost');
+  const port = process.env[ENV_VARS.PG_TEST_PORT] || (isCI ? '5432' : '5433');
+  const user =
+    process.env[ENV_VARS.PG_TEST_USER] || (isCI ? 'postgres' : 'testuser');
+  const password =
+    process.env[ENV_VARS.PG_TEST_PASSWORD] ||
+    (isCI ? 'postgres' : 'testpassword');
+  const database = process.env[ENV_VARS.PG_TEST_DATABASE] || 'openbadges_test';
+
+  return `postgres://${user}:${password}@${host}:${port}/${database}`;
+}
+
 // Default connection string based on environment
-export const DEFAULT_TEST_CONNECTION_STRING = isCI
-  ? DEFAULT_CI_TEST_CONNECTION_STRING
-  : DEFAULT_LOCAL_TEST_CONNECTION_STRING;
+export const DEFAULT_TEST_CONNECTION_STRING = buildConnectionString();
 
 // Add debug logging for connection attempts
 const DEBUG_CONNECTION = true;
@@ -152,9 +179,12 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
     });
   }
 
+  // First create a basic client instance to ensure proper cleanup on failure
+  let client: postgres.Sql | null = null;
+
   try {
-    // Create and return the client with optimized settings for tests
-    const client = postgres(connString, {
+    // Create the client with optimized settings for tests
+    client = postgres(connString, {
       max: 10, // Use a smaller connection pool for tests
       idle_timeout: 10, // Close idle connections faster in tests
       connect_timeout: 10, // Increased timeout for better reliability
@@ -171,6 +201,34 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
 
     return client;
   } catch (error) {
+    // Ensure proper cleanup of any partially opened connections
+    if (client) {
+      try {
+        // Call end() and handle the promise without await since this is not an async function
+        client.end().catch((cleanupError) => {
+          logger.warn(
+            'Failed to cleanup PostgreSQL client during error handling',
+            {
+              cleanupError:
+                cleanupError instanceof Error
+                  ? cleanupError.message
+                  : String(cleanupError),
+            }
+          );
+        });
+      } catch (cleanupError) {
+        logger.warn(
+          'Failed to initiate cleanup of PostgreSQL client during error handling',
+          {
+            cleanupError:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError),
+          }
+        );
+      }
+    }
+
     logger.error('Failed to create PostgreSQL client', {
       error: error instanceof Error ? error.message : String(error),
       connectionString: SensitiveValue.from(connString),
@@ -505,7 +563,11 @@ export async function insertTestData(
 ): Promise<Record<string, unknown>> {
   try {
     // Convert the data for PostgreSQL compatibility (clone to avoid mutating input)
-    const convertedData = structuredClone(data);
+    // Use structuredClone if available, fallback to JSON parse/stringify for older environments
+    const convertedData =
+      typeof structuredClone !== 'undefined'
+        ? structuredClone(data)
+        : JSON.parse(JSON.stringify(data));
 
     // Convert any URN format IDs to plain UUIDs
     Object.keys(convertedData).forEach((key) => {

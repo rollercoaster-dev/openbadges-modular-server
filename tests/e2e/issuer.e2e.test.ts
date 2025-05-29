@@ -102,7 +102,6 @@ describe('Issuer API - E2E', () => {
       logger.info('Issuer E2E tests: Reset database');
 
       // Add a small delay to ensure the database reset is complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       logger.error('Failed to reset database', {
         error: error instanceof Error ? error.message : String(error),

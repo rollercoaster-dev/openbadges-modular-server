@@ -75,7 +75,11 @@ export async function createApiRouter(
     c.header('Content-Type', 'text/html');
     c.header(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; connect-src 'self'"
+      "default-src 'self'; \
+  script-src 'self' https://unpkg.com; \
+  style-src  'self' https://unpkg.com 'unsafe-inline'; \
+  img-src    'self' data: https://unpkg.com; \
+  connect-src 'self'"
     );
 
     // Return the Swagger UI HTML
