@@ -13,6 +13,11 @@ if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
   process.env.SQLITE_DB_PATH = ':memory:';
 }
 
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
 import {
   describe,
   it,
@@ -61,9 +66,6 @@ describe('Badge Class API - E2E', () => {
 
     // Log the API URL for debugging
     logger.info(`E2E Test: Using API URL: ${API_URL}`);
-
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);

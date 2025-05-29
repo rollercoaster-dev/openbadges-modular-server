@@ -7,7 +7,6 @@
 
 import { Hono } from 'hono';
 
-import { logger } from '../utils/logging/logger.service';
 import {
   CreateIssuerDto,
   UpdateIssuerDto,
@@ -255,42 +254,11 @@ function createVersionedRouter(
         }
         return c.json(result);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        // Use the already parsed body for logging
-        if (message.includes('Invalid IRI')) {
-          logger.error('PUT /badge-classes/:id invalid IRI', {
-            error: message,
-            id,
-            body,
-          });
-          return c.json(
-            { error: 'Bad Request', message: 'Invalid badge class ID' },
-            400
-          );
-        }
-        if (message.includes('permission')) {
-          logger.error('PUT /badge-classes/:id forbidden', {
-            error: message,
-            id,
-            body,
-          });
-          return c.json({ error: 'Forbidden', message }, 403);
-        }
-        logger.error('PUT /badge-classes/:id failed', {
-          error: message,
+        return sendApiError(c, error, {
+          endpoint: 'PUT /badge-classes/:id',
           id,
           body,
         });
-        if (
-          error instanceof Error &&
-          (error.name === 'BadRequestError' ||
-            message.toLowerCase().includes('invalid') ||
-            message.toLowerCase().includes('validation') ||
-            message.toLowerCase().includes('does not exist'))
-        ) {
-          return c.json({ error: 'Bad Request', message }, 400);
-        }
-        return c.json({ error: 'Internal Server Error' }, 500);
       }
     }
   );
@@ -409,12 +377,13 @@ function createVersionedRouter(
         }
         return c.json(result);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('PUT /assertions/:id failed', { error: message, id });
-        if (message.includes('permission')) {
-          return c.json({ error: 'Forbidden', message }, 403);
-        }
-        return c.json({ error: 'Bad Request', message }, 400);
+        return sendApiError(c, error, {
+          endpoint: 'PUT /assertions/:id',
+          id,
+          body: (c as { get: (key: 'validatedBody') => unknown }).get(
+            'validatedBody'
+          ),
+        });
       }
     }
   );
@@ -430,15 +399,10 @@ function createVersionedRouter(
       const result = await assertionController.revokeAssertion(id, reason);
       return c.json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error('POST /assertions/:id/revoke failed', {
-        error: message,
+      return sendApiError(c, error, {
+        endpoint: 'POST /assertions/:id/revoke',
         id,
       });
-      if (message.includes('permission')) {
-        return c.json({ error: 'Forbidden', message }, 403);
-      }
-      return c.json({ error: 'Bad Request', message }, 400);
     }
   });
 
@@ -485,12 +449,10 @@ function createVersionedRouter(
       }
       return c.json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error('POST /assertions/:id/sign failed', { error: message, id });
-      if (message.includes('permission')) {
-        return c.json({ error: 'Forbidden', message }, 403);
-      }
-      return c.json({ error: 'Bad Request', message }, 400);
+      return sendApiError(c, error, {
+        endpoint: 'POST /assertions/:id/sign',
+        id,
+      });
     }
   });
 
@@ -500,9 +462,7 @@ function createVersionedRouter(
       const result = await assertionController.getPublicKeys();
       return c.json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error('GET /public-keys failed', { error: message });
-      return c.json({ error: 'Internal Server Error' }, 500);
+      return sendApiError(c, error, { endpoint: 'GET /public-keys' });
     }
   });
 
@@ -512,9 +472,10 @@ function createVersionedRouter(
       const result = await assertionController.getPublicKey(id);
       return c.json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error('GET /public-keys/:id failed', { error: message, id });
-      return c.json({ error: 'Key not found' }, 404);
+      return sendApiError(c, error, {
+        endpoint: 'GET /public-keys/:id',
+        id,
+      });
     }
   });
 

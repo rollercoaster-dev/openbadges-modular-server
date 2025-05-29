@@ -180,7 +180,7 @@ function testSQLiteErrorHandling() {
   }
 }
 
-function testPostgreSQLErrorHandling() {
+async function testPostgreSQLErrorHandling() {
   logger.info('Testing PostgreSQL error handling...');
 
   const mockClient = new MockPostgresClient();
@@ -194,57 +194,55 @@ function testPostgreSQLErrorHandling() {
   logger.info('Test 1: PostgreSQL syntax error should abort migration');
 
   let aborted = false;
-  (async () => {
-    for (const statement of statements) {
-      try {
-        if (statement.includes('INVALID')) {
-          mockClient.setShouldFailWithSyntaxError(true);
-        } else {
-          mockClient.setShouldFailWithSyntaxError(false);
-        }
+  for (const statement of statements) {
+    try {
+      if (statement.includes('INVALID')) {
+        mockClient.setShouldFailWithSyntaxError(true);
+      } else {
+        mockClient.setShouldFailWithSyntaxError(false);
+      }
 
-        await mockClient.unsafe(statement);
-      } catch (stmtError) {
-        const errorMessage =
-          stmtError instanceof Error ? stmtError.message : String(stmtError);
-        const isAlreadyExistsError =
-          errorMessage.includes('already exists') ||
-          (errorMessage.includes('relation') &&
-            errorMessage.includes('does not exist'));
+      await mockClient.unsafe(statement);
+    } catch (stmtError) {
+      const errorMessage =
+        stmtError instanceof Error ? stmtError.message : String(stmtError);
+      const isAlreadyExistsError =
+        errorMessage.includes('already exists') ||
+        (errorMessage.includes('relation') &&
+          errorMessage.includes('does not exist'));
 
-        if (isAlreadyExistsError) {
-          logger.info(
-            `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
-              0,
-              50
-            )}...`
-          );
-        } else {
-          logger.error(
-            `Fatal error executing PostgreSQL statement: ${statement.substring(
-              0,
-              100
-            )}...`,
-            {
-              error: errorMessage,
-            }
-          );
-          aborted = true;
-          break;
-        }
+      if (isAlreadyExistsError) {
+        logger.info(
+          `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
+            0,
+            50
+          )}...`
+        );
+      } else {
+        logger.error(
+          `Fatal error executing PostgreSQL statement: ${statement.substring(
+            0,
+            100
+          )}...`,
+          {
+            error: errorMessage,
+          }
+        );
+        aborted = true;
+        break;
       }
     }
+  }
 
-    if (aborted) {
-      logger.info(
-        '✅ Test 1 PASSED: PostgreSQL syntax error correctly aborted migration'
-      );
-    } else {
-      logger.error(
-        '❌ Test 1 FAILED: PostgreSQL syntax error did not abort migration'
-      );
-    }
-  })();
+  if (aborted) {
+    logger.info(
+      '✅ Test 1 PASSED: PostgreSQL syntax error correctly aborted migration'
+    );
+  } else {
+    logger.error(
+      '❌ Test 1 FAILED: PostgreSQL syntax error did not abort migration'
+    );
+  }
 }
 
 async function runTests() {
@@ -253,7 +251,7 @@ async function runTests() {
 
   testSQLiteErrorHandling();
   logger.info('');
-  testPostgreSQLErrorHandling();
+  await testPostgreSQLErrorHandling();
 
   logger.info('='.repeat(60));
   logger.info('✅ Migration error handling tests completed');

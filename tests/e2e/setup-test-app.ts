@@ -421,10 +421,7 @@ export async function setupTestApp(
                   logger.info('Original PostgreSQL SQL applied successfully');
                 } catch (error) {
                   // If tables already exist, that's fine
-                  if (
-                    error.message &&
-                    error.message.includes('already exists')
-                  ) {
+                  if (error.message?.includes('already exists')) {
                     logger.info('Tables already exist, skipping migration');
                   } else {
                     logger.error(
