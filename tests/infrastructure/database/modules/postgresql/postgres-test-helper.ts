@@ -9,44 +9,176 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { logger } from '@utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
+import {
+  convertUuid,
+  isValidUuid,
+} from '@infrastructure/database/utils/type-conversion';
+import crypto from 'crypto';
 
 // Default connection strings for tests with passwords wrapped in SensitiveValue
 const DEFAULT_LOCAL_TEST_CONNECTION_STRING = `postgres://testuser:testpassword@localhost:5433/openbadges_test`;
-const DEFAULT_CI_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from('postgres')}@localhost:5432/openbadges_test`;
+const DEFAULT_CI_TEST_CONNECTION_STRING = `postgres://postgres:${SensitiveValue.from(
+  'postgres'
+)}@localhost:5432/openbadges_test`;
 
 // Determine if running in CI environment
 const isCI = process.env.CI === 'true';
 
 // Default connection string based on environment
-export const DEFAULT_TEST_CONNECTION_STRING = isCI ? DEFAULT_CI_TEST_CONNECTION_STRING : DEFAULT_LOCAL_TEST_CONNECTION_STRING;
+export const DEFAULT_TEST_CONNECTION_STRING = isCI
+  ? DEFAULT_CI_TEST_CONNECTION_STRING
+  : DEFAULT_LOCAL_TEST_CONNECTION_STRING;
 
 // Add debug logging for connection attempts
 const DEBUG_CONNECTION = true;
 
 /**
- * Creates a PostgreSQL client for testing
+ * Generates a valid UUID v4 for testing
+ * @returns A valid UUID v4 string
+ */
+export function generateTestUuid(): string {
+  return crypto.randomUUID();
+}
+
+/**
+ * Generates test data with proper UUID formats for PostgreSQL
+ * @param overrides Optional overrides for specific fields
+ * @returns Test data object with valid UUIDs
+ */
+export function generateTestData(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  const baseData = {
+    id: generateTestUuid(),
+    name: `Test Entity ${Date.now()}`,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+
+  // Convert any URN format IDs to plain UUIDs for PostgreSQL
+  Object.keys(baseData).forEach((key) => {
+    if (key.toLowerCase().includes('id') && typeof baseData[key] === 'string') {
+      const value = baseData[key] as string;
+      if (value.startsWith('urn:uuid:')) {
+        baseData[key] = convertUuid(value, 'postgresql', 'to');
+      } else if (!isValidUuid(value)) {
+        // If it's not a valid UUID, generate a new one
+        baseData[key] = generateTestUuid();
+      }
+    }
+  });
+
+  return baseData;
+}
+
+/**
+ * Generates test issuer data with proper UUID format
+ * @param overrides Optional overrides for specific fields
+ * @returns Test issuer data
+ */
+export function generateTestIssuerData(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return generateTestData({
+    name: `Test Issuer ${Date.now()}`,
+    url: 'https://test-issuer.example.com',
+    email: `issuer-${Date.now()}@example.com`,
+    description: 'Test issuer for PostgreSQL tests',
+    image: 'https://test-issuer.example.com/logo.png',
+    ...overrides,
+  });
+}
+
+/**
+ * Generates test badge class data with proper UUID format
+ * @param issuerId The issuer ID (will be converted to proper format)
+ * @param overrides Optional overrides for specific fields
+ * @returns Test badge class data
+ */
+export function generateTestBadgeClassData(
+  issuerId: string,
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return generateTestData({
+    issuerId: convertUuid(issuerId, 'postgresql', 'to'),
+    name: `Test Badge Class ${Date.now()}`,
+    description: 'Test badge class for PostgreSQL tests',
+    image: 'https://test-issuer.example.com/badge.png',
+    criteria: JSON.stringify({ narrative: 'Complete the test requirements' }),
+    ...overrides,
+  });
+}
+
+/**
+ * Generates test assertion data with proper UUID format
+ * @param badgeClassId The badge class ID (will be converted to proper format)
+ * @param overrides Optional overrides for specific fields
+ * @returns Test assertion data
+ */
+export function generateTestAssertionData(
+  badgeClassId: string,
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return generateTestData({
+    badgeClassId: convertUuid(badgeClassId, 'postgresql', 'to'),
+    recipient: JSON.stringify({
+      type: 'email',
+      identity: `test-${Date.now()}@example.com`,
+      hashed: false,
+    }),
+    issuedOn: new Date(),
+    verification: JSON.stringify({ type: 'hosted' }),
+    ...overrides,
+  });
+}
+
+/**
+ * Creates a PostgreSQL client for testing with improved error handling
  * @param connectionString Optional connection string (defaults to environment variable or default test connection)
  * @returns A PostgreSQL client
  */
 export function createPostgresClient(connectionString?: string): postgres.Sql {
   // Use provided connection string, or environment variable, or default test connection
-  const connString = connectionString ||
+  const connString =
+    connectionString ||
     process.env.TEST_DATABASE_URL ||
     DEFAULT_TEST_CONNECTION_STRING;
 
   if (DEBUG_CONNECTION) {
     logger.info('Creating PostgreSQL client', {
       connectionString: SensitiveValue.from(connString),
-      isCI: isCI
+      isCI: isCI,
+      timestamp: new Date().toISOString(),
     });
   }
 
-  // Create and return the client
-  return postgres(connString, {
-    max: 10, // Use a smaller connection pool for tests
-    idle_timeout: 10, // Close idle connections faster in tests
-    connect_timeout: 5, // Shorter connection timeout for tests
-  });
+  try {
+    // Create and return the client with optimized settings for tests
+    const client = postgres(connString, {
+      max: 10, // Use a smaller connection pool for tests
+      idle_timeout: 10, // Close idle connections faster in tests
+      connect_timeout: 10, // Increased timeout for better reliability
+      transform: {
+        undefined: null, // Transform undefined to null for PostgreSQL compatibility
+      },
+      onnotice: (notice) => {
+        // Log PostgreSQL notices for debugging
+        if (DEBUG_CONNECTION) {
+          logger.debug('PostgreSQL notice', { notice: notice.message });
+        }
+      },
+    });
+
+    return client;
+  } catch (error) {
+    logger.error('Failed to create PostgreSQL client', {
+      error: error instanceof Error ? error.message : String(error),
+      connectionString: SensitiveValue.from(connString),
+      isCI: isCI,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -54,7 +186,9 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
  * @param client The PostgreSQL client
  * @returns A Drizzle ORM instance
  */
-export function createDrizzleInstance(client: postgres.Sql): ReturnType<typeof drizzle> {
+export function createDrizzleInstance(
+  client: postgres.Sql
+): ReturnType<typeof drizzle> {
   return drizzle(client);
 }
 
@@ -217,7 +351,7 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
     logger.info('Created test tables in PostgreSQL database');
   } catch (error) {
     logger.error('Error creating test tables in PostgreSQL database', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
@@ -255,54 +389,145 @@ export async function dropTestTables(client: postgres.Sql): Promise<void> {
       await client`SET session_replication_role = 'origin';`;
     } catch (triggerError) {
       logger.error('Error re-enabling triggers', {
-        error: triggerError instanceof Error ? triggerError.message : String(triggerError)
+        error:
+          triggerError instanceof Error
+            ? triggerError.message
+            : String(triggerError),
       });
     }
 
     logger.error('Error dropping test tables from PostgreSQL database', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
 }
 
 /**
- * Cleans up test data from the PostgreSQL database
+ * Cleans up test data from the PostgreSQL database with improved error handling
  * @param client The PostgreSQL client
  */
 export async function cleanupTestData(client: postgres.Sql): Promise<void> {
   try {
+    logger.info('Starting cleanup of PostgreSQL test data');
+
     // Disable triggers to avoid foreign key constraint issues during cleanup
     await client`SET session_replication_role = 'replica';`;
 
     // Delete all data from tables in reverse order to handle foreign key constraints
-    await client`DELETE FROM user_assertions;`;
-    await client`DELETE FROM user_roles;`;
-    await client`DELETE FROM platform_users;`;
-    await client`DELETE FROM assertions;`;
-    await client`DELETE FROM badge_classes;`;
-    await client`DELETE FROM issuers;`;
-    await client`DELETE FROM platforms;`;
-    await client`DELETE FROM roles;`;
-    await client`DELETE FROM api_keys;`;
-    await client`DELETE FROM users;`;
+    const tables = [
+      'user_assertions',
+      'user_roles',
+      'platform_users',
+      'assertions',
+      'badge_classes',
+      'issuers',
+      'platforms',
+      'roles',
+      'api_keys',
+      'users',
+    ];
+
+    for (const table of tables) {
+      try {
+        await client`DELETE FROM ${client(table)};`;
+        if (DEBUG_CONNECTION) {
+          logger.debug(`Cleaned data from table: ${table}`);
+        }
+      } catch (tableError) {
+        // Log but don't fail if table doesn't exist
+        logger.warn(`Failed to clean data from table ${table}`, {
+          error:
+            tableError instanceof Error
+              ? tableError.message
+              : String(tableError),
+        });
+      }
+    }
 
     // Re-enable triggers
     await client`SET session_replication_role = 'origin';`;
 
-    logger.info('Cleaned up test data from PostgreSQL database');
+    logger.info('Successfully cleaned up test data from PostgreSQL database');
   } catch (error) {
     // Re-enable triggers even if there was an error
     try {
       await client`SET session_replication_role = 'origin';`;
     } catch (triggerError) {
       logger.error('Error re-enabling triggers', {
-        error: triggerError instanceof Error ? triggerError.message : String(triggerError)
+        error:
+          triggerError instanceof Error
+            ? triggerError.message
+            : String(triggerError),
       });
     }
 
     logger.error('Error cleaning up test data from PostgreSQL database', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Inserts test data with proper UUID conversion
+ * @param client The PostgreSQL client
+ * @param tableName The table name
+ * @param data The data to insert (will be converted for PostgreSQL compatibility)
+ * @returns The inserted record with converted IDs
+ */
+export async function insertTestData(
+  client: postgres.Sql,
+  tableName: string,
+  data: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  try {
+    // Convert the data for PostgreSQL compatibility
+    const convertedData = { ...data };
+
+    // Convert any URN format IDs to plain UUIDs
+    Object.keys(convertedData).forEach((key) => {
+      if (
+        key.toLowerCase().includes('id') &&
+        typeof convertedData[key] === 'string'
+      ) {
+        const value = convertedData[key] as string;
+        if (value.startsWith('urn:uuid:')) {
+          convertedData[key] = convertUuid(value, 'postgresql', 'to');
+        }
+      }
+    });
+
+    // Build the insert query dynamically
+    const columns = Object.keys(convertedData);
+    const values = Object.values(convertedData);
+
+    const result = await client`
+      INSERT INTO ${client(tableName)} (${client(columns)})
+      VALUES (${client(values)})
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      throw new Error(`Failed to insert data into ${tableName}`);
+    }
+
+    const insertedRecord = result[0] as Record<string, unknown>;
+
+    if (DEBUG_CONNECTION) {
+      logger.debug(`Inserted test data into ${tableName}`, {
+        tableName,
+        recordId: insertedRecord.id,
+      });
+    }
+
+    return insertedRecord;
+  } catch (error) {
+    logger.error(`Failed to insert test data into ${tableName}`, {
+      error: error instanceof Error ? error.message : String(error),
+      tableName,
+      data: Object.keys(data),
     });
     throw error;
   }
@@ -313,18 +538,21 @@ export async function cleanupTestData(client: postgres.Sql): Promise<void> {
  * @param connectionString Optional connection string
  * @returns True if the database is available, false otherwise
  */
-export async function isDatabaseAvailable(connectionString?: string): Promise<boolean> {
+export async function isDatabaseAvailable(
+  connectionString?: string
+): Promise<boolean> {
   let client: postgres.Sql | null = null;
 
   try {
-    const connString = connectionString ||
+    const connString =
+      connectionString ||
       process.env.TEST_DATABASE_URL ||
       DEFAULT_TEST_CONNECTION_STRING;
 
     if (DEBUG_CONNECTION) {
       logger.info('Attempting to connect to PostgreSQL', {
         connectionString: SensitiveValue.from(connString),
-        isCI: isCI
+        isCI: isCI,
       });
     }
 
@@ -343,20 +571,29 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
             dbName = new URL(connString).pathname.split('/').pop();
           } catch (urlError) {
             // Fallback to simple splitting if URL parsing fails
-            logger.warn('Failed to parse connection string as URL, using fallback method', { error: String(urlError) });
+            logger.warn(
+              'Failed to parse connection string as URL, using fallback method',
+              { error: String(urlError) }
+            );
             dbName = connString.split('/').pop();
           }
 
           // Connect to default postgres database to create the test database
-          const pgClient = postgres(connString.replace(dbName || '', 'postgres'));
+          const pgClient = postgres(
+            connString.replace(dbName || '', 'postgres')
+          );
 
           logger.info(`Attempting to create database ${dbName}`);
-          await pgClient`CREATE DATABASE ${pgClient(dbName || 'openbadges_test')};`;
+          await pgClient`CREATE DATABASE ${pgClient(
+            dbName || 'openbadges_test'
+          )};`;
           await pgClient.end();
 
           // Try connecting again
           await client`SELECT 1;`;
-          logger.info(`Successfully created and connected to database ${dbName}`);
+          logger.info(
+            `Successfully created and connected to database ${dbName}`
+          );
         } catch (createError) {
           throw new Error(`Failed to create database: ${createError}`);
         }
@@ -374,28 +611,34 @@ export async function isDatabaseAvailable(connectionString?: string): Promise<bo
     // Provide more detailed error message based on the error type
     let errorMessage = error instanceof Error ? error.message : String(error);
     let detailedMessage = '';
-    let helpMessage = 'Run "bun run test:pg:setup" to start a PostgreSQL container for testing';
+    let helpMessage =
+      'Run "bun run test:pg:setup" to start a PostgreSQL container for testing';
 
     if (errorMessage.includes('ECONNREFUSED')) {
-      detailedMessage = 'PostgreSQL server is not running. Please start the PostgreSQL server using "bun run test:pg:setup" or Docker directly.';
+      detailedMessage =
+        'PostgreSQL server is not running. Please start the PostgreSQL server using "bun run test:pg:setup" or Docker directly.';
     } else if (errorMessage.includes('does not exist')) {
-      detailedMessage = 'PostgreSQL database does not exist. Please create the database using "bun run test:pg:setup".';
+      detailedMessage =
+        'PostgreSQL database does not exist. Please create the database using "bun run test:pg:setup".';
     } else if (errorMessage.includes('password authentication failed')) {
-      detailedMessage = 'PostgreSQL authentication failed. Please check your credentials in TEST_DATABASE_URL environment variable.';
+      detailedMessage =
+        'PostgreSQL authentication failed. Please check your credentials in TEST_DATABASE_URL environment variable.';
     } else if (errorMessage.includes('Failed to create database')) {
-      detailedMessage = 'Failed to automatically create the test database. You may need to create it manually or use "bun run test:pg:setup".';
+      detailedMessage =
+        'Failed to automatically create the test database. You may need to create it manually or use "bun run test:pg:setup".';
     }
 
     // Add CI-specific help message
     if (isCI) {
-      helpMessage = 'Check the GitHub Actions workflow configuration for PostgreSQL service setup.';
+      helpMessage =
+        'Check the GitHub Actions workflow configuration for PostgreSQL service setup.';
     }
 
     logger.warn('PostgreSQL database is not available for testing', {
       error: errorMessage,
       details: detailedMessage || 'See error message for details',
       help: helpMessage,
-      environment: isCI ? 'CI' : 'local'
+      environment: isCI ? 'CI' : 'local',
     });
     return false;
   } finally {
