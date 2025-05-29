@@ -7,6 +7,12 @@
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
+// Simple logger for this script to avoid console usage
+const logger = {
+  info: (message) => process.stdout.write(`[INFO] ${message}\n`),
+  error: (message) => process.stderr.write(`[ERROR] ${message}\n`)
+};
+
 const E2E_TEST_DIR = 'test/e2e';
 const SETUP_IMPORT = "import { setupTestApp, stopTestServer } from './setup-test-app';";
 const PORT_CONFIG = `
@@ -68,7 +74,7 @@ async function updateE2ETests() {
 
     for (const file of testFiles) {
       const filePath = join(E2E_TEST_DIR, file);
-      console.log(`Updating ${filePath}...`);
+      logger.info(`Updating ${filePath}...`);
 
       // Read the file content
       let content = await readFile(filePath, 'utf8');
@@ -114,12 +120,12 @@ async function updateE2ETests() {
 
       // Write the updated content back to the file
       await writeFile(filePath, content, 'utf8');
-      console.log(`Updated ${filePath}`);
+      logger.info(`Updated ${filePath}`);
     }
 
-    console.log('All E2E tests updated successfully!');
+    logger.info('All E2E tests updated successfully!');
   } catch (error) {
-    console.error('Error updating E2E tests:', error);
+    logger.error('Error updating E2E tests:', error);
     process.exit(1);
   }
 }

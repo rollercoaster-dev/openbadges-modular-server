@@ -5,10 +5,18 @@
 
 import { validateDatabaseName } from './tests/infrastructure/database/modules/postgresql/postgres-test-helper';
 
-console.log(
+// Simple logger for this script to avoid console usage
+const logger = {
+  info: (message: string) => process.stdout.write(`[INFO] ${message}\n`),
+  warn: (message: string) => process.stdout.write(`[WARN] ${message}\n`),
+  error: (message: string) => process.stderr.write(`[ERROR] ${message}\n`),
+  success: (message: string) => process.stdout.write(`[SUCCESS] ${message}\n`),
+};
+
+logger.info(
   'Testing SQL injection protection in validateDatabaseName function...'
 );
-console.log('=' * 60);
+logger.info('='.repeat(60));
 
 // Test cases that should fail due to validation
 const maliciousTableNames = [
@@ -41,12 +49,12 @@ let successfulBlocks = 0;
 let validPassed = 0;
 let validFailed = 0;
 
-console.log('Testing malicious table names (should be blocked):');
+logger.info('Testing malicious table names (should be blocked):');
 for (const tableName of maliciousTableNames) {
   try {
-    console.log(`Testing: "${tableName}"`);
+    logger.info(`Testing: "${tableName}"`);
     validateDatabaseName(tableName);
-    console.log(
+    logger.error(
       `❌ SECURITY VULNERABILITY: Table name "${tableName}" was not blocked!`
     );
     failedAttempts++;
@@ -55,10 +63,10 @@ for (const tableName of maliciousTableNames) {
       error instanceof Error &&
       error.message.includes('Invalid database name format')
     ) {
-      console.log(`✅ Successfully blocked: "${tableName}"`);
+      logger.success(`✅ Successfully blocked: "${tableName}"`);
       successfulBlocks++;
     } else {
-      console.log(
+      logger.warn(
         `⚠️ Blocked for different reason: "${tableName}" - ${
           error instanceof Error ? error.message : String(error)
         }`
@@ -68,15 +76,15 @@ for (const tableName of maliciousTableNames) {
   }
 }
 
-console.log('\nTesting valid table names (should pass):');
+logger.info('\nTesting valid table names (should pass):');
 for (const tableName of validTableNames) {
   try {
-    console.log(`Testing: "${tableName}"`);
+    logger.info(`Testing: "${tableName}"`);
     validateDatabaseName(tableName);
-    console.log(`✅ Valid table name passed: "${tableName}"`);
+    logger.success(`✅ Valid table name passed: "${tableName}"`);
     validPassed++;
   } catch (error) {
-    console.log(
+    logger.error(
       `❌ Valid table name incorrectly blocked: "${tableName}" - ${
         error instanceof Error ? error.message : String(error)
       }`
@@ -85,26 +93,28 @@ for (const tableName of validTableNames) {
   }
 }
 
-console.log('\n' + '='.repeat(60));
-console.log('SQL INJECTION PROTECTION TEST RESULTS:');
-console.log(`Total malicious attempts: ${maliciousTableNames.length}`);
-console.log(`Successfully blocked: ${successfulBlocks}`);
-console.log(`Failed to block: ${failedAttempts}`);
-console.log(`Valid names tested: ${validTableNames.length}`);
-console.log(`Valid names passed: ${validPassed}`);
-console.log(`Valid names incorrectly blocked: ${validFailed}`);
+logger.info('\n' + '='.repeat(60));
+logger.info('SQL INJECTION PROTECTION TEST RESULTS:');
+logger.info(`Total malicious attempts: ${maliciousTableNames.length}`);
+logger.info(`Successfully blocked: ${successfulBlocks}`);
+logger.info(`Failed to block: ${failedAttempts}`);
+logger.info(`Valid names tested: ${validTableNames.length}`);
+logger.info(`Valid names passed: ${validPassed}`);
+logger.info(`Valid names incorrectly blocked: ${validFailed}`);
 
 if (failedAttempts === 0 && validFailed === 0) {
-  console.log('🎉 ALL TESTS PASSED!');
-  console.log('✅ Security fix is working correctly');
-  console.log('✅ All malicious attempts were blocked');
-  console.log('✅ All valid table names were accepted');
+  logger.success('🎉 ALL TESTS PASSED!');
+  logger.success('✅ Security fix is working correctly');
+  logger.success('✅ All malicious attempts were blocked');
+  logger.success('✅ All valid table names were accepted');
 } else {
-  console.log('❌ SOME TESTS FAILED!');
+  logger.error('❌ SOME TESTS FAILED!');
   if (failedAttempts > 0) {
-    console.log(`❌ ${failedAttempts} malicious attempts were not blocked`);
+    logger.error(`❌ ${failedAttempts} malicious attempts were not blocked`);
   }
   if (validFailed > 0) {
-    console.log(`❌ ${validFailed} valid table names were incorrectly blocked`);
+    logger.error(
+      `❌ ${validFailed} valid table names were incorrectly blocked`
+    );
   }
 }
