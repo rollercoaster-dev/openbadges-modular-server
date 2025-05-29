@@ -2,14 +2,20 @@
 
 /**
  * Test script to validate database name validation in postgres-test-helper.ts
- * This script tests the database name validation regex without actually creating databases
+ * This script tests the database name validation logic without actually creating databases
  */
 
 import { logger } from './src/utils/logging/logger.service';
+import { validateDatabaseName } from './tests/infrastructure/database/modules/postgresql/postgres-test-helper';
 
-// Test the database name validation regex
-function validateDatabaseName(dbName: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName);
+// Test the database name validation using the actual function from postgres-test-helper.ts
+function testValidateDatabaseName(dbName: string): boolean {
+  try {
+    validateDatabaseName(dbName);
+    return true;
+  } catch (_error) {
+    return false;
+  }
 }
 
 // Test cases
@@ -32,57 +38,56 @@ const testCases = [
   { name: 'test;DROP TABLE users;--', valid: false }, // SQL injection attempt
 ];
 
-console.log('Testing Database Name Validation\n');
-console.log('================================\n');
+logger.info('Starting database name validation tests');
 
 let allTestsPassed = true;
 
 testCases.forEach((testCase, index) => {
-  const result = validateDatabaseName(testCase.name);
-  const status = result === testCase.valid ? '✅ PASS' : '❌ FAIL';
+  const result = testValidateDatabaseName(testCase.name);
+  const passed = result === testCase.valid;
 
-  if (result !== testCase.valid) {
+  if (!passed) {
     allTestsPassed = false;
+    logger.error('Database name validation test failed', {
+      testNumber: index + 1,
+      name: testCase.name,
+      expected: testCase.valid,
+      actual: result,
+    });
   }
-
-  console.log(`Test ${index + 1}: ${status}`);
-  console.log(`  Name: "${testCase.name}"`);
-  console.log(`  Expected: ${testCase.valid ? 'Valid' : 'Invalid'}`);
-  console.log(`  Got: ${result ? 'Valid' : 'Invalid'}`);
-  console.log();
 });
 
-console.log('================================\n');
-console.log(
-  `Overall Result: ${
-    allTestsPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'
-  }`
-);
+logger.info('Database name validation tests completed', {
+  totalTests: testCases.length,
+  passed: allTestsPassed,
+});
 
 // Test the actual validation logic from postgres-test-helper.ts
-console.log('\nTesting actual validation logic:\n');
-
-function testDatabaseNameValidation(dbName: string) {
+function testDatabaseNameValidation(dbName: string): boolean {
   try {
-    // Validate database name format to prevent SQL injection
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
-      throw new Error(
-        `Invalid database name format: ${dbName}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
-      );
-    }
-    console.log(`✅ "${dbName}" - Valid database name`);
+    // Use the actual validation function from postgres-test-helper.ts
+    validateDatabaseName(dbName);
     return true;
-  } catch (error) {
-    console.log(`❌ "${dbName}" - ${error.message}`);
+  } catch (_error) {
+    logger.warn('Database name validation failed', {
+      dbName,
+      error: _error instanceof Error ? _error.message : String(_error),
+    });
     return false;
   }
 }
 
-// Test some key cases
-console.log('Testing validation from actual implementation:');
-testDatabaseNameValidation('openbadges_test');
-testDatabaseNameValidation('test_db_123');
-testDatabaseNameValidation('123invalid');
-testDatabaseNameValidation('test;DROP TABLE users;--');
+// Test implementation validation
+logger.info('Testing implementation validation logic');
+const implementationTests = [
+  'openbadges_test',
+  'test_db_123',
+  '123invalid',
+  'test;DROP TABLE users;--',
+];
+
+implementationTests.forEach((dbName) => {
+  testDatabaseNameValidation(dbName);
+});
 
 process.exit(allTestsPassed ? 0 : 1);

@@ -109,6 +109,7 @@ describe('Badge Class API - E2E', () => {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
+      throw error; // Rethrow to fail test setup and prevent tests from running on unreset database
     }
   });
 

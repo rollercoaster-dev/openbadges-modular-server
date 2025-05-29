@@ -59,6 +59,19 @@ export const DEFAULT_TEST_CONNECTION_STRING = buildConnectionString();
 const DEBUG_CONNECTION = true;
 
 /**
+ * Validates database name format to prevent SQL injection
+ * @param dbName The database name to validate
+ * @throws Error if the database name format is invalid
+ */
+export function validateDatabaseName(dbName: string): void {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
+    throw new Error(
+      `Invalid database name format: ${dbName}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
+    );
+  }
+}
+
+/**
  * Generates a valid UUID v4 for testing
  * @returns A valid UUID v4 string
  */
@@ -87,7 +100,13 @@ export function generateTestData(
     if (key.toLowerCase().includes('id') && typeof baseData[key] === 'string') {
       const value = baseData[key] as string;
       if (value.startsWith('urn:uuid:')) {
-        baseData[key] = convertUuid(value, 'postgresql', 'to');
+        const convertedValue = convertUuid(value, 'postgresql', 'to');
+        // Check if convertUuid returned a valid string, otherwise generate a new UUID
+        if (typeof convertedValue === 'string' && convertedValue.length > 0) {
+          baseData[key] = convertedValue;
+        } else {
+          baseData[key] = generateTestUuid();
+        }
       } else if (!isValidUuid(value)) {
         // If it's not a valid UUID, generate a new one
         baseData[key] = generateTestUuid();
@@ -126,8 +145,15 @@ export function generateTestBadgeClassData(
   issuerId: string,
   overrides: Record<string, unknown> = {}
 ): Record<string, unknown> {
+  // Safely convert issuerId, fallback to new UUID if conversion fails
+  const convertedIssuerId = convertUuid(issuerId, 'postgresql', 'to');
+  const safeIssuerId =
+    typeof convertedIssuerId === 'string' && convertedIssuerId.length > 0
+      ? convertedIssuerId
+      : generateTestUuid();
+
   return generateTestData({
-    issuerId: convertUuid(issuerId, 'postgresql', 'to'),
+    issuerId: safeIssuerId,
     name: `Test Badge Class ${Date.now()}`,
     description: 'Test badge class for PostgreSQL tests',
     image: 'https://test-issuer.example.com/badge.png',
@@ -146,8 +172,15 @@ export function generateTestAssertionData(
   badgeClassId: string,
   overrides: Record<string, unknown> = {}
 ): Record<string, unknown> {
+  const convertedBadgeClassId = convertUuid(badgeClassId, 'postgresql', 'to');
+  const safeBadgeClassId =
+    typeof convertedBadgeClassId === 'string' &&
+    convertedBadgeClassId.length > 0
+      ? convertedBadgeClassId
+      : generateTestUuid();
+
   return generateTestData({
-    badgeClassId: convertUuid(badgeClassId, 'postgresql', 'to'),
+    badgeClassId: safeBadgeClassId,
     recipient: JSON.stringify({
       type: 'email',
       identity: `test-${Date.now()}@example.com`,
@@ -598,7 +631,13 @@ export async function insertTestData(
       ) {
         const value = convertedData[key] as string;
         if (value.startsWith('urn:uuid:')) {
-          convertedData[key] = convertUuid(value, 'postgresql', 'to');
+          const convertedValue = convertUuid(value, 'postgresql', 'to');
+          // Check if convertUuid returned a valid string, otherwise generate a new UUID
+          if (typeof convertedValue === 'string' && convertedValue.length > 0) {
+            convertedData[key] = convertedValue;
+          } else {
+            convertedData[key] = generateTestUuid();
+          }
         } else if (!isValidUuid(value)) {
           // If it's not a valid UUID, generate a new one
           convertedData[key] = generateTestUuid();
@@ -702,14 +741,15 @@ export async function isDatabaseAvailable(
 
           // Validate database name format to prevent SQL injection
           const finalDbName = dbName || 'openbadges_test';
-          if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(finalDbName)) {
-            throw new Error(
-              `Invalid database name format: ${finalDbName}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
-            );
-          }
+          validateDatabaseName(finalDbName);
 
           logger.info(`Attempting to create database ${finalDbName}`);
-          await pgClient`CREATE DATABASE ${pgClient.unsafe(finalDbName)};`;
+          try {
+            await pgClient`CREATE DATABASE ${pgClient.unsafe(finalDbName)};`;
+          } catch (e) {
+            if (!String(e).includes('duplicate_database')) throw e;
+            logger.debug(`Database ${finalDbName} already exists`);
+          }
           await pgClient.end();
 
           // Close the previous failed client and open a fresh one

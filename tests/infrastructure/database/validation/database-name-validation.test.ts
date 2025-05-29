@@ -73,14 +73,14 @@ describe('Database Name Validation', () => {
   describe('SQL injection prevention', () => {
     const sqlInjectionAttempts = [
       'test; DROP TABLE users; --',
-      'test\'; DROP TABLE users; --',
+      "test'; DROP TABLE users; --",
       'test" OR 1=1; --',
-      'test\' UNION SELECT * FROM users; --',
+      "test' UNION SELECT * FROM users; --",
       'test; DELETE FROM users; --',
-      'test\\\'; INSERT INTO users VALUES (\\'hacker\\'); --',
+      "test'; INSERT INTO users VALUES ('hacker'); --",
       'test OR 1=1',
-      'test; EXEC xp_cmdshell(\\'dir\\'); --',
-      'test\'; TRUNCATE TABLE users; --',
+      "test; EXEC xp_cmdshell('dir'); --",
+      "test'; TRUNCATE TABLE users; --",
       'test UNION ALL SELECT NULL,NULL,NULL--',
     ];
 
