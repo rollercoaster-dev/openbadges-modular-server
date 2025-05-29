@@ -36,18 +36,16 @@ export const BadgeClassBaseSchema = z.object({
       })
       .strict('Unrecognized fields in image object'),
   ]),
-  criteria: z
-    .union([
-      z.string().url({ message: 'Criteria must be a valid URL string' }), // Simple URL string
-      z
-        .object({
-          // Criteria object
-          id: z.string().optional(), // Assuming ID can be any string, potentially an IRI
-          narrative: z.string().optional(),
-        })
-        .strict('Unrecognized fields in criteria object'),
-    ])
-    .optional(),
+  criteria: z.union([
+    z.string().url({ message: 'Criteria must be a valid URL string' }), // Simple URL string
+    z
+      .object({
+        // Criteria object
+        id: z.string().optional(), // Assuming ID can be any string, potentially an IRI
+        narrative: z.string().optional(),
+      })
+      .strict('Unrecognized fields in criteria object'),
+  ]),
   issuer: z.string(), // Issuer IRI - using string for flexibility, validation happens elsewhere
   tags: z.array(z.string()).optional(),
   alignment: z.array(AlignmentSchema).optional(),

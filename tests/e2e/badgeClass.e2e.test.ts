@@ -5,6 +5,14 @@
  * It tests the complete CRUD lifecycle of badge classes.
  */
 
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
 import {
   describe,
   it,
@@ -20,21 +28,12 @@ import { setupTestApp, stopTestServer } from './setup-test-app';
 // Import only the types we need
 import { BadgeClassResponseDto } from '@/api/dtos';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Use getPort to reliably get an available port to avoid conflicts
 let TEST_PORT: number;
 let API_URL: string;
 let BADGE_CLASSES_ENDPOINT: string;
-
-// Ensure DB-related env-vars are set **before** any module import that may read them
-if (!process.env.DB_TYPE) {
-  process.env.DB_TYPE = 'sqlite';
-}
-if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
-  process.env.SQLITE_DB_PATH = ':memory:';
-}
-
-import { config } from '@/config/config'; // safe to import after env is prepared
 
 // API key for protected endpoints - use the one from environment variables
 const API_KEY =

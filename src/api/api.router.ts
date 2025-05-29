@@ -253,7 +253,7 @@ function createVersionedRouter(
         error: message,
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -291,7 +291,7 @@ function createVersionedRouter(
         return c.json({ error: 'Forbidden', message }, 403);
       }
       logger.error('PUT /issuers/:id failed', { error: message, id, body });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -326,7 +326,7 @@ function createVersionedRouter(
         error: message,
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -378,7 +378,7 @@ function createVersionedRouter(
         error: message,
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -452,7 +452,7 @@ function createVersionedRouter(
         error: message,
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 
@@ -490,7 +490,6 @@ function createVersionedRouter(
       return c.json(
         {
           error: 'Internal Server Error',
-          message: error instanceof Error ? error.message : String(error),
         },
         500
       );
@@ -529,7 +528,7 @@ function createVersionedRouter(
         error: message,
         id: c.req.param('id'),
       });
-      return c.json({ error: 'Internal Server Error', message }, 500);
+      return c.json({ error: 'Internal Server Error' }, 500);
     }
   });
 

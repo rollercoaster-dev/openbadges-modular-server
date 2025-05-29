@@ -3,6 +3,11 @@
  *
  * This utility provides reliable port allocation for E2E tests to avoid
  * port conflicts during parallel test execution or in CI environments.
+ *
+ * Environment Variables:
+ * - DISABLE_PORT_CLEANUP: Set to 'true' to disable automatic port cleanup
+ *   process handlers. This prevents interference with test runners that
+ *   manage their own cleanup processes.
  */
 
 import getPort, { portNumbers } from 'get-port';
@@ -68,16 +73,20 @@ export function clearAllocatedPorts(): void {
 }
 
 // Cleanup allocated ports on process exit for improved robustness
-process.on('exit', () => {
-  clearAllocatedPorts();
-});
+// Only register process handlers if not disabled by environment variable
+// This prevents interference with test runners that manage their own cleanup
+if (process.env.DISABLE_PORT_CLEANUP !== 'true') {
+  process.on('exit', () => {
+    clearAllocatedPorts();
+  });
 
-process.on('SIGINT', () => {
-  clearAllocatedPorts();
-  process.exit(0);
-});
+  process.on('SIGINT', () => {
+    clearAllocatedPorts();
+    process.exit(0);
+  });
 
-process.on('SIGTERM', () => {
-  clearAllocatedPorts();
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    clearAllocatedPorts();
+    process.exit(0);
+  });
+}

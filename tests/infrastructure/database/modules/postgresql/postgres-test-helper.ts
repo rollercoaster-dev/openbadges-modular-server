@@ -421,8 +421,23 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
 export async function dropTestTables(client: postgres.Sql): Promise<void> {
   try {
     // Drop tables in reverse order to handle foreign key constraints
-    // First, disable triggers to avoid foreign key constraint issues
-    await client`SET session_replication_role = 'replica';`;
+    // Check if user has superuser privileges before setting session_replication_role
+    let hasSuperuserPrivileges = false;
+    try {
+      const [{ rolsuper }] =
+        await client`SELECT rolsuper FROM pg_roles WHERE rolname = current_user`;
+      hasSuperuserPrivileges = rolsuper;
+    } catch (checkError) {
+      logger.debug('Could not check superuser privileges', {
+        error:
+          checkError instanceof Error ? checkError.message : String(checkError),
+      });
+    }
+
+    // Disable triggers to avoid foreign key constraint issues (if superuser)
+    if (hasSuperuserPrivileges) {
+      await client`SET session_replication_role = 'replica';`;
+    }
 
     // Drop all tables that might have dependencies
     await client`DROP TABLE IF EXISTS user_assertions CASCADE;`;
@@ -436,14 +451,20 @@ export async function dropTestTables(client: postgres.Sql): Promise<void> {
     await client`DROP TABLE IF EXISTS api_keys CASCADE;`;
     await client`DROP TABLE IF EXISTS users CASCADE;`;
 
-    // Re-enable triggers
-    await client`SET session_replication_role = 'origin';`;
+    // Re-enable triggers (if superuser)
+    if (hasSuperuserPrivileges) {
+      await client`SET session_replication_role = 'origin';`;
+    }
 
     logger.info('Dropped test tables from PostgreSQL database');
   } catch (error) {
-    // Re-enable triggers even if there was an error
+    // Re-enable triggers even if there was an error (if we have superuser privileges)
     try {
-      await client`SET session_replication_role = 'origin';`;
+      const [{ rolsuper }] =
+        await client`SELECT rolsuper FROM pg_roles WHERE rolname = current_user`;
+      if (rolsuper) {
+        await client`SET session_replication_role = 'origin';`;
+      }
     } catch (triggerError) {
       logger.error('Error re-enabling triggers', {
         error:
@@ -473,9 +494,9 @@ export async function cleanupTestData(client: postgres.Sql): Promise<void> {
       // Check if user has superuser privileges before setting session_replication_role
       let hasSuperuserPrivileges = false;
       try {
-        const result =
-          await trx`SELECT current_setting('is_superuser') as is_superuser;`;
-        hasSuperuserPrivileges = result[0]?.is_superuser === 'on';
+        const [{ rolsuper }] =
+          await trx`SELECT rolsuper FROM pg_roles WHERE rolname = current_user`;
+        hasSuperuserPrivileges = rolsuper;
       } catch (checkError) {
         logger.debug('Could not check superuser privileges', {
           error:
@@ -679,13 +700,21 @@ export async function isDatabaseAvailable(
 
           const pgClient = postgres(pgConnString);
 
-          logger.info(`Attempting to create database ${dbName}`);
-          await pgClient`CREATE DATABASE ${pgClient.unsafe(
-            dbName || 'openbadges_test'
-          )};`;
+          // Validate database name format to prevent SQL injection
+          const finalDbName = dbName || 'openbadges_test';
+          if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(finalDbName)) {
+            throw new Error(
+              `Invalid database name format: ${finalDbName}. Database names must start with a letter or underscore and contain only letters, numbers, and underscores.`
+            );
+          }
+
+          logger.info(`Attempting to create database ${finalDbName}`);
+          await pgClient`CREATE DATABASE ${pgClient.unsafe(finalDbName)};`;
           await pgClient.end();
 
-          // Try connecting again
+          // Close the previous failed client and open a fresh one
+          await client.end();
+          client = createPostgresClient(connString);
           await client`SELECT 1;`;
           logger.info(
             `Successfully created and connected to database ${dbName}`
