@@ -19,12 +19,18 @@ import { BackpackController } from './domains/backpack/backpack.controller';
 import { UserController } from './domains/user/user.controller';
 import { UserService } from './domains/user/user.service';
 import { BackpackService } from './domains/backpack/backpack.service';
-import { createErrorHandlerMiddleware, handleNotFound } from './utils/errors/error-handler.middleware';
+import {
+  createErrorHandlerMiddleware,
+  handleNotFound,
+} from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
 
 import { createRequestContextMiddleware } from './utils/logging/request-context.middleware';
 import { initializeAuthentication } from './auth/auth.initializer';
-import { createAuthMiddleware, createAuthDebugMiddleware } from './auth/middleware/auth.middleware';
+import {
+  createAuthMiddleware,
+  createAuthDebugMiddleware,
+} from './auth/middleware/auth.middleware';
 import { AuthController } from './auth/auth.controller';
 
 // Create the main application
@@ -49,7 +55,6 @@ app.get('/', (c) =>
   })
 );
 
-
 // Database instance for graceful shutdown
 // We create the database but don't need to store the reference
 
@@ -63,20 +68,17 @@ export async function setupApp(): Promise<Hono> {
       sqliteFile: config.database.sqliteFile,
       sqliteBusyTimeout: config.database.sqliteBusyTimeout,
       sqliteSyncMode: config.database.sqliteSyncMode,
-      sqliteCacheSize: config.database.sqliteCacheSize
+      sqliteCacheSize: config.database.sqliteCacheSize,
     });
 
     // Create database instance for connection
-    await DatabaseFactory.createDatabase(
-      config.database.type,
-      {
-        connectionString: config.database.connectionString,
-        sqliteFile: config.database.sqliteFile,
-        sqliteBusyTimeout: config.database.sqliteBusyTimeout,
-        sqliteSyncMode: config.database.sqliteSyncMode,
-        sqliteCacheSize: config.database.sqliteCacheSize
-      }
-    );
+    await DatabaseFactory.createDatabase(config.database.type, {
+      connectionString: config.database.connectionString,
+      sqliteFile: config.database.sqliteFile,
+      sqliteBusyTimeout: config.database.sqliteBusyTimeout,
+      sqliteSyncMode: config.database.sqliteSyncMode,
+      sqliteCacheSize: config.database.sqliteCacheSize,
+    });
 
     logger.info(`Connected to ${config.database.type} database`);
 
@@ -85,18 +87,26 @@ export async function setupApp(): Promise<Hono> {
 
     // Initialize repositories
     const issuerRepository = await RepositoryFactory.createIssuerRepository();
-    const badgeClassRepository = await RepositoryFactory.createBadgeClassRepository();
-    const assertionRepository = await RepositoryFactory.createAssertionRepository();
+    const badgeClassRepository =
+      await RepositoryFactory.createBadgeClassRepository();
+    const assertionRepository =
+      await RepositoryFactory.createAssertionRepository();
     const userRepository = await RepositoryFactory.createUserRepository();
 
     // Initialize backpack repositories
-    const platformRepository = await RepositoryFactory.createPlatformRepository();
-    const platformUserRepository = await RepositoryFactory.createPlatformUserRepository();
-    const userAssertionRepository = await RepositoryFactory.createUserAssertionRepository();
+    const platformRepository =
+      await RepositoryFactory.createPlatformRepository();
+    const platformUserRepository =
+      await RepositoryFactory.createPlatformUserRepository();
+    const userAssertionRepository =
+      await RepositoryFactory.createUserAssertionRepository();
 
     // Initialize controllers with repositories
     const issuerController = new IssuerController(issuerRepository);
-    const badgeClassController = new BadgeClassController(badgeClassRepository);
+    const badgeClassController = new BadgeClassController(
+      badgeClassRepository,
+      issuerRepository
+    );
     const assertionController = new AssertionController(
       assertionRepository,
       badgeClassRepository,
@@ -144,18 +154,19 @@ export async function setupApp(): Promise<Hono> {
     logger.info(`Server started successfully`, {
       server: `http://${config.server.host}:${config.server.port}`,
       'swagger docs': `http://${config.server.host}:${config.server.port}/docs`,
-      'openapi json': `http://${config.server.host}:${config.server.port}/swagger`
+      'openapi json': `http://${config.server.host}:${config.server.port}/swagger`,
     });
 
     if (config.auth?.enabled) {
       logger.info('Authentication is enabled');
     } else {
-      logger.warn('Authentication is disabled - all endpoints are publicly accessible');
+      logger.warn(
+        'Authentication is disabled - all endpoints are publicly accessible'
+      );
     }
 
     setupGracefulShutdown(server);
     return app;
-
   } catch (error) {
     if (error instanceof Error) {
       logger.logError('Failed to start server', error);
