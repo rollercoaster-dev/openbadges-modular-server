@@ -6,7 +6,6 @@
  */
 
 import { OBV3_CONTEXT_URL } from '@/constants/urls';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import crypto from 'node:crypto';
 
 // Helper function to determine PostgreSQL connection string

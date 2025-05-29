@@ -8,7 +8,6 @@
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { DatabaseModuleInterface } from '../../interfaces/database-module.interface';
 import { PostgresqlDatabase } from './postgresql.database';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 export class PostgresqlModule implements DatabaseModuleInterface {
   /**
