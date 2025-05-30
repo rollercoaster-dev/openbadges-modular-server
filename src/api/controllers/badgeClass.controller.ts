@@ -139,9 +139,13 @@ export class BadgeClassController {
 
       // Ensure referenced issuer exists
       if (validatedData.issuer && this.issuerRepository) {
-        const issuer = await this.issuerRepository.findById(
-          toIRI(validatedData.issuer) as Shared.IRI
-        );
+        const issuerIRI = toIRI(validatedData.issuer);
+        if (!issuerIRI) {
+          throw new BadRequestError(
+            `Invalid issuer ID format: '${validatedData.issuer}'`
+          );
+        }
+        const issuer = await this.issuerRepository.findById(issuerIRI);
         if (!issuer) {
           throw new BadRequestError(
             `Referenced issuer '${validatedData.issuer}' does not exist`
@@ -250,9 +254,13 @@ export class BadgeClassController {
 
       // Ensure referenced issuer exists
       if (validatedData.issuer && this.issuerRepository) {
-        const issuer = await this.issuerRepository.findById(
-          toIRI(validatedData.issuer) as Shared.IRI
-        );
+        const issuerIRI = toIRI(validatedData.issuer);
+        if (!issuerIRI) {
+          throw new BadRequestError(
+            `Invalid issuer ID format: '${validatedData.issuer}'`
+          );
+        }
+        const issuer = await this.issuerRepository.findById(issuerIRI);
         if (!issuer) {
           throw new BadRequestError(
             `Referenced issuer '${validatedData.issuer}' does not exist`
