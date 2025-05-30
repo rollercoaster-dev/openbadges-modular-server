@@ -25,9 +25,22 @@ function isValidUsername(username: string): boolean {
     return false;
   }
 
-  // Username must be 3-50 characters, alphanumeric, underscores, and hyphens only
-  const usernameRegex = /^[a-zA-Z0-9_-]{3,50}$/;
-  return usernameRegex.test(username);
+  // Username must be 3-50 characters, start/end with alphanumeric, no consecutive special chars
+  const usernameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$/;
+  const reservedUsernames = [
+    'admin',
+    'root',
+    'system',
+    'administrator',
+    'user',
+  ];
+
+  return (
+    username.length >= 3 &&
+    username.length <= 50 &&
+    usernameRegex.test(username) &&
+    !reservedUsernames.includes(username.toLowerCase())
+  );
 }
 
 /**
@@ -40,9 +53,15 @@ function isValidEmail(email: string): boolean {
     return false;
   }
 
-  // Basic email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email) && email.length <= 254;
+  // More comprehensive email validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return (
+    email.length <= 254 &&
+    email.length >= 5 &&
+    emailRegex.test(email) &&
+    !email.includes('..') && // No consecutive dots
+    email.split('@').length === 2 // Exactly one @ symbol
+  );
 }
 
 /**
@@ -55,9 +74,69 @@ function isValidPassword(password: string): boolean {
     return false;
   }
 
-  // Password must be at least 8 characters long
-  // Additional requirements can be added here as needed
-  return password.length >= 8;
+  // Password requirements: 8+ chars, uppercase, lowercase, number, special char
+  const minLength = 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+  return (
+    password.length >= minLength &&
+    hasUppercase &&
+    hasLowercase &&
+    hasNumber &&
+    hasSpecialChar
+  );
+}
+
+/**
+ * Validation result interface
+ */
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+/**
+ * Validate admin user configuration
+ * @param username The username to validate
+ * @param email The email to validate
+ * @param password The password to validate
+ * @returns Validation result with errors if any
+ */
+function validateAdminUserConfig(
+  username: string,
+  email: string,
+  password: string
+): ValidationResult {
+  const errors: string[] = [];
+
+  if (!username || typeof username !== 'string') {
+    errors.push('Username is required and must be a string');
+  } else if (!isValidUsername(username)) {
+    errors.push(
+      'Username must be 3-50 characters, start/end with alphanumeric, and not be a reserved name'
+    );
+  }
+
+  if (!email || typeof email !== 'string') {
+    errors.push('Email is required and must be a string');
+  } else if (!isValidEmail(email)) {
+    errors.push(
+      'Email must be a valid email address format (5-254 characters)'
+    );
+  }
+
+  if (!password || typeof password !== 'string') {
+    errors.push('Password is required and must be a string');
+  } else if (!isValidPassword(password)) {
+    errors.push(
+      'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+    );
+  }
+
+  return { isValid: errors.length === 0, errors };
 }
 
 /**
@@ -76,57 +155,15 @@ async function createAdminUserIfNeeded(): Promise<void> {
 
   // Perform all validation checks first before any operations
   try {
-    // Validate admin username format
-    if (!adminUsername || typeof adminUsername !== 'string') {
-      logger.error(
-        'Admin user creation failed: Username is required and must be a string'
-      );
-      return;
-    }
-
-    if (!isValidUsername(adminUsername)) {
-      logger.error('Admin user creation failed: Invalid username format', {
-        reason:
-          'Username must be 3-50 characters and contain only letters, numbers, underscores, and hyphens',
-        providedLength: adminUsername.length,
+    const validation = validateAdminUserConfig(
+      adminUsername,
+      adminEmail,
+      adminPassword
+    );
+    if (!validation.isValid) {
+      validation.errors.forEach((error) => {
+        logger.error(`Admin user creation failed: ${error}`);
       });
-      return;
-    }
-
-    // Validate admin email format
-    if (!adminEmail || typeof adminEmail !== 'string') {
-      logger.error(
-        'Admin user creation failed: Email is required and must be a string'
-      );
-      return;
-    }
-
-    if (!isValidEmail(adminEmail)) {
-      logger.error('Admin user creation failed: Invalid email format', {
-        reason:
-          'Email must be a valid email address format (max 254 characters)',
-        providedLength: adminEmail.length,
-      });
-      return;
-    }
-
-    // Validate password presence (without logging the actual password)
-    if (!adminPassword || typeof adminPassword !== 'string') {
-      logger.warn(
-        'Admin user creation is enabled but no valid password is provided in configuration'
-      );
-      return;
-    }
-
-    // Validate password strength (never log password content)
-    if (!isValidPassword(adminPassword)) {
-      logger.error(
-        'Admin user creation failed: Password does not meet security requirements',
-        {
-          reason: 'Password must be at least 8 characters long',
-          passwordLength: adminPassword.length,
-        }
-      );
       return;
     }
 
@@ -182,33 +219,27 @@ async function createAdminUserIfNeeded(): Promise<void> {
       );
     } catch (error) {
       if (error instanceof Error) {
-        // Check for specific user creation errors
+        // Check for specific error types using error codes or specific error classes
+        const errorMessage = error.message.toLowerCase();
+
         if (
-          error.message.includes('username') &&
-          error.message.includes('already exists')
+          errorMessage.includes('unique') ||
+          errorMessage.includes('duplicate')
         ) {
-          logger.warn(
-            `Admin user creation skipped: Username '${adminUsername}' already exists`
-          );
+          logger.warn('Admin user creation skipped: User already exists');
         } else if (
-          error.message.includes('email') &&
-          error.message.includes('already exists')
+          errorMessage.includes('validation') ||
+          errorMessage.includes('constraint')
         ) {
-          logger.warn(
-            `Admin user creation skipped: Email address already in use`
-          );
-        } else if (error.message.includes('validation')) {
-          logger.error(
-            'Admin user creation failed: User data validation error',
-            {
-              error: error.message,
-            }
-          );
+          logger.error('Admin user creation failed: Invalid user data');
         } else {
-          logger.error('Admin user creation failed: User service error', {
-            error: error.message,
-          });
+          logger.error('Admin user creation failed: Database error');
         }
+
+        // Log detailed error for debugging (consider removing in production)
+        logger.debug('Admin user creation error details', {
+          error: error.message,
+        });
       } else {
         logger.error(
           'Admin user creation failed: Unknown error occurred during user creation'

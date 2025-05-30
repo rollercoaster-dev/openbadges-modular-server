@@ -43,6 +43,13 @@ import {
 } from '../utils/errors/api-error-handler';
 
 /**
+ * Type-safe helper to get validated body from Hono context
+ */
+function getValidatedBody<T = unknown>(c: { get: (key: 'validatedBody') => T }): T {
+  return c.get('validatedBody');
+}
+
+/**
  * Creates a versioned router
  * @param version The badge version
  * @param issuerController The issuer controller
@@ -66,17 +73,13 @@ function createVersionedRouter(
     validateIssuerMiddleware(),
     async (c) => {
       try {
-        const body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as CreateIssuerDto;
+        const body = getValidatedBody<CreateIssuerDto>(c);
         const result = await issuerController.createIssuer(body, version);
         return c.json(result, 201);
       } catch (error) {
         return sendApiError(c, error, {
           endpoint: 'POST /issuers',
-          body: (c as { get: (key: 'validatedBody') => unknown }).get(
-            'validatedBody'
-          ),
+          body: getValidatedBody(c),
         });
       }
     }
@@ -117,9 +120,7 @@ function createVersionedRouter(
     async (c) => {
       const id = c.req.param('id');
       try {
-        const body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as UpdateIssuerDto;
+        const body = getValidatedBody<UpdateIssuerDto>(c);
         const result = await issuerController.updateIssuer(id, body, version);
         if (!result) {
           return sendNotFoundError(c, 'Issuer', {
@@ -132,9 +133,7 @@ function createVersionedRouter(
         return sendApiError(c, error, {
           endpoint: 'PUT /issuers/:id',
           id,
-          body: (c as { get: (key: 'validatedBody') => unknown }).get(
-            'validatedBody'
-          ),
+          body: getValidatedBody(c),
         });
       }
     }
@@ -166,9 +165,7 @@ function createVersionedRouter(
     validateBadgeClassMiddleware(),
     async (c) => {
       try {
-        const body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as CreateBadgeClassDto;
+        const body = getValidatedBody<CreateBadgeClassDto>(c);
         const result = await badgeClassController.createBadgeClass(
           body,
           version
@@ -177,9 +174,7 @@ function createVersionedRouter(
       } catch (error) {
         return sendApiError(c, error, {
           endpoint: 'POST /badge-classes',
-          body: (c as { get: (key: 'validatedBody') => unknown }).get(
-            'validatedBody'
-          ),
+          body: getValidatedBody(c),
         });
       }
     }
@@ -238,9 +233,7 @@ function createVersionedRouter(
       let body: UpdateBadgeClassDto | undefined;
       try {
         // Get the validated body from context (set by validation middleware)
-        body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as UpdateBadgeClassDto;
+        body = getValidatedBody<UpdateBadgeClassDto>(c);
         const result = await badgeClassController.updateBadgeClass(
           id,
           body,
@@ -289,9 +282,7 @@ function createVersionedRouter(
     validateAssertionMiddleware(),
     async (c) => {
       try {
-        const body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as CreateAssertionDto;
+        const body = getValidatedBody<CreateAssertionDto>(c);
         const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
         const result = await assertionController.createAssertion(
           body,
@@ -302,9 +293,7 @@ function createVersionedRouter(
       } catch (error) {
         return sendApiError(c, error, {
           endpoint: 'POST /assertions',
-          body: (c as { get: (key: 'validatedBody') => unknown }).get(
-            'validatedBody'
-          ),
+          body: getValidatedBody(c),
         });
       }
     }
@@ -361,9 +350,7 @@ function createVersionedRouter(
     async (c) => {
       const id = c.req.param('id');
       try {
-        const body = (c as { get: (key: 'validatedBody') => unknown }).get(
-          'validatedBody'
-        ) as UpdateAssertionDto;
+        const body = getValidatedBody<UpdateAssertionDto>(c);
         const result = await assertionController.updateAssertion(
           id,
           body,
@@ -380,9 +367,7 @@ function createVersionedRouter(
         return sendApiError(c, error, {
           endpoint: 'PUT /assertions/:id',
           id,
-          body: (c as { get: (key: 'validatedBody') => unknown }).get(
-            'validatedBody'
-          ),
+          body: getValidatedBody(c),
         });
       }
     }
