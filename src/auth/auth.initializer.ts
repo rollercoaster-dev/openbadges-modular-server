@@ -324,9 +324,10 @@ export async function initializeAuthentication(): Promise<void> {
 
     logger.info('Authentication system initialized successfully');
   } catch (error) {
-    logger.logError(
-      'Failed to initialize authentication system',
-      error as Error
+    logger.error(
+      `Failed to initialize authentication system: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     throw error;
   }

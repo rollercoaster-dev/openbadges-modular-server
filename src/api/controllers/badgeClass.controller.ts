@@ -106,8 +106,8 @@ export class BadgeClassController {
       return false;
     }
 
-    const permissions = (user.claims['permissions'] as UserPermission[]) || [];
-    return permissions.includes(permission);
+    const raw = user.claims['permissions'];
+    return Array.isArray(raw) && raw.includes(permission);
   }
 
   /**
@@ -282,11 +282,13 @@ export class BadgeClassController {
   /**
    * Deletes a badge class
    * @param id The badge class ID
+   * @param version The badge version (for logging and future extensibility)
    * @param user The authenticated user
    * @returns True if the badge class was deleted, false otherwise
    */
   async deleteBadgeClass(
     id: string,
+    version: BadgeVersion = BadgeVersion.V3,
     user?: { claims?: Record<string, unknown> } | null
   ): Promise<boolean> {
     // Check if user has permission to delete badge classes
@@ -301,6 +303,15 @@ export class BadgeClassController {
       );
     }
 
-    return await this.badgeClassRepository.delete(toIRI(id) as Shared.IRI);
+    const iri = toIRI(id) as Shared.IRI;
+
+    // Log the delete operation with version information for audit purposes
+    logger.info('Deleting badge class', {
+      id: iri,
+      version,
+      user: user?.claims?.['sub'] || 'unknown',
+    });
+
+    return await this.badgeClassRepository.delete(iri);
   }
 }

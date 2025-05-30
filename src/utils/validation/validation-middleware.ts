@@ -283,10 +283,13 @@ export function validateAssertionMiddleware(): MiddlewareHandler<{
             400
           );
         }
-      }
 
-      // Store the validated body in context for route handlers to use
-      c.set('validatedBody', body);
+        // Store the (potentially) mapped, fully-validated body
+        c.set('validatedBody', mappedBody);
+      } else {
+        // Store the original body if no mapping was needed
+        c.set('validatedBody', body);
+      }
 
       await next();
     } catch (_error) {

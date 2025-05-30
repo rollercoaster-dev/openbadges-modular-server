@@ -45,9 +45,11 @@ function classifyError(error: unknown): ErrorClassification {
   const message = error instanceof Error ? error.message : String(error);
 
   // Permission errors
-  if (message.toLowerCase().includes('permission') ||
-      message.toLowerCase().includes('forbidden') ||
-      message.toLowerCase().includes('unauthorized')) {
+  if (
+    message.toLowerCase().includes('permission') ||
+    message.toLowerCase().includes('forbidden') ||
+    message.toLowerCase().includes('unauthorized')
+  ) {
     return {
       statusCode: 403,
       errorType: 'Forbidden',
@@ -57,14 +59,18 @@ function classifyError(error: unknown): ErrorClassification {
 
   // BadRequestError and validation errors (check these BEFORE generic message checks)
   // But exclude "Invalid IRI" errors which need special handling
-  if (
-    (error instanceof BadRequestError ||
-      error instanceof ValidationError ||
-      (error instanceof Error && error.name === 'BadRequestError') ||
-      message.toLowerCase().includes('invalid') ||
-      message.toLowerCase().includes('validation')) &&
-    !message.includes('Invalid IRI')
-  ) {
+  const isErrorInstance =
+    error instanceof BadRequestError ||
+    error instanceof ValidationError ||
+    (error instanceof Error && error.name === 'BadRequestError');
+
+  const hasValidationMessage =
+    message.toLowerCase().includes('invalid') ||
+    message.toLowerCase().includes('validation');
+
+  const isInvalidIriError = message.includes('Invalid IRI');
+
+  if ((isErrorInstance || hasValidationMessage) && !isInvalidIriError) {
     return {
       statusCode: 400,
       errorType: 'Bad Request',
@@ -88,9 +94,11 @@ function classifyError(error: unknown): ErrorClassification {
   }
 
   // Resource not found errors (only for generic "not found" cases, not BadRequestErrors)
-  if (message.toLowerCase().includes('does not exist') ||
-      message.toLowerCase().includes('not found') ||
-      message.toLowerCase().includes('missing')) {
+  if (
+    message.toLowerCase().includes('does not exist') ||
+    message.toLowerCase().includes('not found') ||
+    message.toLowerCase().includes('missing')
+  ) {
     return {
       statusCode: 404,
       errorType: 'Not Found',

@@ -18,9 +18,15 @@ export class PostgresqlModule implements DatabaseModuleInterface {
   async createDatabase(
     config: Record<string, unknown>
   ): Promise<DatabaseInterface> {
-    // Set default configuration values if not provided
-    const defaultConnectionString =
-      'postgres://user:password@localhost:5432/openbadges_dev';
+    // Build connection string from environment variables with secure defaults
+    const dbUser = process.env.POSTGRES_USER || 'postgres';
+    const dbPassword = process.env.POSTGRES_PASSWORD || '';
+    const dbHost = process.env.POSTGRES_HOST || 'localhost';
+    const dbPort = process.env.POSTGRES_PORT || '5432';
+    const dbName = process.env.POSTGRES_DB || 'openbadges_dev';
+
+    // Construct default connection string from environment variables
+    const defaultConnectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
 
     // Use type-safe config access with runtime guards
     const connectionString =

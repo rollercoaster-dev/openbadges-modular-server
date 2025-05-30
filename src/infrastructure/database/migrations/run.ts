@@ -27,17 +27,16 @@ async function runSqliteMigrations(): Promise<void> {
   const sqliteFile = config.database.sqliteFile || 'sqlite.db';
   logger.info(`SQLite file: ${sqliteFile}`);
 
+  // Ensure the directory for the SQLite file exists
+  const dir = dirname(sqliteFile);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    logger.info(`Created directory for SQLite file: ${dir}`);
+  }
+
+  // Create SQLite database connection
+  const sqlite = new Database(sqliteFile);
   try {
-    // Ensure the directory for the SQLite file exists
-    const dir = dirname(sqliteFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      logger.info(`Created directory for SQLite file: ${dir}`);
-    }
-
-    // Create SQLite database connection
-    const sqlite = new Database(sqliteFile);
-
     // Verify database connection
     try {
       // Simple query to verify the database is accessible
@@ -253,13 +252,13 @@ async function runSqliteMigrations(): Promise<void> {
       // Non-critical - continue
     }
 
-    // Close database connection
-    sqlite.close();
-
     logger.info('SQLite migrations completed.');
   } catch (error) {
     logger.error('SQLite migration error', error);
     throw error;
+  } finally {
+    // Safeguard – even if already closed, `close()` is idempotent
+    sqlite.close();
   }
 }
 
@@ -278,10 +277,8 @@ async function runPostgresMigrations(): Promise<void> {
     connectionString: SensitiveValue.from(connectionString),
   });
 
+  const client = postgres(connectionString, { max: 1 });
   try {
-    // Create PostgreSQL connection
-    const client = postgres(connectionString, { max: 1 });
-
     // Verify database connection
     try {
       // Simple query to verify the database is accessible
@@ -405,13 +402,13 @@ async function runPostgresMigrations(): Promise<void> {
       throw error;
     }
 
-    // Close database connection
-    await client.end();
-
     logger.info('PostgreSQL migrations completed.');
   } catch (error) {
     logger.error('PostgreSQL migration error', error);
     throw error;
+  } finally {
+    // Safeguard – even if already closed, `end()` is idempotent
+    await client.end();
   }
 }
 

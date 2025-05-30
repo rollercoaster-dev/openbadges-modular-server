@@ -45,7 +45,9 @@ import {
 /**
  * Type-safe helper to get validated body from Hono context
  */
-function getValidatedBody<T = unknown>(c: { get: (key: 'validatedBody') => T }): T {
+function getValidatedBody<T = unknown>(c: {
+  get: (key: 'validatedBody') => T;
+}): T {
   return c.get('validatedBody');
 }
 
@@ -142,7 +144,7 @@ function createVersionedRouter(
   router.delete('/issuers/:id', requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
-      const deleted = await issuerController.deleteIssuer(id);
+      const deleted = await issuerController.deleteIssuer(id, version);
       if (!deleted) {
         return sendNotFoundError(c, 'Issuer', {
           endpoint: 'DELETE /issuers/:id',
@@ -259,7 +261,7 @@ function createVersionedRouter(
   router.delete('/badge-classes/:id', requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
-      const deleted = await badgeClassController.deleteBadgeClass(id);
+      const deleted = await badgeClassController.deleteBadgeClass(id, version);
       if (!deleted) {
         return sendNotFoundError(c, 'Badge class', {
           endpoint: 'DELETE /badge-classes/:id',

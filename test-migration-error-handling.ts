@@ -7,6 +7,7 @@
 import { logger } from './src/utils/logging/logger.service';
 
 // Mock SQLite client for testing
+// Note: SQLite uses synchronous exec() method to match bun:sqlite Database.exec()
 class MockSQLiteClient {
   private shouldFailWithSyntaxError = false;
   private shouldFailWithAlreadyExists = false;
@@ -32,6 +33,7 @@ class MockSQLiteClient {
 }
 
 // Mock PostgreSQL client for testing
+// Note: PostgreSQL uses async unsafe() method to match postgres-js client.unsafe()
 class MockPostgresClient {
   private shouldFailWithSyntaxError = false;
   private shouldFailWithAlreadyExists = false;
@@ -238,6 +240,71 @@ async function testPostgreSQLErrorHandling() {
   } else {
     logger.error(
       '❌ Test 1 FAILED: PostgreSQL syntax error did not abort migration'
+    );
+  }
+
+  // Test 2: "Already exists" error should continue migration
+  logger.info(
+    'Test 2: PostgreSQL "already exists" error should continue migration'
+  );
+  mockClient.setShouldFailWithSyntaxError(false);
+  mockClient.setShouldFailWithAlreadyExists(true);
+
+  let continuedAfterAlreadyExists = false;
+  const safeStatements = [
+    'CREATE TABLE users (id SERIAL PRIMARY KEY);', // This will "already exist"
+    'CREATE TABLE posts (id SERIAL PRIMARY KEY);', // This should still execute
+  ];
+
+  for (let i = 0; i < safeStatements.length; i++) {
+    const statement = safeStatements[i];
+    try {
+      if (i === 0) {
+        mockClient.setShouldFailWithAlreadyExists(true);
+      } else {
+        mockClient.setShouldFailWithAlreadyExists(false);
+        continuedAfterAlreadyExists = true; // If we reach here, migration continued
+      }
+
+      await mockClient.unsafe(statement);
+    } catch (stmtError) {
+      const errorMessage =
+        stmtError instanceof Error ? stmtError.message : String(stmtError);
+      const isAlreadyExistsError =
+        errorMessage.includes('already exists') ||
+        (errorMessage.includes('relation') &&
+          errorMessage.includes('does not exist'));
+
+      if (isAlreadyExistsError) {
+        logger.info(
+          `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
+            0,
+            50
+          )}...`
+        );
+        // Continue with next statement
+      } else {
+        logger.error(
+          `Fatal error executing PostgreSQL statement: ${statement.substring(
+            0,
+            100
+          )}...`,
+          {
+            error: errorMessage,
+          }
+        );
+        break;
+      }
+    }
+  }
+
+  if (continuedAfterAlreadyExists) {
+    logger.info(
+      '✅ Test 2 PASSED: PostgreSQL "already exists" error correctly continued migration'
+    );
+  } else {
+    logger.error(
+      '❌ Test 2 FAILED: PostgreSQL "already exists" error did not continue migration'
     );
   }
 }

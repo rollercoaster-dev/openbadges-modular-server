@@ -72,17 +72,12 @@ export const CreateBadgeClassSchema = z.union([
 ]);
 
 // Schema for UpdateBadgeClassDto
-// Keep certain core fields required while allowing others to be optional
+// Allow true partial updates - all fields are optional
 const UpdateBadgeClassOB2Schema = BadgeClassBaseSchema.extend({
   type: z.union([z.string(), z.array(z.string())]).optional(),
   '@context': z.string().optional(),
 })
   .partial()
-  .required({
-    name: true, // Name is still required for updates
-    issuer: true, // Issuer is still required for updates
-    criteria: true, // Criteria is still required for updates
-  })
   .strict('Unrecognized fields in OB2 BadgeClass update data');
 
 const UpdateBadgeClassOB3Schema = BadgeClassBaseSchema.extend({
@@ -92,11 +87,6 @@ const UpdateBadgeClassOB3Schema = BadgeClassBaseSchema.extend({
   '@context': z.string().optional(),
 })
   .partial()
-  .required({
-    name: true, // Name is still required for updates
-    issuer: true, // Issuer is still required for updates
-    criteria: true, // Criteria is still required for updates
-  })
   .strict('Unrecognized fields in OB3 BadgeClass/Achievement update data');
 
 export const UpdateBadgeClassSchema = z.union([

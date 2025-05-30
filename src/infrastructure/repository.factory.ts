@@ -457,10 +457,32 @@ export class RepositoryFactory {
   }
 
   /**
-   * Check if the repository factory is initialized and connected
-   * @returns true if the factory is initialized and has a working database connection
+   * Check if the repository factory has an active database connection
+   * @returns true if the factory has a working database connection
    */
-  static isConnected(): boolean {
-    return RepositoryFactory.isInitialized;
+  static async isConnected(): Promise<boolean> {
+    if (!RepositoryFactory.isInitialized) {
+      return false;
+    }
+
+    try {
+      if (
+        RepositoryFactory.dbType === 'postgresql' &&
+        RepositoryFactory.client
+      ) {
+        // Test PostgreSQL connection with a simple query
+        await RepositoryFactory.client`SELECT 1`;
+        return true;
+      } else if (
+        RepositoryFactory.dbType === 'sqlite' &&
+        RepositoryFactory.sqliteConnectionManager
+      ) {
+        // Test SQLite connection
+        return RepositoryFactory.sqliteConnectionManager.isConnected();
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 }

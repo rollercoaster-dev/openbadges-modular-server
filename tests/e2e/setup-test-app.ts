@@ -225,27 +225,33 @@ export async function setupTestApp(
           logger.debug(`Using SQLite database at: ${sqliteFile}`);
           const db = new Database(sqliteFile);
 
-          // Apply the fixed migration SQL
-          const sqlFilePath = join(
-            process.cwd(),
-            'drizzle/migrations/0000_oval_starbolt_fixed.sql'
-          );
-          if (fs.existsSync(sqlFilePath)) {
-            logger.info(`Applying SQL migration from ${sqlFilePath}`);
-            try {
-              const sql = fs.readFileSync(sqlFilePath, 'utf8');
-              db.exec(sql);
-              logger.info('SQLite migrations applied successfully');
-            } catch (error) {
-              // If tables already exist, that's fine
-              if (error.message && error.message.includes('already exists')) {
-                logger.info('Tables already exist, skipping migration');
-              } else {
-                throw error;
+          try {
+            // Apply the fixed migration SQL
+            const sqlFilePath = join(
+              process.cwd(),
+              'drizzle/migrations/0000_oval_starbolt_fixed.sql'
+            );
+            if (fs.existsSync(sqlFilePath)) {
+              logger.info(`Applying SQL migration from ${sqlFilePath}`);
+              try {
+                const sql = fs.readFileSync(sqlFilePath, 'utf8');
+                db.exec(sql);
+                logger.info('SQLite migrations applied successfully');
+              } catch (error) {
+                // If tables already exist, that's fine
+                if (error.message && error.message.includes('already exists')) {
+                  logger.info('Tables already exist, skipping migration');
+                } else {
+                  throw error;
+                }
               }
+            } else {
+              logger.warn(`Migration file not found: ${sqlFilePath}`);
             }
-          } else {
-            logger.warn(`Migration file not found: ${sqlFilePath}`);
+          } finally {
+            // Always close the database connection to prevent file locks and descriptor leaks
+            db.close();
+            logger.debug('SQLite migration connection closed');
           }
         } else if (dbConfig.type === 'postgresql') {
           logger.info('Running PostgreSQL migrations for E2E tests');

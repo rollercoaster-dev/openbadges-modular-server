@@ -77,10 +77,11 @@ async function checkResponseIssues(
       }
     }
 
+    const authBody = responseBody.toLowerCase();
     if (
-      responseBody.includes('authentication') ||
-      responseBody.includes('unauthorized') ||
-      responseBody.includes('forbidden')
+      authBody.includes('authentication') ||
+      authBody.includes('unauthorized') ||
+      authBody.includes('forbidden')
     ) {
       logger.warn('Authentication issue detected. Skipping test.');
       return true;

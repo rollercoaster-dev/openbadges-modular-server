@@ -631,7 +631,7 @@ export async function insertTestData(
     const convertedData =
       typeof globalThis.structuredClone === 'function'
         ? globalThis.structuredClone(data)
-        : require('node:util').structuredClone; // Node ≥ 17
+        : JSON.parse(JSON.stringify(data));
 
     // Convert any URN format IDs to plain UUIDs
     Object.keys(convertedData).forEach((key) => {
