@@ -171,12 +171,16 @@ testSQLInjectionProtection()
         logger.info('📋 Test was skipped due to unavailable dependencies');
         process.exit(0); // Exit with success code for skipped tests
       } else {
-        logger.info(`🔒 Security validation passed: ${result.details.successfulBlocks}/${result.details.totalAttempts} attempts blocked`);
+        logger.info(
+          `🔒 Security validation passed: ${result.details.successfulBlocks}/${result.details.totalAttempts} attempts blocked`
+        );
         process.exit(0); // Exit with success code
       }
     } else {
       logger.error(`❌ Test failed: ${result.message}`);
-      logger.error(`🚨 Security issues detected: ${result.details.failedAttempts} unblocked attempts out of ${result.details.totalAttempts}`);
+      logger.error(
+        `🚨 Security issues detected: ${result.details.failedAttempts} unblocked attempts out of ${result.details.totalAttempts}`
+      );
       process.exit(1); // Exit with failure code
     }
   })
