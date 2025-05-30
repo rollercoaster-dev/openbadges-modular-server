@@ -478,10 +478,12 @@ export class RepositoryFactory {
         RepositoryFactory.sqliteConnectionManager
       ) {
         // Test SQLite connection
-        return RepositoryFactory.sqliteConnectionManager.isConnected();
+        const ok = await RepositoryFactory.sqliteConnectionManager.isConnected();
+        return ok;
       }
       return false;
     } catch {
+      logger.debug('RepositoryFactory.isConnected(): connectivity check failed');
       return false;
     }
   }
