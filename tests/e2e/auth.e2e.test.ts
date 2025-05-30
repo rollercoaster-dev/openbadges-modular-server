@@ -1,23 +1,32 @@
 // test/e2e/auth.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
-// Base URL for the API
-
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
-process.env.TEST_PORT = TEST_PORT.toString();
-
-// Base URL for the API
-const API_URL = `http://${config.server.host}:${TEST_PORT}`;
-const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let ISSUERS_ENDPOINT: string;
 
 // Valid and invalid API keys for testing
 const VALID_API_KEY = 'verysecretkeye2e';
 const INVALID_API_KEY = 'invalidkey';
 
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Server instance for the test
 let server: unknown = null;
@@ -25,20 +34,27 @@ let server: unknown = null;
 describe('Authentication - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+    /* pass TEST_PORT to setupTestApp(), config, … without exporting it
+     * to global process.env to keep the scope local to this suite */
+
+    // Set up API URLs after getting the port
+    const host = config.server.host ?? '127.0.0.1';
+    API_URL = `http://${host}:${TEST_PORT}`;
+    ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`;
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
-      const result = await setupTestApp();
+      const result = await setupTestApp(TEST_PORT);
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -54,13 +70,21 @@ describe('Authentication - E2E', () => {
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
+    }
+
+    // Release the allocated port
+    if (TEST_PORT) {
+      releasePort(TEST_PORT);
     }
   });
 
   it('should verify authentication endpoints', async () => {
+    // Since RBAC is disabled in E2E tests, we'll test authentication middleware behavior
+    // by verifying that authentication is processed correctly even when RBAC is disabled
+
     // Test the issuers endpoint without authentication
     let noAuthResponse: Response;
     try {
@@ -73,9 +97,12 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(noAuthResponse.status);
-    logger.info(`No auth request responded with status ${noAuthResponse.status}`);
+    // In E2E tests with RBAC disabled, requests should succeed but authentication should still be processed
+    // We verify that the authentication middleware is working by checking that requests are processed
+    expect([200, 401, 403]).toContain(noAuthResponse.status);
+    logger.info(
+      `No auth request responded with status ${noAuthResponse.status}`
+    );
 
     // Test with invalid authentication
     let invalidAuthResponse: Response;
@@ -83,17 +110,19 @@ describe('Authentication - E2E', () => {
       invalidAuthResponse = await fetch(ISSUERS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': INVALID_API_KEY
-        }
+          'X-API-Key': INVALID_API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to make request with invalid auth', { error });
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(invalidAuthResponse.status);
-    logger.info(`Invalid auth request responded with status ${invalidAuthResponse.status}`);
+    // With RBAC disabled, even invalid auth should succeed, but auth processing should occur
+    expect([200, 401, 403]).toContain(invalidAuthResponse.status);
+    logger.info(
+      `Invalid auth request responded with status ${invalidAuthResponse.status}`
+    );
 
     // Test with valid authentication
     let validAuthResponse: Response;
@@ -101,17 +130,19 @@ describe('Authentication - E2E', () => {
       validAuthResponse = await fetch(ISSUERS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': VALID_API_KEY
-        }
+          'X-API-Key': VALID_API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to make request with valid auth', { error });
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 400, 401, 403, 500]).toContain(validAuthResponse.status);
-    logger.info(`Valid auth request responded with status ${validAuthResponse.status}`);
+    // Valid authentication should always succeed
+    expect([200]).toContain(validAuthResponse.status);
+    logger.info(
+      `Valid auth request responded with status ${validAuthResponse.status}`
+    );
   });
 
   it('should verify public endpoints', async () => {
@@ -119,7 +150,7 @@ describe('Authentication - E2E', () => {
     let healthResponse: Response;
     try {
       healthResponse = await fetch(`${API_URL}/health`, {
-        method: 'GET'
+        method: 'GET',
       });
     } catch (error) {
       logger.error('Failed to access health endpoint', { error });
@@ -128,13 +159,15 @@ describe('Authentication - E2E', () => {
 
     // Verify the response status code
     expect([200, 404, 500]).toContain(healthResponse.status);
-    logger.info(`Health endpoint responded with status ${healthResponse.status}`);
+    logger.info(
+      `Health endpoint responded with status ${healthResponse.status}`
+    );
 
     // Test the docs endpoint
     let docsResponse: Response;
     try {
       docsResponse = await fetch(`${API_URL}/docs`, {
-        method: 'GET'
+        method: 'GET',
       });
     } catch (error) {
       logger.error('Failed to access docs endpoint', { error });

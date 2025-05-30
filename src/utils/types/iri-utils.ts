@@ -11,6 +11,21 @@ import { logger } from '../logging/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
+ * Checks if a value is a valid IRI (strict: URL or UUID)
+ */
+export function isValidIRI(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') return false;
+  try {
+    new URL(value.toString());
+    return true;
+  } catch {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(value.toString());
+  }
+}
+
+/**
  * Converts a string to a Shared.IRI (strict: URL or UUID)
  * Use for Open Badges and general IRI validation.
  */
@@ -33,21 +48,6 @@ export function toString(value: IRICompatible): string | null {
   }
   return value.toString();
 }
-
-/**
- * Checks if a value is a valid IRI (strict: URL or UUID)
- */
-export function isValidIRI(value: unknown): boolean {
-  if (value === null || value === undefined || value === '') return false;
-  try {
-    new URL(value.toString());
-    return true;
-  } catch {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(value.toString());
-  }
-}
-
 
 /**
  * Converts a string to an Issuer ID (relaxed: any non-empty string)
@@ -73,7 +73,10 @@ export function toIssuerId(value: IRICompatible): Shared.IRI | null {
  * Ensures a value is a valid IRI (strict)
  */
 export function ensureValidIRI(value: unknown): Shared.IRI | null {
-  if (typeof value === 'string' || (typeof value === 'object' && value !== null)) {
+  if (
+    typeof value === 'string' ||
+    (typeof value === 'object' && value !== null)
+  ) {
     return toIRI(value as IRICompatible);
   }
   return null;
@@ -87,7 +90,9 @@ export function ensureValidIRI(value: unknown): Shared.IRI | null {
 /**
  * Converts an array of strings to an array of Shared.IRIs (strict)
  */
-export function toIRIArray(values: IRICompatible[] | null | undefined): Shared.IRI[] {
+export function toIRIArray(
+  values: IRICompatible[] | null | undefined
+): Shared.IRI[] {
   return (values ?? []).map(toIRI).filter(Boolean) as Shared.IRI[];
 }
 
@@ -96,11 +101,13 @@ export function toIRIArray(values: IRICompatible[] | null | undefined): Shared.I
  * @param values The array of Shared.IRIs to convert
  * @returns The converted array of strings
  */
-export function toStringArray(values: IRICompatible[] | null | undefined): string[] {
+export function toStringArray(
+  values: IRICompatible[] | null | undefined
+): string[] {
   if (values === null || values === undefined) {
     return [];
   }
-  return values.map(value => toString(value)).filter(Boolean) as string[];
+  return values.map((value) => toString(value)).filter(Boolean) as string[];
 }
 
 /**
@@ -152,7 +159,9 @@ export function objectWithStringToIRI<T extends Record<string, unknown>>(
 
   // If any properties couldn't be converted, throw an error
   if (invalidProps.length > 0) {
-    throw new Error(`Failed to convert properties to IRI: ${invalidProps.join(', ')}`);
+    throw new Error(
+      `Failed to convert properties to IRI: ${invalidProps.join(', ')}`
+    );
   }
 
   return result as ObjectWithIRIs<T>;

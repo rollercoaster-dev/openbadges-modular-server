@@ -26,20 +26,23 @@ describe('Validation Middleware', () => {
         req: {
           json: async () => ({
             // Missing name and URL to trigger validation errors
-            email: 'not-an-email' // Invalid email to trigger another error
-          })
+            email: 'not-an-email', // Invalid email to trigger another error
+          }),
         },
 
         json: (body: unknown, status?: number) => {
           return { body, status } as unknown as Context;
-        }
+        },
       } as unknown as Context;
 
       // Get the middleware handler
       const handler = validateIssuerMiddleware();
 
       // Call the middleware
-      const result = await handler(mockContext, async () => {}) as unknown as { body: ValidationResponse, status: number };
+      const result = (await handler(
+        mockContext,
+        async () => {}
+      )) as unknown as { body: ValidationResponse; status: number };
 
       // Check that the result has the expected structure
       expect(result).toBeDefined();
@@ -57,7 +60,9 @@ describe('Validation Middleware', () => {
       expect(Object.keys(details).length).toBeGreaterThan(0);
 
       // Check that at least one error array has content
-      const hasErrors = Object.values(details).some(errors => errors.length > 0);
+      const hasErrors = Object.values(details).some(
+        (errors) => errors.length > 0
+      );
       expect(hasErrors).toBe(true);
     });
 
@@ -68,18 +73,24 @@ describe('Validation Middleware', () => {
           json: async () => ({
             name: 'Test Issuer',
             url: 'https://example.com',
-            email: 'valid@example.com'
-          })
+            email: 'valid@example.com',
+          }),
         },
 
         json: (body: unknown, status?: number) => {
           return { body, status } as unknown as Context;
-        }
+        },
+
+        set: (_key: string, _value: unknown) => {
+          // Mock implementation for storing context variables
+        },
       } as unknown as Context;
 
       // Create a next function that will be called if validation passes
       let nextCalled = false;
-      const next = async () => { nextCalled = true; };
+      const next = async () => {
+        nextCalled = true;
+      };
 
       // Get the middleware handler
       const handler = validateIssuerMiddleware();

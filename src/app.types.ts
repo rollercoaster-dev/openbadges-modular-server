@@ -22,8 +22,12 @@ import { PlatformUser } from './domains/backpack/platform-user.entity';
 export type HonoContext = Context<{
   Variables: {
     user?: User;
-    platformUser?: Pick<PlatformUser, 'platformId' | 'externalUserId' | 'displayName' | 'email'>;
+    platformUser?: Pick<
+      PlatformUser,
+      'platformId' | 'externalUserId' | 'displayName' | 'email'
+    >;
     requestId?: string;
+    validatedBody?: unknown; // Stores the validated request body from validation middleware
     // Add other request-scoped variables here as needed
   };
   // Bindings can be added here if you configure them with Hono's app.VARS or similar

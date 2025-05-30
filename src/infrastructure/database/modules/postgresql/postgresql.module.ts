@@ -8,7 +8,6 @@
 import { DatabaseInterface } from '../../interfaces/database.interface';
 import { DatabaseModuleInterface } from '../../interfaces/database-module.interface';
 import { PostgresqlDatabase } from './postgresql.database';
-import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 export class PostgresqlModule implements DatabaseModuleInterface {
   /**
@@ -19,11 +18,15 @@ export class PostgresqlModule implements DatabaseModuleInterface {
   async createDatabase(
     config: Record<string, unknown>
   ): Promise<DatabaseInterface> {
-    // Set default configuration values if not provided
-    // Use SensitiveValue for the default connection string to prevent password logging
-    const defaultConnectionString = `postgres://postgres:${SensitiveValue.from(
-      'postgres'
-    )}@localhost:5432/openbadges`;
+    // Build connection string from environment variables with secure defaults
+    const dbUser = process.env.POSTGRES_USER || 'postgres';
+    const dbPassword = process.env.POSTGRES_PASSWORD || '';
+    const dbHost = process.env.POSTGRES_HOST || 'localhost';
+    const dbPort = process.env.POSTGRES_PORT || '5432';
+    const dbName = process.env.POSTGRES_DB || 'openbadges_dev';
+
+    // Construct default connection string from environment variables
+    const defaultConnectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
 
     // Use type-safe config access with runtime guards
     const connectionString =

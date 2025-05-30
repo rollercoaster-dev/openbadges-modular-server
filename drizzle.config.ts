@@ -12,7 +12,7 @@ const logger = {
   // eslint-disable-next-line no-console
   info: console.info,
   // eslint-disable-next-line no-console
-  debug: console.debug
+  debug: console.debug,
 };
 
 /**
@@ -30,7 +30,11 @@ const dbType = process.env['DB_TYPE'] || databaseConfig.type || 'sqlite';
 // Validate database type
 const supportedDbTypes = ['postgresql', 'sqlite'];
 if (!supportedDbTypes.includes(dbType)) {
-  logger.error(`Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(', ')}`);
+  logger.error(
+    `Unsupported database type '${dbType}'. Supported types are: ${supportedDbTypes.join(
+      ', '
+    )}`
+  );
   process.exit(1);
 }
 
@@ -39,14 +43,18 @@ let drizzleConfig: Config;
 
 if (dbType === 'postgresql') {
   // Parse connection string to extract credentials
-  const connectionString = databaseConfig.connectionString || 'postgres://postgres:postgres@localhost:5432/openbadges';
+  const connectionString =
+    databaseConfig.connectionString ||
+    'postgres://postgres:postgres@localhost:5432/openbadges';
   let url: URL;
   try {
     url = new URL(connectionString);
   } catch (error) {
     // Log error without sensitive data
     logger.error('Invalid connection string', { error });
-    throw new Error('Failed to parse the database connection string. Please check your configuration.');
+    throw new Error(
+      'Failed to parse the database connection string. Please check your configuration.'
+    );
   }
 
   drizzleConfig = {
@@ -68,30 +76,26 @@ if (dbType === 'postgresql') {
     schema: './src/infrastructure/database/modules/sqlite/schema.ts',
     out: './drizzle/migrations',
     dbCredentials: {
-      url: process.env['SQLITE_DB_PATH'] || databaseConfig.sqliteFile || 'sqlite.db',
+      url:
+        process.env['SQLITE_DB_PATH'] ||
+        databaseConfig.sqliteFile ||
+        'sqlite.db',
     },
   };
 }
-
-// Add common configuration
-drizzleConfig.verbose = process.env.NODE_ENV !== 'production';
-drizzleConfig.strict = true;
-
-// Verify configuration
-verifyConfiguration(drizzleConfig, dbType);
-
-export default drizzleConfig;
 
 /**
  * Verifies the drizzle configuration
  * @param config The drizzle configuration
  * @param dbType The database type
  */
-function verifyConfiguration(config: Config, dbType: string) {
+function verifyConfiguration(config: Config, dbType: string): void {
   // Check if schema file exists
-  const schemaPath = Array.isArray(config.schema) ? config.schema[0] : config.schema;
+  const schemaPath = Array.isArray(config.schema)
+    ? config.schema[0]
+    : config.schema;
   if (schemaPath && !existsSync(schemaPath)) {
-    logger.error("Schema file not found:", { schemaPath });
+    logger.error('Schema file not found:', { schemaPath });
     process.exit(1);
   }
 
@@ -99,7 +103,9 @@ function verifyConfiguration(config: Config, dbType: string) {
   if (config.out) {
     const migrationsDir = dirname(config.out);
     if (!existsSync(migrationsDir)) {
-      logger.warn(`Migrations directory not found: ${migrationsDir}. It will be created.`);
+      logger.warn(
+        `Migrations directory not found: ${migrationsDir}. It will be created.`
+      );
     }
   }
 
@@ -116,24 +122,43 @@ function verifyConfiguration(config: Config, dbType: string) {
   };
 
   // Use type assertion to access dbCredentials
-  const dbCredentials = (config as { dbCredentials?: DbCredentials }).dbCredentials;
+  const dbCredentials = (config as { dbCredentials?: DbCredentials })
+    .dbCredentials;
 
   if (dbType === 'postgresql' && dbCredentials) {
     const { host, port, user, database } = dbCredentials;
     if (!host || !port || !user || !database) {
-      logger.error("Missing PostgreSQL connection details:", {
-        missingFields: ['host', 'port', 'user', 'database'].filter(field => !dbCredentials[field as keyof DbCredentials])
+      logger.error('Missing PostgreSQL connection details:', {
+        missingFields: ['host', 'port', 'user', 'database'].filter(
+          (field) => !dbCredentials[field as keyof DbCredentials]
+        ),
       });
       process.exit(1);
     }
   } else if (dbType === 'sqlite' && dbCredentials) {
     const { url } = dbCredentials;
     if (!url) {
-      logger.error("Missing SQLite connection URL");
+      logger.error('Missing SQLite connection URL');
       process.exit(1);
     }
-    if (url && url !== ':memory:' && !existsSync(url) && !url.includes(':memory:')) {
-      logger.warn(`SQLite database file not found: ${url}. It will be created.`);
+    if (
+      url &&
+      url !== ':memory:' &&
+      !existsSync(url) &&
+      !url.includes(':memory:')
+    ) {
+      logger.warn(
+        `SQLite database file not found: ${url}. It will be created.`
+      );
     }
   }
 }
+
+// Add common configuration
+drizzleConfig.verbose = process.env.NODE_ENV !== 'production';
+drizzleConfig.strict = true;
+
+// Verify configuration
+verifyConfiguration(drizzleConfig, dbType);
+
+export default drizzleConfig;

@@ -14,9 +14,10 @@ import { Issuer } from '@/domains/issuer/issuer.entity';
 import {
   convertJson,
   convertTimestamp,
-  convertUuid
+  convertUuid,
 } from '@/infrastructure/database/utils/type-conversion';
 import { config } from '@/config/config';
+import { logger } from '@/utils/logging/logger.service';
 
 /**
  * Example repository implementation that uses type conversion utilities
@@ -51,7 +52,7 @@ export class ExampleIssuerRepository {
       createdAt: convertTimestamp(issuer.createdAt as Date, this.dbType, 'to'),
       updatedAt: convertTimestamp(issuer.updatedAt as Date, this.dbType, 'to'),
       // Convert additional fields for storage
-      additionalFields: convertJson(issuer.additionalFields, this.dbType, 'to')
+      additionalFields: convertJson(issuer.additionalFields, this.dbType, 'to'),
     };
   }
 
@@ -74,10 +75,22 @@ export class ExampleIssuerRepository {
       // Convert JSON data from storage
       publicKey: convertJson(record.publicKey, this.dbType, 'from'),
       // Convert timestamps from storage
-      createdAt: convertTimestamp(record.createdAt, this.dbType, 'from') as Date | null,
-      updatedAt: convertTimestamp(record.updatedAt, this.dbType, 'from') as Date | null,
+      createdAt: convertTimestamp(
+        record.createdAt,
+        this.dbType,
+        'from'
+      ) as Date | null,
+      updatedAt: convertTimestamp(
+        record.updatedAt,
+        this.dbType,
+        'from'
+      ) as Date | null,
       // Convert additional fields from storage
-      additionalFields: convertJson(record.additionalFields, this.dbType, 'from'),
+      additionalFields: convertJson(
+        record.additionalFields,
+        this.dbType,
+        'from'
+      ),
       toObject: () => ({
         id: record.id,
         name: record.name,
@@ -86,8 +99,8 @@ export class ExampleIssuerRepository {
         description: record.description,
         image: record.image,
         publicKey: record.publicKey,
-        additionalFields: record.additionalFields
-      })
+        additionalFields: record.additionalFields,
+      }),
     };
 
     return issuer;
@@ -120,7 +133,7 @@ export class ExampleIssuerRepository {
 
       return null;
     } catch (error) {
-      console.error('Error finding issuer by ID:', error);
+      logger.logError('Error finding issuer by ID', error as Error);
       throw error;
     }
   }
@@ -161,7 +174,7 @@ export class ExampleIssuerRepository {
 
       return issuer;
     } catch (error) {
-      console.error('Error creating issuer:', error);
+      logger.logError('Error creating issuer', error as Error);
       throw error;
     }
   }

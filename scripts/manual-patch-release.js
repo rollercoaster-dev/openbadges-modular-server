@@ -13,11 +13,18 @@
 import fs from 'fs';
 import { execSync } from 'child_process';
 
+// Simple logger for this script to avoid console usage
+const logger = {
+  info: (message) => process.stdout.write(`[INFO] ${message}\n`),
+  warn: (message) => process.stdout.write(`[WARN] ${message}\n`),
+  error: (message) => process.stderr.write(`[ERROR] ${message}\n`)
+};
+
 // Read the current package.json
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 const currentVersion = packageJson.version;
 
-console.log(`Current version: ${currentVersion}`);
+logger.info(`Current version: ${currentVersion}`);
 
 // Parse the version components
 const [major, minor, patch] = currentVersion.split('.').map(Number);
@@ -26,7 +33,7 @@ const [major, minor, patch] = currentVersion.split('.').map(Number);
 const newPatchVersion = patch + 1;
 const newVersion = `${major}.${minor}.${newPatchVersion}`;
 
-console.log(`New version: ${newVersion}`);
+logger.info(`New version: ${newVersion}`);
 
 // Check if the current version tag exists
 let currentVersionTagExists = false;
@@ -38,33 +45,33 @@ try {
 }
 
 if (currentVersionTagExists) {
-  console.log(`Tag v${currentVersion} already exists, proceeding with new version ${newVersion}`);
+  logger.info(`Tag v${currentVersion} already exists, proceeding with new version ${newVersion}`);
 } else {
-  console.log(`Warning: Tag v${currentVersion} does not exist. Consider using this version first.`);
-  console.log(`Proceeding with new version ${newVersion} anyway.`);
+  logger.warn(`Warning: Tag v${currentVersion} does not exist. Consider using this version first.`);
+  logger.info(`Proceeding with new version ${newVersion} anyway.`);
 }
 
 // Update the version in package.json
 packageJson.version = newVersion;
 fs.writeFileSync('./package.json', JSON.stringify(packageJson, null, 2) + '\n');
 
-console.log(`Updated package.json with new version: ${newVersion}`);
+logger.info(`Updated package.json with new version: ${newVersion}`);
 
 // Commit the changes
 // Check for uncommitted changes first
 try {
   const status = execSync('git status --porcelain').toString().trim();
   if (status && !status.includes('package.json')) {
-    console.error('There are uncommitted changes in the working directory:');
-    console.error(status);
-    console.error('Please commit or stash them before running this script, or use --force to ignore.');
-    
+    logger.error('There are uncommitted changes in the working directory:');
+    logger.error(status);
+    logger.error('Please commit or stash them before running this script, or use --force to ignore.');
+
     if (!process.argv.includes('--force')) {
       process.exit(1);
     }
   }
 } catch (error) {
-  console.error('Error checking git status:', error.message);
+  logger.error('Error checking git status:', error.message);
   process.exit(1);
 }
 
@@ -81,11 +88,11 @@ try {
 }
 
 if (tagExists) {
-  console.log(`Tag v${newVersion} already exists, skipping tag creation`);
+  logger.info(`Tag v${newVersion} already exists, skipping tag creation`);
 } else {
   // Create a git tag
   execSync(`git tag -a v${newVersion} -m "Release v${newVersion}"`);
-  console.log(`Created git tag: v${newVersion}`);
+  logger.info(`Created git tag: v${newVersion}`);
 }
 
 // Ask if the user wants to push the changes
@@ -93,16 +100,16 @@ const args = process.argv.slice(2);
 const shouldPush = args.includes('--push');
 
 if (shouldPush) {
-  console.log('Pushing changes to remote...');
+  logger.info('Pushing changes to remote...');
   execSync('git push origin HEAD');
   execSync('git push origin --tags');
-  console.log('Changes pushed to remote');
+  logger.info('Changes pushed to remote');
 } else {
-  console.log('');
-  console.log('Changes committed locally. To push to remote, run:');
-  console.log('  git push origin HEAD');
-  console.log('  git push origin --tags');
-  console.log('');
-  console.log('Or run this script with the --push flag:');
-  console.log('  bun run scripts/manual-patch-release.js --push');
+  logger.info('');
+  logger.info('Changes committed locally. To push to remote, run:');
+  logger.info('  git push origin HEAD');
+  logger.info('  git push origin --tags');
+  logger.info('');
+  logger.info('Or run this script with the --push flag:');
+  logger.info('  bun run scripts/manual-patch-release.js --push');
 }

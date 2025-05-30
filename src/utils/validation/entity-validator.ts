@@ -11,11 +11,52 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
 import { Shared, OB3 } from 'openbadges-types';
 
 /**
+ * Validates a URL
+ * @param url The URL to validate
+ * @returns True if the URL is valid, false otherwise
+ */
+function isValidUrl(url: string | Shared.IRI): boolean {
+  try {
+    new URL(url.toString());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validates an email address
+ * @param email The email to validate
+ * @returns True if the email is valid, false otherwise
+ */
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validates an ISO date string
+ * @param date The date string to validate
+ * @returns True if the date is valid, false otherwise
+ */
+function isValidDate(date: string): boolean {
+  try {
+    const d = new Date(date);
+    return !isNaN(d.getTime());
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validates an issuer entity
  * @param issuer The issuer to validate
  * @returns Validation result with errors if any
  */
-export function validateIssuer(issuer: Issuer): { isValid: boolean; errors: string[] } {
+export function validateIssuer(issuer: Issuer): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Check required fields according to OB3.Issuer interface
@@ -57,7 +98,7 @@ export function validateIssuer(issuer: Issuer): { isValid: boolean; errors: stri
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -66,7 +107,10 @@ export function validateIssuer(issuer: Issuer): { isValid: boolean; errors: stri
  * @param badgeClass The badge class to validate
  * @returns Validation result with errors if any
  */
-export function validateBadgeClass(badgeClass: BadgeClass): { isValid: boolean; errors: string[] } {
+export function validateBadgeClass(badgeClass: BadgeClass): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Check required fields according to OB3.Achievement interface
@@ -92,7 +136,10 @@ export function validateBadgeClass(badgeClass: BadgeClass): { isValid: boolean; 
 
   if (!badgeClass.image) {
     errors.push('Badge class image is required');
-  } else if (typeof badgeClass.image === 'string' && !isValidUrl(badgeClass.image)) {
+  } else if (
+    typeof badgeClass.image === 'string' &&
+    !isValidUrl(badgeClass.image)
+  ) {
     errors.push('Badge class image must be a valid URL');
   }
 
@@ -117,7 +164,7 @@ export function validateBadgeClass(badgeClass: BadgeClass): { isValid: boolean; 
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -126,7 +173,10 @@ export function validateBadgeClass(badgeClass: BadgeClass): { isValid: boolean; 
  * @param assertion The assertion to validate
  * @returns Validation result with errors if any
  */
-export function validateAssertion(assertion: Assertion): { isValid: boolean; errors: string[] } {
+export function validateAssertion(assertion: Assertion): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Check required fields according to OB3.VerifiableCredential interface
@@ -145,7 +195,9 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
   if (!assertion.recipient) {
     errors.push('Assertion recipient is required');
   } else if (!assertion.recipient.type || !assertion.recipient.identity) {
-    errors.push('Assertion recipient must be a valid recipient object with identity and type');
+    errors.push(
+      'Assertion recipient must be a valid recipient object with identity and type'
+    );
   }
 
   if (!assertion.issuedOn) {
@@ -167,7 +219,9 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
   if (assertion.evidence) {
     assertion.evidence.forEach((evidence, index) => {
       if (!evidence.id && !evidence.narrative && !evidence.name) {
-        errors.push(`Evidence ${index} must have at least one of: id, narrative, or name`);
+        errors.push(
+          `Evidence ${index} must have at least one of: id, narrative, or name`
+        );
       }
 
       if (evidence.id && !isValidUrl(evidence.id)) {
@@ -179,12 +233,19 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
   // Check verification if provided
   if (assertion.verification && typeof assertion.verification === 'object') {
     // Type guard: Check for properties unique to OB3.Proof to validate Proof-specific fields
-    if ('signatureValue' in assertion.verification && 'creator' in assertion.verification && 'created' in assertion.verification) {
+    if (
+      'signatureValue' in assertion.verification &&
+      'creator' in assertion.verification &&
+      'created' in assertion.verification
+    ) {
       const verificationProof = assertion.verification as OB3.Proof;
 
       if (!verificationProof['creator']) {
         errors.push('Verification creator is required');
-      } else if (typeof verificationProof['creator'] === 'string' && !isValidUrl(verificationProof['creator'])) {
+      } else if (
+        typeof verificationProof['creator'] === 'string' &&
+        !isValidUrl(verificationProof['creator'])
+      ) {
         errors.push('Verification creator must be a valid URL');
       }
 
@@ -207,44 +268,6 @@ export function validateAssertion(assertion: Assertion): { isValid: boolean; err
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
-}
-
-/**
- * Validates a URL
- * @param url The URL to validate
- * @returns True if the URL is valid, false otherwise
- */
-function isValidUrl(url: string | Shared.IRI): boolean {
-  try {
-    new URL(url.toString());
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Validates an email address
- * @param email The email to validate
- * @returns True if the email is valid, false otherwise
- */
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-/**
- * Validates an ISO date string
- * @param date The date string to validate
- * @returns True if the date is valid, false otherwise
- */
-function isValidDate(date: string): boolean {
-  try {
-    const d = new Date(date);
-    return !isNaN(d.getTime());
-  } catch {
-    return false;
-  }
 }

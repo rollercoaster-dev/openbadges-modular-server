@@ -26,7 +26,7 @@ describe('Authentication Integration Tests', () => {
         return {
           id: 'test-user-id',
           username: 'testuser',
-          roles: ['user']
+          roles: ['user'],
         };
       }
       return null;
@@ -36,19 +36,22 @@ describe('Authentication Integration Tests', () => {
         return {
           id: 'test-user-id',
           username: 'testuser',
-          roles: ['user']
+          roles: ['user'],
         };
       } else if (id === 'admin-user-id') {
         return {
           id: 'admin-user-id',
           username: 'admin',
-          roles: ['admin', 'user']
+          roles: ['admin', 'user'],
         };
       }
       return null;
-    })
+    }),
   } as unknown as UserService & {
-    findUserByCredentials: (username: string, password: string) => Promise<{
+    findUserByCredentials: (
+      username: string,
+      password: string
+    ) => Promise<{
       id: string;
       username: string;
       roles: string[];
@@ -66,23 +69,26 @@ describe('Authentication Integration Tests', () => {
     });
 
     JwtService.verifyToken = mock(async (token: string) => {
-      if (token === TEST_TOKENS.MOCK_JWT_TOKEN || token === TEST_TOKENS.VALID_TOKEN) {
+      if (
+        token === TEST_TOKENS.MOCK_JWT_TOKEN ||
+        token === TEST_TOKENS.VALID_TOKEN
+      ) {
         return {
           sub: 'test-user-id',
           provider: 'test-provider',
-          claims: { roles: ['user'] }
+          claims: { roles: ['user'] },
         };
       } else if (token === TEST_TOKENS.ADMIN_TOKEN) {
         return {
           sub: 'admin-user-id',
           provider: 'test-provider',
-          claims: { roles: ['admin', 'user'] }
+          claims: { roles: ['admin', 'user'] },
         };
       } else if (token === TEST_TOKENS.ISSUER_TOKEN) {
         return {
           sub: 'issuer-user-id',
           provider: 'test-provider',
-          claims: { roles: ['issuer', 'user'] }
+          claims: { roles: ['issuer', 'user'] },
         };
       } else {
         throw new Error('Invalid token');
@@ -96,31 +102,22 @@ describe('Authentication Integration Tests', () => {
     app.use('*', async (c, next) => {
       // Custom auth middleware for testing
       const authHeader = c.req.header('Authorization');
-      // Log auth header for debugging
-      // console.log('Auth header:', authHeader);
-
       // Skip auth for login endpoint
       if (c.req.path === '/api/v1/auth/login') {
-        // console.log('Skipping auth for login endpoint');
         return next();
       }
 
       // Check for valid token
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        // console.log('No valid auth header');
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
       const token = authHeader.substring(7);
-      // console.log('Token:', token);
       try {
-        // Verify token
         // Verify token without using the result
         await JwtService.verifyToken(token);
-        // console.log('Token verified');
         return next();
       } catch (_error) {
-        // console.log('Token verification failed:', _error);
         return c.json({ error: 'Unauthorized' }, 401);
       }
     });
@@ -133,7 +130,10 @@ describe('Authentication Integration Tests', () => {
       const body = await c.req.json();
       const { username, password } = body;
 
-      const user = await mockUserService.findUserByCredentials(username, password);
+      const user = await mockUserService.findUserByCredentials(
+        username,
+        password
+      );
       if (!user) {
         return c.json({ error: 'Invalid credentials' }, 401);
       }
@@ -141,7 +141,7 @@ describe('Authentication Integration Tests', () => {
       const token = await JwtService.generateToken({
         sub: user.id,
         provider: 'test-provider',
-        claims: { roles: user.roles }
+        claims: { roles: user.roles },
       });
 
       return c.json({ token });
@@ -169,7 +169,7 @@ describe('Authentication Integration Tests', () => {
   describe('User Login', () => {
     it('should return a JWT token upon successful login with valid credentials', async () => {
       const res = await client.api.v1.auth.login.$post({
-        json: { username: 'testuser', password: 'password' }
+        json: { username: 'testuser', password: 'password' },
       });
 
       expect(res.status).toBe(200);
@@ -181,7 +181,7 @@ describe('Authentication Integration Tests', () => {
 
     it('should return 401 Unauthorized with invalid credentials', async () => {
       const res = await client.api.v1.auth.login.$post({
-        json: { username: 'testuser', password: 'wrongpassword' }
+        json: { username: 'testuser', password: 'wrongpassword' },
       });
 
       expect(res.status).toBe(401);
@@ -192,7 +192,7 @@ describe('Authentication Integration Tests', () => {
     it('should allow access to a protected route with a valid JWT token', async () => {
       // Use the token that our mock JwtService.verifyToken accepts
       const res = await app.request('/issuers', {
-        headers: { 'Authorization': `Bearer ${TEST_TOKENS.VALID_TOKEN}` }
+        headers: { Authorization: `Bearer ${TEST_TOKENS.VALID_TOKEN}` },
       });
 
       expect(res.status).toBe(200);
@@ -200,7 +200,7 @@ describe('Authentication Integration Tests', () => {
 
     it('should return 401 Unauthorized when using an invalid JWT token', async () => {
       const res = await app.request('/issuers', {
-        headers: { 'Authorization': `Bearer ${TEST_TOKENS.INVALID_TOKEN}` }
+        headers: { Authorization: `Bearer ${TEST_TOKENS.INVALID_TOKEN}` },
       });
 
       expect(res.status).toBe(401);
@@ -217,18 +217,18 @@ describe('Authentication Integration Tests', () => {
       admin: {
         id: 'admin-user-id',
         roles: ['admin', 'user'],
-        token: TEST_TOKENS.ADMIN_TOKEN
+        token: TEST_TOKENS.ADMIN_TOKEN,
       },
       issuer: {
         id: 'issuer-user-id',
         roles: ['issuer', 'user'],
-        token: TEST_TOKENS.ISSUER_TOKEN
+        token: TEST_TOKENS.ISSUER_TOKEN,
       },
       regular: {
         id: 'test-user-id',
         roles: ['user'],
-        token: TEST_TOKENS.VALID_TOKEN
-      }
+        token: TEST_TOKENS.VALID_TOKEN,
+      },
     };
 
     // Helper function to check if a user has a specific role
@@ -237,7 +237,10 @@ describe('Authentication Integration Tests', () => {
     };
 
     // Helper function to check if a user can access their own or others' resources
-    const canAccessUserResource = (user: typeof mockUsers.admin, resourceUserId: string) => {
+    const canAccessUserResource = (
+      user: typeof mockUsers.admin,
+      resourceUserId: string
+    ) => {
       return hasRole(user, 'admin') || user.id === resourceUserId;
     };
 
@@ -257,21 +260,24 @@ describe('Authentication Integration Tests', () => {
 
     it('should allow an issuer to access issuer-only resources', async () => {
       const user = mockUsers.issuer;
-      const canAccessIssuerResources = hasRole(user, 'issuer') || hasRole(user, 'admin');
+      const canAccessIssuerResources =
+        hasRole(user, 'issuer') || hasRole(user, 'admin');
 
       expect(canAccessIssuerResources).toBe(true);
     });
 
     it('should allow an admin to access issuer-only resources', async () => {
       const user = mockUsers.admin;
-      const canAccessIssuerResources = hasRole(user, 'issuer') || hasRole(user, 'admin');
+      const canAccessIssuerResources =
+        hasRole(user, 'issuer') || hasRole(user, 'admin');
 
       expect(canAccessIssuerResources).toBe(true);
     });
 
     it('should deny a regular user from accessing issuer-only resources', async () => {
       const user = mockUsers.regular;
-      const canAccessIssuerResources = hasRole(user, 'issuer') || hasRole(user, 'admin');
+      const canAccessIssuerResources =
+        hasRole(user, 'issuer') || hasRole(user, 'admin');
 
       expect(canAccessIssuerResources).toBe(false);
     });
@@ -284,7 +290,7 @@ describe('Authentication Integration Tests', () => {
       expect(canAccessResource).toBe(true);
     });
 
-    it('should deny a user from accessing another user\'s resources', async () => {
+    it("should deny a user from accessing another user's resources", async () => {
       const user = mockUsers.regular;
       const resourceUserId = 'other-user-id'; // Different from user.id
       const canAccessResource = canAccessUserResource(user, resourceUserId);
@@ -292,7 +298,7 @@ describe('Authentication Integration Tests', () => {
       expect(canAccessResource).toBe(false);
     });
 
-    it('should allow an admin to access any user\'s resources', async () => {
+    it("should allow an admin to access any user's resources", async () => {
       const user = mockUsers.admin;
       const resourceUserId = 'other-user-id'; // Different from user.id
       const canAccessResource = canAccessUserResource(user, resourceUserId);
@@ -309,8 +315,9 @@ describe('Authentication Integration Tests', () => {
       // Create a mock context with the API key header
       const mockContext = {
         req: {
-          header: (name: string) => name === 'X-API-Key' ? 'valid-api-key' : null
-        }
+          header: (name: string) =>
+            name === 'X-API-Key' ? 'valid-api-key' : null,
+        },
       };
 
       // Simulate API key validation
@@ -326,8 +333,9 @@ describe('Authentication Integration Tests', () => {
       // Create a mock context with the Basic Auth header
       const mockContext = {
         req: {
-          header: (name: string) => name === 'Authorization' ? `Basic ${encodedCredentials}` : null
-        }
+          header: (name: string) =>
+            name === 'Authorization' ? `Basic ${encodedCredentials}` : null,
+        },
       };
 
       // Simulate Basic Auth validation
@@ -337,7 +345,10 @@ describe('Authentication Integration Tests', () => {
       expect(isAuthenticated).toBe(true);
 
       // In a real implementation, we would decode and verify the credentials
-      const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
+      const decodedCredentials = Buffer.from(
+        encodedCredentials,
+        'base64'
+      ).toString('utf-8');
       const [username, password] = decodedCredentials.split(':');
 
       expect(username).toBe('testuser');
@@ -348,8 +359,9 @@ describe('Authentication Integration Tests', () => {
       // Create a mock context with the OAuth2 token header
       const mockContext = {
         req: {
-          header: (name: string) => name === 'Authorization' ? 'Bearer valid-oauth2-token' : null
-        }
+          header: (name: string) =>
+            name === 'Authorization' ? 'Bearer valid-oauth2-token' : null,
+        },
       };
 
       // Simulate OAuth2 token validation

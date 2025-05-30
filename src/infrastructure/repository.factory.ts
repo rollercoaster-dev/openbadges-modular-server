@@ -455,4 +455,36 @@ export class RepositoryFactory {
     RepositoryFactory.initializationPromise = null;
     logger.info('Repository factory closed');
   }
+
+  /**
+   * Check if the repository factory has an active database connection
+   * @returns true if the factory has a working database connection
+   */
+  static async isConnected(): Promise<boolean> {
+    if (!RepositoryFactory.isInitialized) {
+      return false;
+    }
+
+    try {
+      if (
+        RepositoryFactory.dbType === 'postgresql' &&
+        RepositoryFactory.client
+      ) {
+        // Test PostgreSQL connection with a simple query
+        await RepositoryFactory.client`SELECT 1`;
+        return true;
+      } else if (
+        RepositoryFactory.dbType === 'sqlite' &&
+        RepositoryFactory.sqliteConnectionManager
+      ) {
+        // Test SQLite connection
+        const ok = await RepositoryFactory.sqliteConnectionManager.isConnected();
+        return ok;
+      }
+      return false;
+    } catch {
+      logger.debug('RepositoryFactory.isConnected(): connectivity check failed');
+      return false;
+    }
+  }
 }

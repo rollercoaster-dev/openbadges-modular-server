@@ -1,25 +1,33 @@
 // test/e2e/assertion.e2e.test.ts
 import { describe, it, expect, afterAll, beforeAll } from 'bun:test';
-import { config } from '@/config/config';
+import { createHash } from 'crypto';
 import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 
-// Use a random port for testing to avoid conflicts
-const TEST_PORT = Math.floor(Math.random() * 10000) + 10000; // Random port between 10000-20000
-process.env.TEST_PORT = TEST_PORT.toString();
-
-// Base URL for the API
-const API_URL = `http://${config.server.host || '0.0.0.0'}:${TEST_PORT}`;
-// const ISSUERS_ENDPOINT = `${API_URL}/v3/issuers`; // Not used in this simplified test
-// const BADGE_CLASSES_ENDPOINT = `${API_URL}/v3/badge-classes`; // Not used in this simplified test
-const ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
-
-// Log the API URL for debugging
-logger.info(`E2E Test: Using API URL: ${API_URL}`);
+// Use getPort to reliably get an available port to avoid conflicts
+let TEST_PORT: number;
+let API_URL: string;
+let ASSERTIONS_ENDPOINT: string;
 
 // API key for protected endpoints
 const API_KEY = 'verysecretkeye2e';
+
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '@/config/config'; // safe to import after env is prepared
 
 // Server instance for the test
 let server: unknown = null;
@@ -27,20 +35,30 @@ let server: unknown = null;
 describe('Assertion API - E2E', () => {
   // Start the server before all tests
   beforeAll(async () => {
-    // Set environment variables for the test server
-    process.env['NODE_ENV'] = 'test';
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+    /* pass TEST_PORT to setupTestApp(), config, … without exporting it
+     * to global process.env to keep the scope local to this suite */
+
+    // Set up API URLs after getting the port
+    const host = config.server.host ?? '127.0.0.1';
+    API_URL = `http://${host}:${TEST_PORT}`;
+    ASSERTIONS_ENDPOINT = `${API_URL}/v3/assertions`;
+
+    // Log the API URL for debugging
+    logger.info(`E2E Test: Using API URL: ${API_URL}`);
 
     try {
       logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
-      const result = await setupTestApp();
+      const result = await setupTestApp(TEST_PORT);
       server = result.server;
       logger.info('E2E Test: Server started successfully');
       // Wait for the server to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       logger.error('E2E Test: Failed to start server', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -56,9 +74,14 @@ describe('Assertion API - E2E', () => {
       } catch (error) {
         logger.error('E2E Test: Error stopping server', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
+    }
+
+    // Release the allocated port
+    if (TEST_PORT) {
+      releasePort(TEST_PORT);
     }
   });
 
@@ -71,8 +94,8 @@ describe('Assertion API - E2E', () => {
       assertionsResponse = await fetch(ASSERTIONS_ENDPOINT, {
         method: 'GET',
         headers: {
-          'X-API-Key': API_KEY
-        }
+          'X-API-Key': API_KEY,
+        },
       });
     } catch (error) {
       logger.error('Failed to fetch assertions', { error });
@@ -81,11 +104,16 @@ describe('Assertion API - E2E', () => {
 
     // Verify the response status code
     if (assertionsResponse.status !== 200) {
-  const body = await assertionsResponse.text();
-  logger.error(`GET /v3/assertions failed`, { status: assertionsResponse.status, body });
-}
-expect(assertionsResponse.status).toBe(200);
-    logger.info(`Assertions endpoint responded with status ${assertionsResponse.status}`);
+      const body = await assertionsResponse.text();
+      logger.error(`GET /v3/assertions failed`, {
+        status: assertionsResponse.status,
+        body,
+      });
+    }
+    expect(assertionsResponse.status).toBe(200);
+    logger.info(
+      `Assertions endpoint responded with status ${assertionsResponse.status}`
+    );
 
     // Test the assertion POST endpoint
     let assertionPostResponse: Response;
@@ -94,20 +122,22 @@ expect(assertionsResponse.status).toBe(200);
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': API_KEY
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           '@context': OPENBADGES_V3_CONTEXT_EXAMPLE,
           type: 'Assertion',
           recipient: {
             type: 'email',
-            identity: 'sha256$' + Buffer.from('test@example.com').toString('hex'),
+            identity:
+              'sha256$' +
+              createHash('sha256').update('test@example.com').digest('hex'),
             hashed: true,
-            salt: 'test'
+            salt: 'test',
           },
           badge: '00000000-0000-4000-a000-000000000004', // A valid UUID format
-          issuedOn: new Date().toISOString()
-        })
+          issuedOn: new Date().toISOString(),
+        }),
       });
     } catch (error) {
       logger.error('Failed to test assertion POST endpoint', { error });
@@ -116,22 +146,30 @@ expect(assertionsResponse.status).toBe(200);
 
     // Verify the response status code
     if (assertionPostResponse.status !== 400) {
-  const body = await assertionPostResponse.text();
-  logger.error(`POST /v3/assertions failed (should be 400)`, { status: assertionPostResponse.status, body });
-}
-expect(assertionPostResponse.status).toBe(400);
-    logger.info(`Assertion POST endpoint responded with status ${assertionPostResponse.status}`);
+      const body = await assertionPostResponse.text();
+      logger.error(`POST /v3/assertions failed (should be 400)`, {
+        status: assertionPostResponse.status,
+        body,
+      });
+    }
+    expect(assertionPostResponse.status).toBe(400);
+    logger.info(
+      `Assertion POST endpoint responded with status ${assertionPostResponse.status}`
+    );
 
     // Test the verification endpoint with a dummy assertion ID
     const dummyAssertionId = '00000000-0000-4000-a000-000000000005'; // A valid UUID format
     let verifyResponse: Response;
     try {
-      verifyResponse = await fetch(`${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`, {
-        method: 'GET',
-        headers: {
-          'X-API-Key': API_KEY
+      verifyResponse = await fetch(
+        `${ASSERTIONS_ENDPOINT}/${dummyAssertionId}/verify`,
+        {
+          method: 'GET',
+          headers: {
+            'X-API-Key': API_KEY,
+          },
         }
-      });
+      );
     } catch (error) {
       logger.error(`Failed to test verification endpoint`, { error });
       throw error;
@@ -139,11 +177,16 @@ expect(assertionPostResponse.status).toBe(400);
 
     // Verify the response status code
     if (verifyResponse.status !== 404) {
-  const body = await verifyResponse.text();
-  logger.error(`GET /v3/assertions/:id/verify failed (should be 404)`, { status: verifyResponse.status, body });
-}
-expect(verifyResponse.status).toBe(404);
-    logger.info(`Verification endpoint responded with status ${verifyResponse.status}`);
+      const body = await verifyResponse.text();
+      logger.error(`GET /v3/assertions/:id/verify failed (should be 404)`, {
+        status: verifyResponse.status,
+        body,
+      });
+    }
+    expect(verifyResponse.status).toBe(404);
+    logger.info(
+      `Verification endpoint responded with status ${verifyResponse.status}`
+    );
   });
 
   // No cleanup needed in this simplified test

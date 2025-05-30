@@ -18,51 +18,25 @@ import { logger } from '@/utils/logging/logger.service';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 
 /**
- * Runs database migrations
- */
-async function runMigrations() {
-  // DEBUG: Log the raw environment variable
-  // console.log('DEBUG process.env.DB_TYPE:', process.env.DB_TYPE); // Removed debug line
-  logger.info('Running database migrations...');
-  logger.info(`Database type: ${config.database.type}`);
-
-  try {
-    if (config.database.type === 'sqlite') {
-      await runSqliteMigrations();
-    } else if (config.database.type === 'postgresql') {
-      await runPostgresMigrations();
-    } else {
-      throw new Error(`Unsupported database type: ${config.database.type}`);
-    }
-
-    logger.info('Migrations completed successfully.');
-  } catch (error) {
-    logger.error('Error running migrations:', error);
-    process.exit(1);
-  }
-}
-
-/**
  * Runs SQLite migrations
  */
-async function runSqliteMigrations() {
+async function runSqliteMigrations(): Promise<void> {
   logger.info('Running SQLite migrations...');
 
   // Get SQLite file path
   const sqliteFile = config.database.sqliteFile || 'sqlite.db';
   logger.info(`SQLite file: ${sqliteFile}`);
 
+  // Ensure the directory for the SQLite file exists
+  const dir = dirname(sqliteFile);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    logger.info(`Created directory for SQLite file: ${dir}`);
+  }
+
+  // Create SQLite database connection
+  const sqlite = new Database(sqliteFile);
   try {
-    // Ensure the directory for the SQLite file exists
-    const dir = dirname(sqliteFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      logger.info(`Created directory for SQLite file: ${dir}`);
-    }
-
-    // Create SQLite database connection
-    const sqlite = new Database(sqliteFile);
-
     // Verify database connection
     try {
       // Simple query to verify the database is accessible
@@ -134,19 +108,38 @@ async function runSqliteMigrations() {
               );
               sqlite.exec(statement + ';');
             } catch (stmtError) {
-              // Log the error but continue with other statements
-              logger.error(
-                `Error executing SQL statement: ${statement.substring(
-                  0,
-                  100
-                )}...`,
-                {
-                  error:
-                    stmtError instanceof Error
-                      ? stmtError.message
-                      : String(stmtError),
-                }
-              );
+              // Check if this is an "already exists" error that we can safely ignore
+              const errorMessage =
+                stmtError instanceof Error
+                  ? stmtError.message
+                  : String(stmtError);
+              const isAlreadyExistsError =
+                errorMessage.includes('already exists') ||
+                errorMessage.includes('SQLITE_CONSTRAINT');
+
+              if (isAlreadyExistsError) {
+                logger.info(
+                  `Table/index already exists, continuing: ${statement.substring(
+                    0,
+                    50
+                  )}...`
+                );
+              } else {
+                // For non-"already exists" errors, log and abort migration
+                logger.error(
+                  `Fatal error executing SQL statement: ${statement.substring(
+                    0,
+                    100
+                  )}...`,
+                  {
+                    error: errorMessage,
+                    statement: statement.substring(0, 200),
+                  }
+                );
+                throw new Error(
+                  `Migration failed on statement: ${errorMessage}`
+                );
+              }
             }
           }
         }
@@ -195,19 +188,38 @@ async function runSqliteMigrations() {
                 );
                 sqlite.exec(statement + ';');
               } catch (stmtError) {
-                // Log the error but continue with other statements
-                logger.error(
-                  `Error executing SQL statement: ${statement.substring(
-                    0,
-                    100
-                  )}...`,
-                  {
-                    error:
-                      stmtError instanceof Error
-                        ? stmtError.message
-                        : String(stmtError),
-                  }
-                );
+                // Check if this is an "already exists" error that we can safely ignore
+                const errorMessage =
+                  stmtError instanceof Error
+                    ? stmtError.message
+                    : String(stmtError);
+                const isAlreadyExistsError =
+                  errorMessage.includes('already exists') ||
+                  errorMessage.includes('SQLITE_CONSTRAINT');
+
+                if (isAlreadyExistsError) {
+                  logger.info(
+                    `Table/index already exists, continuing: ${statement.substring(
+                      0,
+                      50
+                    )}...`
+                  );
+                } else {
+                  // For non-"already exists" errors, log and abort migration
+                  logger.error(
+                    `Fatal error executing SQL statement: ${statement.substring(
+                      0,
+                      100
+                    )}...`,
+                    {
+                      error: errorMessage,
+                      statement: statement.substring(0, 200),
+                    }
+                  );
+                  throw new Error(
+                    `Migration failed on statement: ${errorMessage}`
+                  );
+                }
               }
             }
           }
@@ -218,8 +230,12 @@ async function runSqliteMigrations() {
         }
       }
     } catch (error) {
-      logger.warn('Error applying SQL directly:', error);
-      // Continue execution even if this fails
+      logger.error('SQLite migration failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Re-throw to prevent application from starting with a broken database state
+      throw error;
     }
 
     // Create custom indexes after migrations are complete
@@ -236,20 +252,20 @@ async function runSqliteMigrations() {
       // Non-critical - continue
     }
 
-    // Close database connection
-    sqlite.close();
-
     logger.info('SQLite migrations completed.');
   } catch (error) {
     logger.error('SQLite migration error', error);
     throw error;
+  } finally {
+    // Safeguard – even if already closed, `close()` is idempotent
+    sqlite.close();
   }
 }
 
 /**
  * Runs PostgreSQL migrations
  */
-async function runPostgresMigrations() {
+async function runPostgresMigrations(): Promise<void> {
   logger.info('Running PostgreSQL migrations...');
 
   // Get PostgreSQL connection string
@@ -261,10 +277,8 @@ async function runPostgresMigrations() {
     connectionString: SensitiveValue.from(connectionString),
   });
 
+  const client = postgres(connectionString, { max: 1 });
   try {
-    // Create PostgreSQL connection
-    const client = postgres(connectionString, { max: 1 });
-
     // Verify database connection
     try {
       // Simple query to verify the database is accessible
@@ -311,19 +325,39 @@ async function runPostgresMigrations() {
             // Execute the statement directly
             await client.unsafe(statement + ';');
           } catch (stmtError) {
-            // Log the error but continue with other statements
-            logger.warn(
-              `Error executing SQL statement: ${statement.substring(
-                0,
-                100
-              )}...`,
-              {
-                error:
-                  stmtError instanceof Error
-                    ? stmtError.message
-                    : String(stmtError),
-              }
-            );
+            // Check if this is an "already exists" error that we can safely ignore
+            const errorMessage =
+              stmtError instanceof Error
+                ? stmtError.message
+                : String(stmtError);
+            const isAlreadyExistsError =
+              errorMessage.includes('already exists') ||
+              (errorMessage.includes('relation') &&
+                errorMessage.includes('does not exist'));
+
+            if (isAlreadyExistsError) {
+              logger.info(
+                `Table/relation already exists or doesn't exist, continuing: ${statement.substring(
+                  0,
+                  50
+                )}...`
+              );
+            } else {
+              // For non-"already exists" errors, log and abort migration
+              logger.error(
+                `Fatal error executing PostgreSQL statement: ${statement.substring(
+                  0,
+                  100
+                )}...`,
+                {
+                  error: errorMessage,
+                  statement: statement.substring(0, 200),
+                }
+              );
+              throw new Error(
+                `PostgreSQL migration failed on statement: ${errorMessage}`
+              );
+            }
           }
         }
 
@@ -360,17 +394,46 @@ async function runPostgresMigrations() {
         }
       }
     } catch (error) {
-      logger.warn('Error applying SQL directly:', error);
-      // Continue execution even if this fails
+      logger.error('PostgreSQL migration failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Re-throw to prevent application from starting with a broken database state
+      throw error;
     }
-
-    // Close database connection
-    await client.end();
 
     logger.info('PostgreSQL migrations completed.');
   } catch (error) {
     logger.error('PostgreSQL migration error', error);
     throw error;
+  } finally {
+    // Safeguard – even if already closed, `end()` is idempotent
+    await client.end();
+  }
+}
+
+/**
+ * Runs database migrations
+ */
+async function runMigrations() {
+  // DEBUG: Log the raw environment variable
+  // console.log('DEBUG process.env.DB_TYPE:', process.env.DB_TYPE); // Removed debug line
+  logger.info('Running database migrations...');
+  logger.info(`Database type: ${config.database.type}`);
+
+  try {
+    if (config.database.type === 'sqlite') {
+      await runSqliteMigrations();
+    } else if (config.database.type === 'postgresql') {
+      await runPostgresMigrations();
+    } else {
+      throw new Error(`Unsupported database type: ${config.database.type}`);
+    }
+
+    logger.info('Migrations completed successfully.');
+  } catch (error) {
+    logger.error('Error running migrations:', error);
+    process.exit(1);
   }
 }
 

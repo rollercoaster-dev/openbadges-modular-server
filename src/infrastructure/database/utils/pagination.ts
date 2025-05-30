@@ -6,6 +6,32 @@
 
 import { config } from '@/config/config';
 
+/**
+ * Generates a cursor for the next page
+ * This is a placeholder implementation - in a real application, you would
+ * encode information about the last item in the current page
+ * @param currentCursor Current cursor
+ * @returns Next cursor
+ */
+function generateNextCursor(currentCursor: string): string {
+  // In a real implementation, this would encode information about the last item
+  // For now, we'll just append a suffix to indicate it's the next cursor
+  return `${currentCursor}_next`;
+}
+
+/**
+ * Generates a cursor for the previous page
+ * This is a placeholder implementation - in a real application, you would
+ * encode information about the first item in the current page
+ * @param currentCursor Current cursor
+ * @returns Previous cursor
+ */
+function generatePreviousCursor(currentCursor: string): string {
+  // In a real implementation, this would encode information about the first item
+  // For now, we'll just append a suffix to indicate it's the previous cursor
+  return `${currentCursor}_prev`;
+}
+
 export interface PaginationOptions {
   /**
    * Page number (1-based)
@@ -152,30 +178,4 @@ export function createPaginatedResult<T>(
     nextCursor: cursor ? generateNextCursor(cursor) : undefined,
     previousCursor: cursor ? generatePreviousCursor(cursor) : undefined,
   };
-}
-
-/**
- * Generates a cursor for the next page
- * This is a placeholder implementation - in a real application, you would
- * encode information about the last item in the current page
- * @param currentCursor Current cursor
- * @returns Next cursor
- */
-function generateNextCursor(currentCursor: string): string {
-  // In a real implementation, this would encode information about the last item
-  // For now, we'll just append a suffix to indicate it's the next cursor
-  return `${currentCursor}_next`;
-}
-
-/**
- * Generates a cursor for the previous page
- * This is a placeholder implementation - in a real application, you would
- * encode information about the first item in the current page
- * @param currentCursor Current cursor
- * @returns Previous cursor
- */
-function generatePreviousCursor(currentCursor: string): string {
-  // In a real implementation, this would encode information about the first item
-  // For now, we'll just append a suffix to indicate it's the previous cursor
-  return `${currentCursor}_prev`;
 }
