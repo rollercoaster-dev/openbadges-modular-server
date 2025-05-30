@@ -53,7 +53,24 @@ function classifyError(error: unknown): ErrorClassification {
     };
   }
 
-  // Invalid IRI errors
+  // BadRequestError and validation errors (check these BEFORE generic message checks)
+  // But exclude "Invalid IRI" errors which need special handling
+  if (
+    (error instanceof BadRequestError ||
+      error instanceof ValidationError ||
+      (error instanceof Error && error.name === 'BadRequestError') ||
+      message.toLowerCase().includes('invalid') ||
+      message.toLowerCase().includes('validation')) &&
+    !message.includes('Invalid IRI')
+  ) {
+    return {
+      statusCode: 400,
+      errorType: 'Bad Request',
+      message,
+    };
+  }
+
+  // Invalid IRI errors (handle these specifically)
   if (message.includes('Invalid IRI')) {
     return {
       statusCode: 400,
@@ -68,26 +85,11 @@ function classifyError(error: unknown): ErrorClassification {
     };
   }
 
-  // Resource not found errors
+  // Resource not found errors (only for generic "not found" cases, not BadRequestErrors)
   if (message.toLowerCase().includes('does not exist')) {
     return {
       statusCode: 404,
       errorType: 'Not Found',
-      message,
-    };
-  }
-
-  // BadRequestError and validation errors
-  if (
-    error instanceof BadRequestError ||
-    error instanceof ValidationError ||
-    (error instanceof Error && error.name === 'BadRequestError') ||
-    message.toLowerCase().includes('invalid') ||
-    message.toLowerCase().includes('validation')
-  ) {
-    return {
-      statusCode: 400,
-      errorType: 'Bad Request',
       message,
     };
   }
