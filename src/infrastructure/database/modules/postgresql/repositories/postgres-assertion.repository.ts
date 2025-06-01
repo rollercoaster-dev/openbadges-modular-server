@@ -17,7 +17,7 @@ import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
-// import { batchInsert } from '@infrastructure/database/utils/batch-operations';
+import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
 
 // Define the type for the database record using Drizzle's InferSelectModel
 type PostgresAssertionRecord = InferSelectModel<typeof assertions>;
@@ -270,47 +270,37 @@ export class PostgresAssertionRepository
       return [];
     }
 
-    // const _context = this.createOperationContext('BATCH CREATE Assertions');
+    const context = this.createOperationContext('BATCH CREATE Assertions');
 
     try {
       // Convert domain entities to database records
       const records = assertionList.map(assertion => this.mapper.toPersistence(assertion));
 
-      // Use direct database insert instead of batch utility due to type incompatibility
-      const results: Array<{
-        success: boolean;
-        assertion?: Assertion;
-        error?: string;
-      }> = [];
+      // Use batch insert utility
+      const results = await batchInsert(this.db, assertions as any, records, 'postgresql');
 
-      for (const record of records) {
+      // Convert results back to domain entities
+      return results.map((result, index) => {
         try {
-          const result = await this.db
-            .insert(assertions)
-            .values(record)
-            .returning();
-
-          if (result && result[0]) {
-            const domainEntity = this.mapper.toDomain(result[0] as PostgresAssertionRecord);
-            results.push({
+          if (result) {
+            const domainEntity = this.mapper.toDomain(result);
+            return {
               success: true,
               assertion: domainEntity,
-            });
+            };
           } else {
-            results.push({
+            return {
               success: false,
               error: 'Failed to create assertion',
-            });
+            };
           }
         } catch (error) {
-          results.push({
+          return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          };
         }
-      }
-
-      return results;
+      });
     } catch (error) {
       // If batch operation fails, return error for all items
       return assertionList.map(() => ({
@@ -366,7 +356,7 @@ export class PostgresAssertionRepository
       return [];
     }
 
-    // const _context = this.createOperationContext('BATCH UPDATE Assertion Status');
+    const context = this.createOperationContext('BATCH UPDATE Assertion Status');
 
     const results: Array<{
       id: Shared.IRI;

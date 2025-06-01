@@ -103,8 +103,17 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
   });
 
   afterEach(async () => {
-    await connectionManager.disconnect();
-    testDbInstance.close();
+    try {
+      await connectionManager.disconnect();
+    } catch (error) {
+      // Ignore errors if connection is already closed
+    }
+
+    try {
+      testDbInstance.close();
+    } catch (error) {
+      // Ignore errors if database is already closed
+    }
   });
 
   describe('deleteIssuerCascade', () => {

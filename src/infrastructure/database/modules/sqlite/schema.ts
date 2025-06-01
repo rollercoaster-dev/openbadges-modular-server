@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/sqlite-core';
 
 // Users table - defined first to avoid circular references
-export const users = sqliteTable(
+const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
@@ -44,7 +44,7 @@ export const users = sqliteTable(
 );
 
 // Roles table
-export const roles = sqliteTable(
+const roles = sqliteTable(
   'roles',
   {
     id: text('id').primaryKey(),
@@ -63,7 +63,7 @@ export const roles = sqliteTable(
 );
 
 // API Keys table
-export const apiKeys = sqliteTable(
+const apiKeys = sqliteTable(
   'api_keys',
   {
     id: text('id').primaryKey(),
@@ -93,7 +93,7 @@ export const apiKeys = sqliteTable(
 );
 
 // Issuers table
-export const issuers = sqliteTable(
+const issuers = sqliteTable(
   'issuers',
   {
     id: text('id').primaryKey(),
@@ -122,7 +122,7 @@ export const issuers = sqliteTable(
 );
 
 // BadgeClasses table
-export const badgeClasses = sqliteTable(
+const badgeClasses = sqliteTable(
   'badge_classes',
   {
     id: text('id').primaryKey(),
@@ -153,7 +153,7 @@ export const badgeClasses = sqliteTable(
 );
 
 // Assertions table
-export const assertions = sqliteTable(
+const assertions = sqliteTable(
   'assertions',
   {
     id: text('id').primaryKey(),
@@ -191,7 +191,7 @@ export const assertions = sqliteTable(
 );
 
 // Platforms table - for registering external platforms
-export const platforms = sqliteTable(
+const platforms = sqliteTable(
   'platforms',
   {
     id: text('id').primaryKey(),
@@ -213,7 +213,7 @@ export const platforms = sqliteTable(
 );
 
 // Platform Users table - for storing external users
-export const platformUsers = sqliteTable(
+const platformUsers = sqliteTable(
   'platform_users',
   {
     id: text('id').primaryKey(),
@@ -239,7 +239,7 @@ export const platformUsers = sqliteTable(
 );
 
 // User Roles table (many-to-many relationship)
-export const userRoles = sqliteTable(
+const userRoles = sqliteTable(
   'user_roles',
   {
     id: text('id').primaryKey(),
@@ -267,7 +267,7 @@ export const userRoles = sqliteTable(
 );
 
 // User Assertions table (Backpack) - links users to assertions
-export const userAssertions = sqliteTable(
+const userAssertions = sqliteTable(
   'user_assertions',
   {
     id: text('id').primaryKey(),
@@ -293,3 +293,88 @@ export const userAssertions = sqliteTable(
     };
   }
 );
+
+// Status Lists table - for StatusList2021 implementation
+const statusLists = sqliteTable(
+  'status_lists',
+  {
+    id: text('id').primaryKey(),
+    issuerId: text('issuer_id')
+      .notNull()
+      .references(() => issuers.id, { onDelete: 'cascade' }),
+    purpose: text('purpose').notNull(), // 'revocation' or 'suspension'
+    bitstring: text('bitstring').notNull(), // base64url encoded, gzip compressed bitstring
+    size: integer('size').notNull().default(16384), // number of bits in the list
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on issuerId for faster lookups by issuer
+      issuerIdx: index('status_list_issuer_idx').on(table.issuerId),
+      // Add index on purpose for faster lookups by purpose
+      purposeIdx: index('status_list_purpose_idx').on(table.purpose),
+      // Add composite index on issuer and purpose for unique status lists per issuer/purpose
+      issuerPurposeIdx: index('status_list_issuer_purpose_idx').on(
+        table.issuerId,
+        table.purpose
+      ),
+      // Add index on creation date for sorting
+      createdAtIdx: index('status_list_created_at_idx').on(table.createdAt),
+    };
+  }
+);
+
+// Credential Status Entries table - tracks individual credential status within status lists
+const credentialStatusEntries = sqliteTable(
+  'credential_status_entries',
+  {
+    id: text('id').primaryKey(),
+    credentialId: text('credential_id')
+      .notNull()
+      .references(() => assertions.id, { onDelete: 'cascade' }),
+    statusListId: text('status_list_id')
+      .notNull()
+      .references(() => statusLists.id, { onDelete: 'cascade' }),
+    statusListIndex: integer('status_list_index').notNull(), // index within the bitstring
+    status: integer('status').notNull().default(0), // 0 = valid, 1 = revoked/suspended
+    reason: text('reason'), // optional reason for status change
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      // Add unique index on credentialId to ensure one status entry per credential
+      credentialIdx: uniqueIndex('credential_status_credential_idx').on(
+        table.credentialId
+      ),
+      // Add index on statusListId for faster lookups by status list
+      statusListIdx: index('credential_status_list_idx').on(table.statusListId),
+      // Add unique index on statusListId and statusListIndex to prevent duplicate indexes
+      statusListIndexIdx: uniqueIndex('credential_status_list_index_idx').on(
+        table.statusListId,
+        table.statusListIndex
+      ),
+      // Add index on status for filtering by status
+      statusIdx: index('credential_status_status_idx').on(table.status),
+      // Add index on updated date for sorting
+      updatedAtIdx: index('credential_status_updated_at_idx').on(table.updatedAt),
+    };
+  }
+);
+
+// Export all tables for use in other modules
+export {
+  users,
+  roles,
+  apiKeys,
+  issuers,
+  badgeClasses,
+  assertions,
+  platforms,
+  platformUsers,
+  userRoles,
+  userAssertions,
+  statusLists,
+  credentialStatusEntries
+};
