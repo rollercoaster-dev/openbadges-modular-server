@@ -52,6 +52,38 @@ function getValidatedBody<T = unknown>(c: {
 }
 
 /**
+ * Middleware to add deprecation warnings to legacy endpoints
+ */
+function addDeprecationWarning(newEndpoint: string) {
+  return async (c: any, next: any) => {
+    // Add deprecation header
+    c.header('Deprecation', 'true');
+    c.header('Sunset', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()); // 1 year from now
+    c.header('Link', `<${newEndpoint}>; rel="successor-version"`);
+
+    await next();
+
+    // Add deprecation warning to response body if it's JSON
+    const response = c.res;
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      try {
+        const body = await response.json();
+        if (typeof body === 'object' && body !== null) {
+          body._deprecation = {
+            warning: 'This endpoint is deprecated and will be removed in a future version.',
+            successor: newEndpoint,
+            sunset: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+          };
+          return c.json(body);
+        }
+      } catch (e) {
+        // If we can't parse the response, just continue
+      }
+    }
+  };
+}
+
+/**
  * Creates a versioned router
  * @param version The badge version
  * @param issuerController The issuer controller
@@ -160,9 +192,32 @@ function createVersionedRouter(
     }
   });
 
-  // Badge class routes
+  // Achievement routes (v3.0 compliant naming)
+  router.post(
+    '/achievements',
+    requireAuth(),
+    validateBadgeClassMiddleware(),
+    async (c) => {
+      try {
+        const body = getValidatedBody<CreateBadgeClassDto>(c);
+        const result = await badgeClassController.createBadgeClass(
+          body,
+          version
+        );
+        return c.json(result, 201);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /achievements',
+          body: getValidatedBody(c),
+        });
+      }
+    }
+  );
+
+  // Badge class routes (legacy - for backward compatibility)
   router.post(
     '/badge-classes',
+    addDeprecationWarning('/achievements'),
     requireAuth(),
     validateBadgeClassMiddleware(),
     async (c) => {
@@ -182,7 +237,16 @@ function createVersionedRouter(
     }
   );
 
-  router.get('/badge-classes', requireAuth(), async (c) => {
+  router.get('/achievements', requireAuth(), async (c) => {
+    try {
+      const result = await badgeClassController.getAllBadgeClasses(version);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, { endpoint: 'GET /achievements' });
+    }
+  });
+
+  router.get('/badge-classes', addDeprecationWarning('/achievements'), requireAuth(), async (c) => {
     try {
       const result = await badgeClassController.getAllBadgeClasses(version);
       return c.json(result);
@@ -191,7 +255,26 @@ function createVersionedRouter(
     }
   });
 
-  router.get('/badge-classes/:id', requireAuth(), async (c) => {
+  router.get('/achievements/:id', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getBadgeClassById(id, version);
+      if (!result) {
+        return sendNotFoundError(c, 'Achievement', {
+          endpoint: 'GET /achievements/:id',
+          id,
+        });
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.get('/badge-classes/:id', addDeprecationWarning('/achievements/:id'), requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
       const result = await badgeClassController.getBadgeClassById(id, version);
@@ -210,7 +293,23 @@ function createVersionedRouter(
     }
   });
 
-  router.get('/issuers/:id/badge-classes', requireAuth(), async (c) => {
+  router.get('/issuers/:id/achievements', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getBadgeClassesByIssuer(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /issuers/:id/achievements',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.get('/issuers/:id/badge-classes', addDeprecationWarning('/issuers/:id/achievements'), requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
       const result = await badgeClassController.getBadgeClassesByIssuer(
@@ -227,7 +326,40 @@ function createVersionedRouter(
   });
 
   router.put(
+    '/achievements/:id',
+    requireAuth(),
+    validateBadgeClassMiddleware(),
+    async (c) => {
+      const id = c.req.param('id');
+      let body: UpdateBadgeClassDto | undefined;
+      try {
+        // Get the validated body from context (set by validation middleware)
+        body = getValidatedBody<UpdateBadgeClassDto>(c);
+        const result = await badgeClassController.updateBadgeClass(
+          id,
+          body,
+          version
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'PUT /achievements/:id',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'PUT /achievements/:id',
+          id,
+          body,
+        });
+      }
+    }
+  );
+
+  router.put(
     '/badge-classes/:id',
+    addDeprecationWarning('/achievements/:id'),
     requireAuth(),
     validateBadgeClassMiddleware(),
     async (c) => {
@@ -258,7 +390,26 @@ function createVersionedRouter(
     }
   );
 
-  router.delete('/badge-classes/:id', requireAuth(), async (c) => {
+  router.delete('/achievements/:id', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const deleted = await badgeClassController.deleteBadgeClass(id, version);
+      if (!deleted) {
+        return sendNotFoundError(c, 'Achievement', {
+          endpoint: 'DELETE /achievements/:id',
+          id,
+        });
+      }
+      return c.body(null, 204);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'DELETE /achievements/:id',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.delete('/badge-classes/:id', addDeprecationWarning('/achievements/:id'), requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
       const deleted = await badgeClassController.deleteBadgeClass(id, version);
@@ -277,9 +428,34 @@ function createVersionedRouter(
     }
   });
 
-  // Assertion routes
+  // Credential routes (v3.0 compliant naming)
+  router.post(
+    '/credentials',
+    requireAuth(),
+    validateAssertionMiddleware(),
+    async (c) => {
+      try {
+        const body = getValidatedBody<CreateAssertionDto>(c);
+        const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
+        const result = await assertionController.createAssertion(
+          body,
+          version,
+          sign
+        );
+        return c.json(result, 201);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /credentials',
+          body: getValidatedBody(c),
+        });
+      }
+    }
+  );
+
+  // Assertion routes (legacy - for backward compatibility)
   router.post(
     '/assertions',
+    addDeprecationWarning('/credentials'),
     requireAuth(),
     validateAssertionMiddleware(),
     async (c) => {
@@ -301,7 +477,16 @@ function createVersionedRouter(
     }
   );
 
-  router.get('/assertions', requireAuth(), async (c) => {
+  router.get('/credentials', requireAuth(), async (c) => {
+    try {
+      const result = await assertionController.getAllAssertions(version);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, { endpoint: 'GET /credentials' });
+    }
+  });
+
+  router.get('/assertions', addDeprecationWarning('/credentials'), requireAuth(), async (c) => {
     try {
       const result = await assertionController.getAllAssertions(version);
       return c.json(result);
@@ -310,7 +495,26 @@ function createVersionedRouter(
     }
   });
 
-  router.get('/assertions/:id', requireAuth(), async (c) => {
+  router.get('/credentials/:id', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.getAssertionById(id, version);
+      if (!result) {
+        return sendNotFoundError(c, 'Credential', {
+          endpoint: 'GET /credentials/:id',
+          id,
+        });
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /credentials/:id',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.get('/assertions/:id', addDeprecationWarning('/credentials/:id'), requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
       const result = await assertionController.getAssertionById(id, version);
@@ -329,7 +533,23 @@ function createVersionedRouter(
     }
   });
 
-  router.get('/badge-classes/:id/assertions', requireAuth(), async (c) => {
+  router.get('/achievements/:id/credentials', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.getAssertionsByBadgeClass(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id/credentials',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.get('/badge-classes/:id/assertions', addDeprecationWarning('/achievements/:id/credentials'), requireAuth(), async (c) => {
     try {
       const id = c.req.param('id');
       const result = await assertionController.getAssertionsByBadgeClass(
@@ -346,7 +566,38 @@ function createVersionedRouter(
   });
 
   router.put(
+    '/credentials/:id',
+    requireAuth(),
+    validateAssertionMiddleware(),
+    async (c) => {
+      const id = c.req.param('id');
+      try {
+        const body = getValidatedBody<UpdateAssertionDto>(c);
+        const result = await assertionController.updateAssertion(
+          id,
+          body,
+          version
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Credential', {
+            endpoint: 'PUT /credentials/:id',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'PUT /credentials/:id',
+          id,
+          body: getValidatedBody(c),
+        });
+      }
+    }
+  );
+
+  router.put(
     '/assertions/:id',
+    addDeprecationWarning('/credentials/:id'),
     requireAuth(),
     validateAssertionMiddleware(),
     async (c) => {
@@ -375,7 +626,25 @@ function createVersionedRouter(
     }
   );
 
-  router.post('/assertions/:id/revoke', requireAuth(), async (c) => {
+  router.post('/credentials/:id/revoke', requireAuth(), async (c) => {
+    const id = c.req.param('id');
+    try {
+      const body = await c.req.json();
+      const reason =
+        typeof body === 'object' && body !== null && 'reason' in body
+          ? String(body.reason)
+          : 'No reason provided';
+      const result = await assertionController.revokeAssertion(id, reason);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'POST /credentials/:id/revoke',
+        id,
+      });
+    }
+  });
+
+  router.post('/assertions/:id/revoke', addDeprecationWarning('/credentials/:id/revoke'), requireAuth(), async (c) => {
     const id = c.req.param('id');
     try {
       const body = await c.req.json();
@@ -394,7 +663,33 @@ function createVersionedRouter(
   });
 
   // Verification routes
-  router.get('/assertions/:id/verify', async (c) => {
+  router.get('/credentials/:id/verify', async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await assertionController.verifyAssertion(id);
+      // If credential not found, return 404
+      if (
+        result.isValid === false &&
+        result.hasValidSignature === false &&
+        typeof result.details === 'string' &&
+        result.details.toLowerCase().includes('not found')
+      ) {
+        return sendNotFoundError(c, 'Credential', {
+          endpoint: 'GET /credentials/:id/verify',
+          id,
+          details: result.details,
+        });
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /credentials/:id/verify',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.get('/assertions/:id/verify', addDeprecationWarning('/credentials/:id/verify'), async (c) => {
     try {
       const id = c.req.param('id');
       const result = await assertionController.verifyAssertion(id);
@@ -420,7 +715,31 @@ function createVersionedRouter(
     }
   });
 
-  router.post('/assertions/:id/sign', requireAuth(), async (c) => {
+  router.post('/credentials/:id/sign', requireAuth(), async (c) => {
+    const id = c.req.param('id');
+    try {
+      const keyId = c.req.query('keyId') || 'default';
+      const result = await assertionController.signAssertion(
+        id,
+        keyId as string,
+        version
+      );
+      if (!result) {
+        return sendNotFoundError(c, 'Credential', {
+          endpoint: 'POST /credentials/:id/sign',
+          id,
+        });
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'POST /credentials/:id/sign',
+        id,
+      });
+    }
+  });
+
+  router.post('/assertions/:id/sign', addDeprecationWarning('/credentials/:id/sign'), requireAuth(), async (c) => {
     const id = c.req.param('id');
     try {
       const keyId = c.req.query('keyId') || 'default';
