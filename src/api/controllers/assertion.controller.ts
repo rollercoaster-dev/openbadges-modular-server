@@ -7,6 +7,7 @@
 
 import { Assertion } from '../../domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../domains/assertion/assertion.repository';
+import { AssertionService } from '../../domains/assertion/assertion.service';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
@@ -115,11 +116,13 @@ export class AssertionController {
    * @param assertionRepository The assertion repository
    * @param badgeClassRepository The badge class repository
    * @param issuerRepository The issuer repository
+   * @param assertionService The assertion service (optional for backward compatibility)
    */
   constructor(
     private assertionRepository: AssertionRepository,
     private badgeClassRepository: BadgeClassRepository,
-    private issuerRepository: IssuerRepository
+    private issuerRepository: IssuerRepository,
+    private assertionService?: AssertionService
   ) {}
 
   /**
@@ -201,20 +204,36 @@ export class AssertionController {
         );
       }
 
-      // Create the assertion using the mapped data
-      const assertion = Assertion.create(mappedData);
+      // Create the assertion using the service if available (for StatusList integration)
+      let createdAssertion: Assertion;
 
-      // Sign the assertion if requested
-      let signedAssertion = assertion;
-      if (sign) {
-        signedAssertion =
-          await VerificationService.createVerificationForAssertion(assertion);
+      if (this.assertionService) {
+        // Use the service for StatusList2021 integration
+        const assertion = Assertion.create(mappedData);
+
+        // Sign the assertion if requested
+        let signedAssertion = assertion;
+        if (sign) {
+          signedAssertion =
+            await VerificationService.createVerificationForAssertion(assertion);
+        }
+
+        // Create with StatusList integration
+        createdAssertion = await this.assertionService.createAssertion(signedAssertion);
+      } else {
+        // Fallback to direct repository usage (backward compatibility)
+        const assertion = Assertion.create(mappedData);
+
+        // Sign the assertion if requested
+        let signedAssertion = assertion;
+        if (sign) {
+          signedAssertion =
+            await VerificationService.createVerificationForAssertion(assertion);
+        }
+
+        // Save the assertion
+        createdAssertion = await this.assertionRepository.create(signedAssertion);
       }
-
-      // Save the assertion
-      const createdAssertion = await this.assertionRepository.create(
-        signedAssertion
-      );
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
@@ -442,11 +461,21 @@ export class AssertionController {
       throw new BadRequestError('Insufficient permissions to revoke assertion');
     }
 
-    const result = await this.assertionRepository.revoke(
-      toIRI(id) as Shared.IRI,
-      reason
-    );
-    return result !== null;
+    if (this.assertionService) {
+      // Use the service for StatusList2021 integration
+      const result = await this.assertionService.revokeAssertion(
+        toIRI(id) as Shared.IRI,
+        reason
+      );
+      return result !== null;
+    } else {
+      // Fallback to direct repository usage
+      const result = await this.assertionRepository.revoke(
+        toIRI(id) as Shared.IRI,
+        reason
+      );
+      return result !== null;
+    }
   }
 
   /**
@@ -492,6 +521,20 @@ export class AssertionController {
           VerificationErrorCode.INTERNAL_ERROR,
           'Referenced issuer not found'
         );
+      }
+
+      // Check StatusList2021 status if service is available
+      if (this.assertionService) {
+        const statusVerification = await this.assertionService.verifyAssertionStatus(
+          toIRI(id) as Shared.IRI
+        );
+
+        if (!statusVerification.isValid) {
+          return createVerificationError(
+            VerificationErrorCode.ASSERTION_REVOKED,
+            statusVerification.reason || 'Assertion has been revoked'
+          );
+        }
       }
 
       // Use the verification service to verify the assertion

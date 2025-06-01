@@ -318,3 +318,19 @@ export const credentialStatusEntries = pgTable(
     };
   }
 );
+
+// Export all tables for use in other modules
+export {
+  users,
+  roles,
+  apiKeys,
+  issuers,
+  badgeClasses,
+  assertions,
+  platforms,
+  platformUsers,
+  userRoles,
+  userAssertions,
+  statusLists,
+  credentialStatusEntries
+};

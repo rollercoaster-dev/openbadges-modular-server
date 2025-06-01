@@ -19,6 +19,7 @@ import type {
 } from '../../utils/types/badge-data.types';
 import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
+import { StatusList2021Entry } from '../../core/types/status-list.types';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { createOrGenerateIRI, isValidIRI } from '@utils/types/iri-utils';
 
@@ -44,7 +45,7 @@ export class Assertion {
   expires?: string;
   evidence?: OB2.Evidence[] | OB3.Evidence[];
   verification?: OB2.VerificationObject | OB3.Proof;
-  credentialStatus?: OB3.CredentialStatus;
+  credentialStatus?: OB3.CredentialStatus | StatusList2021Entry;
   revoked?: boolean;
   revocationReason?: string;
   issuer?: Shared.IRI | OB3.Issuer;

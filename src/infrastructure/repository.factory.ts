@@ -15,6 +15,7 @@ import { UserRepository } from '@domains/user/user.repository';
 import { PlatformRepository } from '@domains/backpack/platform.repository';
 import { PlatformUserRepository } from '@domains/backpack/platform-user.repository';
 import { UserAssertionRepository } from '@domains/backpack/user-assertion.repository';
+import { StatusListRepository, CredentialStatusEntryRepository } from '../core/types/status-list.types';
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
@@ -23,6 +24,8 @@ import { PostgresUserRepository } from './database/modules/postgresql/repositori
 import { PostgresPlatformRepository } from './database/modules/postgresql/repositories/postgres-platform.repository';
 import { PostgresPlatformUserRepository } from './database/modules/postgresql/repositories/postgres-platform-user.repository';
 import { PostgresUserAssertionRepository } from './database/modules/postgresql/repositories/postgres-user-assertion.repository';
+import { PostgresStatusListRepository } from './database/modules/postgresql/repositories/postgres-status-list.repository';
+import { PostgresCredentialStatusEntryRepository } from './database/modules/postgresql/repositories/postgres-credential-status-entry.repository';
 // All PostgreSQL repositories are now implemented
 import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
@@ -32,6 +35,8 @@ import { SqliteUserRepository } from './database/modules/sqlite/repositories/sql
 import { SqlitePlatformRepository } from './database/modules/sqlite/repositories/sqlite-platform.repository';
 import { SqlitePlatformUserRepository } from './database/modules/sqlite/repositories/sqlite-platform-user.repository';
 import { SqliteUserAssertionRepository } from './database/modules/sqlite/repositories/sqlite-user-assertion.repository';
+import { SqliteStatusListRepository } from './database/modules/sqlite/repositories/sqlite-status-list.repository';
+import { SqliteCredentialStatusEntryRepository } from './database/modules/sqlite/repositories/sqlite-credential-status-entry.repository';
 import { CachedIssuerRepository } from './cache/repositories/cached-issuer.repository';
 import { CachedBadgeClassRepository } from './cache/repositories/cached-badge-class.repository';
 import { CachedAssertionRepository } from './cache/repositories/cached-assertion.repository';
@@ -396,6 +401,60 @@ export class RepositoryFactory {
       // Create the repository using the shared connection manager
       return new SqliteUserRepository(
         RepositoryFactory.sqliteConnectionManager
+      );
+    }
+
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
+  }
+
+  /**
+   * Creates a status list repository
+   * @returns An implementation of StatusListRepository
+   */
+  static async createStatusListRepository(): Promise<StatusListRepository> {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // Create the repository
+      return new PostgresStatusListRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
+
+      // Create the repository using the shared connection manager
+      return new SqliteStatusListRepository(
+        RepositoryFactory.sqliteConnectionManager.getDatabase()
+      );
+    }
+
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
+  }
+
+  /**
+   * Creates a credential status entry repository
+   * @returns An implementation of CredentialStatusEntryRepository
+   */
+  static async createCredentialStatusEntryRepository(): Promise<CredentialStatusEntryRepository> {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // Create the repository
+      return new PostgresCredentialStatusEntryRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
+
+      // Create the repository using the shared connection manager
+      return new SqliteCredentialStatusEntryRepository(
+        RepositoryFactory.sqliteConnectionManager.getDatabase()
       );
     }
 
