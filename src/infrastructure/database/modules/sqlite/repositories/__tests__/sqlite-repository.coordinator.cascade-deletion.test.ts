@@ -82,6 +82,7 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
         CREATE TABLE IF NOT EXISTS assertions (
           id TEXT PRIMARY KEY,
           badge_class_id TEXT NOT NULL,
+          issuer_id TEXT,
           recipient TEXT NOT NULL,
           issued_on INTEGER NOT NULL,
           expires INTEGER,
@@ -92,7 +93,8 @@ describe('SqliteRepositoryCoordinator - Cascade Deletion', () => {
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           additional_fields TEXT,
-          FOREIGN KEY (badge_class_id) REFERENCES badge_classes(id) ON DELETE CASCADE
+          FOREIGN KEY (badge_class_id) REFERENCES badge_classes(id) ON DELETE CASCADE,
+          FOREIGN KEY (issuer_id) REFERENCES issuers(id) ON DELETE CASCADE
         );
       `);
     }

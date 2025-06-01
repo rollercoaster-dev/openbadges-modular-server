@@ -14,6 +14,7 @@ import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteBadgeClassRepository
   extends BaseSqliteRepository
@@ -108,7 +109,9 @@ export class SqliteBadgeClassRepository
     const result = await this.executeSingleQuery(
       context,
       async (db) => {
-        return db.select().from(badgeClasses).where(eq(badgeClasses.id, id));
+        // Convert URN to UUID for SQLite query
+        const dbId = convertUuid(id, 'sqlite', 'to');
+        return db.select().from(badgeClasses).where(eq(badgeClasses.id, dbId));
       },
       [id] // Forward ID parameter to logger
     );
@@ -128,10 +131,12 @@ export class SqliteBadgeClassRepository
     const result = await this.executeQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for SQLite query
+        const dbIssuerId = convertUuid(issuerId as string, 'sqlite', 'to');
         return db
           .select()
           .from(badgeClasses)
-          .where(eq(badgeClasses.issuerId, issuerId as string));
+          .where(eq(badgeClasses.issuerId, dbIssuerId));
       },
       [issuerId] // Forward issuer ID parameter to logger
     );
@@ -152,10 +157,12 @@ export class SqliteBadgeClassRepository
 
     return this.executeTransaction(context, async (tx) => {
       // Perform SELECT and UPDATE within the same transaction to prevent TOCTOU race condition
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id, 'sqlite', 'to');
       const existing = await tx
         .select()
         .from(badgeClasses)
-        .where(eq(badgeClasses.id, id))
+        .where(eq(badgeClasses.id, dbId))
         .limit(1);
 
       if (existing.length === 0) {
@@ -183,7 +190,7 @@ export class SqliteBadgeClassRepository
       const updated = await tx
         .update(badgeClasses)
         .set(updatable)
-        .where(eq(badgeClasses.id, id))
+        .where(eq(badgeClasses.id, dbId))
         .returning();
 
       return this.mapper.toDomain(updated[0]);
@@ -198,7 +205,12 @@ export class SqliteBadgeClassRepository
     );
 
     return this.executeDelete(context, async (db) => {
-      return db.delete(badgeClasses).where(eq(badgeClasses.id, id)).returning();
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id, 'sqlite', 'to');
+      return db
+        .delete(badgeClasses)
+        .where(eq(badgeClasses.id, dbId))
+        .returning();
     });
   }
 }

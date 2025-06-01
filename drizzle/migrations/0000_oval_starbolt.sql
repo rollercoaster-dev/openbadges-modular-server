@@ -20,6 +20,7 @@ CREATE INDEX `api_key_revoked_idx` ON `api_keys` (`revoked`);--> statement-break
 CREATE TABLE `assertions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`badge_class_id` text NOT NULL,
+	`issuer_id` text,
 	`recipient` text NOT NULL,
 	`issued_on` integer NOT NULL,
 	`expires` integer,
@@ -30,10 +31,12 @@ CREATE TABLE `assertions` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	`additional_fields` text,
-	FOREIGN KEY (`badge_class_id`) REFERENCES `badge_classes`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`badge_class_id`) REFERENCES `badge_classes`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`issuer_id`) REFERENCES `issuers`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `assertion_badge_class_idx` ON `assertions` (`badge_class_id`);--> statement-breakpoint
+CREATE INDEX `assertion_issuer_idx` ON `assertions` (`issuer_id`);--> statement-breakpoint
 CREATE INDEX `assertion_issued_on_idx` ON `assertions` (`issued_on`);--> statement-breakpoint
 CREATE INDEX `assertion_revoked_idx` ON `assertions` (`revoked`);--> statement-breakpoint
 CREATE INDEX `assertion_expires_idx` ON `assertions` (`expires`);--> statement-breakpoint

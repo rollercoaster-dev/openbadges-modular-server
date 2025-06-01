@@ -150,11 +150,14 @@ describe('Database Type Conversion Utilities', () => {
       expect(convertUuid(undefined, 'sqlite', 'to')).toBeUndefined();
     });
 
-    it('should pass through values for SQLite (no conversion needed)', () => {
-      expect(convertUuid(testUuid, 'sqlite', 'to')).toEqual(testUuid);
-      expect(convertUuid(testUrn, 'sqlite', 'to')).toEqual(testUrn);
-      expect(convertUuid(testUuid, 'sqlite', 'from')).toEqual(testUuid);
-      expect(convertUuid(testUrn, 'sqlite', 'from')).toEqual(testUrn);
+    it('should convert URN ↔ UUID for SQLite (for consistency)', () => {
+      // SQLite 'to' direction: URN → UUID
+      expect(convertUuid(testUrn, 'sqlite', 'to')).toEqual(testUuid);
+      expect(convertUuid(testUuid, 'sqlite', 'to')).toEqual(testUuid); // Already plain UUID
+
+      // SQLite 'from' direction: UUID → URN
+      expect(convertUuid(testUuid, 'sqlite', 'from')).toEqual(testUrn);
+      expect(convertUuid(testUrn, 'sqlite', 'from')).toEqual(testUrn); // Already URN
     });
 
     it('should convert URN to UUID for PostgreSQL when direction is "to"', () => {

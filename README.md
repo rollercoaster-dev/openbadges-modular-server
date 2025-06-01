@@ -255,6 +255,40 @@ Build the project:
 bun run build
 ```
 
+## GitHub Copilot Configuration
+
+This repository includes comprehensive GitHub Copilot custom instructions and prompt files to help developers write code that follows the project's architectural patterns and best practices.
+
+### Features
+
+- **Repository Custom Instructions**: Automatically applied to all Copilot interactions
+- **Prompt Files**: Reusable templates for common development tasks
+- **Code Quality Enforcement**: TypeScript strictness, import patterns, error handling
+- **Security Guidelines**: Open Badges compliance, input validation, data sanitization
+- **Database Patterns**: Drizzle ORM usage, repository patterns, transaction handling
+- **Testing Patterns**: Database-agnostic testing, proper isolation, comprehensive coverage
+
+### Available Prompt Files
+
+- `create-repository.prompt.md` - Creating new repository classes
+- `create-api-endpoint.prompt.md` - Adding new REST API endpoints
+- `database-migration.prompt.md` - Database schema changes and migrations
+- `create-test-suite.prompt.md` - Writing comprehensive test suites
+- `security-review.prompt.md` - Security review checklist and patterns
+- `openbadges-compliance.prompt.md` - Open Badges 3.0 specification compliance
+- `refactor-code.prompt.md` - Code refactoring following best practices
+
+### Usage
+
+The custom instructions are automatically applied when using GitHub Copilot in this repository. For prompt files in VS Code:
+
+1. Open Copilot Chat
+2. Click the "Attach context" icon (📎)
+3. Select "Prompt..." and choose the relevant prompt file
+4. Add your specific requirements and submit
+
+For detailed information, see the [Copilot Configuration Guide](./.github/COPILOT_CONFIGURATION.md).
+
 ## CI/CD Pipeline
 
 The project uses GitHub Actions for continuous integration and deployment:

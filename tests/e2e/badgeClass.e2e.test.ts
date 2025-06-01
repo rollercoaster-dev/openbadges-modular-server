@@ -136,7 +136,7 @@ describe('Badge Class API - E2E', () => {
 
     // Release the allocated port
     if (TEST_PORT) {
-      await releasePort(TEST_PORT);
+      releasePort(TEST_PORT);
     }
   });
 
@@ -444,8 +444,8 @@ describe('Badge Class API - E2E', () => {
           badgeClassId,
         });
 
-        // Verify response status - expect only success codes for valid data
-        expect([200, 204]).toContain(res.status);
+        // Verify response status - PUT operations should return 200 for successful updates
+        expect(res.status).toBe(200);
 
         // Fetch again to confirm update (immediate verification without arbitrary delay)
         const getRes = await fetch(
@@ -610,8 +610,8 @@ describe('Badge Class API - E2E', () => {
         }
       );
 
-      // Verify delete response
-      expect([200, 204]).toContain(deleteRes.status);
+      // Verify delete response - DELETE operations should return 204 for successful deletions
+      expect(deleteRes.status).toBe(204);
 
       // Verify badge class is deleted by trying to fetch it
       const getRes = await fetch(`${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`, {

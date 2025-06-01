@@ -19,6 +19,7 @@ import { userAssertions } from '../schema';
 import { SqliteUserAssertionMapper } from '../mappers/sqlite-user-assertion.mapper';
 import { createId } from '@paralleldrive/cuid2';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 
 export class SqliteUserAssertionRepository implements UserAssertionRepository {
@@ -230,13 +231,21 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Get database with connection validation
       const db = this.getDatabase();
 
+      // Convert IDs to database format for querying
+      const dbUserId = convertUuid(userId as string, 'sqlite', 'to') as string;
+      const dbAssertionId = convertUuid(
+        assertionId as string,
+        'sqlite',
+        'to'
+      ) as string;
+
       // Delete from database using Drizzle ORM
       const result = await db
         .delete(userAssertions)
         .where(
           and(
-            eq(userAssertions.userId, userId as string),
-            eq(userAssertions.assertionId, assertionId as string)
+            eq(userAssertions.userId, dbUserId),
+            eq(userAssertions.assertionId, dbAssertionId)
           )
         )
         .returning();
@@ -269,13 +278,21 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
         updatedAt: Date.now(), // Use updatedAt for timestamp field
       });
 
+      // Convert IDs to database format for querying
+      const dbUserId = convertUuid(userId as string, 'sqlite', 'to') as string;
+      const dbAssertionId = convertUuid(
+        assertionId as string,
+        'sqlite',
+        'to'
+      ) as string;
+
       const result = await db
         .update(userAssertions)
         .set(drizzleUpdateSet)
         .where(
           and(
-            eq(userAssertions.userId, userId as string),
-            eq(userAssertions.assertionId, assertionId as string)
+            eq(userAssertions.userId, dbUserId),
+            eq(userAssertions.assertionId, dbAssertionId)
           )
         )
         .returning();
@@ -301,14 +318,17 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Get database with connection validation
       const db = this.getDatabase();
 
+      // Convert user ID to database format for querying
+      const dbUserId = convertUuid(userId as string, 'sqlite', 'to') as string;
+
       // Build the where conditions
       const whereCondition = params?.status
         ? and(
-            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.userId, dbUserId),
             eq(userAssertions.status, params.status as string)
           )
         : and(
-            eq(userAssertions.userId, userId as string),
+            eq(userAssertions.userId, dbUserId),
             ne(userAssertions.status, UserAssertionStatus.DELETED as string)
           );
 
@@ -356,11 +376,18 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Get database with connection validation
       const db = this.getDatabase();
 
+      // Convert assertion ID to database format for querying
+      const dbAssertionId = convertUuid(
+        assertionId as string,
+        'sqlite',
+        'to'
+      ) as string;
+
       // Query database using Drizzle ORM
       const result = await db
         .select()
         .from(userAssertions)
-        .where(eq(userAssertions.assertionId, assertionId as string));
+        .where(eq(userAssertions.assertionId, dbAssertionId));
 
       // Convert database records to domain entities
       return result.map((record) => this.mapper.toDomain(record));
@@ -381,14 +408,22 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Get database with connection validation
       const db = this.getDatabase();
 
+      // Convert IDs to database format for querying
+      const dbUserId = convertUuid(userId as string, 'sqlite', 'to') as string;
+      const dbAssertionId = convertUuid(
+        assertionId as string,
+        'sqlite',
+        'to'
+      ) as string;
+
       // Query database using Drizzle ORM
       const result = await db
         .select({ exists: sql`1` })
         .from(userAssertions)
         .where(
           and(
-            eq(userAssertions.userId, userId as string),
-            eq(userAssertions.assertionId, assertionId as string),
+            eq(userAssertions.userId, dbUserId),
+            eq(userAssertions.assertionId, dbAssertionId),
             ne(userAssertions.status, UserAssertionStatus.DELETED as string)
           )
         );
@@ -416,14 +451,22 @@ export class SqliteUserAssertionRepository implements UserAssertionRepository {
       // Get database with connection validation
       const db = this.getDatabase();
 
+      // Convert IDs to database format for querying
+      const dbUserId = convertUuid(userId as string, 'sqlite', 'to') as string;
+      const dbAssertionId = convertUuid(
+        assertionId as string,
+        'sqlite',
+        'to'
+      ) as string;
+
       // Query database using Drizzle ORM
       const result = await db
         .select()
         .from(userAssertions)
         .where(
           and(
-            eq(userAssertions.userId, userId as string),
-            eq(userAssertions.assertionId, assertionId as string)
+            eq(userAssertions.userId, dbUserId),
+            eq(userAssertions.assertionId, dbAssertionId)
           )
         );
 

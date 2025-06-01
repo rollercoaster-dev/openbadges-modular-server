@@ -22,6 +22,11 @@ import { logger } from '@utils/logging/logger.service';
  */
 type SqliteAssertionRecord = InferSelectModel<typeof assertions>;
 
+// Define an explicit type alias for the insert model with all optional fields
+type AssertionInsertModel = InferInsertModel<typeof assertions> & {
+  issuerId?: string | null;
+};
+
 export class SqliteAssertionMapper {
   /**
    * Converts a database record to a domain entity
@@ -39,6 +44,7 @@ export class SqliteAssertionMapper {
     const {
       id,
       badgeClassId,
+      issuerId,
       recipient,
       issuedOn,
       expires,
@@ -117,6 +123,10 @@ export class SqliteAssertionMapper {
       return Assertion.create({
         id: convertUuid(id, 'sqlite', 'from') as Shared.IRI, // Already validated non-null
         badgeClass: convertUuid(badgeClassId, 'sqlite', 'from') as Shared.IRI, // Already validated non-null
+        // Convert issuer_id to IRI if present
+        issuer: issuerId
+          ? (convertUuid(issuerId, 'sqlite', 'from') as Shared.IRI)
+          : undefined,
         recipient: parsedRecipient,
         issuedOn: new Date(
           convertTimestamp(issuedOn, 'sqlite', 'from') as number // Already validated non-null
@@ -183,7 +193,7 @@ export class SqliteAssertionMapper {
    * @param entity The Assertion domain entity
    * @returns A database record compatible with Drizzle's insert
    */
-  toPersistence(entity: Assertion): InferInsertModel<typeof assertions> {
+  toPersistence(entity: Assertion): AssertionInsertModel {
     if (!entity) {
       // Or throw an error, depending on desired behavior for null input
       throw new Error('Cannot persist null Assertion entity.');
@@ -197,6 +207,11 @@ export class SqliteAssertionMapper {
         'sqlite',
         'to'
       ),
+      // Include issuerId if present in entity
+      issuerId:
+        entity.issuer && typeof entity.issuer === 'string'
+          ? convertUuid(entity.issuer as string, 'sqlite', 'to')
+          : null,
       recipient: convertJson(
         entity.recipient as object,
         'sqlite',
@@ -246,7 +261,7 @@ export class SqliteAssertionMapper {
             'to'
           ) as number)
         : (convertTimestamp(new Date(), 'sqlite', 'to') as number),
-    } as InferInsertModel<typeof assertions>;
+    } as AssertionInsertModel;
     return persistenceRecord;
   }
 }
