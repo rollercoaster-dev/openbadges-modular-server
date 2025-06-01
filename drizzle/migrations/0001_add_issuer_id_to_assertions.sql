@@ -33,11 +33,11 @@ CREATE TABLE "assertions_new" (
 -- Step 2: Copy existing data from the old table to the new table
 -- Note: issuer_id will be NULL for existing records and populated by a subsequent migration
 INSERT INTO "assertions_new" (
-  "id", "badge_class_id", "issuer_id", "recipient", "issued_on", "expires", 
-  "evidence", "verification", "revoked", "revocation_reason", 
+  "id", "badge_class_id", "issuer_id", "recipient", "issued_on", "expires",
+  "evidence", "verification", "revoked", "revocation_reason",
   "created_at", "updated_at", "additional_fields"
 )
-SELECT 
+SELECT
   "id", "badge_class_id", NULL as "issuer_id", "recipient", "issued_on", "expires",
   "evidence", "verification", "revoked", "revocation_reason",
   "created_at", "updated_at", "additional_fields"
