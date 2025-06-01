@@ -13,7 +13,7 @@ import { createSecurityMiddleware } from './utils/security/security.middleware';
 import { IssuerController } from './api/controllers/issuer.controller';
 import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
-import { ServiceFactory } from './core/service.factory';
+import { createAssertionController, createStatusListController } from './core/service.factory';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
 import { BackpackController } from './domains/backpack/backpack.controller';
@@ -130,10 +130,10 @@ export async function setupApp(): Promise<Hono> {
     );
 
     // Create assertion controller with StatusList integration
-    const assertionController = await ServiceFactory.createAssertionController();
+    const assertionController = await createAssertionController();
 
     // Create status list controller
-    const statusListController = await ServiceFactory.createStatusListController();
+    const statusListController = await createStatusListController();
 
     // Initialize backpack service and controller
     const backpackService = new BackpackService(

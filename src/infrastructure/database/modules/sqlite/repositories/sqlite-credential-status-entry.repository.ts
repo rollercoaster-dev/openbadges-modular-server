@@ -164,7 +164,7 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async update(id: Shared.IRI, updates: Partial<Omit<CredentialStatusEntry, 'id' | 'createdAt'>>): Promise<CredentialStatusEntry | null> {
     try {
-      const updateData: any = {
+      const updateData: Partial<typeof credentialStatusEntries.$inferInsert> = {
         updatedAt: Date.now()
       };
 
@@ -244,7 +244,7 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
   /**
    * Maps a database row to a CredentialStatusEntry entity
    */
-  private mapRowToCredentialStatusEntry(row: any): CredentialStatusEntry {
+  private mapRowToCredentialStatusEntry(row: typeof credentialStatusEntries.$inferSelect): CredentialStatusEntry {
     return {
       id: row.id,
       credentialId: row.credentialId,

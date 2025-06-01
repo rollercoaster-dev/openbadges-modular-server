@@ -165,7 +165,7 @@ export class PostgresStatusListRepository implements StatusListRepository {
    */
   async update(id: Shared.IRI, updates: Partial<Omit<StatusList, 'id' | 'createdAt'>>): Promise<StatusList | null> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof statusLists.$inferInsert> = {};
 
       if (updates.issuerId) updateData.issuerId = updates.issuerId;
       if (updates.purpose) updateData.purpose = updates.purpose;
@@ -218,7 +218,7 @@ export class PostgresStatusListRepository implements StatusListRepository {
   /**
    * Maps a database row to a StatusList entity
    */
-  private mapRowToStatusList(row: any): StatusList {
+  private mapRowToStatusList(row: typeof statusLists.$inferSelect): StatusList {
     return {
       id: row.id,
       issuerId: row.issuerId,

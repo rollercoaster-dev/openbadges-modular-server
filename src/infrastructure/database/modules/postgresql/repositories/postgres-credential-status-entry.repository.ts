@@ -151,7 +151,7 @@ export class PostgresCredentialStatusEntryRepository implements CredentialStatus
    */
   async update(id: Shared.IRI, updates: Partial<Omit<CredentialStatusEntry, 'id' | 'createdAt'>>): Promise<CredentialStatusEntry | null> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof credentialStatusEntries.$inferInsert> = {};
 
       if (updates.credentialId) updateData.credentialId = updates.credentialId;
       if (updates.statusListId) updateData.statusListId = updates.statusListId;
@@ -233,7 +233,7 @@ export class PostgresCredentialStatusEntryRepository implements CredentialStatus
   /**
    * Maps a database row to a CredentialStatusEntry entity
    */
-  private mapRowToCredentialStatusEntry(row: any): CredentialStatusEntry {
+  private mapRowToCredentialStatusEntry(row: typeof credentialStatusEntries.$inferSelect): CredentialStatusEntry {
     return {
       id: row.id,
       credentialId: row.credentialId,
