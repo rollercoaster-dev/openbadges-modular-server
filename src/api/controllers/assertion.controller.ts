@@ -201,6 +201,25 @@ export class AssertionController {
         );
       }
 
+      // Get issuer information from badge class for v3.0 compliance
+      let issuer: Issuer | null = null;
+      if (version === BadgeVersion.V3) {
+        // We already have the badge class from validation above
+        // Handle both string and object issuer IDs
+        const issuerId =
+          typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+        issuer = await this.issuerRepository.findById(issuerId);
+
+        if (!issuer) {
+          throw new BadRequestError(`Referenced issuer '${issuerId}' does not exist`);
+        }
+
+        // Populate issuer field in assertion for v3.0 compliance
+        mappedData.issuer = issuer.id;
+      }
+
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
 
@@ -218,13 +237,6 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        // We already have the badge class from validation above
-        // Handle both string and object issuer IDs
-        const issuerId =
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer as OB3.Issuer).id;
-        const issuer = await this.issuerRepository.findById(issuerId);
         return convertAssertionToJsonLd(
           createdAssertion,
           version,
