@@ -17,7 +17,12 @@ import { MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { CreateIssuerSchema } from '../../api/validation/issuer.schemas';
 import { CreateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
-import { CreateAssertionSchema } from '../../api/validation/assertion.schemas';
+import {
+  CreateAssertionSchema,
+  BatchCreateCredentialsSchema,
+  BatchRetrieveCredentialsSchema,
+  BatchUpdateCredentialStatusSchema
+} from '../../api/validation/assertion.schemas';
 
 // Define the variables that will be set in the context by validation middleware
 export type ValidationVariables = {
@@ -290,6 +295,150 @@ export function validateAssertionMiddleware(): MiddlewareHandler<{
         // Store the original body if no mapping was needed
         c.set('validatedBody', body);
       }
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Request body must be valid JSON'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating batch credential creation
+ * @returns A Hono middleware handler
+ */
+export function validateBatchCreateCredentialsMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // First validate with Zod schema
+      const result = BatchCreateCredentialsSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', body);
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Request body must be valid JSON'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating batch credential retrieval
+ * @returns A Hono middleware handler
+ */
+export function validateBatchRetrieveCredentialsMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      // For GET requests, parse query parameters
+      const idsParam = c.req.query('ids');
+      if (!idsParam) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: { ids: ['ids query parameter is required'] },
+          },
+          400
+        );
+      }
+
+      // Parse comma-separated IDs
+      const ids = idsParam.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const body = { ids };
+
+      // Validate with Zod schema
+      const result = BatchRetrieveCredentialsSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', body);
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Invalid query parameters'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating batch credential status update
+ * @returns A Hono middleware handler
+ */
+export function validateBatchUpdateCredentialStatusMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // First validate with Zod schema
+      const result = BatchUpdateCredentialStatusSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', body);
 
       await next();
     } catch (_error) {
