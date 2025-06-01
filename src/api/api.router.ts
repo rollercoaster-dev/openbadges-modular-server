@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 
 import {
   CreateIssuerDto,
@@ -55,10 +56,10 @@ function getValidatedBody<T = unknown>(c: {
  * Middleware to add deprecation warnings to legacy endpoints
  */
 function addDeprecationWarning(newEndpoint: string) {
-  return async (c: any, next: any) => {
+  return async (c: Context, next: () => Promise<void>) => {
     // Add deprecation header
     c.header('Deprecation', 'true');
-    c.header('Sunset', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()); // 1 year from now
+    c.header('Sunset', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString()); // 1 year from now
     c.header('Link', `<${newEndpoint}>; rel="successor-version"`);
 
     await next();
@@ -74,9 +75,18 @@ function addDeprecationWarning(newEndpoint: string) {
             successor: newEndpoint,
             sunset: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
           };
-          return c.json(body);
+
+          // Preserve status & headers
+          const res = new Response(JSON.stringify(body), {
+            status: response.status,
+            headers: response.headers,
+          });
+          // Ensure content-type header persists
+          res.headers.set('Content-Type', 'application/json');
+          c.res = res;
+          return;
         }
-      } catch (e) {
+      } catch (_error) {
         // If we can't parse the response, just continue
       }
     }
