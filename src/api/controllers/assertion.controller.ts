@@ -206,6 +206,25 @@ export class AssertionController {
         );
       }
 
+      // Get issuer information from badge class for v3.0 compliance
+      let issuer: Issuer | null = null;
+      if (version === BadgeVersion.V3) {
+        // We already have the badge class from validation above
+        // Handle both string and object issuer IDs
+        const issuerId =
+          typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+        issuer = await this.issuerRepository.findById(issuerId);
+
+        if (!issuer) {
+          throw new BadRequestError(`Referenced issuer '${issuerId}' does not exist`);
+        }
+
+        // Populate issuer field in assertion for v3.0 compliance
+        mappedData.issuer = issuer.id;
+      }
+
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
 
@@ -223,13 +242,6 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        // We already have the badge class from validation above
-        // Handle both string and object issuer IDs
-        const issuerId =
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer as OB3.Issuer).id;
-        const issuer = await this.issuerRepository.findById(issuerId);
         return convertAssertionToJsonLd(
           createdAssertion,
           version,
@@ -302,12 +314,21 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(
         assertion.badgeClass
       );
+
+      // Get issuer from assertion.issuer field (preferred) or from badge class
+      let issuer: Issuer | null = null;
+      if (assertion.issuer && typeof assertion.issuer === 'string') {
+        // Use issuer from assertion entity (v3.0 compliant)
+        issuer = await this.issuerRepository.findById(assertion.issuer);
+      } else if (badgeClass?.issuer) {
+        // Fallback to issuer from badge class
+        const issuerIri = typeof badgeClass.issuer === 'string'
+          ? badgeClass.issuer
+          : (badgeClass.issuer.id as Shared.IRI);
+        issuer = await this.issuerRepository.findById(issuerIri);
+      }
+
       if (badgeClass) {
-        const issuerIri =
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer.id as Shared.IRI);
-        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
@@ -756,7 +777,7 @@ export class AssertionController {
                 success: true,
                 data: jsonLdAssertion as AssertionResponseDto,
               });
-            } catch (error) {
+            } catch (_error) {
               results.push({
                 id: batchResult.assertion.id,
                 success: false,
@@ -807,8 +828,9 @@ export class AssertionController {
         idCount: data.ids.length
       });
 
-      // Retrieve assertions from repository
-      const assertions = await this.assertionRepository.findByIds(data.ids);
+      // Convert string IDs to IRIs and retrieve assertions from repository
+      const iriIds = data.ids.map(id => id as Shared.IRI);
+      const assertions = await this.assertionRepository.findByIds(iriIds);
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -826,7 +848,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion as AssertionResponseDto,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id,
               success: false,
@@ -854,9 +876,9 @@ export class AssertionController {
           failed,
         },
       };
-    } catch (error) {
-      logger.logError('Failed to retrieve assertions batch', error as Error);
-      throw error;
+    } catch (_error) {
+      logger.logError('Failed to retrieve assertions batch', _error as Error);
+      throw _error;
     }
   }
 
@@ -875,8 +897,12 @@ export class AssertionController {
         updateCount: data.updates.length
       });
 
-      // Perform batch status updates
-      const updateResults = await this.assertionRepository.updateStatusBatch(data.updates);
+      // Convert string IDs to IRIs and perform batch status updates
+      const iriUpdates = data.updates.map(update => ({
+        ...update,
+        id: update.id as Shared.IRI
+      }));
+      const updateResults = await this.assertionRepository.updateStatusBatch(iriUpdates);
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -894,7 +920,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion as AssertionResponseDto,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id: updateResult.id,
               success: false,

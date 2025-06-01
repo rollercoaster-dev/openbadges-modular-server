@@ -20,6 +20,7 @@ import { assertions } from '@infrastructure/database/modules/sqlite/schema';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 // --- Test Setup ---
 let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -38,7 +39,7 @@ const createTestIssuer = async (
   const issuerId = `urn:uuid:${createId()}`;
 
   await db.insert(schema.issuers).values({
-    id: issuerId,
+    id: convertUuid(issuerId as string, 'sqlite', 'to') as string,
     name: 'Test Issuer',
     url: EXAMPLE_ISSUER_URL,
     createdAt: Date.now(),
@@ -56,8 +57,8 @@ const createTestBadgeClass = async (
   const badgeClassId = `urn:uuid:${createId()}`;
 
   await db.insert(schema.badgeClasses).values({
-    id: badgeClassId,
-    issuerId: issuerId,
+    id: convertUuid(badgeClassId as string, 'sqlite', 'to') as string,
+    issuerId: convertUuid(issuerId as string, 'sqlite', 'to') as string,
     name: 'Test Badge Class',
     description: 'A test badge class',
     image: 'https://example.com/badge.png',

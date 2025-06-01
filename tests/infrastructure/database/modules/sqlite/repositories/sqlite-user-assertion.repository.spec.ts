@@ -16,6 +16,7 @@ import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { Shared } from 'openbadges-types';
 import { createId } from '@paralleldrive/cuid2';
 import { getMigrationsPath } from '@tests/test-utils/migrations-path';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repository: SqliteUserAssertionRepository;
@@ -33,7 +34,7 @@ const createTestPlatformUser = async (
 
   // Insert platform with unique name to avoid conflicts
   await db.insert(schema.platforms).values({
-    id: platformId as string,
+    id: convertUuid(platformId as string, 'sqlite', 'to') as string,
     name: `Test Platform ${platformId}`, // Ensure name is unique
     clientId: `client-${platformId}`,
     publicKey: 'test-public-key',
@@ -43,8 +44,8 @@ const createTestPlatformUser = async (
 
   // Insert platform user
   await db.insert(schema.platformUsers).values({
-    id: userId as string,
-    platformId: platformId as string,
+    id: convertUuid(userId as string, 'sqlite', 'to') as string,
+    platformId: convertUuid(platformId as string, 'sqlite', 'to') as string,
     externalUserId: `ext-${userId}`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -62,7 +63,7 @@ const createTestAssertion = async (
 
   // Insert issuer
   await db.insert(schema.issuers).values({
-    id: issuerId as string,
+    id: convertUuid(issuerId as string, 'sqlite', 'to') as string,
     name: 'Test Issuer',
     url: 'https://example.com',
     createdAt: Date.now(),
@@ -71,8 +72,8 @@ const createTestAssertion = async (
 
   // Insert badge class
   await db.insert(schema.badgeClasses).values({
-    id: badgeClassId as string,
-    issuerId: issuerId as string,
+    id: convertUuid(badgeClassId as string, 'sqlite', 'to') as string,
+    issuerId: convertUuid(issuerId as string, 'sqlite', 'to') as string,
     name: 'Test Badge',
     description: 'Test Badge Description',
     image: 'badge.png',
@@ -83,8 +84,8 @@ const createTestAssertion = async (
 
   // Insert assertion
   await db.insert(schema.assertions).values({
-    id: assertionId as string,
-    badgeClassId: badgeClassId as string,
+    id: convertUuid(assertionId as string, 'sqlite', 'to') as string,
+    badgeClassId: convertUuid(badgeClassId as string, 'sqlite', 'to') as string,
     recipient: JSON.stringify({
       identity: 'sha256$abcdef',
       type: 'email',

@@ -8,6 +8,7 @@ import { queryLogger } from '@utils/logging/logger.service';
 import { createId } from '@paralleldrive/cuid2';
 import * as schema from '@infrastructure/database/modules/sqlite/schema';
 import { toIRI } from '@utils/types/iri-utils';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 import { EXAMPLE_ISSUER_URL } from '@/constants/urls';
 
@@ -22,7 +23,7 @@ const createTestIssuer = async (
   const issuerId = `urn:uuid:${createId()}`;
 
   await db.insert(schema.issuers).values({
-    id: issuerId,
+    id: convertUuid(issuerId as string, 'sqlite', 'to') as string,
     name: 'Test Issuer',
     url: EXAMPLE_ISSUER_URL,
     createdAt: Date.now(),
