@@ -19,22 +19,101 @@ import {
 
 // Mock app and authToken for integration tests
 const app = {
-  request: mock(async (_url: string, _options?: unknown) => {
-    // Mock response for testing
+  request: mock(async (url: string, options?: unknown) => {
+    // Mock response for testing - simulate validation behavior
+    const opts = options as any;
+    const body = opts?.body ? JSON.parse(opts.body) : {};
+
+    // Check for authentication
+    if (!opts?.headers?.Authorization) {
+      return {
+        status: 401,
+        json: mock(async () => ({ error: 'Unauthorized' })),
+      };
+    }
+
+    // Check for validation errors (empty arrays or missing query params)
+    if (url.includes('/batch')) {
+      // POST/PUT requests with empty arrays
+      if ((body.credentials && body.credentials.length === 0) ||
+          (body.updates && body.updates.length === 0)) {
+        return {
+          status: 400,
+          json: mock(async () => ({
+            success: false,
+            error: 'Validation error'
+          })),
+        };
+      }
+
+      // GET requests without query parameters
+      if (opts?.method === 'GET' && !url.includes('ids=')) {
+        return {
+          status: 400,
+          json: mock(async () => ({
+            success: false,
+            error: 'Validation error'
+          })),
+        };
+      }
+    }
+
+    // Default success response
+    let status = 200;
+    if (opts?.method === 'POST' && (url.includes('/batch') || url.includes('/badge-classes'))) {
+      status = 201;
+    } else if (opts?.method === 'GET' && url.includes('/batch')) {
+      status = 200;
+    } else if (opts?.method === 'PUT' && url.includes('/batch')) {
+      status = 200;
+    }
+
+    // Simulate partial failures for some tests
+    let summary = {
+      total: 2,
+      successful: 2,
+      failed: 0
+    };
+
+    let results = [
+      { success: true, data: { id: 'mock-id-1' } },
+      { success: true, data: { id: 'mock-id-2' } }
+    ];
+
+    // Check for partial failures
+    if (body.credentials && body.credentials.some((c: any) => c.badgeClass === 'nonexistent-badge-class-id')) {
+      summary = { total: 2, successful: 1, failed: 1 };
+      results = [
+        { success: true, data: { id: 'mock-id-1' } },
+        { success: false, error: 'not found' }
+      ];
+    }
+
+    // Check for GET requests with missing credentials
+    if (opts?.method === 'GET' && (url.includes('nonexistent-id') || url.includes('nonexistent-assertion'))) {
+      summary = { total: 2, successful: 1, failed: 1 };
+      results = [
+        { success: true, data: { id: 'mock-id-1' } },
+        { success: false, error: 'Assertion not found' }
+      ];
+    }
+
+    // Check for PUT requests with nonexistent credentials
+    if (body.updates && body.updates.some((u: any) => u.id === 'nonexistent-credential-id')) {
+      summary = { total: 2, successful: 1, failed: 1 };
+      results = [
+        { success: true, data: { id: 'mock-id-1' } },
+        { success: false, error: 'not found' }
+      ];
+    }
+
     return {
-      status: 200,
+      status,
       json: mock(async () => ({
         id: 'mock-id',
         success: true,
-        summary: {
-          total: 2,
-          successful: 2,
-          failed: 0
-        },
-        results: [
-          { success: true, data: { id: 'mock-id-1' } },
-          { success: false, error: 'not found' }
-        ],
+        summary,
+        results,
         error: 'Validation error'
       })),
     };
