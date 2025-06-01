@@ -97,9 +97,9 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // In E2E tests with RBAC disabled, requests should succeed but authentication should still be processed
-    // We verify that the authentication middleware is working by checking that requests are processed
-    expect([200, 401, 403]).toContain(noAuthResponse.status);
+    // In E2E tests with RBAC disabled, requests should succeed since authentication checks are bypassed
+    // When RBAC is disabled, all RBAC middleware (including requireAuth) call next() immediately
+    expect(noAuthResponse.status).toBe(200);
     logger.info(
       `No auth request responded with status ${noAuthResponse.status}`
     );
@@ -118,8 +118,9 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // With RBAC disabled, even invalid auth should succeed, but auth processing should occur
-    expect([200, 401, 403]).toContain(invalidAuthResponse.status);
+    // With RBAC disabled, even invalid auth should succeed since authentication checks are bypassed
+    // When RBAC is disabled, all RBAC middleware (including requireAuth) call next() immediately
+    expect(invalidAuthResponse.status).toBe(200);
     logger.info(
       `Invalid auth request responded with status ${invalidAuthResponse.status}`
     );
@@ -139,7 +140,7 @@ describe('Authentication - E2E', () => {
     }
 
     // Valid authentication should always succeed
-    expect([200]).toContain(validAuthResponse.status);
+    expect(validAuthResponse.status).toBe(200);
     logger.info(
       `Valid auth request responded with status ${validAuthResponse.status}`
     );
@@ -157,8 +158,8 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 404, 500]).toContain(healthResponse.status);
+    // Verify the response status code - health endpoint should return 200 when working properly
+    expect(healthResponse.status).toBe(200);
     logger.info(
       `Health endpoint responded with status ${healthResponse.status}`
     );
@@ -174,8 +175,8 @@ describe('Authentication - E2E', () => {
       throw error;
     }
 
-    // Verify the response status code
-    expect([200, 404, 500]).toContain(docsResponse.status);
+    // Verify the response status code - docs endpoint should return 200 when working properly
+    expect(docsResponse.status).toBe(200);
     logger.info(`Docs endpoint responded with status ${docsResponse.status}`);
   });
 });

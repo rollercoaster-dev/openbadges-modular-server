@@ -417,8 +417,8 @@ describe('Issuer API - E2E', () => {
           issuerId,
         });
 
-        // Verify response status
-        expect([200, 204]).toContain(res.status);
+        // Verify response status - PUT operations should return 200 for successful updates
+        expect(res.status).toBe(200);
 
         // Add a small delay to ensure the update is processed
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -487,8 +487,8 @@ describe('Issuer API - E2E', () => {
         headers: { 'X-API-Key': API_KEY },
       });
 
-      // Verify delete response
-      expect([200, 204]).toContain(deleteRes.status);
+      // Verify delete response - DELETE operations should return 204 for successful deletions
+      expect(deleteRes.status).toBe(204);
 
       // Verify issuer is deleted by trying to fetch it
       const getRes = await fetch(`${ISSUERS_ENDPOINT}/${issuerId}`, {
