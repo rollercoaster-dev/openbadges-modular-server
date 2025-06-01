@@ -597,11 +597,41 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
           .achievement as Record<string, unknown>
       ).id
     ).toBe(badgeClass.id);
-    // Check that the issuer is correctly referenced
+    // Check that the issuer is correctly referenced and structured
     expect(assertion.issuer).toBeDefined();
-    expect(
-      (assertion.issuer as Record<string, unknown>).id || assertion.issuer
-    ).toBe(issuer.id);
+
+    // Verify issuer field compliance with OB3 specification
+    if (typeof assertion.issuer === 'string') {
+      // Issuer as IRI reference
+      expect(assertion.issuer).toBe(issuer.id);
+      expect(assertion.issuer).toMatch(/^urn:uuid:[0-9a-f-]+$/);
+    } else {
+      // Issuer as embedded object - verify required fields
+      const issuerObj = assertion.issuer as Record<string, unknown>;
+      expect(issuerObj.id).toBe(issuer.id);
+      expect(issuerObj.type).toBe('Issuer');
+      expect(issuerObj.name).toBeDefined();
+      expect(issuerObj.url).toBeDefined();
+
+      // Verify issuer ID format
+      expect(issuerObj.id).toMatch(/^urn:uuid:[0-9a-f-]+$/);
+    }
+
+    // Verify issuer consistency across credential structure
+    const achievementIssuer = (
+      (assertion.credentialSubject as Record<string, unknown>)
+        .achievement as Record<string, unknown>
+    ).issuer;
+
+    const vcIssuerId = typeof assertion.issuer === 'string'
+      ? assertion.issuer
+      : (assertion.issuer as Record<string, unknown>).id;
+
+    const achievementIssuerId = typeof achievementIssuer === 'string'
+      ? achievementIssuer
+      : (achievementIssuer as Record<string, unknown>).id;
+
+    expect(vcIssuerId).toBe(achievementIssuerId);
 
     // Use the validator function for more thorough checks
     validateOBv3Entity(assertion, 'assertion');
