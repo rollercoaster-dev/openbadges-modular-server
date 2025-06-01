@@ -68,37 +68,73 @@ END $$;
 DO $$ 
 BEGIN
     -- Add issuer_id column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'issuer_id') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'issuer_id'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "issuer_id" uuid;
     END IF;
     
     -- Add expires column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'expires') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'expires'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "expires" timestamp;
     END IF;
     
     -- Add evidence column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'evidence') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'evidence'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "evidence" jsonb;
     END IF;
     
     -- Add verification column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'verification') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'verification'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "verification" jsonb;
     END IF;
     
     -- Add revoked column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'revoked') THEN
-        ALTER TABLE "assertions" ADD COLUMN "revoked" jsonb;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'revoked'
+    ) THEN
+        ALTER TABLE "assertions"
+          ADD COLUMN "revoked" boolean DEFAULT false NOT NULL;
     END IF;
     
     -- Add revocation_reason column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'revocation_reason') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'revocation_reason'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "revocation_reason" text;
     END IF;
     
     -- Add additional_fields column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assertions' AND column_name = 'additional_fields') THEN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'assertions'
+          AND column_name = 'additional_fields'
+    ) THEN
         ALTER TABLE "assertions" ADD COLUMN "additional_fields" jsonb;
     END IF;
 END $$;
