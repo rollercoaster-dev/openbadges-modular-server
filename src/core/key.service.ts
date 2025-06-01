@@ -99,16 +99,16 @@ export class KeyService {
       keyPairs.clear();
 
       // Define and ensure keys directory exists - respect KEYS_DIR env var
-      this.KEYS_DIR = process.env.KEYS_DIR
+      KeyService.KEYS_DIR = process.env.KEYS_DIR
         ? path.resolve(process.env.KEYS_DIR)
         : path.join(process.cwd(), 'keys');
-      const dirExists = await this.fileExists(this.KEYS_DIR);
+      const dirExists = await KeyService.fileExists(KeyService.KEYS_DIR);
       if (!dirExists) {
-        await fs.promises.mkdir(this.KEYS_DIR, { recursive: true });
+        await fs.promises.mkdir(KeyService.KEYS_DIR, { recursive: true });
       }
 
       // Try to load existing keys first
-      await this.loadKeys();
+      await KeyService.loadKeys();
 
       // If no default key pair exists, generate one
       if (!keyPairs.has('default')) {
@@ -129,7 +129,7 @@ export class KeyService {
         keyPairs.set('default', defaultKeyPair);
 
         // Save the new key pair
-        await this.saveKeyPair('default', defaultKeyPair);
+        await KeyService.saveKeyPair('default', defaultKeyPair);
 
         logger.info('Generated and saved default RSA key pair');
       } else {
@@ -147,27 +147,27 @@ export class KeyService {
   private static async loadKeys(): Promise<void> {
     try {
       // Ensure KEYS_DIR is defined before proceeding
-      if (!this.KEYS_DIR) {
+      if (!KeyService.KEYS_DIR) {
         throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
       }
 
       // Check if default key pair exists
-      const publicKeyPath = path.join(this.KEYS_DIR, 'default.pub');
-      const privateKeyPath = path.join(this.KEYS_DIR, 'default.key');
+      const publicKeyPath = path.join(KeyService.KEYS_DIR, 'default.pub');
+      const privateKeyPath = path.join(KeyService.KEYS_DIR, 'default.key');
 
-      const publicKeyExists = await this.fileExists(publicKeyPath);
-      const privateKeyExists = await this.fileExists(privateKeyPath);
+      const publicKeyExists = await KeyService.fileExists(publicKeyPath);
+      const privateKeyExists = await KeyService.fileExists(privateKeyPath);
       if (publicKeyExists && privateKeyExists) {
         // Load default key pair
         const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
         const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
-        const metadataPath = path.join(this.KEYS_DIR, 'default.meta.json');
+        const metadataPath = path.join(KeyService.KEYS_DIR, 'default.meta.json');
 
         let keyType: KeyType;
         let cryptosuite: Cryptosuite;
 
         // Try to load metadata if it exists
-        const metadataExists = await this.fileExists(metadataPath);
+        const metadataExists = await KeyService.fileExists(metadataPath);
         if (metadataExists) {
           try {
             const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
@@ -248,7 +248,7 @@ export class KeyService {
       }
 
       // Load other key pairs from the keys directory
-      const files = await fs.promises.readdir(this.KEYS_DIR);
+      const files = await fs.promises.readdir(KeyService.KEYS_DIR);
       const keyIds = new Set<string>();
 
       // Find all key IDs (files ending with .pub)
@@ -261,21 +261,21 @@ export class KeyService {
 
       // Load each key pair
       for (const keyId of keyIds) {
-        const publicKeyPath = path.join(this.KEYS_DIR, `${keyId}.pub`);
-        const privateKeyPath = path.join(this.KEYS_DIR, `${keyId}.key`);
+        const publicKeyPath = path.join(KeyService.KEYS_DIR, `${keyId}.pub`);
+        const privateKeyPath = path.join(KeyService.KEYS_DIR, `${keyId}.key`);
 
-        const publicKeyExists = await this.fileExists(publicKeyPath);
-        const privateKeyExists = await this.fileExists(privateKeyPath);
+        const publicKeyExists = await KeyService.fileExists(publicKeyPath);
+        const privateKeyExists = await KeyService.fileExists(privateKeyPath);
         if (publicKeyExists && privateKeyExists) {
           const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
           const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
-          const metadataPath = path.join(this.KEYS_DIR, `${keyId}.meta.json`);
+          const metadataPath = path.join(KeyService.KEYS_DIR, `${keyId}.meta.json`);
 
           let keyType: KeyType;
           let cryptosuite: Cryptosuite;
 
           // Try to load metadata if it exists
-          const metadataExists = await this.fileExists(metadataPath);
+          const metadataExists = await KeyService.fileExists(metadataPath);
           if (metadataExists) {
             try {
               const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
@@ -369,13 +369,13 @@ export class KeyService {
   private static async saveKeyPair(id: string, keyPair: KeyPair): Promise<void> {
     try {
       // Ensure KEYS_DIR is defined before proceeding
-      if (!this.KEYS_DIR) {
+      if (!KeyService.KEYS_DIR) {
         throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
       }
 
-      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
-      const metadataPath = path.join(this.KEYS_DIR, `${id}.meta.json`);
+      const publicKeyPath = path.join(KeyService.KEYS_DIR, `${id}.pub`);
+      const privateKeyPath = path.join(KeyService.KEYS_DIR, `${id}.key`);
+      const metadataPath = path.join(KeyService.KEYS_DIR, `${id}.meta.json`);
 
       // Save public key
       await fs.promises.writeFile(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
@@ -471,15 +471,15 @@ export class KeyService {
     }
 
     // If not in memory, check if the key files exist on disk
-    if (!this.KEYS_DIR) {
+    if (!KeyService.KEYS_DIR) {
       throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
     }
 
-    const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-    const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
+    const publicKeyPath = path.join(KeyService.KEYS_DIR, `${id}.pub`);
+    const privateKeyPath = path.join(KeyService.KEYS_DIR, `${id}.key`);
 
-    const publicKeyExists = await this.fileExists(publicKeyPath);
-    const privateKeyExists = await this.fileExists(privateKeyPath);
+    const publicKeyExists = await KeyService.fileExists(publicKeyPath);
+    const privateKeyExists = await KeyService.fileExists(privateKeyPath);
 
     return publicKeyExists && privateKeyExists;
   }
@@ -529,7 +529,7 @@ export class KeyService {
       keyPairs.set(id, keyPair);
 
       // Save the new key pair
-      await this.saveKeyPair(id, keyPair);
+      await KeyService.saveKeyPair(id, keyPair);
 
       return keyPair;
     } catch (error) {
@@ -551,13 +551,13 @@ export class KeyService {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
       // Ensure KEYS_DIR is defined before proceeding
-      if (!this.KEYS_DIR) {
+      if (!KeyService.KEYS_DIR) {
         throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
       }
 
       // Try to load the key from storage
-      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-      const publicKeyExists = await this.fileExists(publicKeyPath);
+      const publicKeyPath = path.join(KeyService.KEYS_DIR, `${id}.pub`);
+      const publicKeyExists = await KeyService.fileExists(publicKeyPath);
       if (publicKeyExists) {
         return await fs.promises.readFile(publicKeyPath, 'utf8');
       }
@@ -579,13 +579,13 @@ export class KeyService {
     const keyPair = keyPairs.get(id);
     if (!keyPair) {
       // Ensure KEYS_DIR is defined before proceeding
-      if (!this.KEYS_DIR) {
+      if (!KeyService.KEYS_DIR) {
         throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
       }
 
       // Try to load the key from storage
-      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
-      const privateKeyExists = await this.fileExists(privateKeyPath);
+      const privateKeyPath = path.join(KeyService.KEYS_DIR, `${id}.key`);
+      const privateKeyExists = await KeyService.fileExists(privateKeyPath);
       if (privateKeyExists) {
         return await fs.promises.readFile(privateKeyPath, 'utf8');
       }
@@ -610,7 +610,7 @@ export class KeyService {
   static async deleteKeyPair(id: string): Promise<boolean> {
     try {
       // Ensure KEYS_DIR is defined before proceeding
-      if (!this.KEYS_DIR) {
+      if (!KeyService.KEYS_DIR) {
         throw new Error('KeyService not initialized. KEYS_DIR is undefined.');
       }
 
@@ -623,15 +623,15 @@ export class KeyService {
       const removed = keyPairs.delete(id);
 
       // Remove from storage
-      const publicKeyPath = path.join(this.KEYS_DIR, `${id}.pub`);
-      const privateKeyPath = path.join(this.KEYS_DIR, `${id}.key`);
+      const publicKeyPath = path.join(KeyService.KEYS_DIR, `${id}.pub`);
+      const privateKeyPath = path.join(KeyService.KEYS_DIR, `${id}.key`);
 
-      const publicKeyExists = await this.fileExists(publicKeyPath);
+      const publicKeyExists = await KeyService.fileExists(publicKeyPath);
       if (publicKeyExists) {
         await fs.promises.unlink(publicKeyPath);
       }
 
-      const privateKeyExists = await this.fileExists(privateKeyPath);
+      const privateKeyExists = await KeyService.fileExists(privateKeyPath);
       if (privateKeyExists) {
         await fs.promises.unlink(privateKeyPath);
       }
