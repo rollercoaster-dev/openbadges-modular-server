@@ -4,27 +4,35 @@
  * This repository handles database operations for CredentialStatusEntry entities using SQLite.
  */
 
-import { Database } from 'bun:sqlite';
 import { eq, max } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Shared } from 'openbadges-types';
 import { createOrGenerateIRI } from '../../../../../utils/types/iri-utils';
 import { logger } from '../../../../../utils/logging/logger.service';
-import { 
-  CredentialStatusEntry, 
+import {
+  CredentialStatusEntry,
   CredentialStatusEntryRepository,
   CredentialStatus
 } from '../../../../../core/types/status-list.types';
 import { credentialStatusEntries } from '../schema';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
+
+// Create compile-time type alias to avoid runtime import dependency
+type DrizzleDB = ReturnType<typeof DrizzleFn>;
 
 /**
  * SQLite implementation of CredentialStatusEntryRepository
  */
 export class SqliteCredentialStatusEntryRepository implements CredentialStatusEntryRepository {
-  private db: ReturnType<typeof drizzle>;
+  constructor(private readonly connectionManager: SqliteConnectionManager) {}
 
-  constructor(database: Database) {
-    this.db = drizzle(database);
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase(): DrizzleDB {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
   }
 
   /**
@@ -46,7 +54,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
         updatedAt: now
       };
 
-      await this.db.insert(credentialStatusEntries).values(insertData);
+      const db = this.getDatabase();
+      await db.insert(credentialStatusEntries).values(insertData);
 
       const entry: CredentialStatusEntry = {
         id,
@@ -80,7 +89,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async findById(id: Shared.IRI): Promise<CredentialStatusEntry | null> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .select()
         .from(credentialStatusEntries)
         .where(eq(credentialStatusEntries.id, id))
@@ -106,7 +116,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async findByCredentialId(credentialId: Shared.IRI): Promise<CredentialStatusEntry | null> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .select()
         .from(credentialStatusEntries)
         .where(eq(credentialStatusEntries.credentialId, credentialId))
@@ -132,7 +143,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async findByStatusListId(statusListId: Shared.IRI): Promise<CredentialStatusEntry[]> {
     try {
-      const results = await this.db
+      const db = this.getDatabase();
+      const results = await db
         .select()
         .from(credentialStatusEntries)
         .where(eq(credentialStatusEntries.statusListId, statusListId));
@@ -162,7 +174,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
       if (updates.status !== undefined) updateData.status = updates.status;
       if (updates.reason !== undefined) updateData.reason = updates.reason;
 
-      await this.db
+      const db = this.getDatabase();
+      await db
         .update(credentialStatusEntries)
         .set(updateData)
         .where(eq(credentialStatusEntries.id, id));
@@ -184,7 +197,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
-      await this.db
+      const db = this.getDatabase();
+      await db
         .delete(credentialStatusEntries)
         .where(eq(credentialStatusEntries.id, id));
 
@@ -203,7 +217,8 @@ export class SqliteCredentialStatusEntryRepository implements CredentialStatusEn
    */
   async getNextAvailableIndex(statusListId: Shared.IRI): Promise<number> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .select({ maxIndex: max(credentialStatusEntries.statusListIndex) })
         .from(credentialStatusEntries)
         .where(eq(credentialStatusEntries.statusListId, statusListId));

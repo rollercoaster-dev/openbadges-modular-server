@@ -4,28 +4,36 @@
  * This repository handles database operations for StatusList entities using SQLite.
  */
 
-import { Database } from 'bun:sqlite';
 import { eq, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Shared } from 'openbadges-types';
 import { createOrGenerateIRI } from '../../../../../utils/types/iri-utils';
 import { logger } from '../../../../../utils/logging/logger.service';
-import { 
-  StatusList, 
-  StatusListRepository, 
+import {
+  StatusList,
+  StatusListRepository,
   FindStatusListOptions,
   StatusPurpose
 } from '../../../../../core/types/status-list.types';
 import { statusLists } from '../schema';
+import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
+import type { drizzle as DrizzleFn } from 'drizzle-orm/bun-sqlite';
+
+// Create compile-time type alias to avoid runtime import dependency
+type DrizzleDB = ReturnType<typeof DrizzleFn>;
 
 /**
  * SQLite implementation of StatusListRepository
  */
 export class SqliteStatusListRepository implements StatusListRepository {
-  private db: ReturnType<typeof drizzle>;
+  constructor(private readonly connectionManager: SqliteConnectionManager) {}
 
-  constructor(database: Database) {
-    this.db = drizzle(database);
+  /**
+   * Gets the database instance with connection validation
+   */
+  private getDatabase(): DrizzleDB {
+    this.connectionManager.ensureConnected();
+    return this.connectionManager.getDatabase();
   }
 
   /**
@@ -46,7 +54,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
         updatedAt: now
       };
 
-      await this.db.insert(statusLists).values(insertData);
+      const db = this.getDatabase();
+      await db.insert(statusLists).values(insertData);
 
       const statusList: StatusList = {
         id,
@@ -75,7 +84,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
    */
   async findById(id: Shared.IRI): Promise<StatusList | null> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .select()
         .from(statusLists)
         .where(eq(statusLists.id, id))
@@ -101,7 +111,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
    */
   async findByIssuerAndPurpose(issuerId: Shared.IRI, purpose: StatusPurpose): Promise<StatusList | null> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .select()
         .from(statusLists)
         .where(and(
@@ -131,7 +142,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
    */
   async findAll(options?: FindStatusListOptions): Promise<StatusList[]> {
     try {
-      let query = this.db.select().from(statusLists);
+      const db = this.getDatabase();
+      let query = db.select().from(statusLists);
 
       // Apply filters
       if (options?.issuerId) {
@@ -174,7 +186,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
       if (updates.bitstring) updateData.bitstring = updates.bitstring;
       if (updates.size) updateData.size = updates.size;
 
-      await this.db
+      const db = this.getDatabase();
+      await db
         .update(statusLists)
         .set(updateData)
         .where(eq(statusLists.id, id));
@@ -196,7 +209,8 @@ export class SqliteStatusListRepository implements StatusListRepository {
    */
   async delete(id: Shared.IRI): Promise<boolean> {
     try {
-      const result = await this.db
+      const db = this.getDatabase();
+      const result = await db
         .delete(statusLists)
         .where(eq(statusLists.id, id));
 

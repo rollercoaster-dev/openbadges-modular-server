@@ -427,7 +427,7 @@ export class RepositoryFactory {
 
       // Create the repository using the shared connection manager
       return new SqliteStatusListRepository(
-        RepositoryFactory.sqliteConnectionManager.getDatabase()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 
@@ -454,7 +454,7 @@ export class RepositoryFactory {
 
       // Create the repository using the shared connection manager
       return new SqliteCredentialStatusEntryRepository(
-        RepositoryFactory.sqliteConnectionManager.getDatabase()
+        RepositoryFactory.sqliteConnectionManager
       );
     }
 
