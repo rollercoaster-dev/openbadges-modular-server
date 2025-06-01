@@ -18,6 +18,20 @@ let assertionService: AssertionService | null = null;
 
 /**
  * Creates or returns the singleton StatusListService instance
+ *
+ * @returns Promise that resolves to the StatusListService instance
+ * @throws Error if service creation fails
+ *
+ * @example
+ * ```typescript
+ * import { createStatusListService } from './service.factory';
+ *
+ * const statusListService = await createStatusListService();
+ * const statusList = await statusListService.createStatusList({
+ *   issuerId: 'https://example.com/issuer/1',
+ *   purpose: 'revocation'
+ * });
+ * ```
  */
 export async function createStatusListService(): Promise<StatusListService> {
   if (!statusListService) {
@@ -48,6 +62,20 @@ export async function createStatusListService(): Promise<StatusListService> {
 
 /**
  * Creates or returns the singleton AssertionService instance
+ *
+ * @returns Promise that resolves to the AssertionService instance
+ * @throws Error if service creation fails
+ *
+ * @example
+ * ```typescript
+ * import { createAssertionService } from './service.factory';
+ *
+ * const assertionService = await createAssertionService();
+ * const assertion = await assertionService.createAssertion({
+ *   recipient: 'https://example.com/user/1',
+ *   badgeClassId: 'https://example.com/badge/1'
+ * });
+ * ```
  */
 export async function createAssertionService(): Promise<AssertionService> {
   if (!assertionService) {
@@ -84,6 +112,17 @@ export async function createAssertionService(): Promise<AssertionService> {
 
 /**
  * Creates an AssertionController with StatusList integration
+ *
+ * @returns Promise that resolves to the AssertionController instance
+ * @throws Error if controller creation fails
+ *
+ * @example
+ * ```typescript
+ * import { createAssertionController } from './service.factory';
+ *
+ * const controller = await createAssertionController();
+ * // Controller is ready to handle assertion requests with status list support
+ * ```
  */
 export async function createAssertionController(): Promise<AssertionController> {
   try {

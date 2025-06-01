@@ -441,7 +441,7 @@ describe('StatusList2021 E2E Tests', () => {
 
       // Assign multiple credentials to the status list
       const credentialIds = [];
-      const batchSize = 10; // Reduced for E2E test performance
+      const batchSize = parseInt(process.env.E2E_BATCH_SIZE || '10'); // Configurable batch size for E2E tests
 
       for (let i = 0; i < batchSize; i++) {
         const credentialId = `https://example.com/credentials/perf-test-${i}`;

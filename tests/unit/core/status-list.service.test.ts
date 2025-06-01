@@ -43,7 +43,7 @@ describe('StatusListService', () => {
   let statusListService: StatusListService;
 
   beforeEach(() => {
-    // Reset all mocks
+    // Reset all mocks before each test
     Object.values(mockStatusListRepository).forEach((mockFn) => mockFn.mockReset());
     Object.values(mockCredentialStatusEntryRepository).forEach((mockFn) => mockFn.mockReset());
 
@@ -52,12 +52,6 @@ describe('StatusListService', () => {
       mockStatusListRepository,
       mockCredentialStatusEntryRepository
     );
-  });
-
-  afterEach(() => {
-    // Clean up after each test
-    Object.values(mockStatusListRepository).forEach((mockFn) => mockFn.mockReset());
-    Object.values(mockCredentialStatusEntryRepository).forEach((mockFn) => mockFn.mockReset());
   });
 
   describe('createStatusList', () => {
