@@ -42,7 +42,7 @@ interface MockErrorResponse {
 
 interface MockSuccessResponse {
   id: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Mock app and authToken for integration tests
@@ -52,7 +52,7 @@ const app = {
     json: () => Promise<MockBatchResponse | MockErrorResponse | MockSuccessResponse>;
   }> => {
     // Mock response for testing - simulate validation behavior
-    const opts = options as any;
+    const opts = options as { method?: string; headers?: Record<string, string>; body?: string };
     const body = opts?.body ? JSON.parse(opts.body) : {};
 
     // Check for authentication
@@ -115,7 +115,7 @@ const app = {
     ];
 
     // Check for partial failures
-    if (body.credentials && body.credentials.some((c: any) => c.badgeClass === 'nonexistent-badge-class-id')) {
+    if (body.credentials && body.credentials.some((c: { badgeClass?: string }) => c.badgeClass === 'nonexistent-badge-class-id')) {
       summary = { total: 2, successful: 1, failed: 1 };
       results = [
         { success: true, data: { id: 'mock-id-1' } },
@@ -133,7 +133,7 @@ const app = {
     }
 
     // Check for PUT requests with nonexistent credentials
-    if (body.updates && body.updates.some((u: any) => u.id === 'nonexistent-credential-id')) {
+    if (body.updates && body.updates.some((u: { id?: string }) => u.id === 'nonexistent-credential-id')) {
       summary = { total: 2, successful: 1, failed: 1 };
       results = [
         { success: true, data: { id: 'mock-id-1' } },
