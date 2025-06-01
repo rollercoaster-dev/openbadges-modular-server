@@ -86,8 +86,8 @@ describe('Assertion Issuer Field E2E Tests', () => {
     });
 
     it('should fail to create v3.0 assertion if issuer cannot be determined', async () => {
-      // Create a badge class with invalid issuer reference
-      const invalidBadgeClassResponse = await request(app)
+      // First, verify that creating a badge class with invalid issuer fails
+      await request(app)
         .post('/api/v1/badge-classes')
         .send({
           name: 'Invalid Badge Class',
@@ -98,23 +98,6 @@ describe('Assertion Issuer Field E2E Tests', () => {
           },
         })
         .expect(400); // Should fail due to invalid issuer
-
-      // If somehow the badge class was created, try to create assertion
-      if (invalidBadgeClassResponse.status === 201) {
-        const assertionData = {
-          badgeClass: invalidBadgeClassResponse.body.id,
-          recipient: {
-            type: 'email',
-            identity: 'recipient@example.com',
-            hashed: false,
-          },
-        };
-
-        await request(app)
-          .post('/api/v1/assertions?version=3.0')
-          .send(assertionData)
-          .expect(400); // Should fail due to missing issuer
-      }
     });
   });
 
