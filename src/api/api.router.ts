@@ -19,6 +19,7 @@ import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
 import { VersionController } from './controllers/version.controller';
+import { StatusListController } from './controllers/status-list.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
@@ -57,13 +58,15 @@ function getValidatedBody<T = unknown>(c: {
  * @param issuerController The issuer controller
  * @param badgeClassController The badge class controller
  * @param assertionController The assertion controller
+ * @param statusListController The status list controller (optional)
  * @returns The versioned router
  */
 function createVersionedRouter(
   version: BadgeVersion,
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
-  assertionController: AssertionController
+  assertionController: AssertionController,
+  statusListController?: StatusListController
 ): Hono {
   const router = new Hono();
 
@@ -467,6 +470,68 @@ function createVersionedRouter(
     }
   });
 
+  // Status list routes (only for v3)
+  if (version === BadgeVersion.V3 && statusListController) {
+    // Get status list credential
+    router.get('/status-lists/:id', async (c) => {
+      try {
+        return await statusListController.getStatusList(c);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /status-lists/:id',
+          id: c.req.param('id'),
+        });
+      }
+    });
+
+    // Create status list
+    router.post('/status-lists', requireAuth(), async (c) => {
+      try {
+        return await statusListController.createStatusList(c);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /status-lists',
+        });
+      }
+    });
+
+    // Update credential status
+    router.post('/credentials/:id/status', requireAuth(), async (c) => {
+      try {
+        return await statusListController.updateCredentialStatus(c);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /credentials/:id/status',
+          id: c.req.param('id'),
+        });
+      }
+    });
+
+    // Get credential status
+    router.get('/credentials/:id/status', async (c) => {
+      try {
+        return await statusListController.getCredentialStatus(c);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /credentials/:id/status',
+          id: c.req.param('id'),
+        });
+      }
+    });
+
+    // Assign credential to status list
+    router.post('/credentials/:id/assign-status', requireAuth(), async (c) => {
+      try {
+        return await statusListController.assignCredentialToStatusList(c);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /credentials/:id/assign-status',
+          id: c.req.param('id'),
+        });
+      }
+    });
+  }
+
   return router;
 }
 
@@ -478,6 +543,7 @@ function createVersionedRouter(
  * @param backpackController The backpack controller
  * @param userController The user controller
  * @param authController The auth controller
+ * @param statusListController The status list controller
  * @returns The API router
  */
 export async function createApiRouter(
@@ -486,7 +552,8 @@ export async function createApiRouter(
   assertionController: AssertionController,
   backpackController?: BackpackController,
   userController?: UserController,
-  authController?: AuthController
+  authController?: AuthController,
+  statusListController?: StatusListController
 ): Promise<Hono> {
   // Create the router
   const router = new Hono();
@@ -577,12 +644,14 @@ export async function createApiRouter(
     issuerController,
     badgeClassController,
     assertionController
+    // No statusListController for v2
   );
   const v3Router = createVersionedRouter(
     BadgeVersion.V3,
     issuerController,
     badgeClassController,
-    assertionController
+    assertionController,
+    statusListController // StatusList only available in v3
   );
 
   // Mount version-specific routers

@@ -7,7 +7,7 @@
  * Note: PostgreSQL natively supports UUID, JSONB, and timestamp types.
  */
 
-import { pgTable, text, timestamp, uuid, jsonb, index, boolean, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, jsonb, index, boolean, varchar, integer } from 'drizzle-orm/pg-core';
 
 // Users table - defined first to avoid circular references
 export const users = pgTable(
@@ -254,6 +254,67 @@ export const userAssertions = pgTable(
     return {
       userAssertionIdx: index('user_assertion_idx').on(table.userId, table.assertionId),
       addedAtIdx: index('user_assertion_added_at_idx').on(table.addedAt),
+    };
+  }
+);
+
+// Status Lists table - for StatusList2021 implementation
+export const statusLists = pgTable(
+  'status_lists',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    issuerId: uuid('issuer_id').notNull().references(() => issuers.id, { onDelete: 'cascade' }),
+    purpose: text('purpose').notNull(), // 'revocation' or 'suspension'
+    bitstring: text('bitstring').notNull(), // base64url encoded, gzip compressed bitstring
+    size: integer('size').notNull().default(16384), // number of bits in the list
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add index on issuerId for faster lookups by issuer
+      issuerIdx: index('status_list_issuer_idx').on(table.issuerId),
+      // Add index on purpose for faster lookups by purpose
+      purposeIdx: index('status_list_purpose_idx').on(table.purpose),
+      // Add composite index on issuer and purpose for unique status lists per issuer/purpose
+      issuerPurposeIdx: index('status_list_issuer_purpose_idx').on(
+        table.issuerId,
+        table.purpose
+      ),
+      // Add index on creation date for sorting
+      createdAtIdx: index('status_list_created_at_idx').on(table.createdAt),
+    };
+  }
+);
+
+// Credential Status Entries table - tracks individual credential status within status lists
+export const credentialStatusEntries = pgTable(
+  'credential_status_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    credentialId: uuid('credential_id').notNull().references(() => assertions.id, { onDelete: 'cascade' }),
+    statusListId: uuid('status_list_id').notNull().references(() => statusLists.id, { onDelete: 'cascade' }),
+    statusListIndex: integer('status_list_index').notNull(), // index within the bitstring
+    status: integer('status').notNull().default(0), // 0 = valid, 1 = revoked/suspended
+    reason: text('reason'), // optional reason for status change
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // Add unique index on credentialId to ensure one status entry per credential
+      credentialIdx: index('credential_status_credential_idx').on(table.credentialId),
+      // Add index on statusListId for faster lookups by status list
+      statusListIdx: index('credential_status_list_idx').on(table.statusListId),
+      // Add unique index on statusListId and statusListIndex to prevent duplicate indexes
+      statusListIndexIdx: index('credential_status_list_index_idx').on(
+        table.statusListId,
+        table.statusListIndex
+      ),
+      // Add index on status for filtering by status
+      statusIdx: index('credential_status_status_idx').on(table.status),
+      // Add index on updated date for sorting
+      updatedAtIdx: index('credential_status_updated_at_idx').on(table.updatedAt),
     };
   }
 );
