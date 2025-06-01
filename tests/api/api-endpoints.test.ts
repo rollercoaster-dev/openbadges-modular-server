@@ -527,7 +527,7 @@ describe('API Endpoints', () => {
         });
 
         expect(badgeClassResponse.status).toBe(201);
-        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
+        const badgeClass = await badgeClassResponse.json();
 
         // Now create batch credentials
         const batchData = {
@@ -573,7 +573,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(201);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -629,7 +629,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(201);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBeLessThanOrEqual(1);
@@ -677,7 +677,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json() as MockErrorResponse;
+        const result = await response.json();
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });
@@ -706,7 +706,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
+        const badgeClass = await badgeClassResponse.json();
 
         // Create individual credentials
         for (let i = 1; i <= 3; i++) {
@@ -725,7 +725,7 @@ describe('API Endpoints', () => {
             ],
           };
 
-          const response = await app.request('/v3/credentials', {
+          const credentialResponse = await app.request('/v3/credentials', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -734,7 +734,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-          const credential = await response.json() as MockSuccessResponse;
+          const credential = await credentialResponse.json();
           createdCredentialIds.push(credential.id);
         }
       });
@@ -750,7 +750,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -773,14 +773,15 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(1);
         expect(result.summary.failed).toBe(1);
         expect(result.results[0].success).toBe(true);
         expect(result.results[1].success).toBe(false);
-        expect(result.results[1].error).toBe('Assertion not found');
+        expect(result.results[1].error).toBeDefined();
+        expect(result.results[1].error.message || result.results[1].error).toContain('not found');
       });
 
       it('should require authentication', async () => {
@@ -800,7 +801,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json() as MockErrorResponse;
+        const result = await response.json();
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });
@@ -829,7 +830,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
+        const badgeClass = await badgeClassResponse.json();
 
         // Create individual credentials
         for (let i = 1; i <= 2; i++) {
@@ -848,7 +849,7 @@ describe('API Endpoints', () => {
             ],
           };
 
-          const response = await app.request('/v3/credentials', {
+          const credentialResponse = await app.request('/v3/credentials', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -857,7 +858,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-          const credential = await response.json() as MockSuccessResponse;
+          const credential = await credentialResponse.json();
           testCredentialIds.push(credential.id);
         }
       });
@@ -888,7 +889,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -922,14 +923,15 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json() as MockBatchResponse;
+        const result = await response.json();
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(1);
         expect(result.summary.failed).toBe(1);
         expect(result.results[0].success).toBe(true);
         expect(result.results[1].success).toBe(false);
-        expect(result.results[1].error).toContain('not found');
+        expect(result.results[1].error).toBeDefined();
+        expect(result.results[1].error.message || result.results[1].error).toContain('not found');
       });
 
       it('should require authentication', async () => {
@@ -968,7 +970,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json() as MockErrorResponse;
+        const result = await response.json();
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });

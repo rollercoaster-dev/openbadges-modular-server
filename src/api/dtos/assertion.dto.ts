@@ -138,13 +138,24 @@ export interface BatchUpdateCredentialStatusDto {
 }
 
 /**
+ * Error details for batch operations
+ */
+export interface BatchOperationError {
+  code: string;
+  message: string;
+  field?: string;
+  details?: Record<string, unknown>;
+}
+
+/**
  * Result for a single batch operation
  */
 export interface BatchOperationResult<T = unknown> {
   id?: string;
+  index: number;
   success: boolean;
   data?: T;
-  error?: string;
+  error?: BatchOperationError;
 }
 
 /**
@@ -156,5 +167,11 @@ export interface BatchOperationResponseDto<T = unknown> {
     total: number;
     successful: number;
     failed: number;
+    processingTimeMs: number;
+  };
+  metadata?: {
+    batchId?: string;
+    timestamp: string;
+    version: string;
   };
 }

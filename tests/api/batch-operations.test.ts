@@ -2,24 +2,7 @@
  * Unit tests for batch operations
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { mock } from 'bun:test';
-import { toIRI } from '../../src/utils/types/iri-utils';
-import { toDateTime } from '../../src/utils/types/type-utils';
-
-// Type definitions for test data
-type TestRecipient = {
-  identity: string;
-  type: string;
-  hashed: boolean;
-};
-
-type TestCreateAssertionDto = {
-  recipient: TestRecipient;
-  badge: string;
-  issuedOn: string;
-  evidence: Array<{ id: string }>;
-};
+import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { AssertionController } from '../../src/api/controllers/assertion.controller';
 import { AssertionRepository } from '../../src/domains/assertion/assertion.repository';
 import { BadgeClassRepository } from '../../src/domains/badgeClass/badgeClass.repository';
@@ -30,6 +13,7 @@ import {
   BatchCreateCredentialsDto,
   BatchRetrieveCredentialsDto,
   BatchUpdateCredentialStatusDto,
+  CreateAssertionDto,
 } from '../../src/api/dtos';
 
 // Mock dependencies
@@ -51,38 +35,41 @@ describe('Batch Operations Unit Tests', () => {
     // Reset all mocks
     Object.values(mockAssertionRepository).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
-        (mockFn as unknown as { mockReset: () => void }).mockReset();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockFn as any).mockReset();
       }
     });
     Object.values(mockBadgeClassRepository).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
-        (mockFn as unknown as { mockReset: () => void }).mockReset();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockFn as any).mockReset();
       }
     });
-
+    
     // Create controller with mocked dependencies
     assertionController = new AssertionController(
       mockAssertionRepository as AssertionRepository,
-      mockBadgeClassRepository as BadgeClassRepository,
-      null as unknown as never // issuerRepository - not needed for these tests
+      mockBadgeClassRepository as BadgeClassRepository
     );
 
     // Mock the getAssertionById method
-    assertionController.getAssertionById = mock(async () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (assertionController as any).getAssertionById = mock().mockResolvedValue({
       '@context': 'https://www.w3.org/2018/credentials/v1',
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
-      id: toIRI('test-id'),
-      issuer: toIRI('test-issuer'),
-      issuanceDate: toDateTime('2023-01-01T00:00:00Z'),
+      id: 'test-id',
+      issuer: 'test-issuer',
+      issuanceDate: '2023-01-01T00:00:00Z',
       credentialSubject: {
-        id: toIRI('test-recipient'),
+        id: 'test-recipient',
         achievement: {
-          id: toIRI('test-badge-class'),
+          id: 'test-badge-class',
           type: 'Achievement',
           name: 'Test Badge',
         },
       },
-    }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   });
 
   describe('createAssertionsBatch', () => {
@@ -91,65 +78,51 @@ describe('Batch Operations Unit Tests', () => {
       const batchData: BatchCreateCredentialsDto = {
         credentials: [
           {
-            recipient: {
-              identity: 'user1@example.com',
-              type: 'email',
-              hashed: false,
-            },
-            badge: 'badge-class-1',
-            issuedOn: new Date().toISOString(),
+            recipient: { identity: 'user1@example.com' },
+            badgeClass: 'badge-class-1',
             evidence: [{ id: 'evidence-1' }],
           },
           {
-            recipient: {
-              identity: 'user2@example.com',
-              type: 'email',
-              hashed: false,
-            },
-            badge: 'badge-class-1',
-            issuedOn: new Date().toISOString(),
+            recipient: { identity: 'user2@example.com' },
+            badgeClass: 'badge-class-1',
             evidence: [{ id: 'evidence-2' }],
           },
-        ] as TestCreateAssertionDto[],
+        ] as CreateAssertionDto[],
       };
 
       const mockBadgeClass = BadgeClass.create({
         name: 'Test Badge',
         description: 'Test Description',
-        image: toIRI('test-image.png'),
+        image: 'test-image.png',
         criteria: { narrative: 'Test criteria' },
-        issuer: toIRI('test-issuer'),
+        issuer: 'test-issuer',
       });
 
       const mockAssertions = [
         Assertion.create({
-          recipient: {
-            identity: 'user1@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-1') }],
+          recipient: { identity: 'user1@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-1' }],
+          issuer: 'test-issuer',
         }),
         Assertion.create({
-          recipient: {
-            identity: 'user2@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-2') }],
+          recipient: { identity: 'user2@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-2' }],
+          issuer: 'test-issuer',
         }),
       ];
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(
-        mockBadgeClass
-      );
-      (mockAssertionRepository.createBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockBadgeClassRepository.findById as any).mockResolvedValue(mockBadgeClass);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertions[0] },
         { success: true, assertion: mockAssertions[1] },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue(mockAssertions);
 
       // Act
       const result = await assertionController.createAssertionsBatch(
@@ -172,54 +145,45 @@ describe('Batch Operations Unit Tests', () => {
       const batchData: BatchCreateCredentialsDto = {
         credentials: [
           {
-            recipient: {
-              identity: 'user1@example.com',
-              type: 'email',
-              hashed: false,
-            },
-            badge: 'badge-class-1',
-            issuedOn: new Date().toISOString(),
+            recipient: { identity: 'user1@example.com' },
+            badgeClass: 'badge-class-1',
             evidence: [{ id: 'evidence-1' }],
           },
           {
-            recipient: {
-              identity: 'user2@example.com',
-              type: 'email',
-              hashed: false,
-            },
-            badge: 'nonexistent-badge-class',
-            issuedOn: new Date().toISOString(),
+            recipient: { identity: 'user2@example.com' },
+            badgeClass: 'nonexistent-badge-class',
             evidence: [{ id: 'evidence-2' }],
           },
-        ] as TestCreateAssertionDto[],
+        ] as CreateAssertionDto[],
       };
 
       const mockBadgeClass = BadgeClass.create({
         name: 'Test Badge',
         description: 'Test Description',
-        image: toIRI('test-image.png'),
+        image: 'test-image.png',
         criteria: { narrative: 'Test criteria' },
-        issuer: toIRI('test-issuer'),
+        issuer: 'test-issuer',
       });
 
       const mockAssertion = Assertion.create({
-        recipient: {
-          identity: 'user1@example.com',
-          type: 'email',
-          hashed: false,
-        },
-        badgeClass: toIRI('badge-class-1'),
-        evidence: [{ id: toIRI('evidence-1') }],
+        recipient: { identity: 'user1@example.com' },
+        badgeClass: 'badge-class-1',
+        evidence: [{ id: 'evidence-1' }],
+        issuer: 'test-issuer',
       });
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as unknown as { mockResolvedValueOnce: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockBadgeClassRepository.findById as any)
         .mockResolvedValueOnce(mockBadgeClass)
         .mockResolvedValueOnce(null); // Second badge class doesn't exist
 
-      (mockAssertionRepository.createBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertion },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue([mockAssertion]);
 
       // Act
       const result = await assertionController.createAssertionsBatch(
@@ -234,7 +198,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toContain('does not exist');
+      expect(result.results[1].error?.message).toContain('does not exist');
     });
 
     it('should handle empty batch gracefully', async () => {
@@ -267,29 +231,22 @@ describe('Batch Operations Unit Tests', () => {
 
       const mockAssertions = [
         Assertion.create({
-          recipient: {
-            identity: 'user1@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-1') }],
+          recipient: { identity: 'user1@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-1' }],
+          issuer: 'test-issuer',
         }),
         Assertion.create({
-          recipient: {
-            identity: 'user2@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-2') }],
+          recipient: { identity: 'user2@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-2' }],
+          issuer: 'test-issuer',
         }),
       ];
 
       // Mock repository response
-      (mockAssertionRepository.findByIds as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(
-        mockAssertions
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue(mockAssertions);
 
       // Act
       const result = await assertionController.getAssertionsBatch(
@@ -313,17 +270,15 @@ describe('Batch Operations Unit Tests', () => {
       };
 
       const mockAssertion = Assertion.create({
-        recipient: {
-          identity: 'user1@example.com',
-          type: 'email',
-          hashed: false,
-        },
-        badgeClass: toIRI('badge-class-1'),
-        evidence: [{ id: toIRI('evidence-1') }],
+        recipient: { identity: 'user1@example.com' },
+        badgeClass: 'badge-class-1',
+        evidence: [{ id: 'evidence-1' }],
+        issuer: 'test-issuer',
       });
 
       // Mock repository response (second assertion is null)
-      (mockAssertionRepository.findByIds as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue([
         mockAssertion,
         null,
       ]);
@@ -340,7 +295,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toBe('Assertion not found');
+      expect(result.results[1].error?.message).toBe('Assertion not found');
     });
   });
 
@@ -356,40 +311,27 @@ describe('Batch Operations Unit Tests', () => {
 
       const mockUpdatedAssertions = [
         Assertion.create({
-          recipient: {
-            identity: 'user1@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-1') }],
+          recipient: { identity: 'user1@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-1' }],
           revoked: true,
           revocationReason: 'Test revocation',
+          issuer: 'test-issuer',
         }),
         Assertion.create({
-          recipient: {
-            identity: 'user2@example.com',
-            type: 'email',
-            hashed: false,
-          },
-          badgeClass: toIRI('badge-class-1'),
-          evidence: [{ id: toIRI('evidence-2') }],
+          recipient: { identity: 'user2@example.com' },
+          badgeClass: 'badge-class-1',
+          evidence: [{ id: 'evidence-2' }],
           revoked: false,
+          issuer: 'test-issuer',
         }),
       ];
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
-        {
-          id: 'assertion-1',
-          success: true,
-          assertion: mockUpdatedAssertions[0],
-        },
-        {
-          id: 'assertion-2',
-          success: true,
-          assertion: mockUpdatedAssertions[1],
-        },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
+        { id: 'assertion-1', success: true, assertion: mockUpdatedAssertions[0] },
+        { id: 'assertion-2', success: true, assertion: mockUpdatedAssertions[1] },
       ]);
 
       // Act
@@ -417,24 +359,18 @@ describe('Batch Operations Unit Tests', () => {
       };
 
       const mockUpdatedAssertion = Assertion.create({
-        recipient: {
-          identity: 'user1@example.com',
-          type: 'email',
-          hashed: false,
-        },
-        badgeClass: toIRI('badge-class-1'),
-        evidence: [{ id: toIRI('evidence-1') }],
+        recipient: { identity: 'user1@example.com' },
+        badgeClass: 'badge-class-1',
+        evidence: [{ id: 'evidence-1' }],
         revoked: true,
+        issuer: 'test-issuer',
       });
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertion },
-        {
-          id: 'nonexistent-assertion',
-          success: false,
-          error: 'Assertion not found',
-        },
+        { id: 'nonexistent-assertion', success: false, error: 'Assertion not found' },
       ]);
 
       // Act
@@ -449,7 +385,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toBe('Assertion not found');
+      expect(result.results[1].error.message).toBe('Assertion not found');
     });
   });
 });

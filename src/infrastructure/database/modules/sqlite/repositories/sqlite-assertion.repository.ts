@@ -15,6 +15,7 @@ import { SqliteConnectionManager } from '../connection/sqlite-connection.manager
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Correctly placed import
+import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteAssertionRepository
