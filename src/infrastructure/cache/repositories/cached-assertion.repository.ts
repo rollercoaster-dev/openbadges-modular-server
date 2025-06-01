@@ -298,7 +298,14 @@ export class CachedAssertionRepository extends CacheRepositoryWrapper<Assertion,
 
         // Also invalidate badge class-related caches
         if ('badgeClassId' in result.assertion) {
-          this.cache.delete(`badgeClass:${(result.assertion as { badgeClassId?: Shared.IRI }).badgeClassId}`);
+          this.cache.delete(
+            `badgeClass:${(result.assertion as { badgeClassId?: Shared.IRI }).badgeClassId}`
+          );
+        }
+        // Invalidate recipient-related caches
+        const identity = result.assertion.recipient?.identity;
+        if (identity) {
+          this.cache.delete(`recipient:${identity}`);
         }
       }
     }
