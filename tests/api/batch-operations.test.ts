@@ -143,10 +143,10 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as any).mockResolvedValue(
+      (mockBadgeClassRepository.findById as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(
         mockBadgeClass
       );
-      (mockAssertionRepository.createBatch as any).mockResolvedValue([
+      (mockAssertionRepository.createBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
         { success: true, assertion: mockAssertions[0] },
         { success: true, assertion: mockAssertions[1] },
       ]);
@@ -213,11 +213,11 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as any)
+      (mockBadgeClassRepository.findById as unknown as { mockResolvedValueOnce: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } })
         .mockResolvedValueOnce(mockBadgeClass)
         .mockResolvedValueOnce(null); // Second badge class doesn't exist
 
-      (mockAssertionRepository.createBatch as any).mockResolvedValue([
+      (mockAssertionRepository.createBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
         { success: true, assertion: mockAssertion },
       ]);
 
@@ -287,7 +287,7 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository response
-      (mockAssertionRepository.findByIds as any).mockResolvedValue(
+      (mockAssertionRepository.findByIds as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(
         mockAssertions
       );
 
@@ -323,7 +323,7 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository response (second assertion is null)
-      (mockAssertionRepository.findByIds as any).mockResolvedValue([
+      (mockAssertionRepository.findByIds as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
         mockAssertion,
         null,
       ]);
@@ -379,7 +379,7 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
+      (mockAssertionRepository.updateStatusBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
         {
           id: 'assertion-1',
           success: true,
@@ -428,7 +428,7 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
+      (mockAssertionRepository.updateStatusBatch as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertion },
         {
           id: 'nonexistent-assertion',
