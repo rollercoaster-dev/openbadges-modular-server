@@ -22,6 +22,7 @@ import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
 import { VersionController } from './controllers/version.controller';
+import { JwksController } from './controllers/jwks.controller';
 import { BadgeVersion } from '../utils/version/badge-version';
 import { openApiConfig } from './openapi';
 import { HealthCheckService } from '../utils/monitoring/health-check.service';
@@ -547,6 +548,7 @@ function createVersionedRouter(
  * @param issuerController The issuer controller
  * @param badgeClassController The badge class controller
  * @param assertionController The assertion controller
+ * @param jwksController The JWKS controller
  * @param backpackController The backpack controller
  * @param userController The user controller
  * @param authController The auth controller
@@ -556,6 +558,7 @@ export async function createApiRouter(
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
+  jwksController: JwksController,
   backpackController?: BackpackController,
   userController?: UserController,
   authController?: AuthController
@@ -639,6 +642,21 @@ export async function createApiRouter(
     const versionController = new VersionController();
     const versionInfo = versionController.getVersion();
     return c.json(versionInfo);
+  });
+
+  // Add JWKS endpoint (JSON Web Key Set) - RFC 7517
+  router.get('/.well-known/jwks.json', async (c) => {
+    try {
+      const result = await jwksController.getJwks();
+
+      // Set appropriate headers for JWKS
+      c.header('Content-Type', 'application/json');
+      c.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+
+      return c.json(result.body, result.status as 200 | 500);
+    } catch (error) {
+      return sendApiError(c, error, { endpoint: 'GET /.well-known/jwks.json' });
+    }
   });
 
   // Validation middleware is applied per route

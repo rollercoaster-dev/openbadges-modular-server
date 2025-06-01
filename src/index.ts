@@ -13,6 +13,7 @@ import { createSecurityMiddleware } from './utils/security/security.middleware';
 import { IssuerController } from './api/controllers/issuer.controller';
 import { BadgeClassController } from './api/controllers/badgeClass.controller';
 import { AssertionController } from './api/controllers/assertion.controller';
+import { JwksController } from './api/controllers/jwks.controller';
 import { DatabaseFactory } from './infrastructure/database/database.factory';
 import { ShutdownService } from './utils/shutdown/shutdown.service';
 import { BackpackController } from './domains/backpack/backpack.controller';
@@ -143,16 +144,18 @@ export async function setupApp(): Promise<Hono> {
     // Initialize user service
     const userService = new UserService(userRepository);
 
-    // Create backpack, user, and auth controllers
+    // Create backpack, user, auth, and JWKS controllers
     const backpackController = new BackpackController(backpackService);
     const userController = new UserController(userService);
     const authController = new AuthController(userService);
+    const jwksController = new JwksController();
 
     // Create API router with controllers
     const apiRouter = await createApiRouter(
       issuerController,
       badgeClassController,
       assertionController,
+      jwksController,
       backpackController,
       userController,
       authController
