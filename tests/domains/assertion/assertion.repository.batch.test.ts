@@ -5,6 +5,8 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Assertion } from '../../../src/domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../../src/domains/assertion/assertion.repository';
+import { toIRI } from '../../../src/utils/types/iri-utils';
+import { Shared } from 'openbadges-types';
 
 // Mock implementation of AssertionRepository for testing
 class MockAssertionRepository implements Partial<AssertionRepository> {
@@ -61,20 +63,20 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
 
   async updateStatusBatch(
     updates: Array<{
-      id: string;
+      id: Shared.IRI;
       status: 'revoked' | 'suspended' | 'active';
       reason?: string;
     }>
   ): Promise<
     Array<{
-      id: string;
+      id: Shared.IRI;
       success: boolean;
       assertion?: Assertion;
       error?: string;
     }>
   > {
     const results: Array<{
-      id: string;
+      id: Shared.IRI;
       success: boolean;
       assertion?: Assertion;
       error?: string;
@@ -333,7 +335,7 @@ describe('Assertion Repository Batch Operations', () => {
 
     it('should handle updates for non-existent assertions', async () => {
       // Arrange
-      const updates = [{ id: 'non-existent', status: 'revoked' as const }];
+      const updates = [{ id: toIRI('non-existent'), status: 'revoked' as const }];
 
       // Act
       const results = await repository.updateStatusBatch(updates);

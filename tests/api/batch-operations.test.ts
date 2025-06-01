@@ -4,6 +4,8 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { mock } from 'bun:test';
+import { toIRI } from '../../src/utils/types/iri-utils';
+import { toDateTime } from '../../src/utils/types/type-utils';
 
 // Type definitions for test data
 type TestRecipient = {
@@ -69,13 +71,13 @@ describe('Batch Operations Unit Tests', () => {
     assertionController.getAssertionById = mock(async () => ({
       '@context': 'https://www.w3.org/2018/credentials/v1',
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
-      id: 'test-id',
-      issuer: 'test-issuer',
-      issuanceDate: '2023-01-01T00:00:00Z',
+      id: toIRI('test-id'),
+      issuer: toIRI('test-issuer'),
+      issuanceDate: toDateTime('2023-01-01T00:00:00Z'),
       credentialSubject: {
-        id: 'test-recipient',
+        id: toIRI('test-recipient'),
         achievement: {
-          id: 'test-badge-class',
+          id: toIRI('test-badge-class'),
           type: 'Achievement',
           name: 'Test Badge',
         },
@@ -114,9 +116,9 @@ describe('Batch Operations Unit Tests', () => {
       const mockBadgeClass = BadgeClass.create({
         name: 'Test Badge',
         description: 'Test Description',
-        image: 'test-image.png',
+        image: toIRI('test-image.png'),
         criteria: { narrative: 'Test criteria' },
-        issuer: 'test-issuer',
+        issuer: toIRI('test-issuer'),
       });
 
       const mockAssertions = [
@@ -126,8 +128,8 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-1' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-1') }],
         }),
         Assertion.create({
           recipient: {
@@ -135,16 +137,16 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-2' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-2') }],
         }),
       ];
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as unknown).mockResolvedValue(
+      (mockBadgeClassRepository.findById as any).mockResolvedValue(
         mockBadgeClass
       );
-      (mockAssertionRepository.createBatch as unknown).mockResolvedValue([
+      (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertions[0] },
         { success: true, assertion: mockAssertions[1] },
       ]);
@@ -195,9 +197,9 @@ describe('Batch Operations Unit Tests', () => {
       const mockBadgeClass = BadgeClass.create({
         name: 'Test Badge',
         description: 'Test Description',
-        image: 'test-image.png',
+        image: toIRI('test-image.png'),
         criteria: { narrative: 'Test criteria' },
-        issuer: 'test-issuer',
+        issuer: toIRI('test-issuer'),
       });
 
       const mockAssertion = Assertion.create({
@@ -206,16 +208,16 @@ describe('Batch Operations Unit Tests', () => {
           type: 'email',
           hashed: false,
         },
-        badgeClass: 'badge-class-1',
-        evidence: [{ id: 'evidence-1' }],
+        badgeClass: toIRI('badge-class-1'),
+        evidence: [{ id: toIRI('evidence-1') }],
       });
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as unknown)
+      (mockBadgeClassRepository.findById as any)
         .mockResolvedValueOnce(mockBadgeClass)
         .mockResolvedValueOnce(null); // Second badge class doesn't exist
 
-      (mockAssertionRepository.createBatch as unknown).mockResolvedValue([
+      (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertion },
       ]);
 
@@ -270,8 +272,8 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-1' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-1') }],
         }),
         Assertion.create({
           recipient: {
@@ -279,13 +281,13 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-2' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-2') }],
         }),
       ];
 
       // Mock repository response
-      (mockAssertionRepository.findByIds as unknown).mockResolvedValue(
+      (mockAssertionRepository.findByIds as any).mockResolvedValue(
         mockAssertions
       );
 
@@ -316,12 +318,12 @@ describe('Batch Operations Unit Tests', () => {
           type: 'email',
           hashed: false,
         },
-        badgeClass: 'badge-class-1',
-        evidence: [{ id: 'evidence-1' }],
+        badgeClass: toIRI('badge-class-1'),
+        evidence: [{ id: toIRI('evidence-1') }],
       });
 
       // Mock repository response (second assertion is null)
-      (mockAssertionRepository.findByIds as unknown).mockResolvedValue([
+      (mockAssertionRepository.findByIds as any).mockResolvedValue([
         mockAssertion,
         null,
       ]);
@@ -359,8 +361,8 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-1' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-1') }],
           revoked: true,
           revocationReason: 'Test revocation',
         }),
@@ -370,14 +372,14 @@ describe('Batch Operations Unit Tests', () => {
             type: 'email',
             hashed: false,
           },
-          badgeClass: 'badge-class-1',
-          evidence: [{ id: 'evidence-2' }],
+          badgeClass: toIRI('badge-class-1'),
+          evidence: [{ id: toIRI('evidence-2') }],
           revoked: false,
         }),
       ];
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as unknown).mockResolvedValue([
+      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
         {
           id: 'assertion-1',
           success: true,
@@ -420,13 +422,13 @@ describe('Batch Operations Unit Tests', () => {
           type: 'email',
           hashed: false,
         },
-        badgeClass: 'badge-class-1',
-        evidence: [{ id: 'evidence-1' }],
+        badgeClass: toIRI('badge-class-1'),
+        evidence: [{ id: toIRI('evidence-1') }],
         revoked: true,
       });
 
       // Mock repository response
-      (mockAssertionRepository.updateStatusBatch as unknown).mockResolvedValue([
+      (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertion },
         {
           id: 'nonexistent-assertion',
