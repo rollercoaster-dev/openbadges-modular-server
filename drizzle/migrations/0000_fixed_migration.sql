@@ -119,6 +119,7 @@ CREATE INDEX IF NOT EXISTS badge_class_created_at_idx ON badge_classes (created_
 CREATE TABLE IF NOT EXISTS assertions (
   id TEXT PRIMARY KEY NOT NULL,
   badge_class_id TEXT NOT NULL,
+  issuer_id TEXT,
   recipient TEXT NOT NULL,
   issued_on INTEGER NOT NULL,
   expires INTEGER,
@@ -129,11 +130,13 @@ CREATE TABLE IF NOT EXISTS assertions (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   additional_fields TEXT,
-  FOREIGN KEY (badge_class_id) REFERENCES badge_classes(id) ON DELETE CASCADE
+  FOREIGN KEY (badge_class_id) REFERENCES badge_classes(id) ON DELETE CASCADE,
+  FOREIGN KEY (issuer_id) REFERENCES issuers(id) ON DELETE CASCADE
 );
 
 -- Create indexes for assertions table
 CREATE INDEX IF NOT EXISTS assertion_badge_class_idx ON assertions (badge_class_id);
+CREATE INDEX IF NOT EXISTS assertion_issuer_idx ON assertions (issuer_id);
 CREATE INDEX IF NOT EXISTS assertion_issued_on_idx ON assertions (issued_on);
 CREATE INDEX IF NOT EXISTS assertion_revoked_idx ON assertions (revoked);
 CREATE INDEX IF NOT EXISTS assertion_expires_idx ON assertions (expires);

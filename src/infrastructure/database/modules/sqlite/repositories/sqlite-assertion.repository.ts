@@ -16,6 +16,7 @@ import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Correctly placed import
 import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteAssertionRepository
   extends BaseSqliteRepository
@@ -101,10 +102,9 @@ export class SqliteAssertionRepository
     const result = await this.executeSingleQuery(
       context,
       async (db) => {
-        return db
-          .select()
-          .from(assertions)
-          .where(eq(assertions.id, id as string));
+        // Convert URN to UUID for SQLite query
+        const dbId = convertUuid(id as string, 'sqlite', 'to');
+        return db.select().from(assertions).where(eq(assertions.id, dbId));
       },
       [id]
     );
@@ -124,10 +124,16 @@ export class SqliteAssertionRepository
     const result = await this.executeQuery(
       context,
       async (db) => {
+        // Convert URN to UUID for SQLite query
+        const dbBadgeClassId = convertUuid(
+          badgeClassId as string,
+          'sqlite',
+          'to'
+        );
         return db
           .select()
           .from(assertions)
-          .where(eq(assertions.badgeClassId, badgeClassId as string));
+          .where(eq(assertions.badgeClassId, dbBadgeClassId));
       },
       [badgeClassId]
     );
@@ -171,10 +177,12 @@ export class SqliteAssertionRepository
 
     return this.executeTransaction(context, async (tx) => {
       // Perform SELECT and UPDATE within the same transaction to prevent TOCTOU race condition
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id as string, 'sqlite', 'to');
       const existing = await tx
         .select()
         .from(assertions)
-        .where(eq(assertions.id, id as string))
+        .where(eq(assertions.id, dbId))
         .limit(1);
 
       if (existing.length === 0) {
@@ -198,7 +206,7 @@ export class SqliteAssertionRepository
       const updated = await tx
         .update(assertions)
         .set(updatable)
-        .where(eq(assertions.id, id as string))
+        .where(eq(assertions.id, dbId))
         .returning();
 
       return this.mapper.toDomain(updated[0]);
@@ -209,10 +217,9 @@ export class SqliteAssertionRepository
     const context = this.createOperationContext('DELETE Assertion', id);
 
     return this.executeDelete(context, async (db) => {
-      return db
-        .delete(assertions)
-        .where(eq(assertions.id, id as string))
-        .returning();
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id as string, 'sqlite', 'to');
+      return db.delete(assertions).where(eq(assertions.id, dbId)).returning();
     });
   }
 

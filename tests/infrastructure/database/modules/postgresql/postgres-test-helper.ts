@@ -420,6 +420,7 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
       CREATE TABLE IF NOT EXISTS assertions (
         id UUID PRIMARY KEY,
         badge_class_id UUID NOT NULL REFERENCES badge_classes(id) ON DELETE CASCADE,
+        issuer_id UUID REFERENCES issuers(id) ON DELETE CASCADE,
         recipient JSONB NOT NULL,
         issued_on TIMESTAMP WITH TIME ZONE NOT NULL,
         expires TIMESTAMP WITH TIME ZONE,

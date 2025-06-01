@@ -14,6 +14,7 @@ import { Shared } from 'openbadges-types';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteIssuerRepository
   extends BaseSqliteRepository
@@ -123,10 +124,9 @@ export class SqliteIssuerRepository
       context,
       async () => {
         const db = this.getDatabase();
-        return db
-          .select()
-          .from(issuers)
-          .where(eq(issuers.id, id as string));
+        // Convert URN to UUID for SQLite query
+        const dbId = convertUuid(id as string, 'sqlite', 'to');
+        return db.select().from(issuers).where(eq(issuers.id, dbId));
       },
       [id] // Forward ID parameter to logger
     );
@@ -144,10 +144,12 @@ export class SqliteIssuerRepository
 
     return this.executeTransaction(context, async (tx) => {
       // First, get the existing issuer within the transaction to avoid race conditions
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id as string, 'sqlite', 'to');
       const existingRecords = await tx
         .select()
         .from(issuers)
-        .where(eq(issuers.id, id as string));
+        .where(eq(issuers.id, dbId));
 
       if (existingRecords.length === 0) {
         return null; // Entity doesn't exist
@@ -176,7 +178,7 @@ export class SqliteIssuerRepository
       const updateResult = await tx
         .update(issuers)
         .set(updatable)
-        .where(eq(issuers.id, id as string))
+        .where(eq(issuers.id, dbId))
         .returning();
 
       if (!updateResult[0]) {
@@ -194,10 +196,9 @@ export class SqliteIssuerRepository
 
     return this.executeDelete(context, async () => {
       const db = this.getDatabase();
-      return db
-        .delete(issuers)
-        .where(eq(issuers.id, id as string))
-        .returning();
+      // Convert URN to UUID for SQLite query
+      const dbId = convertUuid(id as string, 'sqlite', 'to');
+      return db.delete(issuers).where(eq(issuers.id, dbId)).returning();
     });
   }
 }

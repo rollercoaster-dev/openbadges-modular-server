@@ -98,6 +98,7 @@ export interface VerifiableCredentialData {
       description: string | Shared.MultiLanguageString;
       image: Shared.IRI | string | Shared.OB3ImageObject;
       criteria: unknown;
+      issuer: Shared.IRI; // Add issuer field for OBv3 compliance
       alignments?: unknown[];
       tags?: string[];
       // Optional OBv3 Achievement properties

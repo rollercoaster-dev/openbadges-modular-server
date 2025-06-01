@@ -69,6 +69,8 @@ export class PostgresAssertionMapper {
       // Convert UUID to URN format for application use
       id: toIRI(convertUuid(record.id, 'postgresql', 'from')),
       badgeClass: toIRI(convertUuid(record.badgeClassId, 'postgresql', 'from')),
+      // Convert issuer_id to IRI if present
+      issuer: record.issuerId ? toIRI(convertUuid(record.issuerId, 'postgresql', 'from')) : undefined,
       // Ensure mapped JSON fields match entity type (object/array, not string/null)
       recipient:
         typeof domainRecipient === 'object' && domainRecipient !== null
@@ -145,6 +147,10 @@ export class PostgresAssertionMapper {
         'postgresql',
         'to'
       ),
+      // Include issuerId if present in entity
+      ...(entity.issuer && typeof entity.issuer === 'string' && {
+        issuerId: convertUuid(entity.issuer as string, 'postgresql', 'to'),
+      }),
       recipient: convertJson(entity.recipient, 'postgresql', 'to'),
       // Include issuedOn if provided, otherwise let DB handle it with defaultNow()
       ...(entity.issuedOn && { issuedOn: safeConvertToDate(entity.issuedOn) }),

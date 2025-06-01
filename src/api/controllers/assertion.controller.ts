@@ -206,6 +206,25 @@ export class AssertionController {
         );
       }
 
+      // Get issuer information from badge class for v3.0 compliance
+      let issuer: Issuer | null = null;
+      if (version === BadgeVersion.V3) {
+        // We already have the badge class from validation above
+        // Handle both string and object issuer IDs
+        const issuerId =
+          typeof badgeClass.issuer === 'string'
+            ? badgeClass.issuer
+            : (badgeClass.issuer as OB3.Issuer).id;
+        issuer = await this.issuerRepository.findById(issuerId);
+
+        if (!issuer) {
+          throw new BadRequestError(`Referenced issuer '${issuerId}' does not exist`);
+        }
+
+        // Populate issuer field in assertion for v3.0 compliance
+        mappedData.issuer = issuer.id;
+      }
+
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
 
@@ -223,13 +242,6 @@ export class AssertionController {
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {
-        // We already have the badge class from validation above
-        // Handle both string and object issuer IDs
-        const issuerId =
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer as OB3.Issuer).id;
-        const issuer = await this.issuerRepository.findById(issuerId);
         return convertAssertionToJsonLd(
           createdAssertion,
           version,
@@ -302,12 +314,21 @@ export class AssertionController {
       const badgeClass = await this.badgeClassRepository.findById(
         assertion.badgeClass
       );
+
+      // Get issuer from assertion.issuer field (preferred) or from badge class
+      let issuer: Issuer | null = null;
+      if (assertion.issuer && typeof assertion.issuer === 'string') {
+        // Use issuer from assertion entity (v3.0 compliant)
+        issuer = await this.issuerRepository.findById(assertion.issuer);
+      } else if (badgeClass?.issuer) {
+        // Fallback to issuer from badge class
+        const issuerIri = typeof badgeClass.issuer === 'string'
+          ? badgeClass.issuer
+          : (badgeClass.issuer.id as Shared.IRI);
+        issuer = await this.issuerRepository.findById(issuerIri);
+      }
+
       if (badgeClass) {
-        const issuerIri =
-          typeof badgeClass.issuer === 'string'
-            ? badgeClass.issuer
-            : (badgeClass.issuer.id as Shared.IRI);
-        const issuer = await this.issuerRepository.findById(issuerIri);
         // Pass entities directly
         return convertAssertionToJsonLd(assertion, version, badgeClass, issuer);
       }
@@ -766,6 +787,7 @@ export class AssertionController {
           batchIndex++;
 
           if (batchResult.success && batchResult.assertion) {
+<<<<<<< HEAD
             successfulAssertionIds.push(batchResult.assertion.id);
             successfulIndices.push(i);
           }
@@ -822,8 +844,7 @@ export class AssertionController {
                   code: 'CONVERSION_ERROR',
                   message: 'Failed to convert assertion to response format',
                   details: { batchId, assertionId: batchResult.assertion.id }
-                },
-              });
+                });
             }
           } else {
             results.push({

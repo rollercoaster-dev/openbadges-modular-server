@@ -11,6 +11,7 @@ import { Assertion } from '@domains/assertion/assertion.entity';
 import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
 import { PostgresAssertionMapper } from '../mappers/postgres-assertion.mapper';
+import { InferSelectModel } from 'drizzle-orm';
 import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
