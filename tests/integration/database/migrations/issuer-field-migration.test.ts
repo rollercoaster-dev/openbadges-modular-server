@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/bun-sqlite';
 import postgres from 'postgres';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import { sql } from 'drizzle-orm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -26,7 +26,7 @@ describe('Issuer Field Migration Integration Tests', () => {
       await db.execute(sql`DROP TABLE IF EXISTS assertions CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS badge_classes CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS issuers CASCADE`);
-      
+
       // Create base tables for testing
       await db.execute(sql`
         CREATE TABLE issuers (
@@ -68,22 +68,25 @@ describe('Issuer Field Migration Integration Tests', () => {
 
     it('should add issuer_id column to assertions table', async () => {
       if (!process.env.DATABASE_URL) {
-        console.log('Skipping PostgreSQL test - DATABASE_URL not set');
+        // Skip PostgreSQL test - DATABASE_URL not set
         return;
       }
 
       // Read and execute the first migration
       const migration1 = readFileSync(
-        join(process.cwd(), 'drizzle/pg-migrations/0001_add_issuer_id_to_assertions.sql'),
+        join(
+          process.cwd(),
+          'drizzle/pg-migrations/0001_add_issuer_id_to_assertions.sql'
+        ),
         'utf-8'
       );
-      
+
       await db.execute(sql.raw(migration1));
 
       // Check that the column was added
       const result = await db.execute(sql`
         SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns 
+        FROM information_schema.columns
         WHERE table_name = 'assertions' AND column_name = 'issuer_id'
       `);
 
@@ -95,43 +98,49 @@ describe('Issuer Field Migration Integration Tests', () => {
 
     it('should populate issuer_id from badge_classes', async () => {
       if (!process.env.DATABASE_URL) {
-        console.log('Skipping PostgreSQL test - DATABASE_URL not set');
+        // Skip PostgreSQL test - DATABASE_URL not set
         return;
       }
 
       // Insert test data
       await db.execute(sql`
-        INSERT INTO issuers (id, name, url) 
+        INSERT INTO issuers (id, name, url)
         VALUES ('11111111-1111-1111-1111-111111111111', 'Test Issuer', 'https://example.com')
       `);
 
       await db.execute(sql`
-        INSERT INTO badge_classes (id, issuer_id, name) 
+        INSERT INTO badge_classes (id, issuer_id, name)
         VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Test Badge')
       `);
 
       await db.execute(sql`
-        INSERT INTO assertions (id, badge_class_id, recipient) 
+        INSERT INTO assertions (id, badge_class_id, recipient)
         VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', '{"type": "email", "identity": "test@example.com"}')
       `);
 
       // Execute both migrations
       const migration1 = readFileSync(
-        join(process.cwd(), 'drizzle/pg-migrations/0001_add_issuer_id_to_assertions.sql'),
+        join(
+          process.cwd(),
+          'drizzle/pg-migrations/0001_add_issuer_id_to_assertions.sql'
+        ),
         'utf-8'
       );
       const migration2 = readFileSync(
-        join(process.cwd(), 'drizzle/pg-migrations/0002_populate_assertion_issuer_ids.sql'),
+        join(
+          process.cwd(),
+          'drizzle/pg-migrations/0002_populate_assertion_issuer_ids.sql'
+        ),
         'utf-8'
       );
-      
+
       await db.execute(sql.raw(migration1));
       await db.execute(sql.raw(migration2));
 
       // Check that issuer_id was populated
       const result = await db.execute(sql`
-        SELECT issuer_id 
-        FROM assertions 
+        SELECT issuer_id
+        FROM assertions
         WHERE id = '33333333-3333-3333-3333-333333333333'
       `);
 
@@ -141,16 +150,16 @@ describe('Issuer Field Migration Integration Tests', () => {
   });
 
   describe('SQLite Migration', () => {
-    let db: ReturnType<typeof drizzleSqlite>;
-    let sqlite: Database.Database;
+    let _db: ReturnType<typeof drizzleSqlite>;
+    let sqlite: Database;
 
     beforeEach(() => {
       // Create in-memory SQLite database for testing
       sqlite = new Database(':memory:');
-      db = drizzleSqlite(sqlite);
+      _db = drizzleSqlite(sqlite);
 
       // Create base tables for testing
-      sqlite.exec(`
+      sqlite.run(`
         CREATE TABLE issuers (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -160,7 +169,7 @@ describe('Issuer Field Migration Integration Tests', () => {
         )
       `);
 
-      sqlite.exec(`
+      sqlite.run(`
         CREATE TABLE badge_classes (
           id TEXT PRIMARY KEY,
           issuer_id TEXT NOT NULL REFERENCES issuers(id) ON DELETE CASCADE,
@@ -170,7 +179,7 @@ describe('Issuer Field Migration Integration Tests', () => {
         )
       `);
 
-      sqlite.exec(`
+      sqlite.run(`
         CREATE TABLE assertions (
           id TEXT PRIMARY KEY,
           badge_class_id TEXT NOT NULL REFERENCES badge_classes(id) ON DELETE CASCADE,
@@ -189,18 +198,25 @@ describe('Issuer Field Migration Integration Tests', () => {
     it('should add issuer_id column to assertions table', () => {
       // Read and execute the first migration
       const migration1 = readFileSync(
-        join(process.cwd(), 'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'),
+        join(
+          process.cwd(),
+          'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'
+        ),
         'utf-8'
       );
-      
-      sqlite.exec(migration1);
+
+      sqlite.run(migration1);
 
       // Check that the column was added
-      const result = sqlite.prepare(`
+      const result = sqlite
+        .prepare(
+          `
         PRAGMA table_info(assertions)
-      `).all() as Array<{ name: string; type: string; notnull: number }>;
+      `
+        )
+        .all() as Array<{ name: string; type: string; notnull: number }>;
 
-      const issuerIdColumn = result.find(col => col.name === 'issuer_id');
+      const issuerIdColumn = result.find((col) => col.name === 'issuer_id');
       expect(issuerIdColumn).toBeDefined();
       expect(issuerIdColumn?.type).toBe('TEXT');
       expect(issuerIdColumn?.notnull).toBe(0); // nullable
@@ -209,57 +225,86 @@ describe('Issuer Field Migration Integration Tests', () => {
     it('should create index on issuer_id column', () => {
       // Execute the first migration
       const migration1 = readFileSync(
-        join(process.cwd(), 'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'),
+        join(
+          process.cwd(),
+          'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'
+        ),
         'utf-8'
       );
-      
-      sqlite.exec(migration1);
+
+      sqlite.run(migration1);
 
       // Check that the index exists
-      const result = sqlite.prepare(`
-        SELECT name FROM sqlite_master 
+      const result = sqlite
+        .prepare(
+          `
+        SELECT name FROM sqlite_master
         WHERE type = 'index' AND name = 'assertion_issuer_idx'
-      `).all();
+      `
+        )
+        .all();
 
       expect(result.length).toBe(1);
     });
 
     it('should populate issuer_id from badge_classes', () => {
       // Insert test data
-      sqlite.prepare(`
-        INSERT INTO issuers (id, name, url) 
+      sqlite
+        .prepare(
+          `
+        INSERT INTO issuers (id, name, url)
         VALUES ('11111111-1111-1111-1111-111111111111', 'Test Issuer', 'https://example.com')
-      `).run();
+      `
+        )
+        .run();
 
-      sqlite.prepare(`
-        INSERT INTO badge_classes (id, issuer_id, name) 
+      sqlite
+        .prepare(
+          `
+        INSERT INTO badge_classes (id, issuer_id, name)
         VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Test Badge')
-      `).run();
+      `
+        )
+        .run();
 
-      sqlite.prepare(`
-        INSERT INTO assertions (id, badge_class_id, recipient) 
+      sqlite
+        .prepare(
+          `
+        INSERT INTO assertions (id, badge_class_id, recipient)
         VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', '{"type": "email", "identity": "test@example.com"}')
-      `).run();
+      `
+        )
+        .run();
 
       // Execute both migrations
       const migration1 = readFileSync(
-        join(process.cwd(), 'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'),
+        join(
+          process.cwd(),
+          'drizzle/migrations/0001_add_issuer_id_to_assertions.sql'
+        ),
         'utf-8'
       );
       const migration2 = readFileSync(
-        join(process.cwd(), 'drizzle/migrations/0002_populate_assertion_issuer_ids.sql'),
+        join(
+          process.cwd(),
+          'drizzle/migrations/0002_populate_assertion_issuer_ids.sql'
+        ),
         'utf-8'
       );
-      
-      sqlite.exec(migration1);
-      sqlite.exec(migration2);
+
+      sqlite.run(migration1);
+      sqlite.run(migration2);
 
       // Check that issuer_id was populated
-      const result = sqlite.prepare(`
-        SELECT issuer_id 
-        FROM assertions 
+      const result = sqlite
+        .prepare(
+          `
+        SELECT issuer_id
+        FROM assertions
         WHERE id = '33333333-3333-3333-3333-333333333333'
-      `).get() as { issuer_id: string };
+      `
+        )
+        .get() as { issuer_id: string };
 
       expect(result.issuer_id).toBe('11111111-1111-1111-1111-111111111111');
     });

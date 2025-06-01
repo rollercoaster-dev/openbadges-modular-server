@@ -16,6 +16,7 @@ CREATE TABLE "api_keys" (
 CREATE TABLE "assertions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"badge_class_id" uuid NOT NULL,
+	"issuer_id" uuid,
 	"recipient" jsonb NOT NULL,
 	"issued_on" timestamp DEFAULT now() NOT NULL,
 	"expires" timestamp,
@@ -126,6 +127,7 @@ CREATE TABLE "users" (
 --> statement-breakpoint
 ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "assertions" ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk" FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assertions" ADD CONSTRAINT "assertions_issuer_id_issuers_id_fk" FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "badge_classes" ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk" FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "platform_users" ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk" FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_assertions" ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -136,6 +138,7 @@ CREATE INDEX "api_key_key_idx" ON "api_keys" USING btree ("key");--> statement-b
 CREATE INDEX "api_key_user_id_idx" ON "api_keys" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "api_key_revoked_idx" ON "api_keys" USING btree ("revoked");--> statement-breakpoint
 CREATE INDEX "assertion_badge_class_idx" ON "assertions" USING btree ("badge_class_id");--> statement-breakpoint
+CREATE INDEX "assertion_issuer_idx" ON "assertions" USING btree ("issuer_id");--> statement-breakpoint
 CREATE INDEX "assertion_issued_on_idx" ON "assertions" USING btree ("issued_on");--> statement-breakpoint
 CREATE INDEX "assertion_revoked_idx" ON "assertions" USING btree ("revoked");--> statement-breakpoint
 CREATE INDEX "assertion_expires_idx" ON "assertions" USING btree ("expires");--> statement-breakpoint

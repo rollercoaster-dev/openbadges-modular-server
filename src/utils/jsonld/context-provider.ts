@@ -5,25 +5,32 @@
  * according to the Open Badges 3.0 specification.
  */
 
-
 import { Shared } from 'openbadges-types';
-import { IssuerData, BadgeClassData, AssertionData, VerifiableCredentialData } from '../types/badge-data.types';
+import {
+  IssuerData,
+  BadgeClassData,
+  AssertionData,
+  VerifiableCredentialData,
+} from '../types/badge-data.types';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
  * The Open Badges 3.0 JSON-LD context
  */
-export const OPEN_BADGES_CONTEXT = 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json';
+export const OPEN_BADGES_CONTEXT =
+  'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json';
 
 /**
  * Adds JSON-LD context to an object
  * @param obj The object to add context to
  * @returns The object with context added
  */
-export function addContext<T extends Record<string, unknown>>(obj: T): T & { '@context': string } {
+export function addContext<T extends Record<string, unknown>>(
+  obj: T
+): T & { '@context': string } {
   return {
     '@context': OPEN_BADGES_CONTEXT,
-    ...obj
+    ...obj,
   };
 }
 
@@ -32,7 +39,9 @@ export function addContext<T extends Record<string, unknown>>(obj: T): T & { '@c
  * @param issuer The issuer object
  * @returns A JSON-LD representation of the issuer
  */
-export function createIssuerJsonLd(issuer: IssuerData): IssuerData & { '@context': string; type: string } {
+export function createIssuerJsonLd(
+  issuer: IssuerData
+): IssuerData & { '@context': string; type: string } {
   return addContext({
     type: 'Profile',
     id: issuer.id,
@@ -41,7 +50,7 @@ export function createIssuerJsonLd(issuer: IssuerData): IssuerData & { '@context
     ...(issuer.email && { email: issuer.email }),
     ...(issuer.description && { description: issuer.description }),
     ...(issuer.image && { image: issuer.image }),
-    ...(issuer.publicKey && { publicKey: issuer.publicKey })
+    ...(issuer.publicKey && { publicKey: issuer.publicKey }),
   });
 }
 
@@ -50,7 +59,9 @@ export function createIssuerJsonLd(issuer: IssuerData): IssuerData & { '@context
  * @param badgeClass The badge class object
  * @returns A JSON-LD representation of the badge class
  */
-export function createBadgeClassJsonLd(badgeClass: BadgeClassData): BadgeClassData & { '@context': string; type: string } {
+export function createBadgeClassJsonLd(
+  badgeClass: BadgeClassData
+): BadgeClassData & { '@context': string; type: string } {
   return addContext({
     type: 'BadgeClass',
     id: badgeClass.id,
@@ -60,7 +71,7 @@ export function createBadgeClassJsonLd(badgeClass: BadgeClassData): BadgeClassDa
     image: badgeClass.image,
     criteria: badgeClass.criteria,
     ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
-    ...(badgeClass.tags && { tags: badgeClass.tags })
+    ...(badgeClass.tags && { tags: badgeClass.tags }),
   });
 }
 
@@ -69,7 +80,9 @@ export function createBadgeClassJsonLd(badgeClass: BadgeClassData): BadgeClassDa
  * @param assertion The assertion object
  * @returns A JSON-LD representation of the assertion
  */
-export function createAssertionJsonLd(assertion: AssertionData): AssertionData & { '@context': string; type: string } {
+export function createAssertionJsonLd(
+  assertion: AssertionData
+): AssertionData & { '@context': string; type: string } {
   return addContext({
     type: 'Assertion',
     id: assertion.id,
@@ -80,7 +93,9 @@ export function createAssertionJsonLd(assertion: AssertionData): AssertionData &
     ...(assertion.evidence && { evidence: assertion.evidence }),
     ...(assertion.verification && { verification: assertion.verification }),
     ...(assertion.revoked !== undefined && { revoked: assertion.revoked }),
-    ...(assertion.revocationReason && { revocationReason: assertion.revocationReason })
+    ...(assertion.revocationReason && {
+      revocationReason: assertion.revocationReason,
+    }),
   });
 }
 
@@ -99,7 +114,7 @@ export function createVerifiableCredential(
   return {
     '@context': [
       VC_V2_CONTEXT_URL,
-      'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'
+      'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json',
     ],
     id: assertion.id,
     type: ['VerifiableCredential', 'OpenBadgeCredential'],
@@ -110,7 +125,7 @@ export function createVerifiableCredential(
       url: issuer.url,
       ...(issuer.email && { email: issuer.email }),
       ...(issuer.description && { description: issuer.description }),
-      ...(issuer.image && { image: issuer.image })
+      ...(issuer.image && { image: issuer.image }),
     },
     issuanceDate: assertion.issuedOn,
     ...(assertion.expires && { expirationDate: assertion.expires }),
@@ -124,9 +139,10 @@ export function createVerifiableCredential(
         description: badgeClass.description,
         image: badgeClass.image,
         criteria: badgeClass.criteria,
+        issuer: issuer.id, // Add issuer field for OBv3 compliance
         ...(badgeClass.alignment && { alignments: badgeClass.alignment }),
-        ...(badgeClass.tags && { tags: badgeClass.tags })
-      }
+        ...(badgeClass.tags && { tags: badgeClass.tags }),
+      },
     },
     ...(assertion.evidence && { evidence: assertion.evidence }),
     ...(assertion.verification && {
@@ -135,8 +151,8 @@ export function createVerifiableCredential(
         created: assertion.verification.created,
         verificationMethod: assertion.verification.creator,
         proofPurpose: 'assertionMethod',
-        proofValue: assertion.verification.signatureValue
-      }
+        proofValue: assertion.verification.signatureValue,
+      },
     }),
     ...(assertion.revoked !== undefined && {
       credentialStatus: {
@@ -144,8 +160,8 @@ export function createVerifiableCredential(
         type: 'StatusList2021Entry',
         statusPurpose: 'revocation',
         statusListIndex: '0',
-        statusListCredential: `${assertion.id}#list` as Shared.IRI
-      }
-    })
+        statusListCredential: `${assertion.id}#list` as Shared.IRI,
+      },
+    }),
   };
 }

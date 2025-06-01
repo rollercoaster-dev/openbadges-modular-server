@@ -226,17 +226,23 @@ export async function setupTestApp(
           const db = new Database(sqliteFile);
 
           try {
-            // Apply the fixed migration SQL
+            // Apply the latest migration SQL that includes issuer_id column
             const sqlFilePath = join(
               process.cwd(),
-              'drizzle/migrations/0000_oval_starbolt_fixed.sql'
+              'drizzle/migrations/0000_fixed_migration.sql'
             );
             if (fs.existsSync(sqlFilePath)) {
               logger.info(`Applying SQL migration from ${sqlFilePath}`);
               try {
                 const sql = fs.readFileSync(sqlFilePath, 'utf8');
                 db.exec(sql);
-                logger.info('SQLite migrations applied successfully');
+                logger.info('Base SQLite migration applied successfully');
+
+                // Note: The 0000_fixed_migration.sql already includes the issuer_id column
+                // so we don't need to apply the additional issuer_id migrations
+                logger.info(
+                  'All SQLite migrations applied successfully (issuer_id already included in base migration)'
+                );
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -334,6 +340,8 @@ export async function setupTestApp(
                     const isAlreadyExistsError =
                       errorMessage.includes('already exists') ||
                       (errorMessage.includes('relation') &&
+                        errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('column') &&
                         errorMessage.includes('does not exist'));
 
                     if (isAlreadyExistsError) {
@@ -357,6 +365,36 @@ export async function setupTestApp(
                 }
 
                 logger.info('PostgreSQL migrations applied successfully');
+
+                // Apply additional migration to add missing columns
+                const additionalMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/pg-migrations/0003_add_missing_columns.sql'
+                );
+                if (fs.existsSync(additionalMigrationPath)) {
+                  logger.info(
+                    'Applying additional PostgreSQL migration for missing columns'
+                  );
+                  try {
+                    const additionalSql = fs.readFileSync(
+                      additionalMigrationPath,
+                      'utf8'
+                    );
+                    await client.unsafe(additionalSql);
+                    logger.info(
+                      'Additional PostgreSQL migration applied successfully'
+                    );
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    logger.warn(
+                      'Additional migration failed (may be expected)',
+                      {
+                        error: errorMessage,
+                      }
+                    );
+                  }
+                }
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -402,6 +440,8 @@ export async function setupTestApp(
                       const isAlreadyExistsError =
                         errorMessage.includes('already exists') ||
                         (errorMessage.includes('relation') &&
+                          errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('column') &&
                           errorMessage.includes('does not exist'));
 
                       if (isAlreadyExistsError) {

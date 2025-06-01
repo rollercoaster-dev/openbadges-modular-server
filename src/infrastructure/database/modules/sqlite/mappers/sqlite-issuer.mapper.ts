@@ -9,6 +9,7 @@ import { Issuer } from '@domains/issuer/issuer.entity';
 import { issuers } from '../schema';
 import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 import { logger } from '@utils/logging/logger.service';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteIssuerMapper {
   /**
@@ -36,11 +37,8 @@ export class SqliteIssuerMapper {
         additionalFields = '{}', // Default to empty JSON string if null from DB
       } = record;
 
-      // Validate and convert ID
-      const idResult = SqliteTypeConverters.validateAndConvertIRI(id);
-      if (!idResult.success) {
-        throw new Error(`Invalid issuer ID: ${idResult.error}`);
-      }
+      // Convert ID from UUID to URN format for domain entity
+      const convertedId = convertUuid(id, 'sqlite', 'from');
 
       // Validate and convert URL
       const urlResult = SqliteTypeConverters.validateAndConvertIRI(url);
@@ -73,7 +71,7 @@ export class SqliteIssuerMapper {
 
       // Create and return the domain entity with timestamps preserved
       const baseData = {
-        id: idResult.data!,
+        id: convertedId,
         name,
         url: urlResult.data!,
         email: email || undefined,
@@ -228,7 +226,7 @@ export class SqliteIssuerMapper {
           : now;
 
       return {
-        id: id as string, // ID is already validated in the entity
+        id: convertUuid(id as string, 'sqlite', 'to') as string, // Convert URN to UUID for SQLite storage
         name: dbName,
         url: url as string,
         email: email || null,
