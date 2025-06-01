@@ -80,7 +80,7 @@ The implementation of these endpoints will follow the phased approach described 
 
 #### Achievements (v3.0 Compliant Naming)
 
-The following endpoints use the Open Badges 3.0 compliant naming convention where "BadgeClass" is referred to as "Achievement":
+The following endpoints use the Open Badges 3.0 compliant naming convention, where "BadgeClass" is referred to as "Achievement":
 
 - `POST /v3/achievements` - Create a new achievement
 - `GET /v3/achievements` - Get all achievements
@@ -91,7 +91,7 @@ The following endpoints use the Open Badges 3.0 compliant naming convention wher
 
 #### Credentials (v3.0 Compliant Naming)
 
-The following endpoints use the Open Badges 3.0 compliant naming convention where "Assertion" is referred to as "Credential":
+The following endpoints use the Open Badges 3.0 compliant naming convention, where "Assertion" is referred to as "Credential":
 
 - `POST /v3/credentials` - Create a new credential
 - `GET /v3/credentials` - Get all credentials
