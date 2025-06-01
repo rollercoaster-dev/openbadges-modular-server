@@ -9,6 +9,58 @@ import { generateKeyPair, signData, verifySignature, KeyType, detectKeyType, Cry
 import { logger } from '../utils/logging/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
+
+/**
+ * JSON Web Key (JWK) format as defined in RFC 7517
+ */
+export interface JsonWebKey {
+  kty: string; // Key Type (e.g., 'RSA', 'OKP')
+  use?: string; // Public Key Use (e.g., 'sig' for signature)
+  key_ops?: string[]; // Key Operations
+  alg?: string; // Algorithm
+  kid?: string; // Key ID
+  x5u?: string; // X.509 URL
+  x5c?: string[]; // X.509 Certificate Chain
+  x5t?: string; // X.509 Certificate SHA-1 Thumbprint
+  'x5t#S256'?: string; // X.509 Certificate SHA-256 Thumbprint
+
+  // RSA-specific parameters
+  n?: string; // Modulus
+  e?: string; // Exponent
+
+  // Ed25519-specific parameters (OKP - Octet Key Pair)
+  crv?: string; // Curve (e.g., 'Ed25519')
+  x?: string; // The public key
+}
+
+/**
+ * JSON Web Key Set (JWKS) format
+ */
+export interface JsonWebKeySet {
+  keys: JsonWebKey[];
+}
+
+/**
+ * Key status for rotation management
+ */
+export enum KeyStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  REVOKED = 'revoked'
+}
+
+/**
+ * Extended metadata for key management
+ */
+export interface KeyMetadata {
+  keyType: KeyType;
+  cryptosuite?: Cryptosuite;
+  created: string;
+  status: KeyStatus;
+  rotatedAt?: string;
+  expiresAt?: string;
+}
 
 // In-memory cache of key pairs
 interface KeyPair {
@@ -16,6 +68,8 @@ interface KeyPair {
   privateKey: string;
   keyType: KeyType;
   cryptosuite?: Cryptosuite;
+  status?: KeyStatus;
+  metadata?: KeyMetadata;
 }
 
 let keyPairs: Map<string, KeyPair> = new Map();
@@ -264,11 +318,14 @@ export class KeyService {
       // Save private key with restricted permissions
       await fs.promises.writeFile(privateKeyPath, keyPair.privateKey, { mode: 0o600 }); // Read/write by owner only
 
-      // Save metadata (key type and cryptosuite)
-      const metadata = {
+      // Save metadata (key type, cryptosuite, and status)
+      const metadata: KeyMetadata = {
         keyType: keyPair.keyType,
         cryptosuite: keyPair.cryptosuite,
-        created: new Date().toISOString()
+        created: keyPair.metadata?.created || new Date().toISOString(),
+        status: keyPair.status || KeyStatus.ACTIVE,
+        rotatedAt: keyPair.metadata?.rotatedAt,
+        expiresAt: keyPair.metadata?.expiresAt
       };
       await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
 
@@ -509,5 +566,188 @@ export class KeyService {
       logger.logError(`Failed to delete key pair with ID: ${id}`, error as Error);
       throw error;
     }
+  }
+
+  /**
+   * Rotates a key by marking it as inactive and generating a new active key
+   * @param keyId The ID of the key to rotate
+   * @param newKeyType The type of the new key (defaults to same as old key)
+   * @returns The new key pair
+   */
+  static async rotateKey(keyId: string, newKeyType?: KeyType): Promise<KeyPair> {
+    try {
+      const existingKeyPair = keyPairs.get(keyId);
+      if (!existingKeyPair) {
+        throw new Error(`Key with ID ${keyId} not found`);
+      }
+
+      // Mark the existing key as inactive
+      existingKeyPair.status = KeyStatus.INACTIVE;
+      existingKeyPair.metadata = {
+        ...existingKeyPair.metadata,
+        keyType: existingKeyPair.keyType,
+        cryptosuite: existingKeyPair.cryptosuite,
+        created: existingKeyPair.metadata?.created || new Date().toISOString(),
+        status: KeyStatus.INACTIVE,
+        rotatedAt: new Date().toISOString()
+      } as KeyMetadata;
+
+      // Save the updated metadata for the old key
+      await this.saveKeyPair(keyId, existingKeyPair);
+
+      // Generate a new key with the same ID (or create a new timestamped ID)
+      const rotatedKeyId = `${keyId}-${Date.now()}`;
+      const keyType = newKeyType || existingKeyPair.keyType;
+      const newKeyPair = await this.generateKeyPair(rotatedKeyId, keyType);
+
+      // If this was the default key, update the default to point to the new key
+      if (keyId === 'default') {
+        keyPairs.set('default', newKeyPair);
+        await this.saveKeyPair('default', newKeyPair);
+      }
+
+      logger.info(`Key rotated successfully`, {
+        oldKeyId: keyId,
+        newKeyId: rotatedKeyId,
+        keyType: keyType
+      });
+
+      return newKeyPair;
+    } catch (error) {
+      logger.logError(`Failed to rotate key ${keyId}`, error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sets the status of a key
+   * @param keyId The ID of the key
+   * @param status The new status
+   */
+  static async setKeyStatus(keyId: string, status: KeyStatus): Promise<void> {
+    try {
+      const keyPair = keyPairs.get(keyId);
+      if (!keyPair) {
+        throw new Error(`Key with ID ${keyId} not found`);
+      }
+
+      keyPair.status = status;
+      keyPair.metadata = {
+        ...keyPair.metadata,
+        keyType: keyPair.keyType,
+        cryptosuite: keyPair.cryptosuite,
+        created: keyPair.metadata?.created || new Date().toISOString(),
+        status: status,
+        rotatedAt: keyPair.metadata?.rotatedAt
+      } as KeyMetadata;
+
+      await this.saveKeyPair(keyId, keyPair);
+
+      logger.info(`Key status updated`, {
+        keyId,
+        status
+      });
+    } catch (error) {
+      logger.logError(`Failed to set key status for ${keyId}`, error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all keys with their status information
+   * @returns Map of key IDs to their status and metadata
+   */
+  static getKeyStatusInfo(): Map<string, { status: KeyStatus; metadata?: KeyMetadata }> {
+    const statusInfo = new Map<string, { status: KeyStatus; metadata?: KeyMetadata }>();
+
+    for (const [keyId, keyPair] of keyPairs.entries()) {
+      statusInfo.set(keyId, {
+        status: keyPair.status || KeyStatus.ACTIVE,
+        metadata: keyPair.metadata
+      });
+    }
+
+    return statusInfo;
+  }
+
+  /**
+   * Converts a PEM public key to JWK format
+   * @param publicKeyPem The PEM-formatted public key
+   * @param keyType The type of the key
+   * @param keyId The key identifier
+   * @returns The JWK representation of the public key
+   */
+  static convertPemToJwk(publicKeyPem: string, keyType: KeyType, keyId: string): JsonWebKey {
+    try {
+      const publicKeyObject = crypto.createPublicKey(publicKeyPem);
+
+      switch (keyType) {
+        case KeyType.RSA: {
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
+          return {
+            kty: 'RSA',
+            use: 'sig',
+            key_ops: ['verify'],
+            alg: 'RS256',
+            kid: keyId,
+            n: keyDetails.n,
+            e: keyDetails.e
+          };
+        }
+
+        case KeyType.Ed25519: {
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
+          return {
+            kty: 'OKP',
+            use: 'sig',
+            key_ops: ['verify'],
+            alg: 'EdDSA',
+            kid: keyId,
+            crv: 'Ed25519',
+            x: keyDetails.x
+          };
+        }
+
+        default:
+          throw new Error(`Unsupported key type for JWK conversion: ${keyType}`);
+      }
+    } catch (error) {
+      logger.logError(`Failed to convert PEM to JWK for key ${keyId}`, error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all active public keys in JWK format
+   * @returns Array of JWKs for active keys
+   */
+  static async getActivePublicKeysAsJwk(): Promise<JsonWebKey[]> {
+    const jwks: JsonWebKey[] = [];
+
+    for (const [keyId, keyPair] of keyPairs.entries()) {
+      // Only include active keys (default to active if status not set)
+      if (!keyPair.status || keyPair.status === KeyStatus.ACTIVE) {
+        try {
+          const jwk = this.convertPemToJwk(keyPair.publicKey, keyPair.keyType, keyId);
+          jwks.push(jwk);
+        } catch (error) {
+          logger.warn(`Failed to convert key ${keyId} to JWK, skipping`, {
+            keyId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    }
+
+    return jwks;
+  }
+
+  /**
+   * Gets the complete JWKS (JSON Web Key Set)
+   * @returns The JWKS containing all active public keys
+   */
+  static async getJwkSet(): Promise<JsonWebKeySet> {
+    const keys = await this.getActivePublicKeysAsJwk();
+    return { keys };
   }
 }
