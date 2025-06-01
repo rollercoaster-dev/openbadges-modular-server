@@ -95,8 +95,13 @@ export class KeyService {
    */
   static async initialize(): Promise<void> {
     try {
-      // Define and ensure keys directory exists
-      this.KEYS_DIR = path.join(process.cwd(), 'keys');
+      // Clear existing state for test isolation
+      keyPairs.clear();
+
+      // Define and ensure keys directory exists - respect KEYS_DIR env var
+      this.KEYS_DIR = process.env.KEYS_DIR
+        ? path.resolve(process.env.KEYS_DIR)
+        : path.join(process.cwd(), 'keys');
       const dirExists = await this.fileExists(this.KEYS_DIR);
       if (!dirExists) {
         await fs.promises.mkdir(this.KEYS_DIR, { recursive: true });
@@ -443,11 +448,21 @@ export class KeyService {
           cryptosuite = Cryptosuite.RsaSha256; // Default fallback
       }
 
+      // Attach initial metadata
+      const metadata: KeyMetadata = {
+        created: new Date().toISOString(),
+        keyType,
+        cryptosuite,
+        status: KeyStatus.ACTIVE
+      };
+
       // Create the full key pair object
       const keyPair: KeyPair = {
         ...keyPairData,
         keyType,
-        cryptosuite
+        cryptosuite,
+        metadata,
+        status: KeyStatus.ACTIVE
       };
 
       // Store in memory
@@ -593,17 +608,17 @@ export class KeyService {
       } as KeyMetadata;
 
       // Save the updated metadata for the old key
-      await this.saveKeyPair(keyId, existingKeyPair);
+      await KeyService.saveKeyPair(keyId, existingKeyPair);
 
       // Generate a new key with the same ID (or create a new timestamped ID)
       const rotatedKeyId = `${keyId}-${Date.now()}`;
       const keyType = newKeyType || existingKeyPair.keyType;
-      const newKeyPair = await this.generateKeyPair(rotatedKeyId, keyType);
+      const newKeyPair = await KeyService.generateKeyPair(rotatedKeyId, keyType);
 
       // If this was the default key, update the default to point to the new key
       if (keyId === 'default') {
+        // Simply repoint the in-memory alias; no extra disk copy.
         keyPairs.set('default', newKeyPair);
-        await this.saveKeyPair('default', newKeyPair);
       }
 
       logger.info(`Key rotated successfully`, {
@@ -641,7 +656,7 @@ export class KeyService {
         rotatedAt: keyPair.metadata?.rotatedAt
       } as KeyMetadata;
 
-      await this.saveKeyPair(keyId, keyPair);
+      await KeyService.saveKeyPair(keyId, keyPair);
 
       logger.info(`Key status updated`, {
         keyId,
@@ -686,7 +701,7 @@ export class KeyService {
           const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
           return {
             kty: 'RSA',
-            use: 'sig',
+            // Either keep `key_ops` or `use`, but not both. `key_ops` is more explicit.
             key_ops: ['verify'],
             alg: 'RS256',
             kid: keyId,
@@ -699,7 +714,7 @@ export class KeyService {
           const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
           return {
             kty: 'OKP',
-            use: 'sig',
+            // Either keep `key_ops` or `use`, but not both. `key_ops` is more explicit.
             key_ops: ['verify'],
             alg: 'EdDSA',
             kid: keyId,
@@ -728,7 +743,7 @@ export class KeyService {
       // Only include active keys (default to active if status not set)
       if (!keyPair.status || keyPair.status === KeyStatus.ACTIVE) {
         try {
-          const jwk = this.convertPemToJwk(keyPair.publicKey, keyPair.keyType, keyId);
+          const jwk = KeyService.convertPemToJwk(keyPair.publicKey, keyPair.keyType, keyId);
           jwks.push(jwk);
         } catch (error) {
           logger.warn(`Failed to convert key ${keyId} to JWK, skipping`, {
@@ -747,7 +762,7 @@ export class KeyService {
    * @returns The JWKS containing all active public keys
    */
   static async getJwkSet(): Promise<JsonWebKeySet> {
-    const keys = await this.getActivePublicKeysAsJwk();
+    const keys = await KeyService.getActivePublicKeysAsJwk();
     return { keys };
   }
 }

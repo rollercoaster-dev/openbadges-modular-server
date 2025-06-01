@@ -476,6 +476,7 @@ function createVersionedRouter(
  * @param issuerController The issuer controller
  * @param badgeClassController The badge class controller
  * @param assertionController The assertion controller
+ * @param jwksController The JWKS controller
  * @param backpackController The backpack controller
  * @param userController The user controller
  * @param authController The auth controller
@@ -485,6 +486,7 @@ export async function createApiRouter(
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
   assertionController: AssertionController,
+  jwksController: JwksController,
   backpackController?: BackpackController,
   userController?: UserController,
   authController?: AuthController
@@ -573,7 +575,6 @@ export async function createApiRouter(
   // Add JWKS endpoint (JSON Web Key Set) - RFC 7517
   router.get('/.well-known/jwks.json', async (c) => {
     try {
-      const jwksController = new JwksController();
       const result = await jwksController.getJwks();
 
       // Set appropriate headers for JWKS
