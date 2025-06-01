@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS "badge_classes" (
 CREATE TABLE IF NOT EXISTS "assertions" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "badge_class_id" uuid NOT NULL,
+  "issuer_id" uuid,
   "recipient" jsonb NOT NULL,
   "issued_on" timestamp DEFAULT now() NOT NULL,
   "expires" timestamp,
@@ -145,51 +146,57 @@ CREATE TABLE IF NOT EXISTS "user_roles" (
 --> statement-breakpoint
 
 -- Add foreign key constraints after all tables are created
-ALTER TABLE "api_keys" 
-  ADD CONSTRAINT "api_keys_user_id_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
+ALTER TABLE "api_keys"
+  ADD CONSTRAINT "api_keys_user_id_users_id_fk"
+  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "badge_classes" 
-  ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk" 
-  FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") 
+ALTER TABLE "badge_classes"
+  ADD CONSTRAINT "badge_classes_issuer_id_issuers_id_fk"
+  FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "assertions" 
-  ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk" 
-  FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id") 
+ALTER TABLE "assertions"
+  ADD CONSTRAINT "assertions_badge_class_id_badge_classes_id_fk"
+  FOREIGN KEY ("badge_class_id") REFERENCES "public"."badge_classes"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "platform_users" 
-  ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk" 
-  FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id") 
+ALTER TABLE "assertions"
+  ADD CONSTRAINT "assertions_issuer_id_issuers_id_fk"
+  FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "user_assertions" 
-  ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id") 
+ALTER TABLE "platform_users"
+  ADD CONSTRAINT "platform_users_platform_id_platforms_id_fk"
+  FOREIGN KEY ("platform_id") REFERENCES "public"."platforms"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "user_assertions" 
-  ADD CONSTRAINT "user_assertions_assertion_id_assertions_id_fk" 
-  FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id") 
+ALTER TABLE "user_assertions"
+  ADD CONSTRAINT "user_assertions_user_id_platform_users_id_fk"
+  FOREIGN KEY ("user_id") REFERENCES "public"."platform_users"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "user_roles" 
-  ADD CONSTRAINT "user_roles_user_id_users_id_fk" 
-  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") 
+ALTER TABLE "user_assertions"
+  ADD CONSTRAINT "user_assertions_assertion_id_assertions_id_fk"
+  FOREIGN KEY ("assertion_id") REFERENCES "public"."assertions"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
-ALTER TABLE "user_roles" 
-  ADD CONSTRAINT "user_roles_role_id_roles_id_fk" 
-  FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") 
+ALTER TABLE "user_roles"
+  ADD CONSTRAINT "user_roles_user_id_users_id_fk"
+  FOREIGN KEY ("user_id") REFERENCES "public"."users"("id")
+  ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+
+ALTER TABLE "user_roles"
+  ADD CONSTRAINT "user_roles_role_id_roles_id_fk"
+  FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id")
   ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 
@@ -198,6 +205,7 @@ CREATE INDEX IF NOT EXISTS "api_key_key_idx" ON "api_keys" USING btree ("key");
 CREATE INDEX IF NOT EXISTS "api_key_user_id_idx" ON "api_keys" USING btree ("user_id");
 CREATE INDEX IF NOT EXISTS "api_key_revoked_idx" ON "api_keys" USING btree ("revoked");
 CREATE INDEX IF NOT EXISTS "assertion_badge_class_idx" ON "assertions" USING btree ("badge_class_id");
+CREATE INDEX IF NOT EXISTS "assertion_issuer_idx" ON "assertions" USING btree ("issuer_id");
 CREATE INDEX IF NOT EXISTS "assertion_issued_on_idx" ON "assertions" USING btree ("issued_on");
 CREATE INDEX IF NOT EXISTS "assertion_revoked_idx" ON "assertions" USING btree ("revoked");
 CREATE INDEX IF NOT EXISTS "assertion_expires_idx" ON "assertions" USING btree ("expires");

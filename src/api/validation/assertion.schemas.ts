@@ -84,3 +84,22 @@ export const RevokeAssertionSchema = z.object({
   revoked: z.boolean(),
   revocationReason: z.string().optional(),
 }).strict("Unrecognized fields in revocation data");
+
+// Schema for BatchCreateCredentialsDto
+export const BatchCreateCredentialsSchema = z.object({
+  credentials: z.array(CreateAssertionSchema).min(1, "At least one credential is required").max(100, "Maximum 100 credentials per batch"),
+}).strict("Unrecognized fields in batch create credentials data");
+
+// Schema for BatchRetrieveCredentialsDto
+export const BatchRetrieveCredentialsSchema = z.object({
+  ids: z.array(z.string()).min(1, "At least one ID is required").max(100, "Maximum 100 IDs per batch"),
+}).strict("Unrecognized fields in batch retrieve credentials data");
+
+// Schema for BatchUpdateCredentialStatusDto
+export const BatchUpdateCredentialStatusSchema = z.object({
+  updates: z.array(z.object({
+    id: z.string(),
+    status: z.enum(['revoked', 'suspended', 'active']),
+    reason: z.string().optional(),
+  })).min(1, "At least one update is required").max(100, "Maximum 100 updates per batch"),
+}).strict("Unrecognized fields in batch update credential status data");

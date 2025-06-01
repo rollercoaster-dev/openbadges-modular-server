@@ -275,4 +275,133 @@ export class CachedAssertionRepository extends CacheRepositoryWrapper<Assertion,
     // Don't cache verification results as they may change over time
     return this.repository.verify(id);
   }
+
+  /**
+   * Creates multiple assertions in a batch operation
+   * @param assertions The assertions to create
+   * @returns An array of results indicating success/failure for each assertion
+   */
+  async createBatch(assertions: Omit<Assertion, 'id'>[]): Promise<Array<{
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>> {
+    const results = await this.repository.createBatch(assertions);
+
+    // Invalidate cache after batch creation
+    this.invalidateCollections();
+
+    // Cache successful assertions
+    for (const result of results) {
+      if (result.success && result.assertion) {
+        this.cache.set(this.generateIdKey(result.assertion.id), result.assertion);
+
+        // Also invalidate badge class-related caches
+        if ('badgeClassId' in result.assertion) {
+          this.cache.delete(
+            `badgeClass:${(result.assertion as { badgeClassId?: Shared.IRI }).badgeClassId}`
+          );
+        }
+        // Invalidate recipient-related caches
+        const identity = result.assertion.recipient?.identity;
+        if (identity) {
+          this.cache.delete(`recipient:${identity}`);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Finds multiple assertions by their IDs
+   * @param ids The IDs of the assertions to find
+   * @returns An array of assertions (null for not found)
+   */
+  async findByIds(ids: Shared.IRI[]): Promise<(Assertion | null)[]> {
+    if (!this.enabled) {
+      return this.repository.findByIds(ids);
+    }
+
+    const results: (Assertion | null)[] = [];
+    const uncachedIds: Shared.IRI[] = [];
+    const uncachedIndices: number[] = [];
+
+    // Check cache for each ID
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      const cacheKey = this.generateIdKey(id as string);
+      const cached = this.cache.get<Assertion>(cacheKey);
+
+      if (cached) {
+        results[i] = cached;
+      } else {
+        results[i] = null; // Placeholder
+        uncachedIds.push(id);
+        uncachedIndices.push(i);
+      }
+    }
+
+    // Fetch uncached assertions from repository
+    if (uncachedIds.length > 0) {
+      const uncachedAssertions = await this.repository.findByIds(uncachedIds);
+
+      // Update results and cache
+      for (let i = 0; i < uncachedIds.length; i++) {
+        const assertion = uncachedAssertions[i];
+        const resultIndex = uncachedIndices[i];
+        results[resultIndex] = assertion;
+
+        // Cache the result (even if null)
+        if (assertion) {
+          this.cache.set(this.generateIdKey(assertion.id), assertion);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Updates the status of multiple assertions in a batch operation
+   * @param updates Array of status updates to apply
+   * @returns An array of results indicating success/failure for each update
+   */
+  async updateStatusBatch(updates: Array<{
+    id: Shared.IRI;
+    status: 'revoked' | 'suspended' | 'active';
+    reason?: string;
+  }>): Promise<Array<{
+    id: Shared.IRI;
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>> {
+    // Invalidate cache for all IDs before updating
+    for (const update of updates) {
+      this.cache.delete(this.generateIdKey(update.id as string));
+    }
+    this.invalidateCollections();
+
+    const results = await this.repository.updateStatusBatch(updates);
+
+    // Cache successful updates
+    for (const result of results) {
+      if (result.success && result.assertion) {
+        this.cache.set(this.generateIdKey(result.assertion.id), result.assertion);
+
+        // Also invalidate badge class-related caches
+        if ('badgeClassId' in result.assertion) {
+          this.cache.delete(`badgeClass:${(result.assertion as { badgeClassId?: Shared.IRI }).badgeClassId}`);
+        }
+
+        // Also invalidate recipient-related caches
+        if (result.assertion.recipient && result.assertion.recipient.identity) {
+          this.cache.delete(`recipient:${result.assertion.recipient.identity}`);
+        }
+      }
+    }
+
+    return results;
+  }
 }

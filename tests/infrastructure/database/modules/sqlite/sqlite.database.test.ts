@@ -59,6 +59,7 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
       CREATE TABLE assertions (
         id TEXT PRIMARY KEY,
         badge_class_id TEXT NOT NULL REFERENCES badge_classes(id),
+        issuer_id TEXT REFERENCES issuers(id),
         recipient TEXT NOT NULL,
         issued_on INTEGER NOT NULL,
         expires INTEGER,
