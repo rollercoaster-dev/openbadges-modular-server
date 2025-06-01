@@ -78,24 +78,53 @@ The implementation of these endpoints will follow the phased approach described 
 - `PUT /v3/issuers/:id` - Update an issuer
 - `DELETE /v3/issuers/:id` - Delete an issuer
 
-#### Badge Classes
+#### Achievements (v3.0 Compliant Naming)
 
-- `POST /v3/badge-classes` - Create a new badge class
-- `GET /v3/badge-classes` - Get all badge classes
-- `GET /v3/badge-classes/:id` - Get a badge class by ID
-- `GET /v3/issuers/:id/badge-classes` - Get badge classes by issuer
-- `PUT /v3/badge-classes/:id` - Update a badge class
-- `DELETE /v3/badge-classes/:id` - Delete a badge class
+The following endpoints use the Open Badges 3.0 compliant naming convention, where "BadgeClass" is referred to as "Achievement":
 
-#### Assertions
+- `POST /v3/achievements` - Create a new achievement
+- `GET /v3/achievements` - Get all achievements
+- `GET /v3/achievements/:id` - Get an achievement by ID
+- `GET /v3/issuers/:id/achievements` - Get achievements by issuer
+- `PUT /v3/achievements/:id` - Update an achievement
+- `DELETE /v3/achievements/:id` - Delete an achievement
 
-- `POST /v3/assertions` - Create a new assertion
-- `GET /v3/assertions` - Get all assertions
-- `GET /v3/assertions/:id` - Get an assertion by ID
-- `GET /v3/badge-classes/:id/assertions` - Get assertions by badge class
-- `PUT /v3/assertions/:id` - Update an assertion
-- `POST /v3/assertions/:id/revoke` - Revoke an assertion
-- `GET /v3/assertions/:id/verify` - Verify an assertion
+#### Credentials (v3.0 Compliant Naming)
+
+The following endpoints use the Open Badges 3.0 compliant naming convention, where "Assertion" is referred to as "Credential":
+
+- `POST /v3/credentials` - Create a new credential
+- `GET /v3/credentials` - Get all credentials
+- `GET /v3/credentials/:id` - Get a credential by ID
+- `GET /v3/achievements/:id/credentials` - Get credentials by achievement
+- `PUT /v3/credentials/:id` - Update a credential
+- `POST /v3/credentials/:id/revoke` - Revoke a credential
+- `GET /v3/credentials/:id/verify` - Verify a credential
+- `POST /v3/credentials/:id/sign` - Sign a credential
+
+#### Legacy Endpoints (Deprecated)
+
+⚠️ **DEPRECATED**: The following endpoints are deprecated and will be removed in a future version. Please use the v3.0 compliant endpoints above.
+
+**Badge Classes (Legacy)**
+- `POST /v3/badge-classes` - Create a new badge class *(Use `/v3/achievements` instead)*
+- `GET /v3/badge-classes` - Get all badge classes *(Use `/v3/achievements` instead)*
+- `GET /v3/badge-classes/:id` - Get a badge class by ID *(Use `/v3/achievements/:id` instead)*
+- `GET /v3/issuers/:id/badge-classes` - Get badge classes by issuer *(Use `/v3/issuers/:id/achievements` instead)*
+- `PUT /v3/badge-classes/:id` - Update a badge class *(Use `/v3/achievements/:id` instead)*
+- `DELETE /v3/badge-classes/:id` - Delete a badge class *(Use `/v3/achievements/:id` instead)*
+
+**Assertions (Legacy)**
+- `POST /v3/assertions` - Create a new assertion *(Use `/v3/credentials` instead)*
+- `GET /v3/assertions` - Get all assertions *(Use `/v3/credentials` instead)*
+- `GET /v3/assertions/:id` - Get an assertion by ID *(Use `/v3/credentials/:id` instead)*
+- `GET /v3/badge-classes/:id/assertions` - Get assertions by badge class *(Use `/v3/achievements/:id/credentials` instead)*
+- `PUT /v3/assertions/:id` - Update an assertion *(Use `/v3/credentials/:id` instead)*
+- `POST /v3/assertions/:id/revoke` - Revoke an assertion *(Use `/v3/credentials/:id/revoke` instead)*
+- `GET /v3/assertions/:id/verify` - Verify an assertion *(Use `/v3/credentials/:id/verify` instead)*
+- `POST /v3/assertions/:id/sign` - Sign an assertion *(Use `/v3/credentials/:id/sign` instead)*
+
+> **Note**: Legacy endpoints include deprecation warnings in response headers and response bodies. The `Deprecation` header is set to `true`, and a `Link` header points to the successor endpoint. Response bodies include a `_deprecation` object with migration information.
 
 ### Default Endpoints
 
@@ -176,9 +205,9 @@ An organization or individual that issues badges.
 }
 ```
 
-### Badge Class
+### Badge Class / Achievement
 
-A type of badge that can be issued.
+A type of badge that can be issued. In Open Badges 3.0, this is referred to as an "Achievement".
 
 #### Open Badges 2.0 Format
 
@@ -216,9 +245,9 @@ A type of badge that can be issued.
 }
 ```
 
-### Assertion
+### Assertion / Credential
 
-A badge awarded to a recipient.
+A badge awarded to a recipient. In Open Badges 3.0, this is referred to as a "Credential" and is implemented as a Verifiable Credential.
 
 #### Open Badges 2.0 Format
 
