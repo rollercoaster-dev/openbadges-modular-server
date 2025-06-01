@@ -7,9 +7,11 @@
 
 import { describe, expect, it, beforeEach } from 'bun:test';
 import { Hono } from 'hono';
-import type { Context } from 'hono';
 import { createVersionedRouter } from '@/api/api.router';
 import { BadgeVersion } from '@/utils/version/badge-version';
+import type { IssuerController } from '@/api/controllers/issuer.controller';
+import type { BadgeClassController } from '@/api/controllers/badgeClass.controller';
+import type { AssertionController } from '@/api/controllers/assertion.controller';
 
 // Mock controllers
 const mockIssuerController = {
@@ -18,110 +20,90 @@ const mockIssuerController = {
   getAllIssuers: async () => [{ id: 'test-issuer-id', name: 'Test Issuer' }],
   updateIssuer: async () => ({ id: 'test-issuer-id', name: 'Updated Issuer' }),
   deleteIssuer: async () => true,
-};
+} as unknown as IssuerController;
 
 const mockBadgeClassController = {
-  createBadgeClass: async () => ({ 
-    id: 'test-achievement-id', 
+  createBadgeClass: async () => ({
+    id: 'test-achievement-id',
     name: 'Test Achievement',
     issuer: 'test-issuer-id'
   }),
-  getBadgeClassById: async () => ({ 
-    id: 'test-achievement-id', 
+  getBadgeClassById: async () => ({
+    id: 'test-achievement-id',
     name: 'Test Achievement',
     issuer: 'test-issuer-id'
   }),
-  getAllBadgeClasses: async () => [{ 
-    id: 'test-achievement-id', 
+  getAllBadgeClasses: async () => [{
+    id: 'test-achievement-id',
     name: 'Test Achievement',
     issuer: 'test-issuer-id'
   }],
-  getBadgeClassesByIssuer: async () => [{ 
-    id: 'test-achievement-id', 
+  getBadgeClassesByIssuer: async () => [{
+    id: 'test-achievement-id',
     name: 'Test Achievement',
     issuer: 'test-issuer-id'
   }],
-  updateBadgeClass: async () => ({ 
-    id: 'test-achievement-id', 
+  updateBadgeClass: async () => ({
+    id: 'test-achievement-id',
     name: 'Updated Achievement',
     issuer: 'test-issuer-id'
   }),
   deleteBadgeClass: async () => true,
-};
+} as unknown as BadgeClassController;
 
 const mockAssertionController = {
-  createAssertion: async () => ({ 
-    id: 'test-credential-id', 
+  createAssertion: async () => ({
+    id: 'test-credential-id',
     badgeClass: 'test-achievement-id',
     recipient: { type: 'email', identity: 'test@example.com', hashed: false }
   }),
-  getAssertionById: async () => ({ 
-    id: 'test-credential-id', 
+  getAssertionById: async () => ({
+    id: 'test-credential-id',
     badgeClass: 'test-achievement-id',
     recipient: { type: 'email', identity: 'test@example.com', hashed: false }
   }),
-  getAllAssertions: async () => [{ 
-    id: 'test-credential-id', 
+  getAllAssertions: async () => [{
+    id: 'test-credential-id',
     badgeClass: 'test-achievement-id',
     recipient: { type: 'email', identity: 'test@example.com', hashed: false }
   }],
-  getAssertionsByBadgeClass: async () => [{ 
-    id: 'test-credential-id', 
+  getAssertionsByBadgeClass: async () => [{
+    id: 'test-credential-id',
     badgeClass: 'test-achievement-id',
     recipient: { type: 'email', identity: 'test@example.com', hashed: false }
   }],
-  updateAssertion: async () => ({ 
-    id: 'test-credential-id', 
+  updateAssertion: async () => ({
+    id: 'test-credential-id',
     badgeClass: 'test-achievement-id',
     recipient: { type: 'email', identity: 'test@example.com', hashed: false }
   }),
-  revokeAssertion: async () => ({ revoked: true, reason: 'Test revocation' }),
-  verifyAssertion: async () => ({ 
-    isValid: true, 
-    hasValidSignature: true, 
-    details: 'Valid credential' 
+  revokeAssertion: async () => true,
+  verifyAssertion: async () => ({
+    isValid: true,
+    hasValidSignature: true,
+    details: 'Valid credential'
   }),
-  signAssertion: async () => ({ 
-    id: 'test-credential-id', 
+  signAssertion: async () => ({
+    id: 'test-credential-id',
     signed: true,
     proof: { type: 'JWS', signature: 'test-signature' }
   }),
-};
-
-// Mock auth middleware
-const mockRequireAuth = () => async (c: Context, next: () => Promise<void>) => {
-  c.set('user', { id: 'test-user' });
-  await next();
-};
-
-// Mock validation middleware
-const mockValidateBadgeClassMiddleware = () => async (c: Context, next: () => Promise<void>) => {
-  c.set('validatedBody', await c.req.json());
-  await next();
-};
-
-const mockValidateAssertionMiddleware = () => async (c: Context, next: () => Promise<void>) => {
-  c.set('validatedBody', await c.req.json());
-  await next();
-};
+} as unknown as AssertionController;
 
 describe('V3.0 Compliant API Endpoint Naming', () => {
   let app: Hono;
 
   beforeEach(() => {
     app = new Hono();
-    
+
     // Create v3 router with mocked dependencies
     const v3Router = createVersionedRouter(
       BadgeVersion.V3,
-      mockIssuerController as any,
-      mockBadgeClassController as any,
-      mockAssertionController as any,
-      mockRequireAuth as any,
-      mockValidateBadgeClassMiddleware as any,
-      mockValidateAssertionMiddleware as any
+      mockIssuerController,
+      mockBadgeClassController,
+      mockAssertionController
     );
-    
+
     app.route('/v3', v3Router);
   });
 
@@ -138,36 +120,36 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(201);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.id).toBe('test-achievement-id');
       expect(data.name).toBe('Test Achievement');
     });
 
     it('should handle GET /v3/achievements', async () => {
       const response = await app.request('/v3/achievements');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>[];
       expect(Array.isArray(data)).toBe(true);
-      expect(data[0].id).toBe('test-achievement-id');
+      expect((data[0] as Record<string, unknown>).id).toBe('test-achievement-id');
     });
 
     it('should handle GET /v3/achievements/:id', async () => {
       const response = await app.request('/v3/achievements/test-achievement-id');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.id).toBe('test-achievement-id');
       expect(data.name).toBe('Test Achievement');
     });
 
     it('should handle GET /v3/issuers/:id/achievements', async () => {
       const response = await app.request('/v3/issuers/test-issuer-id/achievements');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>[];
       expect(Array.isArray(data)).toBe(true);
-      expect(data[0].issuer).toBe('test-issuer-id');
+      expect((data[0] as Record<string, unknown>).issuer).toBe('test-issuer-id');
     });
 
     it('should handle PUT /v3/achievements/:id', async () => {
@@ -181,7 +163,7 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.name).toBe('Updated Achievement');
     });
 
@@ -206,35 +188,35 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(201);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.id).toBe('test-credential-id');
       expect(data.badgeClass).toBe('test-achievement-id');
     });
 
     it('should handle GET /v3/credentials', async () => {
       const response = await app.request('/v3/credentials');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>[];
       expect(Array.isArray(data)).toBe(true);
-      expect(data[0].id).toBe('test-credential-id');
+      expect((data[0] as Record<string, unknown>).id).toBe('test-credential-id');
     });
 
     it('should handle GET /v3/credentials/:id', async () => {
       const response = await app.request('/v3/credentials/test-credential-id');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.id).toBe('test-credential-id');
     });
 
     it('should handle GET /v3/achievements/:id/credentials', async () => {
       const response = await app.request('/v3/achievements/test-achievement-id/credentials');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>[];
       expect(Array.isArray(data)).toBe(true);
-      expect(data[0].badgeClass).toBe('test-achievement-id');
+      expect((data[0] as Record<string, unknown>).badgeClass).toBe('test-achievement-id');
     });
 
     it('should handle PUT /v3/credentials/:id', async () => {
@@ -247,7 +229,7 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.id).toBe('test-credential-id');
     });
 
@@ -259,15 +241,15 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.revoked).toBe(true);
     });
 
     it('should handle GET /v3/credentials/:id/verify', async () => {
       const response = await app.request('/v3/credentials/test-credential-id/verify');
-      
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.isValid).toBe(true);
     });
 
@@ -277,7 +259,7 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.signed).toBe(true);
     });
   });
@@ -302,13 +284,13 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Link')).toContain('/achievements');
         expect(response.headers.get('Sunset')).toBeTruthy();
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data.id).toBe('test-achievement-id');
 
         // Check deprecation warning in response body
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.warning).toContain('deprecated');
-        expect(data._deprecation.successor).toBe('/achievements');
+        expect((data._deprecation as Record<string, unknown>).warning).toContain('deprecated');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/achievements');
       });
 
       it('should handle GET /v3/badge-classes with deprecation warnings', async () => {
@@ -318,9 +300,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/achievements');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/achievements');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/achievements');
       });
 
       it('should handle GET /v3/badge-classes/:id with deprecation warnings', async () => {
@@ -330,9 +312,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/achievements/:id');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/achievements/:id');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/achievements/:id');
       });
 
       it('should handle GET /v3/issuers/:id/badge-classes with deprecation warnings', async () => {
@@ -342,9 +324,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/issuers/:id/achievements');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/issuers/:id/achievements');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/issuers/:id/achievements');
       });
 
       it('should handle PUT /v3/badge-classes/:id with deprecation warnings', async () => {
@@ -360,9 +342,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/achievements/:id');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/achievements/:id');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/achievements/:id');
       });
 
       it('should handle DELETE /v3/badge-classes/:id with deprecation warnings', async () => {
@@ -391,9 +373,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials');
       });
 
       it('should handle GET /v3/assertions with deprecation warnings', async () => {
@@ -403,9 +385,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials');
       });
 
       it('should handle GET /v3/assertions/:id with deprecation warnings', async () => {
@@ -415,9 +397,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials/:id');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials/:id');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials/:id');
       });
 
       it('should handle GET /v3/badge-classes/:id/assertions with deprecation warnings', async () => {
@@ -427,9 +409,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/achievements/:id/credentials');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/achievements/:id/credentials');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/achievements/:id/credentials');
       });
 
       it('should handle PUT /v3/assertions/:id with deprecation warnings', async () => {
@@ -445,9 +427,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials/:id');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials/:id');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials/:id');
       });
 
       it('should handle POST /v3/assertions/:id/revoke with deprecation warnings', async () => {
@@ -461,9 +443,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials/:id/revoke');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials/:id/revoke');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials/:id/revoke');
       });
 
       it('should handle GET /v3/assertions/:id/verify with deprecation warnings', async () => {
@@ -473,9 +455,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials/:id/verify');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials/:id/verify');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials/:id/verify');
       });
 
       it('should handle POST /v3/assertions/:id/sign with deprecation warnings', async () => {
@@ -487,9 +469,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
         expect(response.headers.get('Deprecation')).toBe('true');
         expect(response.headers.get('Link')).toContain('/credentials/:id/sign');
 
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data._deprecation).toBeDefined();
-        expect(data._deprecation.successor).toBe('/credentials/:id/sign');
+        expect((data._deprecation as Record<string, unknown>).successor).toBe('/credentials/:id/sign');
       });
     });
   });
@@ -501,8 +483,8 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
 
       expect(achievementResponse.status).toBe(badgeClassResponse.status);
 
-      const achievementData = await achievementResponse.json();
-      const badgeClassData = await badgeClassResponse.json();
+      const achievementData = await achievementResponse.json() as Record<string, unknown>;
+      const badgeClassData = await badgeClassResponse.json() as Record<string, unknown>;
 
       // Remove deprecation warning from legacy response for comparison
       const { _deprecation: _, ...normalizedBadgeClassData } = badgeClassData;
@@ -516,8 +498,8 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
 
       expect(credentialResponse.status).toBe(assertionResponse.status);
 
-      const credentialData = await credentialResponse.json();
-      const assertionData = await assertionResponse.json();
+      const credentialData = await credentialResponse.json() as Record<string, unknown>;
+      const assertionData = await assertionResponse.json() as Record<string, unknown>;
 
       // Remove deprecation warning from legacy response for comparison
       const { _deprecation: __, ...normalizedAssertionData } = assertionData;

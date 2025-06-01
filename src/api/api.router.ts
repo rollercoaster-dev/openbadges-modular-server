@@ -76,7 +76,8 @@ function addDeprecationWarning(newEndpoint: string) {
       try {
         const body = await response.json();
         if (typeof body === 'object' && body !== null) {
-          body._deprecation = {
+          // Type assertion to allow adding _deprecation property
+          (body as Record<string, unknown>)._deprecation = {
             warning: 'This endpoint is deprecated and will be removed in a future version.',
             successor: newEndpoint,
             sunset: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
@@ -107,7 +108,7 @@ function addDeprecationWarning(newEndpoint: string) {
  * @param assertionController The assertion controller
  * @returns The versioned router
  */
-function createVersionedRouter(
+export function createVersionedRouter(
   version: BadgeVersion,
   issuerController: IssuerController,
   badgeClassController: BadgeClassController,
