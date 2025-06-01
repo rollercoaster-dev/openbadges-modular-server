@@ -41,6 +41,14 @@ export interface EvidenceDto {
 }
 
 /**
+ * Credential schema object for assertions
+ */
+export interface CredentialSchemaDto {
+  id: string; // URL to the JSON schema
+  type: string; // Schema type (e.g., '1EdTechJsonSchemaValidator2019')
+}
+
+/**
  * Base DTO for assertion creation and update operations
  * Contains common properties across OB2 and OB3
  */
@@ -58,6 +66,7 @@ export interface AssertionBaseDto {
     url?: string;
     caption?: string;
   };
+  credentialSchema?: CredentialSchemaDto[];
   revoked?: boolean;
   revocationReason?: string;
   [key: string]: unknown;

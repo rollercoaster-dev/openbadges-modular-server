@@ -30,6 +30,12 @@ export const EvidenceSchema = z.object({
   audience: z.string().optional(),
 }).strict("Unrecognized fields in evidence object");
 
+// Schema for CredentialSchemaDto
+export const CredentialSchemaSchema = z.object({
+  id: z.string().url({ message: "Credential schema id must be a valid URL" }),
+  type: z.string().min(1, { message: "Credential schema type is required" }),
+}).strict("Unrecognized fields in credential schema object");
+
 // Schema for AssertionBaseDto
 export const AssertionBaseSchema = z.object({
   recipient: RecipientSchema,
@@ -48,6 +54,7 @@ export const AssertionBaseSchema = z.object({
       caption: z.string().optional(),
     }).strict("Unrecognized fields in image object")
   ]).optional(),
+  credentialSchema: z.array(CredentialSchemaSchema).optional(),
   revoked: z.boolean().optional(),
   revocationReason: z.string().optional(),
 }); // Not strict here, allow extension

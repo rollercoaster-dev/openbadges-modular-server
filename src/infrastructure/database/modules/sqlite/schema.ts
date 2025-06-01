@@ -166,6 +166,7 @@ export const assertions = sqliteTable(
     expires: integer('expires'),
     evidence: text('evidence'),
     verification: text('verification'),
+    credentialSchema: text('credential_schema'), // JSON stored as text
     revoked: integer('revoked'),
     revocationReason: text('revocation_reason'),
     createdAt: integer('created_at').notNull(),

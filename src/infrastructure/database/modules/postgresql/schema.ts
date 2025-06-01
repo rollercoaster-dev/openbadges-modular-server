@@ -154,6 +154,7 @@ export const assertions = pgTable(
   expires: timestamp('expires'),
   evidence: jsonb('evidence'),
   verification: jsonb('verification'),
+  credentialSchema: jsonb('credential_schema'),
   revoked: jsonb('revoked'),
   revocationReason: text('revocation_reason'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -45,6 +45,10 @@ export class Assertion {
   evidence?: OB2.Evidence[] | OB3.Evidence[];
   verification?: OB2.VerificationObject | OB3.Proof;
   credentialStatus?: OB3.CredentialStatus;
+  credentialSchema?: Array<{
+    id: string;
+    type: string;
+  }>;
   revoked?: boolean;
   revocationReason?: string;
   issuer?: Shared.IRI | OB3.Issuer;
@@ -169,6 +173,11 @@ export class Assertion {
           statusPurpose: 'revocation',
           statusList: `${this.id}#list` as Shared.IRI,
         };
+      }
+
+      // Add credentialSchema if present
+      if (this.credentialSchema && this.credentialSchema.length > 0) {
+        ob3Data.credentialSchema = this.credentialSchema;
       }
 
       // Create a proper CredentialSubject with required achievement property
@@ -304,6 +313,11 @@ export class Assertion {
       if (output.expires && !output.expirationDate) {
         output.expirationDate = output.expires;
         delete output.expires;
+      }
+
+      // Add credentialSchema if present
+      if (this.credentialSchema && this.credentialSchema.length > 0) {
+        output.credentialSchema = this.credentialSchema;
       }
     }
 

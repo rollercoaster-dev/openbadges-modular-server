@@ -22,6 +22,7 @@ import {
   createVerificationError,
 } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
+import { SchemaValidationService } from '../../core/schema-validation.service';
 import { logger } from '../../utils/logging/logger.service';
 import {
   CreateAssertionDto,
@@ -75,6 +76,12 @@ function mapToAssertionEntity(
     mappedData.revocationReason = data.revocationReason as string;
   if (data.issuedOn !== undefined) mappedData.issuedOn = data.issuedOn; // Zod validated format
   if (data.expires !== undefined) mappedData.expires = data.expires; // Zod validated format
+  if (data.credentialSchema !== undefined) {
+    mappedData.credentialSchema = data.credentialSchema as Array<{
+      id: string;
+      type: string;
+    }>;
+  }
 
   // Properties not part of internal Assertion entity are intentionally ignored:
   // narrative, image, type, credentialSubject etc. are handled by Assertion entity itself or are not stored directly.
@@ -115,11 +122,13 @@ export class AssertionController {
    * @param assertionRepository The assertion repository
    * @param badgeClassRepository The badge class repository
    * @param issuerRepository The issuer repository
+   * @param schemaValidationService The schema validation service
    */
   constructor(
     private assertionRepository: AssertionRepository,
     private badgeClassRepository: BadgeClassRepository,
-    private issuerRepository: IssuerRepository
+    private issuerRepository: IssuerRepository,
+    private schemaValidationService: SchemaValidationService
   ) {}
 
   /**
@@ -203,6 +212,37 @@ export class AssertionController {
 
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
+
+      // Perform schema validation if credentialSchema is provided
+      if (assertion.credentialSchema && assertion.credentialSchema.length > 0) {
+        try {
+          logger.info(`Validating assertion against ${assertion.credentialSchema.length} credential schema(s)`);
+
+          // Convert assertion to credential format for validation
+          const credential = assertion.toObject(version);
+
+          await this.schemaValidationService.validateCredential(
+            credential,
+            assertion.credentialSchema,
+            {
+              timeoutMs: 15000, // 15 seconds timeout
+              enableCaching: true,
+              validateSchemaFormat: true,
+              customRules: [
+                // Apply predefined custom validation rules
+                SchemaValidationService.CustomRules.validateIssuanceDate,
+                SchemaValidationService.CustomRules.validateExpirationDate,
+                SchemaValidationService.CustomRules.validateIssuer
+              ]
+            }
+          );
+
+          logger.info('Credential schema validation completed successfully');
+        } catch (error) {
+          logger.error('Credential schema validation failed:', error);
+          throw new BadRequestError(`Credential schema validation failed: ${error.message}`);
+        }
+      }
 
       // Sign the assertion if requested
       let signedAssertion = assertion;
@@ -385,6 +425,47 @@ export class AssertionController {
           error,
         });
         throw error; // Re-throw other mapping errors
+      }
+
+      // Perform schema validation if credentialSchema is provided in the update
+      if (mappedData.credentialSchema && mappedData.credentialSchema.length > 0) {
+        try {
+          logger.info(`Validating updated assertion against ${mappedData.credentialSchema.length} credential schema(s)`);
+
+          // Get the existing assertion to merge with updates
+          const existingAssertion = await this.assertionRepository.findById(toIRI(id) as Shared.IRI);
+          if (!existingAssertion) {
+            throw new BadRequestError('Assertion not found for update');
+          }
+
+          // Create a temporary assertion with merged data for validation
+          const mergedData = { ...existingAssertion, ...mappedData };
+          const tempAssertion = Assertion.create(mergedData);
+
+          // Convert assertion to credential format for validation
+          const credential = tempAssertion.toObject(version);
+
+          await this.schemaValidationService.validateCredential(
+            credential,
+            mappedData.credentialSchema,
+            {
+              timeoutMs: 15000, // 15 seconds timeout
+              enableCaching: true,
+              validateSchemaFormat: true,
+              customRules: [
+                // Apply predefined custom validation rules
+                SchemaValidationService.CustomRules.validateIssuanceDate,
+                SchemaValidationService.CustomRules.validateExpirationDate,
+                SchemaValidationService.CustomRules.validateIssuer
+              ]
+            }
+          );
+
+          logger.info('Credential schema validation for update completed successfully');
+        } catch (error) {
+          logger.error('Credential schema validation for update failed:', error);
+          throw new BadRequestError(`Credential schema validation failed: ${error.message}`);
+        }
       }
 
       const updatedAssertion = await this.assertionRepository.update(
