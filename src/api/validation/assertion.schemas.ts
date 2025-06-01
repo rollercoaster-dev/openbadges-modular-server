@@ -92,14 +92,16 @@ export const BatchCreateCredentialsSchema = z.object({
 
 // Schema for BatchRetrieveCredentialsDto
 export const BatchRetrieveCredentialsSchema = z.object({
-  ids: z.array(z.string()).min(1, "At least one ID is required").max(100, "Maximum 100 IDs per batch"),
+  ids: z.array(z.string().min(1, "ID cannot be empty")).min(1, "At least one ID is required").max(100, "Maximum 100 IDs per batch"),
 }).strict("Unrecognized fields in batch retrieve credentials data");
 
 // Schema for BatchUpdateCredentialStatusDto
 export const BatchUpdateCredentialStatusSchema = z.object({
   updates: z.array(z.object({
-    id: z.string(),
-    status: z.enum(['revoked', 'suspended', 'active']),
-    reason: z.string().optional(),
-  })).min(1, "At least one update is required").max(100, "Maximum 100 updates per batch"),
+    id: z.string().min(1, "ID cannot be empty"),
+    status: z.enum(['revoked', 'suspended', 'active'], {
+      errorMap: () => ({ message: "Status must be one of: revoked, suspended, active" })
+    }),
+    reason: z.string().min(1, "Reason cannot be empty if provided").optional(),
+  }).strict("Unrecognized fields in status update object")).min(1, "At least one update is required").max(100, "Maximum 100 updates per batch"),
 }).strict("Unrecognized fields in batch update credential status data");

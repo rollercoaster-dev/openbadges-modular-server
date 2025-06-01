@@ -173,7 +173,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toContain('does not exist');
+      expect(result.results[1].error?.message).toContain('does not exist');
     });
 
     it('should handle empty batch gracefully', async () => {
@@ -265,7 +265,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toBe('Assertion not found');
+      expect(result.results[1].error?.message).toBe('Assertion not found');
     });
   });
 

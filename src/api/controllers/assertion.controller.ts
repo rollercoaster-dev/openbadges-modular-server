@@ -661,6 +661,18 @@ export class AssertionController {
     sign: boolean = true,
     user?: { claims?: Record<string, unknown> } | null
   ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    const startTime = Date.now();
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Memory management: Check batch size and warn for large batches
+    if (data.credentials.length > 50) {
+      logger.warn(`Large batch operation detected`, {
+        batchId,
+        credentialCount: data.credentials.length,
+        user: user?.claims?.['sub'] || 'unknown'
+      });
+    }
+
     // Check if user has permission to create assertions
     if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
       logger.warn(
@@ -719,12 +731,18 @@ export class AssertionController {
           }
 
           assertionsToCreate.push(signedAssertion);
-          validationResults.push({ success: true });
+          validationResults.push({ index: i, success: true });
         } catch (error) {
-          logger.error(`Error processing credential ${i} in batch`, { error });
+          logger.error(`Error processing credential ${i} in batch ${batchId}`, { error, batchId, index: i });
           validationResults.push({
+            index: i,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: error instanceof Error ? error.message : 'Unknown validation error',
+              field: 'credential',
+              details: { batchIndex: i, batchId }
+            },
           });
         }
       }
@@ -736,6 +754,10 @@ export class AssertionController {
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
       let batchIndex = 0;
 
+      // Collect successful assertion IDs for batch conversion
+      const successfulAssertionIds: string[] = [];
+      const successfulIndices: number[] = [];
+
       for (let i = 0; i < validationResults.length; i++) {
         const validationResult = validationResults[i];
 
@@ -744,29 +766,74 @@ export class AssertionController {
           batchIndex++;
 
           if (batchResult.success && batchResult.assertion) {
-            try {
-              // Convert to JSON-LD format
-              const jsonLdAssertion = await this.getAssertionById(
-                batchResult.assertion.id,
-                version
-              );
+            successfulAssertionIds.push(batchResult.assertion.id);
+            successfulIndices.push(i);
+          }
+        }
+      }
 
+      // Batch convert successful assertions to JSON-LD format
+      const jsonLdAssertions: (AssertionResponseDto | null)[] = [];
+      if (successfulAssertionIds.length > 0) {
+        try {
+          const assertions = await this.assertionRepository.findByIds(successfulAssertionIds);
+          for (const assertion of assertions) {
+            if (assertion) {
+              jsonLdAssertions.push(assertion.toJsonLd(version) as AssertionResponseDto);
+            } else {
+              jsonLdAssertions.push(null);
+            }
+          }
+        } catch (error) {
+          logger.error('Failed to batch convert assertions to JSON-LD', { error });
+          // Fill with nulls if batch conversion fails
+          jsonLdAssertions.push(...new Array(successfulAssertionIds.length).fill(null));
+        }
+      }
+
+      // Build final results
+      batchIndex = 0;
+      let jsonLdIndex = 0;
+
+      for (let i = 0; i < validationResults.length; i++) {
+        const validationResult = validationResults[i];
+
+        if (validationResult.success) {
+          const batchResult = batchResults[batchIndex];
+          batchIndex++;
+
+          if (batchResult.success && batchResult.assertion) {
+            const jsonLdAssertion = jsonLdAssertions[jsonLdIndex];
+            jsonLdIndex++;
+
+            if (jsonLdAssertion) {
               results.push({
                 id: batchResult.assertion.id,
+                index: i,
                 success: true,
-                data: jsonLdAssertion as AssertionResponseDto,
+                data: jsonLdAssertion,
               });
-            } catch (error) {
+            } else {
               results.push({
                 id: batchResult.assertion.id,
+                index: i,
                 success: false,
-                error: 'Failed to convert assertion to response format',
+                error: {
+                  code: 'CONVERSION_ERROR',
+                  message: 'Failed to convert assertion to response format',
+                  details: { batchId, assertionId: batchResult.assertion.id }
+                },
               });
             }
           } else {
             results.push({
+              index: i,
               success: false,
-              error: batchResult.error || 'Failed to create assertion',
+              error: {
+                code: 'CREATION_ERROR',
+                message: batchResult.error || 'Failed to create assertion',
+                details: { batchId, batchIndex: i }
+              },
             });
           }
         } else {
@@ -777,6 +844,7 @@ export class AssertionController {
       // Calculate summary
       const successful = results.filter(r => r.success).length;
       const failed = results.length - successful;
+      const processingTimeMs = Date.now() - startTime;
 
       return {
         results,
@@ -784,6 +852,12 @@ export class AssertionController {
           total: results.length,
           successful,
           failed,
+          processingTimeMs,
+        },
+        metadata: {
+          batchId,
+          timestamp: new Date().toISOString(),
+          version: version.toString(),
         },
       };
     } catch (error) {
@@ -802,8 +876,12 @@ export class AssertionController {
     data: BatchRetrieveCredentialsDto,
     version: BadgeVersion = BadgeVersion.V3
   ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    const startTime = Date.now();
+    const batchId = `retrieve_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     try {
       logger.debug('Batch assertion retrieval data', {
+        batchId,
         idCount: data.ids.length
       });
 
@@ -819,25 +897,36 @@ export class AssertionController {
 
         if (assertion) {
           try {
-            // Convert to JSON-LD format
-            const jsonLdAssertion = await this.getAssertionById(assertion.id, version);
+            // Convert to JSON-LD format directly (avoid additional DB call)
+            const jsonLdAssertion = assertion.toJsonLd(version) as AssertionResponseDto;
             results.push({
               id,
+              index: i,
               success: true,
-              data: jsonLdAssertion as AssertionResponseDto,
+              data: jsonLdAssertion,
             });
           } catch (error) {
             results.push({
               id,
+              index: i,
               success: false,
-              error: 'Failed to convert assertion to response format',
+              error: {
+                code: 'CONVERSION_ERROR',
+                message: 'Failed to convert assertion to response format',
+                details: { batchId, assertionId: id }
+              },
             });
           }
         } else {
           results.push({
             id,
+            index: i,
             success: false,
-            error: 'Assertion not found',
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Assertion not found',
+              details: { batchId, requestedId: id }
+            },
           });
         }
       }
@@ -845,6 +934,7 @@ export class AssertionController {
       // Calculate summary
       const successful = results.filter(r => r.success).length;
       const failed = results.length - successful;
+      const processingTimeMs = Date.now() - startTime;
 
       return {
         results,
@@ -852,6 +942,12 @@ export class AssertionController {
           total: results.length,
           successful,
           failed,
+          processingTimeMs,
+        },
+        metadata: {
+          batchId,
+          timestamp: new Date().toISOString(),
+          version: version.toString(),
         },
       };
     } catch (error) {
@@ -870,8 +966,12 @@ export class AssertionController {
     data: BatchUpdateCredentialStatusDto,
     version: BadgeVersion = BadgeVersion.V3
   ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    const startTime = Date.now();
+    const batchId = `update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     try {
       logger.debug('Batch assertion status update data', {
+        batchId,
         updateCount: data.updates.length
       });
 
@@ -880,39 +980,46 @@ export class AssertionController {
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
+      let index = 0;
 
       for (const updateResult of updateResults) {
         if (updateResult.success && updateResult.assertion) {
           try {
-            // Convert to JSON-LD format
-            const jsonLdAssertion = await this.getAssertionById(
-              updateResult.assertion.id,
-              version
-            );
+            // Convert to JSON-LD format directly (avoid additional DB call)
+            const jsonLdAssertion = updateResult.assertion.toJsonLd(version) as AssertionResponseDto;
             results.push({
               id: updateResult.id,
+              index,
               success: true,
-              data: jsonLdAssertion as AssertionResponseDto,
+              data: jsonLdAssertion,
             });
           } catch (error) {
             results.push({
               id: updateResult.id,
+              index,
               success: false,
-              error: 'Failed to convert assertion to response format',
+              error: {
+                code: 'CONVERSION_ERROR',
+                message: 'Failed to convert assertion to response format',
+                details: { batchId, assertionId: updateResult.id }
+              },
             });
           }
         } else {
           results.push({
             id: updateResult.id,
+            index,
             success: false,
             error: updateResult.error || 'Failed to update assertion status',
           });
         }
+        index++;
       }
 
       // Calculate summary
       const successful = results.filter(r => r.success).length;
       const failed = results.length - successful;
+      const processingTimeMs = Date.now() - startTime;
 
       return {
         results,
@@ -920,6 +1027,12 @@ export class AssertionController {
           total: results.length,
           successful,
           failed,
+          processingTimeMs,
+        },
+        metadata: {
+          batchId,
+          timestamp: new Date().toISOString(),
+          version: version.toString(),
         },
       };
     } catch (error) {

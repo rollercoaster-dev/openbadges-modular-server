@@ -480,6 +480,7 @@ function createVersionedRouter(
     validateBatchRetrieveCredentialsMiddleware(),
     async (c) => {
       try {
+        // Get validated data from middleware (query params converted to body format)
         const body = getValidatedBody<BatchRetrieveCredentialsDto>(c);
         const result = await assertionController.getAssertionsBatch(
           body,
