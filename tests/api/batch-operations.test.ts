@@ -173,6 +173,7 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository responses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockBadgeClassRepository.findById as any)
         .mockResolvedValueOnce(mockBadgeClass)
         .mockResolvedValueOnce(null); // Second badge class doesn't exist
@@ -244,6 +245,7 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.findByIds as any).mockResolvedValue(mockAssertions);
 
       // Act
@@ -275,6 +277,7 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository response (second assertion is null)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.findByIds as any).mockResolvedValue([
         mockAssertion,
         null,
@@ -325,6 +328,7 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertions[0] },
         { id: 'assertion-2', success: true, assertion: mockUpdatedAssertions[1] },
@@ -363,6 +367,7 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       // Mock repository response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.updateStatusBatch as any).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertion },
         { id: 'nonexistent-assertion', success: false, error: 'Assertion not found' },
