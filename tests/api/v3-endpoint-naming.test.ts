@@ -5,8 +5,9 @@
  * as well as the deprecation warnings for legacy endpoints.
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { createVersionedRouter } from '@/api/api.router';
 import { BadgeVersion } from '@/utils/version/badge-version';
 
@@ -88,18 +89,18 @@ const mockAssertionController = {
 };
 
 // Mock auth middleware
-const mockRequireAuth = () => async (c: any, next: any) => {
+const mockRequireAuth = () => async (c: Context, next: () => Promise<void>) => {
   c.set('user', { id: 'test-user' });
   await next();
 };
 
 // Mock validation middleware
-const mockValidateBadgeClassMiddleware = () => async (c: any, next: any) => {
+const mockValidateBadgeClassMiddleware = () => async (c: Context, next: () => Promise<void>) => {
   c.set('validatedBody', await c.req.json());
   await next();
 };
 
-const mockValidateAssertionMiddleware = () => async (c: any, next: any) => {
+const mockValidateAssertionMiddleware = () => async (c: Context, next: () => Promise<void>) => {
   c.set('validatedBody', await c.req.json());
   await next();
 };
@@ -504,9 +505,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       const badgeClassData = await badgeClassResponse.json();
 
       // Remove deprecation warning from legacy response for comparison
-      delete badgeClassData._deprecation;
+      const { _deprecation: _, ...normalizedBadgeClassData } = badgeClassData;
 
-      expect(achievementData).toEqual(badgeClassData);
+      expect(achievementData).toEqual(normalizedBadgeClassData);
     });
 
     it('should return equivalent responses for /credentials and /assertions', async () => {
@@ -519,9 +520,9 @@ describe('V3.0 Compliant API Endpoint Naming', () => {
       const assertionData = await assertionResponse.json();
 
       // Remove deprecation warning from legacy response for comparison
-      delete assertionData._deprecation;
+      const { _deprecation: __, ...normalizedAssertionData } = assertionData;
 
-      expect(credentialData).toEqual(assertionData);
+      expect(credentialData).toEqual(normalizedAssertionData);
     });
   });
 });
