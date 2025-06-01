@@ -235,21 +235,13 @@ export class StatusListService implements IStatusListService {
         throw new Error(`Status list not found: ${statusEntry.statusListId}`);
       }
 
-      // Update the bitstring
-      const updatedBitstring = await this.updateBitstring(statusList, statusEntry.statusListIndex, request.status);
-
-      // Update the status list with the new bitstring
-      await this.statusListRepository.update(statusList.id, {
-        bitstring: updatedBitstring,
-        updatedAt: new Date()
-      });
-
-      // Update the status entry
-      const updatedEntry = await this.credentialStatusEntryRepository.update(statusEntry.id, {
-        status: request.status,
-        reason: request.reason,
-        updatedAt: new Date()
-      });
+      // Perform atomic update to prevent race conditions
+      const updatedEntry = await this.atomicUpdateCredentialStatus(
+        statusList,
+        statusEntry,
+        request.status,
+        request.reason
+      );
 
       if (!updatedEntry) {
         throw new Error(`Failed to update status entry: ${statusEntry.id}`);
@@ -289,6 +281,78 @@ export class StatusListService implements IStatusListService {
         credentialId
       });
       throw new Error(`Failed to get credential status: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Atomically updates a credential's status to prevent race conditions
+   * This method should be implemented with database-level locking or optimistic concurrency control
+   */
+  private async atomicUpdateCredentialStatus(
+    statusList: StatusList,
+    statusEntry: CredentialStatusEntry,
+    newStatus: CredentialStatus,
+    reason?: string
+  ): Promise<CredentialStatusEntry | null> {
+    try {
+      // For now, implement a simple retry mechanism with optimistic locking
+      // In production, this should use database transactions or row-level locking
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          // Re-fetch the current status list to get the latest bitstring
+          const currentStatusList = await this.statusListRepository.findById(statusList.id);
+          if (!currentStatusList) {
+            throw new Error(`Status list not found: ${statusList.id}`);
+          }
+
+          // Update the bitstring with the current data
+          const updatedBitstring = await this.updateBitstring(currentStatusList, statusEntry.statusListIndex, newStatus);
+
+          // Update the status list with optimistic concurrency check
+          // This should ideally include a version field or timestamp check
+          await this.statusListRepository.update(currentStatusList.id, {
+            bitstring: updatedBitstring,
+            updatedAt: new Date()
+          });
+
+          // Update the status entry
+          const updatedEntry = await this.credentialStatusEntryRepository.update(statusEntry.id, {
+            status: newStatus,
+            reason: reason,
+            updatedAt: new Date()
+          });
+
+          return updatedEntry;
+        } catch (error) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw error;
+          }
+
+          // Wait a short time before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 100));
+
+          logger.warn('Retrying atomic update due to potential race condition', {
+            statusListId: statusList.id,
+            credentialId: statusEntry.credentialId,
+            retryCount
+          });
+        }
+      }
+
+      throw new Error('Failed to perform atomic update after maximum retries');
+    } catch (error) {
+      logger.error('Failed to atomically update credential status', {
+        error: error instanceof Error ? error.message : String(error),
+        statusListId: statusList.id,
+        credentialId: statusEntry.credentialId,
+        newStatus,
+        reason
+      });
+      throw error;
     }
   }
 

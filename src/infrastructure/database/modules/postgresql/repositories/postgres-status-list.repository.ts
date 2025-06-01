@@ -41,6 +41,11 @@ export class PostgresStatusListRepository implements StatusListRepository {
       };
 
       const result = await this.db.insert(statusLists).values(insertData).returning();
+
+      if (result.length === 0) {
+        throw new Error('Failed to create status list: No rows returned from insert operation');
+      }
+
       const row = result[0];
 
       const statusList: StatusList = {

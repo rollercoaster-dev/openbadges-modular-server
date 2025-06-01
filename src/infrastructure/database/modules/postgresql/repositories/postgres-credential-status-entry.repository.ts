@@ -40,6 +40,11 @@ export class PostgresCredentialStatusEntryRepository implements CredentialStatus
       };
 
       const result = await this.db.insert(credentialStatusEntries).values(insertData).returning();
+
+      if (result.length === 0) {
+        throw new Error('Failed to create credential status entry: No rows returned from insert operation');
+      }
+
       const row = result[0];
 
       const entry: CredentialStatusEntry = {
