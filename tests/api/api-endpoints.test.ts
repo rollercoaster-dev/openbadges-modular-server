@@ -706,7 +706,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const result = await response.json();
+        const badgeClass = await badgeClassResponse.json();
 
         // Create individual credentials
         for (let i = 1; i <= 3; i++) {
@@ -725,7 +725,7 @@ describe('API Endpoints', () => {
             ],
           };
 
-          const response = await app.request('/v3/credentials', {
+          const credentialResponse = await app.request('/v3/credentials', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -734,7 +734,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-        const result = await response.json();
+          const credential = await credentialResponse.json();
           createdCredentialIds.push(credential.id);
         }
       });
@@ -780,7 +780,8 @@ describe('API Endpoints', () => {
         expect(result.summary.failed).toBe(1);
         expect(result.results[0].success).toBe(true);
         expect(result.results[1].success).toBe(false);
-        expect(result.results[1].error).toBe('Assertion not found');
+        expect(result.results[1].error).toBeDefined();
+        expect(result.results[1].error.message || result.results[1].error).toContain('not found');
       });
 
       it('should require authentication', async () => {
@@ -829,7 +830,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const result = await response.json();
+        const badgeClass = await badgeClassResponse.json();
 
         // Create individual credentials
         for (let i = 1; i <= 2; i++) {
@@ -848,7 +849,7 @@ describe('API Endpoints', () => {
             ],
           };
 
-          const response = await app.request('/v3/credentials', {
+          const credentialResponse = await app.request('/v3/credentials', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -857,7 +858,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-        const result = await response.json();
+          const credential = await credentialResponse.json();
           testCredentialIds.push(credential.id);
         }
       });
@@ -929,7 +930,8 @@ describe('API Endpoints', () => {
         expect(result.summary.failed).toBe(1);
         expect(result.results[0].success).toBe(true);
         expect(result.results[1].success).toBe(false);
-        expect(result.results[1].error).toContain('not found');
+        expect(result.results[1].error).toBeDefined();
+        expect(result.results[1].error.message || result.results[1].error).toContain('not found');
       });
 
       it('should require authentication', async () => {

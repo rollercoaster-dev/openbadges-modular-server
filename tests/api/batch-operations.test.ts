@@ -2,7 +2,7 @@
  * Unit tests for batch operations
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { AssertionController } from '../../src/api/controllers/assertion.controller';
 import { AssertionRepository } from '../../src/domains/assertion/assertion.repository';
 import { BadgeClassRepository } from '../../src/domains/badgeClass/badgeClass.repository';
@@ -18,21 +18,33 @@ import {
 
 // Mock dependencies
 const mockAssertionRepository: Partial<AssertionRepository> = {
-  createBatch: vi.fn(),
-  findByIds: vi.fn(),
-  updateStatusBatch: vi.fn(),
-  findById: vi.fn(),
+  createBatch: mock(),
+  findByIds: mock(),
+  updateStatusBatch: mock(),
+  findById: mock(),
 };
 
 const mockBadgeClassRepository: Partial<BadgeClassRepository> = {
-  findById: vi.fn(),
+  findById: mock(),
 };
 
 describe('Batch Operations Unit Tests', () => {
   let assertionController: AssertionController;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset all mocks
+    Object.values(mockAssertionRepository).forEach((mockFn) => {
+      if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockFn as any).mockReset();
+      }
+    });
+    Object.values(mockBadgeClassRepository).forEach((mockFn) => {
+      if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockFn as any).mockReset();
+      }
+    });
     
     // Create controller with mocked dependencies
     assertionController = new AssertionController(
@@ -41,7 +53,8 @@ describe('Batch Operations Unit Tests', () => {
     );
 
     // Mock the getAssertionById method
-    vi.spyOn(assertionController, 'getAssertionById').mockResolvedValue({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (assertionController as any).getAssertionById = mock().mockResolvedValue({
       '@context': 'https://www.w3.org/2018/credentials/v1',
       type: ['VerifiableCredential', 'OpenBadgeCredential'],
       id: 'test-id',
@@ -55,6 +68,7 @@ describe('Batch Operations Unit Tests', () => {
           name: 'Test Badge',
         },
       },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   });
 
@@ -89,20 +103,26 @@ describe('Batch Operations Unit Tests', () => {
           recipient: { identity: 'user1@example.com' },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-1' }],
+          issuer: 'test-issuer',
         }),
         Assertion.create({
           recipient: { identity: 'user2@example.com' },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
+          issuer: 'test-issuer',
         }),
       ];
 
       // Mock repository responses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockBadgeClassRepository.findById as any).mockResolvedValue(mockBadgeClass);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertions[0] },
         { success: true, assertion: mockAssertions[1] },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue(mockAssertions);
 
       // Act
       const result = await assertionController.createAssertionsBatch(
@@ -149,6 +169,7 @@ describe('Batch Operations Unit Tests', () => {
         recipient: { identity: 'user1@example.com' },
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
+        issuer: 'test-issuer',
       });
 
       // Mock repository responses
@@ -156,9 +177,12 @@ describe('Batch Operations Unit Tests', () => {
         .mockResolvedValueOnce(mockBadgeClass)
         .mockResolvedValueOnce(null); // Second badge class doesn't exist
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (mockAssertionRepository.createBatch as any).mockResolvedValue([
         { success: true, assertion: mockAssertion },
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockAssertionRepository.findByIds as any).mockResolvedValue([mockAssertion]);
 
       // Act
       const result = await assertionController.createAssertionsBatch(
@@ -209,11 +233,13 @@ describe('Batch Operations Unit Tests', () => {
           recipient: { identity: 'user1@example.com' },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-1' }],
+          issuer: 'test-issuer',
         }),
         Assertion.create({
           recipient: { identity: 'user2@example.com' },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
+          issuer: 'test-issuer',
         }),
       ];
 
@@ -245,6 +271,7 @@ describe('Batch Operations Unit Tests', () => {
         recipient: { identity: 'user1@example.com' },
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
+        issuer: 'test-issuer',
       });
 
       // Mock repository response (second assertion is null)
@@ -286,12 +313,14 @@ describe('Batch Operations Unit Tests', () => {
           evidence: [{ id: 'evidence-1' }],
           revoked: true,
           revocationReason: 'Test revocation',
+          issuer: 'test-issuer',
         }),
         Assertion.create({
           recipient: { identity: 'user2@example.com' },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
           revoked: false,
+          issuer: 'test-issuer',
         }),
       ];
 
@@ -330,6 +359,7 @@ describe('Batch Operations Unit Tests', () => {
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
         revoked: true,
+        issuer: 'test-issuer',
       });
 
       // Mock repository response
@@ -350,7 +380,7 @@ describe('Batch Operations Unit Tests', () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results[0].success).toBe(true);
       expect(result.results[1].success).toBe(false);
-      expect(result.results[1].error).toBe('Assertion not found');
+      expect(result.results[1].error.message).toBe('Assertion not found');
     });
   });
 });
