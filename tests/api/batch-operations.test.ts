@@ -2,8 +2,6 @@
  * Unit tests for batch operations
  */
 
-// @ts-nocheck - Test file with mock data, type safety is less critical
-
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { mock } from 'bun:test';
 
@@ -49,12 +47,12 @@ describe('Batch Operations Unit Tests', () => {
 
   beforeEach(() => {
     // Reset all mocks
-    Object.values(mockAssertionRepository).forEach(mockFn => {
+    Object.values(mockAssertionRepository).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
         (mockFn as unknown as { mockReset: () => void }).mockReset();
       }
     });
-    Object.values(mockBadgeClassRepository).forEach(mockFn => {
+    Object.values(mockBadgeClassRepository).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockReset' in mockFn) {
         (mockFn as unknown as { mockReset: () => void }).mockReset();
       }
@@ -94,7 +92,7 @@ describe('Batch Operations Unit Tests', () => {
             recipient: {
               identity: 'user1@example.com',
               type: 'email',
-              hashed: false
+              hashed: false,
             },
             badge: 'badge-class-1',
             issuedOn: new Date().toISOString(),
@@ -104,7 +102,7 @@ describe('Batch Operations Unit Tests', () => {
             recipient: {
               identity: 'user2@example.com',
               type: 'email',
-              hashed: false
+              hashed: false,
             },
             badge: 'badge-class-1',
             issuedOn: new Date().toISOString(),
@@ -126,7 +124,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user1@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-1' }],
@@ -135,7 +133,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user2@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
@@ -143,7 +141,9 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository responses
-      (mockBadgeClassRepository.findById as unknown).mockResolvedValue(mockBadgeClass);
+      (mockBadgeClassRepository.findById as unknown).mockResolvedValue(
+        mockBadgeClass
+      );
       (mockAssertionRepository.createBatch as unknown).mockResolvedValue([
         { success: true, assertion: mockAssertions[0] },
         { success: true, assertion: mockAssertions[1] },
@@ -173,7 +173,7 @@ describe('Batch Operations Unit Tests', () => {
             recipient: {
               identity: 'user1@example.com',
               type: 'email',
-              hashed: false
+              hashed: false,
             },
             badge: 'badge-class-1',
             issuedOn: new Date().toISOString(),
@@ -183,7 +183,7 @@ describe('Batch Operations Unit Tests', () => {
             recipient: {
               identity: 'user2@example.com',
               type: 'email',
-              hashed: false
+              hashed: false,
             },
             badge: 'nonexistent-badge-class',
             issuedOn: new Date().toISOString(),
@@ -204,7 +204,7 @@ describe('Batch Operations Unit Tests', () => {
         recipient: {
           identity: 'user1@example.com',
           type: 'email',
-          hashed: false
+          hashed: false,
         },
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
@@ -268,7 +268,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user1@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-1' }],
@@ -277,7 +277,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user2@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
@@ -285,7 +285,9 @@ describe('Batch Operations Unit Tests', () => {
       ];
 
       // Mock repository response
-      (mockAssertionRepository.findByIds as unknown).mockResolvedValue(mockAssertions);
+      (mockAssertionRepository.findByIds as unknown).mockResolvedValue(
+        mockAssertions
+      );
 
       // Act
       const result = await assertionController.getAssertionsBatch(
@@ -312,7 +314,7 @@ describe('Batch Operations Unit Tests', () => {
         recipient: {
           identity: 'user1@example.com',
           type: 'email',
-          hashed: false
+          hashed: false,
         },
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
@@ -355,7 +357,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user1@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-1' }],
@@ -366,7 +368,7 @@ describe('Batch Operations Unit Tests', () => {
           recipient: {
             identity: 'user2@example.com',
             type: 'email',
-            hashed: false
+            hashed: false,
           },
           badgeClass: 'badge-class-1',
           evidence: [{ id: 'evidence-2' }],
@@ -376,8 +378,16 @@ describe('Batch Operations Unit Tests', () => {
 
       // Mock repository response
       (mockAssertionRepository.updateStatusBatch as unknown).mockResolvedValue([
-        { id: 'assertion-1', success: true, assertion: mockUpdatedAssertions[0] },
-        { id: 'assertion-2', success: true, assertion: mockUpdatedAssertions[1] },
+        {
+          id: 'assertion-1',
+          success: true,
+          assertion: mockUpdatedAssertions[0],
+        },
+        {
+          id: 'assertion-2',
+          success: true,
+          assertion: mockUpdatedAssertions[1],
+        },
       ]);
 
       // Act
@@ -408,7 +418,7 @@ describe('Batch Operations Unit Tests', () => {
         recipient: {
           identity: 'user1@example.com',
           type: 'email',
-          hashed: false
+          hashed: false,
         },
         badgeClass: 'badge-class-1',
         evidence: [{ id: 'evidence-1' }],
@@ -418,7 +428,11 @@ describe('Batch Operations Unit Tests', () => {
       // Mock repository response
       (mockAssertionRepository.updateStatusBatch as unknown).mockResolvedValue([
         { id: 'assertion-1', success: true, assertion: mockUpdatedAssertion },
-        { id: 'nonexistent-assertion', success: false, error: 'Assertion not found' },
+        {
+          id: 'nonexistent-assertion',
+          success: false,
+          error: 'Assertion not found',
+        },
       ]);
 
       // Act

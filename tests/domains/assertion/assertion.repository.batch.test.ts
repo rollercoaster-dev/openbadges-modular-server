@@ -2,8 +2,6 @@
  * Unit tests for assertion repository batch operations
  */
 
-// @ts-nocheck - Test file with mock data, type safety is less critical
-
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Assertion } from '../../../src/domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../../src/domains/assertion/assertion.repository';
@@ -12,11 +10,13 @@ import { AssertionRepository } from '../../../src/domains/assertion/assertion.re
 class MockAssertionRepository implements Partial<AssertionRepository> {
   private assertions: Map<string, Assertion> = new Map();
 
-  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<Array<{
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<
+    Array<{
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     const results: Array<{
       success: boolean;
       assertion?: Assertion;
@@ -26,7 +26,10 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
     for (const assertionData of assertionList) {
       try {
         // Simulate validation - fail if recipient identity is 'invalid'
-        if ((assertionData.recipient as { identity?: string })?.identity === 'invalid') {
+        if (
+          (assertionData.recipient as { identity?: string })?.identity ===
+          'invalid'
+        ) {
           results.push({
             success: false,
             error: 'Invalid recipient identity',
@@ -36,7 +39,7 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
 
         const assertion = Assertion.create(assertionData);
         this.assertions.set(assertion.id, assertion);
-        
+
         results.push({
           success: true,
           assertion,
@@ -53,19 +56,23 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
   }
 
   async findByIds(ids: string[]): Promise<(Assertion | null)[]> {
-    return ids.map(id => this.assertions.get(id) || null);
+    return ids.map((id) => this.assertions.get(id) || null);
   }
 
-  async updateStatusBatch(updates: Array<{
-    id: string;
-    status: 'revoked' | 'suspended' | 'active';
-    reason?: string;
-  }>): Promise<Array<{
-    id: string;
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async updateStatusBatch(
+    updates: Array<{
+      id: string;
+      status: 'revoked' | 'suspended' | 'active';
+      reason?: string;
+    }>
+  ): Promise<
+    Array<{
+      id: string;
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     const results: Array<{
       id: string;
       success: boolean;
@@ -75,7 +82,7 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
 
     for (const update of updates) {
       const assertion = this.assertions.get(update.id);
-      
+
       if (!assertion) {
         results.push({
           id: update.id,
@@ -88,7 +95,7 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
       try {
         // Update the assertion status
         const updatedData: Partial<Assertion> = {};
-        
+
         switch (update.status) {
           case 'revoked':
             updatedData.revoked = true;
@@ -165,10 +172,14 @@ describe('Assertion Repository Batch Operations', () => {
       expect(results).toHaveLength(2);
       expect(results[0].success).toBe(true);
       expect(results[0].assertion).toBeDefined();
-      expect(results[0].assertion?.recipient.identity).toBe('user1@example.com');
+      expect(results[0].assertion?.recipient.identity).toBe(
+        'user1@example.com'
+      );
       expect(results[1].success).toBe(true);
       expect(results[1].assertion).toBeDefined();
-      expect(results[1].assertion?.recipient.identity).toBe('user2@example.com');
+      expect(results[1].assertion?.recipient.identity).toBe(
+        'user2@example.com'
+      );
     });
 
     it('should handle partial failures in batch creation', async () => {
@@ -234,8 +245,8 @@ describe('Assertion Repository Batch Operations', () => {
 
       const createResults = await repository.createBatch(assertionsToCreate);
       const ids = createResults
-        .filter(r => r.success && r.assertion)
-        .map(r => r.assertion!.id);
+        .filter((r) => r.success && r.assertion)
+        .map((r) => r.assertion!.id);
 
       // Act
       const foundAssertions = await repository.findByIds(ids);
@@ -301,7 +312,7 @@ describe('Assertion Repository Batch Operations', () => {
       ] as Omit<Assertion, 'id'>[];
 
       const createResults = await repository.createBatch(assertionsToCreate);
-      const ids = createResults.map(r => r.assertion!.id);
+      const ids = createResults.map((r) => r.assertion!.id);
 
       const updates = [
         { id: ids[0], status: 'revoked' as const, reason: 'Test revocation' },
@@ -322,9 +333,7 @@ describe('Assertion Repository Batch Operations', () => {
 
     it('should handle updates for non-existent assertions', async () => {
       // Arrange
-      const updates = [
-        { id: 'non-existent', status: 'revoked' as const },
-      ];
+      const updates = [{ id: 'non-existent', status: 'revoked' as const }];
 
       // Act
       const results = await repository.updateStatusBatch(updates);
@@ -357,7 +366,9 @@ describe('Assertion Repository Batch Operations', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
       expect(results[0].assertion?.revoked).toBe(true);
-      expect(results[0].assertion?.revocationReason).toBe('Temporary suspension');
+      expect(results[0].assertion?.revocationReason).toBe(
+        'Temporary suspension'
+      );
     });
   });
 });
