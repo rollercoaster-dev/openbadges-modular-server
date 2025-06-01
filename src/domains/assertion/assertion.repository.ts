@@ -73,4 +73,38 @@ export interface AssertionRepository {
    * @returns An object with isValid flag and optional reason for invalidity
    */
   verify(id: Shared.IRI): Promise<{ isValid: boolean; reason?: string }>;
+
+  /**
+   * Creates multiple assertions in a batch operation
+   * @param assertions The assertions to create
+   * @returns An array of results indicating success/failure for each assertion
+   */
+  createBatch(assertions: Omit<Assertion, 'id'>[]): Promise<Array<{
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>>;
+
+  /**
+   * Finds multiple assertions by their IDs
+   * @param ids The IDs of the assertions to find
+   * @returns An array of assertions (null for not found)
+   */
+  findByIds(ids: Shared.IRI[]): Promise<(Assertion | null)[]>;
+
+  /**
+   * Updates the status of multiple assertions in a batch operation
+   * @param updates Array of status updates to apply
+   * @returns An array of results indicating success/failure for each update
+   */
+  updateStatusBatch(updates: Array<{
+    id: Shared.IRI;
+    status: 'revoked' | 'suspended' | 'active';
+    reason?: string;
+  }>): Promise<Array<{
+    id: Shared.IRI;
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>>;
 }
