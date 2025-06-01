@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { PostgresAssertionMapper } from '../../../../../src/infrastructure/database/modules/postgresql/mappers/postgres-assertion.mapper';
 import { SqliteAssertionMapper } from '../../../../../src/infrastructure/database/modules/sqlite/mappers/sqlite-assertion.mapper';
 import { Assertion } from '../../../../../src/domains/assertion/assertion.entity';
@@ -12,7 +12,7 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
   beforeEach(() => {
     postgresMapper = new PostgresAssertionMapper();
     sqliteMapper = new SqliteAssertionMapper();
-    
+
     validAssertion = Assertion.create({
       id: 'urn:uuid:12345678-1234-5678-9012-123456789012' as Shared.IRI,
       badgeClass: 'urn:uuid:87654321-4321-8765-2109-876543210987' as Shared.IRI,
@@ -31,14 +31,19 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
       it('should convert issuer IRI to UUID format for database storage', () => {
         const persistenceData = postgresMapper.toPersistence(validAssertion);
 
-        expect(persistenceData.issuerId).toBe('11111111-1111-1111-1111-111111111111');
-        expect(persistenceData.badgeClassId).toBe('87654321-4321-8765-2109-876543210987');
+        expect(
+          'issuerId' in persistenceData ? persistenceData.issuerId : undefined
+        ).toBe('11111111-1111-1111-1111-111111111111');
+        expect(persistenceData.badgeClassId).toBe(
+          '87654321-4321-8765-2109-876543210987'
+        );
       });
 
       it('should handle assertion without issuer field', () => {
         const assertionWithoutIssuer = Assertion.create({
           id: 'urn:uuid:12345678-1234-5678-9012-123456789012' as Shared.IRI,
-          badgeClass: 'urn:uuid:87654321-4321-8765-2109-876543210987' as Shared.IRI,
+          badgeClass:
+            'urn:uuid:87654321-4321-8765-2109-876543210987' as Shared.IRI,
           recipient: {
             type: 'email',
             hashed: false,
@@ -47,10 +52,14 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
           issuedOn: '2023-01-01T00:00:00Z',
         });
 
-        const persistenceData = postgresMapper.toPersistence(assertionWithoutIssuer);
+        const persistenceData = postgresMapper.toPersistence(
+          assertionWithoutIssuer
+        );
 
-        expect(persistenceData.issuerId).toBeUndefined();
-        expect(persistenceData.badgeClassId).toBe('87654321-4321-8765-2109-876543210987');
+        expect('issuerId' in persistenceData).toBeFalsy();
+        expect(persistenceData.badgeClassId).toBe(
+          '87654321-4321-8765-2109-876543210987'
+        );
       });
     });
 
@@ -78,8 +87,12 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
 
         const domainEntity = postgresMapper.toDomain(dbRecord);
 
-        expect(domainEntity.issuer).toBe('urn:uuid:11111111-1111-1111-1111-111111111111');
-        expect(domainEntity.badgeClass).toBe('urn:uuid:87654321-4321-8765-2109-876543210987');
+        expect(domainEntity.issuer?.toString()).toBe(
+          'urn:uuid:11111111-1111-1111-1111-111111111111'
+        );
+        expect(domainEntity.badgeClass.toString()).toBe(
+          'urn:uuid:87654321-4321-8765-2109-876543210987'
+        );
       });
 
       it('should handle null issuer_id', () => {
@@ -106,7 +119,9 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
         const domainEntity = postgresMapper.toDomain(dbRecord);
 
         expect(domainEntity.issuer).toBeUndefined();
-        expect(domainEntity.badgeClass).toBe('urn:uuid:87654321-4321-8765-2109-876543210987');
+        expect(domainEntity.badgeClass.toString()).toBe(
+          'urn:uuid:87654321-4321-8765-2109-876543210987'
+        );
       });
     });
   });
@@ -116,14 +131,19 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
       it('should convert issuer IRI to text format for database storage', () => {
         const persistenceData = sqliteMapper.toPersistence(validAssertion);
 
-        expect(persistenceData.issuerId).toBe('11111111-1111-1111-1111-111111111111');
-        expect(persistenceData.badgeClassId).toBe('87654321-4321-8765-2109-876543210987');
+        expect(persistenceData.issuerId).toBe(
+          '11111111-1111-1111-1111-111111111111'
+        );
+        expect(persistenceData.badgeClassId).toBe(
+          '87654321-4321-8765-2109-876543210987'
+        );
       });
 
       it('should handle assertion without issuer field', () => {
         const assertionWithoutIssuer = Assertion.create({
           id: 'urn:uuid:12345678-1234-5678-9012-123456789012' as Shared.IRI,
-          badgeClass: 'urn:uuid:87654321-4321-8765-2109-876543210987' as Shared.IRI,
+          badgeClass:
+            'urn:uuid:87654321-4321-8765-2109-876543210987' as Shared.IRI,
           recipient: {
             type: 'email',
             hashed: false,
@@ -132,10 +152,14 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
           issuedOn: '2023-01-01T00:00:00Z',
         });
 
-        const persistenceData = sqliteMapper.toPersistence(assertionWithoutIssuer);
+        const persistenceData = sqliteMapper.toPersistence(
+          assertionWithoutIssuer
+        );
 
         expect(persistenceData.issuerId).toBeNull();
-        expect(persistenceData.badgeClassId).toBe('87654321-4321-8765-2109-876543210987');
+        expect(persistenceData.badgeClassId).toBe(
+          '87654321-4321-8765-2109-876543210987'
+        );
       });
     });
 
@@ -163,8 +187,12 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
 
         const domainEntity = sqliteMapper.toDomain(dbRecord);
 
-        expect(domainEntity.issuer).toBe('urn:uuid:11111111-1111-1111-1111-111111111111');
-        expect(domainEntity.badgeClass).toBe('urn:uuid:87654321-4321-8765-2109-876543210987');
+        expect(domainEntity.issuer?.toString()).toBe(
+          'urn:uuid:11111111-1111-1111-1111-111111111111'
+        );
+        expect(domainEntity.badgeClass.toString()).toBe(
+          'urn:uuid:87654321-4321-8765-2109-876543210987'
+        );
       });
 
       it('should handle null issuer_id', () => {
@@ -191,7 +219,9 @@ describe('Assertion Mappers - Issuer Field Tests', () => {
         const domainEntity = sqliteMapper.toDomain(dbRecord);
 
         expect(domainEntity.issuer).toBeUndefined();
-        expect(domainEntity.badgeClass).toBe('urn:uuid:87654321-4321-8765-2109-876543210987');
+        expect(domainEntity.badgeClass.toString()).toBe(
+          'urn:uuid:87654321-4321-8765-2109-876543210987'
+        );
       });
     });
   });

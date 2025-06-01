@@ -603,7 +603,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
     // Verify issuer field compliance with OB3 specification
     if (typeof assertion.issuer === 'string') {
       // Issuer as IRI reference
-      expect(assertion.issuer).toBe(issuer.id);
+      expect(assertion.issuer).toBe(issuer.id.toString());
       expect(assertion.issuer).toMatch(/^urn:uuid:[0-9a-f-]+$/);
     } else {
       // Issuer as embedded object - verify required fields
@@ -623,13 +623,15 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
         .achievement as Record<string, unknown>
     ).issuer;
 
-    const vcIssuerId = typeof assertion.issuer === 'string'
-      ? assertion.issuer
-      : (assertion.issuer as Record<string, unknown>).id;
+    const vcIssuerId =
+      typeof assertion.issuer === 'string'
+        ? assertion.issuer
+        : (assertion.issuer as Record<string, unknown>).id;
 
-    const achievementIssuerId = typeof achievementIssuer === 'string'
-      ? achievementIssuer
-      : (achievementIssuer as Record<string, unknown>).id;
+    const achievementIssuerId =
+      typeof achievementIssuer === 'string'
+        ? achievementIssuer
+        : (achievementIssuer as Record<string, unknown>).id;
 
     expect(vcIssuerId).toBe(achievementIssuerId);
 

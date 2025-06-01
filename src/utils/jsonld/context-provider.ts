@@ -140,7 +140,7 @@ export function createVerifiableCredential(
         image: badgeClass.image,
         criteria: badgeClass.criteria,
         issuer: issuer.id, // Add issuer field for OBv3 compliance
-        ...(badgeClass.alignment && { alignments: badgeClass.alignment }),
+        ...(badgeClass.alignment && { alignment: badgeClass.alignment }),
         ...(badgeClass.tags && { tags: badgeClass.tags }),
       },
     },

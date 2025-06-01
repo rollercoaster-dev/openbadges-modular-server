@@ -10,6 +10,7 @@ import { issuers } from '../schema';
 import { SqliteTypeConverters } from '../utils/sqlite-type-converters';
 import { logger } from '@utils/logging/logger.service';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
+import { Shared } from 'openbadges-types';
 
 export class SqliteIssuerMapper {
   /**
@@ -38,7 +39,7 @@ export class SqliteIssuerMapper {
       } = record;
 
       // Convert ID from UUID to URN format for domain entity
-      const convertedId = convertUuid(id, 'sqlite', 'from');
+      const convertedId = convertUuid(id, 'sqlite', 'from') as Shared.IRI;
 
       // Validate and convert URL
       const urlResult = SqliteTypeConverters.validateAndConvertIRI(url);

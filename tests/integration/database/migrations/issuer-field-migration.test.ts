@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { drizzle as drizzleSqlite } from 'drizzle-orm/bun-sqlite';
 import postgres from 'postgres';
 import { Database } from 'bun:sqlite';
 import { sql } from 'drizzle-orm';
@@ -150,13 +149,13 @@ describe('Issuer Field Migration Integration Tests', () => {
   });
 
   describe('SQLite Migration', () => {
-    let _db: ReturnType<typeof drizzleSqlite>;
+    // let _db: ReturnType<typeof drizzleSqlite>;
     let sqlite: Database;
 
     beforeEach(() => {
       // Create in-memory SQLite database for testing
       sqlite = new Database(':memory:');
-      _db = drizzleSqlite(sqlite);
+      // _db = drizzleSqlite(sqlite);
 
       // Create base tables for testing
       sqlite.run(`

@@ -334,27 +334,57 @@ export async function setupTestApp(
                   try {
                     await client.unsafe(statement);
                   } catch (error) {
-                    // Check if this is an "already exists" error that we can safely ignore
                     const errorMessage =
                       error instanceof Error ? error.message : String(error);
-                    const isAlreadyExistsError =
+                    
+                    // Check if this is an "already exists" error that we can safely ignore
+                    const isAlreadyExistsError = 
                       errorMessage.includes('already exists') ||
-                      (errorMessage.includes('relation') &&
-                        errorMessage.includes('does not exist')) ||
-                      (errorMessage.includes('column') &&
-                        errorMessage.includes('does not exist'));
+                      errorMessage.includes('relation') && errorMessage.includes('already exists') ||
+                      errorMessage.includes('constraint') && errorMessage.includes('already exists');
+                    
+                    // Check if this is a "does not exist" error that indicates schema drift
+                    const isDoesNotExistError =
+                      (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('table') && errorMessage.includes('does not exist'));
 
                     if (isAlreadyExistsError) {
                       logger.info(
-                        'Table already exists, continuing with next statement'
+                        'Schema object already exists, continuing with next statement',
+                        {
+                          statement: statement.substring(0, 100) + '...',
+                        }
                       );
+                    } else if (isDoesNotExistError) {
+                      // These errors indicate schema drift and should be treated seriously
+                      logger.error(
+                        'Schema drift detected: attempting to modify non-existent object',
+                        {
+                          error: errorMessage,
+                          statement: statement.substring(0, 100) + '...',
+                          isCI: process.env.CI === 'true',
+                        }
+                      );
+                      
+                      // In CI, fail immediately on schema drift
+                      if (process.env.CI === 'true') {
+                        throw new Error(
+                          `Schema drift detected in CI: ${errorMessage}`
+                        );
+                      } else {
+                        // In development, log as warning but continue
+                        logger.warn(
+                          'Continuing despite schema drift in development environment'
+                        );
+                      }
                     } else {
-                      // For non-"already exists" errors, log and abort migration
+                      // For other errors, log and abort migration
                       logger.error(
                         'Fatal error applying PostgreSQL migration statement',
                         {
                           error: errorMessage,
-                          statement: statement.substring(0, 100) + '...', // Log first 100 chars
+                          statement: statement.substring(0, 100) + '...',
                         }
                       );
                       throw new Error(
@@ -434,27 +464,57 @@ export async function setupTestApp(
                     try {
                       await client.unsafe(statement);
                     } catch (error) {
-                      // Check if this is an "already exists" error that we can safely ignore
                       const errorMessage =
                         error instanceof Error ? error.message : String(error);
-                      const isAlreadyExistsError =
+                      
+                      // Check if this is an "already exists" error that we can safely ignore
+                      const isAlreadyExistsError = 
                         errorMessage.includes('already exists') ||
-                        (errorMessage.includes('relation') &&
-                          errorMessage.includes('does not exist')) ||
-                        (errorMessage.includes('column') &&
-                          errorMessage.includes('does not exist'));
+                        errorMessage.includes('relation') && errorMessage.includes('already exists') ||
+                        errorMessage.includes('constraint') && errorMessage.includes('already exists');
+                      
+                      // Check if this is a "does not exist" error that indicates schema drift
+                      const isDoesNotExistError =
+                        (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('table') && errorMessage.includes('does not exist'));
 
                       if (isAlreadyExistsError) {
                         logger.info(
-                          'Table already exists, continuing with next statement'
+                          'Schema object already exists, continuing with next statement',
+                          {
+                            statement: statement.substring(0, 100) + '...',
+                          }
                         );
+                      } else if (isDoesNotExistError) {
+                        // These errors indicate schema drift and should be treated seriously
+                        logger.error(
+                          'Schema drift detected: attempting to modify non-existent object',
+                          {
+                            error: errorMessage,
+                            statement: statement.substring(0, 100) + '...',
+                            isCI: process.env.CI === 'true',
+                          }
+                        );
+                        
+                        // In CI, fail immediately on schema drift
+                        if (process.env.CI === 'true') {
+                          throw new Error(
+                            `Schema drift detected in CI: ${errorMessage}`
+                          );
+                        } else {
+                          // In development, log as warning but continue
+                          logger.warn(
+                            'Continuing despite schema drift in development environment'
+                          );
+                        }
                       } else {
-                        // For non-"already exists" errors, log and abort migration
+                        // For other errors, log and abort migration
                         logger.error(
                           'Fatal error applying original PostgreSQL migration statement',
                           {
                             error: errorMessage,
-                            statement: statement.substring(0, 100) + '...', // Log first 100 chars
+                            statement: statement.substring(0, 100) + '...',
                           }
                         );
                         throw new Error(
