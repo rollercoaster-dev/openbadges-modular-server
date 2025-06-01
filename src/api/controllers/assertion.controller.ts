@@ -726,8 +726,14 @@ export class AssertionController {
           const badgeClassId = mappedData.badgeClass;
           if (!badgeClassId) {
             validationResults.push({
+              index: i,
               success: false,
-              error: 'Badge class ID is required',
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Badge class ID is required',
+                field: 'badgeClass',
+                details: { batchIndex: i, batchId }
+              },
             });
             continue;
           }
@@ -735,8 +741,14 @@ export class AssertionController {
           const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
           if (!badgeClass) {
             validationResults.push({
+              index: i,
               success: false,
-              error: `Badge class with ID ${badgeClassId} does not exist`,
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: `Badge class with ID ${badgeClassId} does not exist`,
+                field: 'badgeClass',
+                details: { batchIndex: i, batchId, badgeClassId }
+              },
             });
             continue;
           }
@@ -787,7 +799,6 @@ export class AssertionController {
           batchIndex++;
 
           if (batchResult.success && batchResult.assertion) {
-<<<<<<< HEAD
             successfulAssertionIds.push(batchResult.assertion.id);
             successfulIndices.push(i);
           }
@@ -798,7 +809,7 @@ export class AssertionController {
       const jsonLdAssertions: (AssertionResponseDto | null)[] = [];
       if (successfulAssertionIds.length > 0) {
         try {
-          const assertions = await this.assertionRepository.findByIds(successfulAssertionIds);
+          const assertions = await this.assertionRepository.findByIds(successfulAssertionIds as Shared.IRI[]);
           for (const assertion of assertions) {
             if (assertion) {
               jsonLdAssertions.push(assertion.toJsonLd(version) as AssertionResponseDto);
@@ -844,7 +855,8 @@ export class AssertionController {
                   code: 'CONVERSION_ERROR',
                   message: 'Failed to convert assertion to response format',
                   details: { batchId, assertionId: batchResult.assertion.id }
-                });
+                },
+              });
             }
           } else {
             results.push({
@@ -907,7 +919,7 @@ export class AssertionController {
       });
 
       // Retrieve assertions from repository
-      const assertions = await this.assertionRepository.findByIds(data.ids);
+      const assertions = await this.assertionRepository.findByIds(data.ids as Shared.IRI[]);
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -997,7 +1009,9 @@ export class AssertionController {
       });
 
       // Perform batch status updates
-      const updateResults = await this.assertionRepository.updateStatusBatch(data.updates);
+      const updateResults = await this.assertionRepository.updateStatusBatch(
+        data.updates.map(update => ({ ...update, id: update.id as Shared.IRI }))
+      );
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -1031,7 +1045,11 @@ export class AssertionController {
             id: updateResult.id,
             index,
             success: false,
-            error: updateResult.error || 'Failed to update assertion status',
+            error: {
+              code: 'UPDATE_ERROR',
+              message: updateResult.error || 'Failed to update assertion status',
+              details: { batchId }
+            },
           });
         }
         index++;
