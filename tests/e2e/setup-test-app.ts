@@ -644,11 +644,16 @@ export async function setupTestApp(
       issuerRepository
     );
 
+    // Create JWKS controller
+    const { JwksController } = await import('../../src/api/controllers/jwks.controller');
+    const jwksController = new JwksController();
+
     // Create API router with controllers
     const apiRouter = await createApiRouter(
       issuerController,
       badgeClassController,
-      assertionController
+      assertionController,
+      jwksController
     );
 
     // Add API routes

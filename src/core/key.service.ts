@@ -113,10 +113,18 @@ export class KeyService {
       // If no default key pair exists, generate one
       if (!keyPairs.has('default')) {
         const keyPairData = generateKeyPair();
+        const metadata: KeyMetadata = {
+          created: new Date().toISOString(),
+          keyType: KeyType.RSA,
+          cryptosuite: Cryptosuite.RsaSha256,
+          status: KeyStatus.ACTIVE
+        };
         const defaultKeyPair: KeyPair = {
           ...keyPairData,
           keyType: KeyType.RSA,
-          cryptosuite: Cryptosuite.RsaSha256
+          cryptosuite: Cryptosuite.RsaSha256,
+          metadata,
+          status: KeyStatus.ACTIVE
         };
         keyPairs.set('default', defaultKeyPair);
 
@@ -205,11 +213,37 @@ export class KeyService {
           }
         }
 
+        // Create metadata for loaded key if it doesn't exist
+        let metadata: KeyMetadata;
+        if (metadataExists) {
+          try {
+            const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+            metadata = JSON.parse(metadataContent);
+          } catch (_error) {
+            // Fallback metadata
+            metadata = {
+              created: new Date().toISOString(),
+              keyType,
+              cryptosuite,
+              status: KeyStatus.ACTIVE
+            };
+          }
+        } else {
+          metadata = {
+            created: new Date().toISOString(),
+            keyType,
+            cryptosuite,
+            status: KeyStatus.ACTIVE
+          };
+        }
+
         keyPairs.set('default', {
           publicKey,
           privateKey,
           keyType,
-          cryptosuite
+          cryptosuite,
+          metadata,
+          status: metadata.status || KeyStatus.ACTIVE
         });
       }
 
@@ -287,11 +321,37 @@ export class KeyService {
             }
           }
 
+          // Create metadata for loaded key if it doesn't exist
+          let metadata: KeyMetadata;
+          if (metadataExists) {
+            try {
+              const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+              metadata = JSON.parse(metadataContent);
+            } catch (_error) {
+              // Fallback metadata
+              metadata = {
+                created: new Date().toISOString(),
+                keyType,
+                cryptosuite,
+                status: KeyStatus.ACTIVE
+              };
+            }
+          } else {
+            metadata = {
+              created: new Date().toISOString(),
+              keyType,
+              cryptosuite,
+              status: KeyStatus.ACTIVE
+            };
+          }
+
           keyPairs.set(keyId, {
             publicKey,
             privateKey,
             keyType,
-            cryptosuite
+            cryptosuite,
+            metadata,
+            status: metadata.status || KeyStatus.ACTIVE
           });
         }
       }
@@ -698,10 +758,10 @@ export class KeyService {
 
       switch (keyType) {
         case KeyType.RSA: {
-          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as { n: string; e: string };
           return {
             kty: 'RSA',
-            // Either keep `key_ops` or `use`, but not both. `key_ops` is more explicit.
+            use: 'sig',
             key_ops: ['verify'],
             alg: 'RS256',
             kid: keyId,
@@ -711,10 +771,10 @@ export class KeyService {
         }
 
         case KeyType.Ed25519: {
-          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as any;
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as { x: string };
           return {
             kty: 'OKP',
-            // Either keep `key_ops` or `use`, but not both. `key_ops` is more explicit.
+            use: 'sig',
             key_ops: ['verify'],
             alg: 'EdDSA',
             kid: keyId,
