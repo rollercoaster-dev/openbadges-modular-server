@@ -938,7 +938,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id,
               index: i,
@@ -1028,7 +1028,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id: updateResult.id,
               index,

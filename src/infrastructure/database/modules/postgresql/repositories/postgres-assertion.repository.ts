@@ -11,13 +11,13 @@ import { Assertion } from '@domains/assertion/assertion.entity';
 import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
 import { PostgresAssertionMapper } from '../mappers/postgres-assertion.mapper';
-import { InferSelectModel } from 'drizzle-orm';
+
 import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
-import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
+import { batchInsert } from '@infrastructure/database/utils/batch-operations';
 
 export class PostgresAssertionRepository
   extends BasePostgresRepository
@@ -267,17 +267,18 @@ export class PostgresAssertionRepository
       return [];
     }
 
-    const context = this.createOperationContext('BATCH CREATE Assertions');
+    // const _context = this.createOperationContext('BATCH CREATE Assertions');
 
     try {
       // Convert domain entities to database records
       const records = assertionList.map(assertion => this.mapper.toPersistence(assertion));
 
       // Use batch insert utility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results = await batchInsert(this.db, assertions as any, records, 'postgresql');
 
       // Convert results back to domain entities
-      return results.map((result, index) => {
+      return results.map((result, _index) => {
         try {
           if (result) {
             const domainEntity = this.mapper.toDomain(result);
@@ -353,7 +354,7 @@ export class PostgresAssertionRepository
       return [];
     }
 
-    const context = this.createOperationContext('BATCH UPDATE Assertion Status');
+    // const _context = this.createOperationContext('BATCH UPDATE Assertion Status');
 
     const results: Array<{
       id: Shared.IRI;
