@@ -39,6 +39,7 @@ export class SqliteAssertionMapper {
     const {
       id,
       badgeClassId,
+      issuerId,
       recipient,
       issuedOn,
       expires,
@@ -117,6 +118,8 @@ export class SqliteAssertionMapper {
       return Assertion.create({
         id: convertUuid(id, 'sqlite', 'from') as Shared.IRI, // Already validated non-null
         badgeClass: convertUuid(badgeClassId, 'sqlite', 'from') as Shared.IRI, // Already validated non-null
+        // Convert issuer_id to IRI if present
+        issuer: issuerId ? (convertUuid(issuerId, 'sqlite', 'from') as Shared.IRI) : undefined,
         recipient: parsedRecipient,
         issuedOn: new Date(
           convertTimestamp(issuedOn, 'sqlite', 'from') as number // Already validated non-null
@@ -197,6 +200,10 @@ export class SqliteAssertionMapper {
         'sqlite',
         'to'
       ),
+      // Include issuerId if present in entity
+      issuerId: entity.issuer && typeof entity.issuer === 'string'
+        ? convertUuid(entity.issuer as string, 'sqlite', 'to')
+        : null,
       recipient: convertJson(
         entity.recipient as object,
         'sqlite',
