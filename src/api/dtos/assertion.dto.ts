@@ -111,3 +111,50 @@ export interface ErrorResponseDto {
   error: string;
   details?: string[];
 }
+
+/**
+ * DTO for batch credential creation
+ */
+export interface BatchCreateCredentialsDto {
+  credentials: CreateAssertionDto[];
+}
+
+/**
+ * DTO for batch credential retrieval
+ */
+export interface BatchRetrieveCredentialsDto {
+  ids: string[];
+}
+
+/**
+ * DTO for batch credential status update
+ */
+export interface BatchUpdateCredentialStatusDto {
+  updates: Array<{
+    id: string;
+    status: 'revoked' | 'suspended' | 'active';
+    reason?: string;
+  }>;
+}
+
+/**
+ * Result for a single batch operation
+ */
+export interface BatchOperationResult<T = unknown> {
+  id?: string;
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Response DTO for batch operations
+ */
+export interface BatchOperationResponseDto<T = unknown> {
+  results: BatchOperationResult<T>[];
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+}
