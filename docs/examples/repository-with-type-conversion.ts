@@ -5,7 +5,6 @@
  * differences between PostgreSQL and SQLite when implementing a repository.
  */
 // This is an example file with intentionally unused methods to demonstrate the pattern
-// @ts-nocheck
 
 // This is an example file and doesn't need to import actual modules
 // In a real implementation, you would import from the actual paths

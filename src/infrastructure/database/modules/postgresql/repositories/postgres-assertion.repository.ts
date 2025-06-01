@@ -11,12 +11,16 @@ import { Assertion } from '@domains/assertion/assertion.entity';
 import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
 import { PostgresAssertionMapper } from '../mappers/postgres-assertion.mapper';
+import { InferSelectModel } from 'drizzle-orm';
 import { Shared } from 'openbadges-types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger';
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
+
+// Define the type for the database record using Drizzle's InferSelectModel
+type PostgresAssertionRecord = InferSelectModel<typeof assertions>;
 
 export class PostgresAssertionRepository
   extends BasePostgresRepository

@@ -95,6 +95,30 @@ export class Assertion {
   }
 
   /**
+   * Validates that the assertion has all required fields for v3.0 VerifiableCredential format
+   * @throws Error if validation fails
+   */
+  validateForV3(): void {
+    if (!this.issuer) {
+      throw new Error('Issuer is required for Open Badges v3.0 VerifiableCredential format');
+    }
+
+    // If issuer is an object, validate required fields
+    if (typeof this.issuer === 'object' && this.issuer !== null) {
+      const issuerObj = this.issuer as OB3.Issuer;
+      if (!issuerObj.id) {
+        throw new Error('Issuer.id is required for Open Badges v3.0 format');
+      }
+      if (!issuerObj.name) {
+        throw new Error('Issuer.name is required for Open Badges v3.0 format');
+      }
+      if (!issuerObj.url) {
+        throw new Error('Issuer.url is required for Open Badges v3.0 format');
+      }
+    }
+  }
+
+  /**
    * Converts the assertion to a plain object
    * @param version The badge version to use (defaults to 3.0)
    * @returns A plain object representation of the assertion, properly typed as OB2.Assertion or OB3.VerifiableCredential
@@ -199,6 +223,11 @@ export class Assertion {
     badgeClass?: BadgeClass,
     issuer?: Issuer
   ): OB2.Assertion | OB3.VerifiableCredential {
+    // Validate v3.0 requirements
+    if (version === BadgeVersion.V3) {
+      this.validateForV3();
+    }
+
     const serializer = BadgeSerializerFactory.createSerializer(version);
 
     // Convert directly to AssertionData format expected by serializer
@@ -232,9 +261,15 @@ export class Assertion {
     const typedBadgeClass = badgeClass
       ? (badgeClass.toJsonLd(version) as BadgeClassData)
       : undefined;
-    const typedIssuer = issuer
-      ? (issuer.toJsonLd(version) as IssuerData)
-      : undefined;
+
+    // Use passed issuer or the issuer from the assertion entity
+    let typedIssuer: IssuerData | undefined;
+    if (issuer) {
+      typedIssuer = issuer.toJsonLd(version) as IssuerData;
+    } else if (this.issuer && typeof this.issuer === 'object') {
+      // If issuer is embedded in the assertion, use it directly
+      typedIssuer = this.issuer as IssuerData;
+    }
 
     // Then serialize with the appropriate serializer
     const output = serializer.serializeAssertion(

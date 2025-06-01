@@ -20,9 +20,9 @@ export function isValidUuid(
     return false;
   }
 
-  // UUID v4 regex pattern
+  // UUID regex pattern (accepts any valid UUID format, not just v4)
   const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
 }
 
@@ -351,9 +351,25 @@ export function convertUuid(
     return value;
   }
 
-  // For SQLite, no conversion needed - it accepts any string format
+  // For SQLite, handle URN ↔ UUID conversion for consistency
   if (dbType === 'sqlite') {
-    return value;
+    if (direction === 'to') {
+      // Convert from app (URN format) to SQLite (plain UUID for consistency)
+      // But handle CUID2 IDs gracefully by extracting the ID part
+      if (value.startsWith('urn:uuid:')) {
+        const extractedId = value.substring(9); // Remove 'urn:uuid:' prefix
+        return extractedId; // Return the ID part (UUID or CUID2)
+      }
+      return value; // Already plain format
+    } else {
+      // Convert from SQLite (plain UUID/CUID2) to app (URN format)
+      // Handle both standard UUIDs and CUID2 IDs
+      if (value.startsWith('urn:uuid:')) {
+        return value; // Already in URN format
+      }
+      // Add URN prefix for both UUIDs and CUID2 IDs
+      return `urn:uuid:${value}`;
+    }
   }
 
   // For PostgreSQL, handle URN ↔ UUID conversion

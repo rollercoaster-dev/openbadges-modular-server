@@ -23,6 +23,7 @@ import {
   SqliteEntityType,
 } from '../types/sqlite-database.types';
 import { issuers, badgeClasses, assertions } from '../schema';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 import { randomUUID } from 'crypto';
 // We'll use a more pragmatic approach with proper JSDoc comments
@@ -142,11 +143,12 @@ export class SqliteRepositoryCoordinator {
           this.createOperationContext('CREATE BadgeClass', badgeClass.id)
         );
 
-        // Create assertion with badge class reference using helper method
+        // Create assertion with badge class and issuer references using helper method
         const assertion = await this.createAssertionWithTransaction(
           {
             ...assertionData,
             badgeClass: badgeClass.id,
+            issuer: issuer.id, // Add issuer reference for v3.0 compliance
           },
           tx
         );
@@ -333,10 +335,12 @@ export class SqliteRepositoryCoordinator {
       const result = await db.transaction(async (tx) => {
         // First, count what will be deleted for accurate reporting
         // Get all badge classes for this issuer using the transaction
+        // Convert URN to UUID for SQLite query
+        const dbIssuerId = convertUuid(issuerId as string, 'sqlite', 'to');
         const badgeClassResults = await tx
           .select({ id: badgeClasses.id })
           .from(badgeClasses)
-          .where(eq(badgeClasses.issuerId, issuerId as string));
+          .where(eq(badgeClasses.issuerId, dbIssuerId));
 
         const badgeClassIds = badgeClassResults.map((bc) => bc.id);
         let assertionsDeleted = 0;
@@ -358,7 +362,7 @@ export class SqliteRepositoryCoordinator {
         // due to the foreign key constraints with CASCADE DELETE
         const issuerDeleteResult = await tx
           .delete(issuers)
-          .where(eq(issuers.id, issuerId as string))
+          .where(eq(issuers.id, dbIssuerId))
           .returning();
 
         const issuerDeleted = issuerDeleteResult.length > 0;

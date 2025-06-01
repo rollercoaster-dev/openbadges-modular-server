@@ -226,17 +226,23 @@ export async function setupTestApp(
           const db = new Database(sqliteFile);
 
           try {
-            // Apply the fixed migration SQL
+            // Apply the latest migration SQL that includes issuer_id column
             const sqlFilePath = join(
               process.cwd(),
-              'drizzle/migrations/0000_oval_starbolt_fixed.sql'
+              'drizzle/migrations/0000_fixed_migration.sql'
             );
             if (fs.existsSync(sqlFilePath)) {
               logger.info(`Applying SQL migration from ${sqlFilePath}`);
               try {
                 const sql = fs.readFileSync(sqlFilePath, 'utf8');
                 db.exec(sql);
-                logger.info('SQLite migrations applied successfully');
+                logger.info('Base SQLite migration applied successfully');
+
+                // Note: The 0000_fixed_migration.sql already includes the issuer_id column
+                // so we don't need to apply the additional issuer_id migrations
+                logger.info(
+                  'All SQLite migrations applied successfully (issuer_id already included in base migration)'
+                );
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -328,25 +334,62 @@ export async function setupTestApp(
                   try {
                     await client.unsafe(statement);
                   } catch (error) {
-                    // Check if this is an "already exists" error that we can safely ignore
                     const errorMessage =
                       error instanceof Error ? error.message : String(error);
+
+                    // Check if this is an "already exists" error that we can safely ignore
                     const isAlreadyExistsError =
                       errorMessage.includes('already exists') ||
                       (errorMessage.includes('relation') &&
+                        errorMessage.includes('already exists')) ||
+                      (errorMessage.includes('constraint') &&
+                        errorMessage.includes('already exists'));
+
+                    // Check if this is a "does not exist" error that indicates schema drift
+                    const isDoesNotExistError =
+                      (errorMessage.includes('relation') &&
+                        errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('column') &&
+                        errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('table') &&
                         errorMessage.includes('does not exist'));
 
                     if (isAlreadyExistsError) {
                       logger.info(
-                        'Table already exists, continuing with next statement'
+                        'Schema object already exists, continuing with next statement',
+                        {
+                          statement: statement.substring(0, 100) + '...',
+                        }
                       );
+                    } else if (isDoesNotExistError) {
+                      // These errors indicate schema drift and should be treated seriously
+                      logger.error(
+                        'Schema drift detected: attempting to modify non-existent object',
+                        {
+                          error: errorMessage,
+                          statement: statement.substring(0, 100) + '...',
+                          isCI: process.env.CI === 'true',
+                        }
+                      );
+
+                      // In CI, fail immediately on schema drift
+                      if (process.env.CI === 'true') {
+                        throw new Error(
+                          `Schema drift detected in CI: ${errorMessage}`
+                        );
+                      } else {
+                        // In development, log as warning but continue
+                        logger.warn(
+                          'Continuing despite schema drift in development environment'
+                        );
+                      }
                     } else {
-                      // For non-"already exists" errors, log and abort migration
+                      // For other errors, log and abort migration
                       logger.error(
                         'Fatal error applying PostgreSQL migration statement',
                         {
                           error: errorMessage,
-                          statement: statement.substring(0, 100) + '...', // Log first 100 chars
+                          statement: statement.substring(0, 100) + '...',
                         }
                       );
                       throw new Error(
@@ -357,6 +400,36 @@ export async function setupTestApp(
                 }
 
                 logger.info('PostgreSQL migrations applied successfully');
+
+                // Apply additional migration to add missing columns
+                const additionalMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/pg-migrations/0003_add_missing_columns.sql'
+                );
+                if (fs.existsSync(additionalMigrationPath)) {
+                  logger.info(
+                    'Applying additional PostgreSQL migration for missing columns'
+                  );
+                  try {
+                    const additionalSql = fs.readFileSync(
+                      additionalMigrationPath,
+                      'utf8'
+                    );
+                    await client.unsafe(additionalSql);
+                    logger.info(
+                      'Additional PostgreSQL migration applied successfully'
+                    );
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    logger.warn(
+                      'Additional migration failed (may be expected)',
+                      {
+                        error: errorMessage,
+                      }
+                    );
+                  }
+                }
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -396,25 +469,62 @@ export async function setupTestApp(
                     try {
                       await client.unsafe(statement);
                     } catch (error) {
-                      // Check if this is an "already exists" error that we can safely ignore
                       const errorMessage =
                         error instanceof Error ? error.message : String(error);
+
+                      // Check if this is an "already exists" error that we can safely ignore
                       const isAlreadyExistsError =
                         errorMessage.includes('already exists') ||
                         (errorMessage.includes('relation') &&
+                          errorMessage.includes('already exists')) ||
+                        (errorMessage.includes('constraint') &&
+                          errorMessage.includes('already exists'));
+
+                      // Check if this is a "does not exist" error that indicates schema drift
+                      const isDoesNotExistError =
+                        (errorMessage.includes('relation') &&
+                          errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('column') &&
+                          errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('table') &&
                           errorMessage.includes('does not exist'));
 
                       if (isAlreadyExistsError) {
                         logger.info(
-                          'Table already exists, continuing with next statement'
+                          'Schema object already exists, continuing with next statement',
+                          {
+                            statement: statement.substring(0, 100) + '...',
+                          }
                         );
+                      } else if (isDoesNotExistError) {
+                        // These errors indicate schema drift and should be treated seriously
+                        logger.error(
+                          'Schema drift detected: attempting to modify non-existent object',
+                          {
+                            error: errorMessage,
+                            statement: statement.substring(0, 100) + '...',
+                            isCI: process.env.CI === 'true',
+                          }
+                        );
+
+                        // In CI, fail immediately on schema drift
+                        if (process.env.CI === 'true') {
+                          throw new Error(
+                            `Schema drift detected in CI: ${errorMessage}`
+                          );
+                        } else {
+                          // In development, log as warning but continue
+                          logger.warn(
+                            'Continuing despite schema drift in development environment'
+                          );
+                        }
                       } else {
-                        // For non-"already exists" errors, log and abort migration
+                        // For other errors, log and abort migration
                         logger.error(
                           'Fatal error applying original PostgreSQL migration statement',
                           {
                             error: errorMessage,
-                            statement: statement.substring(0, 100) + '...', // Log first 100 chars
+                            statement: statement.substring(0, 100) + '...',
                           }
                         );
                         throw new Error(

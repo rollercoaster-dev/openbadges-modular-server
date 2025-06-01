@@ -160,6 +160,8 @@ export const assertions = sqliteTable(
     badgeClassId: text('badge_class_id')
       .notNull()
       .references(() => badgeClasses.id, { onDelete: 'cascade' }),
+    issuerId: text('issuer_id')
+      .references(() => issuers.id, { onDelete: 'cascade' }), // Add issuer_id foreign key
     // Add index on badgeClassId for faster lookups by badge class
     recipient: text('recipient').notNull(), // JSON stored as text
     issuedOn: integer('issued_on').notNull(),
@@ -176,6 +178,8 @@ export const assertions = sqliteTable(
     return {
       // Add index on badgeClassId for faster lookups by badge class
       badgeClassIdx: index('assertion_badge_class_idx').on(table.badgeClassId),
+      // Add index on issuerId for faster lookups by issuer
+      issuerIdx: index('assertion_issuer_idx').on(table.issuerId),
       // Add index on issuedOn for sorting
       issuedOnIdx: index('assertion_issued_on_idx').on(table.issuedOn),
       // Add index on revoked for filtering

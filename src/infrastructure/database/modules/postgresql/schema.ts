@@ -149,6 +149,7 @@ export const assertions = pgTable(
   {
   id: uuid('id').primaryKey().defaultRandom(),
   badgeClassId: uuid('badge_class_id').notNull().references(() => badgeClasses.id, { onDelete: 'cascade' }),
+  issuerId: uuid('issuer_id').references(() => issuers.id, { onDelete: 'cascade' }), // Add issuer_id foreign key
   recipient: jsonb('recipient').notNull(),
   issuedOn: timestamp('issued_on').defaultNow().notNull(),
   expires: timestamp('expires'),
@@ -165,6 +166,8 @@ export const assertions = pgTable(
     return {
       // Add index on badgeClassId for faster lookups by badge class
       badgeClassIdx: index('assertion_badge_class_idx').on(table.badgeClassId),
+      // Add index on issuerId for faster lookups by issuer
+      issuerIdx: index('assertion_issuer_idx').on(table.issuerId),
       // Add index on issuedOn for sorting
       issuedOnIdx: index('assertion_issued_on_idx').on(table.issuedOn),
       // Add index on revoked for filtering
