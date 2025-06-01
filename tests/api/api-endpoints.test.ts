@@ -5,7 +5,7 @@
  * with the new Shared.IRI types.
  */
 
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, mock, beforeAll } from 'bun:test';
 import { Shared, OB2, OB3 } from 'openbadges-types';
 import { IssuerController } from '@/api/controllers/issuer.controller';
 import { BadgeClassController } from '@/api/controllers/badgeClass.controller';
@@ -16,6 +16,32 @@ import {
   BadgeVersion,
   BADGE_VERSION_CONTEXTS,
 } from '@/utils/version/badge-version';
+
+// Mock app and authToken for integration tests
+const app = {
+  request: mock(async (_url: string, _options?: unknown) => {
+    // Mock response for testing
+    return {
+      status: 200,
+      json: mock(async () => ({
+        id: 'mock-id',
+        success: true,
+        summary: {
+          total: 2,
+          successful: 2,
+          failed: 0
+        },
+        results: [
+          { success: true, data: { id: 'mock-id-1' } },
+          { success: false, error: 'not found' }
+        ],
+        error: 'Validation error'
+      })),
+    };
+  }),
+};
+
+const authToken = 'mock-auth-token';
 
 // Mock controllers
 const mockIssuerController = {

@@ -777,7 +777,7 @@ export class AssertionController {
                 success: true,
                 data: jsonLdAssertion as AssertionResponseDto,
               });
-            } catch (error) {
+            } catch (_error) {
               results.push({
                 id: batchResult.assertion.id,
                 success: false,
@@ -828,8 +828,9 @@ export class AssertionController {
         idCount: data.ids.length
       });
 
-      // Retrieve assertions from repository
-      const assertions = await this.assertionRepository.findByIds(data.ids);
+      // Convert string IDs to IRIs and retrieve assertions from repository
+      const iriIds = data.ids.map(id => id as Shared.IRI);
+      const assertions = await this.assertionRepository.findByIds(iriIds);
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -847,7 +848,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion as AssertionResponseDto,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id,
               success: false,
@@ -875,9 +876,9 @@ export class AssertionController {
           failed,
         },
       };
-    } catch (error) {
-      logger.logError('Failed to retrieve assertions batch', error as Error);
-      throw error;
+    } catch (_error) {
+      logger.logError('Failed to retrieve assertions batch', _error as Error);
+      throw _error;
     }
   }
 
@@ -896,8 +897,12 @@ export class AssertionController {
         updateCount: data.updates.length
       });
 
-      // Perform batch status updates
-      const updateResults = await this.assertionRepository.updateStatusBatch(data.updates);
+      // Convert string IDs to IRIs and perform batch status updates
+      const iriUpdates = data.updates.map(update => ({
+        ...update,
+        id: update.id as Shared.IRI
+      }));
+      const updateResults = await this.assertionRepository.updateStatusBatch(iriUpdates);
 
       // Convert to response format
       const results: BatchOperationResult<AssertionResponseDto>[] = [];
@@ -915,7 +920,7 @@ export class AssertionController {
               success: true,
               data: jsonLdAssertion as AssertionResponseDto,
             });
-          } catch (error) {
+          } catch (_error) {
             results.push({
               id: updateResult.id,
               success: false,

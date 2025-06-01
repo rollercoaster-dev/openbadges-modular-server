@@ -2,7 +2,7 @@
  * Unit tests for assertion repository batch operations
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { Assertion } from '../../../src/domains/assertion/assertion.entity';
 import { AssertionRepository } from '../../../src/domains/assertion/assertion.repository';
 
@@ -24,7 +24,7 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
     for (const assertionData of assertionList) {
       try {
         // Simulate validation - fail if recipient identity is 'invalid'
-        if (assertionData.recipient?.identity === 'invalid') {
+        if ((assertionData.recipient as any)?.identity === 'invalid') {
           results.push({
             success: false,
             error: 'Invalid recipient identity',
@@ -50,22 +50,22 @@ class MockAssertionRepository implements Partial<AssertionRepository> {
     return results;
   }
 
-  async findByIds(ids: string[]): Promise<(Assertion | null)[]> {
+  async findByIds(ids: any[]): Promise<(Assertion | null)[]> {
     return ids.map(id => this.assertions.get(id) || null);
   }
 
   async updateStatusBatch(updates: Array<{
-    id: string;
+    id: any;
     status: 'revoked' | 'suspended' | 'active';
     reason?: string;
   }>): Promise<Array<{
-    id: string;
+    id: any;
     success: boolean;
     assertion?: Assertion;
     error?: string;
   }>> {
     const results: Array<{
-      id: string;
+      id: any;
       success: boolean;
       assertion?: Assertion;
       error?: string;
