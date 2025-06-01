@@ -336,18 +336,23 @@ export async function setupTestApp(
                   } catch (error) {
                     const errorMessage =
                       error instanceof Error ? error.message : String(error);
-                    
+
                     // Check if this is an "already exists" error that we can safely ignore
-                    const isAlreadyExistsError = 
+                    const isAlreadyExistsError =
                       errorMessage.includes('already exists') ||
-                      errorMessage.includes('relation') && errorMessage.includes('already exists') ||
-                      errorMessage.includes('constraint') && errorMessage.includes('already exists');
-                    
+                      (errorMessage.includes('relation') &&
+                        errorMessage.includes('already exists')) ||
+                      (errorMessage.includes('constraint') &&
+                        errorMessage.includes('already exists'));
+
                     // Check if this is a "does not exist" error that indicates schema drift
                     const isDoesNotExistError =
-                      (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
-                      (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
-                      (errorMessage.includes('table') && errorMessage.includes('does not exist'));
+                      (errorMessage.includes('relation') &&
+                        errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('column') &&
+                        errorMessage.includes('does not exist')) ||
+                      (errorMessage.includes('table') &&
+                        errorMessage.includes('does not exist'));
 
                     if (isAlreadyExistsError) {
                       logger.info(
@@ -366,7 +371,7 @@ export async function setupTestApp(
                           isCI: process.env.CI === 'true',
                         }
                       );
-                      
+
                       // In CI, fail immediately on schema drift
                       if (process.env.CI === 'true') {
                         throw new Error(
@@ -466,18 +471,23 @@ export async function setupTestApp(
                     } catch (error) {
                       const errorMessage =
                         error instanceof Error ? error.message : String(error);
-                      
+
                       // Check if this is an "already exists" error that we can safely ignore
-                      const isAlreadyExistsError = 
+                      const isAlreadyExistsError =
                         errorMessage.includes('already exists') ||
-                        errorMessage.includes('relation') && errorMessage.includes('already exists') ||
-                        errorMessage.includes('constraint') && errorMessage.includes('already exists');
-                      
+                        (errorMessage.includes('relation') &&
+                          errorMessage.includes('already exists')) ||
+                        (errorMessage.includes('constraint') &&
+                          errorMessage.includes('already exists'));
+
                       // Check if this is a "does not exist" error that indicates schema drift
                       const isDoesNotExistError =
-                        (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
-                        (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
-                        (errorMessage.includes('table') && errorMessage.includes('does not exist'));
+                        (errorMessage.includes('relation') &&
+                          errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('column') &&
+                          errorMessage.includes('does not exist')) ||
+                        (errorMessage.includes('table') &&
+                          errorMessage.includes('does not exist'));
 
                       if (isAlreadyExistsError) {
                         logger.info(
@@ -496,7 +506,7 @@ export async function setupTestApp(
                             isCI: process.env.CI === 'true',
                           }
                         );
-                        
+
                         // In CI, fail immediately on schema drift
                         if (process.env.CI === 'true') {
                           throw new Error(

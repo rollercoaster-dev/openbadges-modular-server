@@ -270,18 +270,23 @@ async function testPostgreSQLErrorHandling() {
     } catch (stmtError) {
       const errorMessage =
         stmtError instanceof Error ? stmtError.message : String(stmtError);
-      
+
       // Check if this is an "already exists" error that we can safely ignore
       const isAlreadyExistsError =
         errorMessage.includes('already exists') ||
-        errorMessage.includes('relation') && errorMessage.includes('already exists') ||
-        errorMessage.includes('constraint') && errorMessage.includes('already exists');
-      
+        (errorMessage.includes('relation') &&
+          errorMessage.includes('already exists')) ||
+        (errorMessage.includes('constraint') &&
+          errorMessage.includes('already exists'));
+
       // Check if this is a "does not exist" error that indicates schema drift
       const isDoesNotExistError =
-        (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
-        (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
-        (errorMessage.includes('table') && errorMessage.includes('does not exist'));
+        (errorMessage.includes('relation') &&
+          errorMessage.includes('does not exist')) ||
+        (errorMessage.includes('column') &&
+          errorMessage.includes('does not exist')) ||
+        (errorMessage.includes('table') &&
+          errorMessage.includes('does not exist'));
 
       if (isAlreadyExistsError) {
         logger.info(
@@ -301,12 +306,10 @@ async function testPostgreSQLErrorHandling() {
             isCI: process.env.CI === 'true',
           }
         );
-        
+
         // In CI, fail immediately on schema drift
         if (process.env.CI === 'true') {
-          throw new Error(
-            `Schema drift detected in CI: ${errorMessage}`
-          );
+          throw new Error(`Schema drift detected in CI: ${errorMessage}`);
         } else {
           // In development, log as warning but continue
           logger.warn(

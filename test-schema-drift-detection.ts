@@ -40,47 +40,55 @@ const testCases = [
   },
 ];
 
-function testErrorHandling(errorMessage: string, isCI: boolean = false): {
+function testErrorHandling(
+  errorMessage: string,
+  isCI: boolean = false
+): {
   ignored: boolean;
   failed: boolean;
   reason: string;
 } {
   // This mirrors the logic from our fixed migration handlers
-  const isAlreadyExistsError = 
+  const isAlreadyExistsError =
     errorMessage.includes('already exists') ||
-    errorMessage.includes('relation') && errorMessage.includes('already exists') ||
-    errorMessage.includes('constraint') && errorMessage.includes('already exists');
-  
+    (errorMessage.includes('relation') &&
+      errorMessage.includes('already exists')) ||
+    (errorMessage.includes('constraint') &&
+      errorMessage.includes('already exists'));
+
   const isDoesNotExistError =
-    (errorMessage.includes('relation') && errorMessage.includes('does not exist')) ||
-    (errorMessage.includes('column') && errorMessage.includes('does not exist')) ||
+    (errorMessage.includes('relation') &&
+      errorMessage.includes('does not exist')) ||
+    (errorMessage.includes('column') &&
+      errorMessage.includes('does not exist')) ||
     (errorMessage.includes('table') && errorMessage.includes('does not exist'));
 
   if (isAlreadyExistsError) {
     return {
       ignored: true,
       failed: false,
-      reason: 'Schema object already exists - safe to ignore'
+      reason: 'Schema object already exists - safe to ignore',
     };
   } else if (isDoesNotExistError) {
     if (isCI) {
       return {
         ignored: false,
         failed: true,
-        reason: 'Schema drift detected in CI environment - failing immediately'
+        reason: 'Schema drift detected in CI environment - failing immediately',
       };
     } else {
       return {
         ignored: true,
         failed: false,
-        reason: 'Schema drift detected in development - logged as warning but continuing'
+        reason:
+          'Schema drift detected in development - logged as warning but continuing',
       };
     }
   } else {
     return {
       ignored: false,
       failed: true,
-      reason: 'Fatal migration error - failing immediately'
+      reason: 'Fatal migration error - failing immediately',
     };
   }
 }
@@ -108,7 +116,9 @@ async function runTests() {
 
     if (devResult.ignored !== devExpected) {
       logger.error(`❌ Development test failed for "${testCase.name}"`);
-      logger.error(`Expected ignored: ${devExpected}, got: ${devResult.ignored}`);
+      logger.error(
+        `Expected ignored: ${devExpected}, got: ${devResult.ignored}`
+      );
       allTestsPassed = false;
     } else {
       logger.info(`✅ Development test passed for "${testCase.name}"`);
@@ -125,14 +135,18 @@ async function runTests() {
 
   logger.info('\n' + '='.repeat(60));
   if (allTestsPassed) {
-    logger.info('🎉 All tests passed! Schema drift detection is working correctly.');
+    logger.info(
+      '🎉 All tests passed! Schema drift detection is working correctly.'
+    );
     logger.info('\nKey improvements:');
     logger.info('- "already exists" errors are properly ignored');
     logger.info('- "does not exist" errors are treated as schema drift');
     logger.info('- Schema drift fails immediately in CI environments');
     logger.info('- Schema drift is logged as warning in development');
   } else {
-    logger.error('❌ Some tests failed. Please review the error handling logic.');
+    logger.error(
+      '❌ Some tests failed. Please review the error handling logic.'
+    );
     process.exit(1);
   }
 }
