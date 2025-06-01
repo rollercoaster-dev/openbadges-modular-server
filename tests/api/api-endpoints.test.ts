@@ -17,9 +17,40 @@ import {
   BADGE_VERSION_CONTEXTS,
 } from '@/utils/version/badge-version';
 
+// Types for mock responses
+interface MockBatchResult {
+  success: boolean;
+  data?: { id: string };
+  error?: string;
+}
+
+interface MockBatchResponse {
+  id: string;
+  success: boolean;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+  results: MockBatchResult[];
+}
+
+interface MockErrorResponse {
+  success: boolean;
+  error: string;
+}
+
+interface MockSuccessResponse {
+  id: string;
+  [key: string]: any;
+}
+
 // Mock app and authToken for integration tests
 const app = {
-  request: mock(async (url: string, options?: unknown) => {
+  request: mock(async (url: string, options?: unknown): Promise<{
+    status: number;
+    json: () => Promise<MockBatchResponse | MockErrorResponse | MockSuccessResponse>;
+  }> => {
     // Mock response for testing - simulate validation behavior
     const opts = options as any;
     const body = opts?.body ? JSON.parse(opts.body) : {};
@@ -28,7 +59,10 @@ const app = {
     if (!opts?.headers?.Authorization) {
       return {
         status: 401,
-        json: mock(async () => ({ error: 'Unauthorized' })),
+        json: mock(async (): Promise<MockErrorResponse> => ({
+          success: false,
+          error: 'Unauthorized'
+        })),
       };
     }
 
@@ -39,7 +73,7 @@ const app = {
           (body.updates && body.updates.length === 0)) {
         return {
           status: 400,
-          json: mock(async () => ({
+          json: mock(async (): Promise<MockErrorResponse> => ({
             success: false,
             error: 'Validation error'
           })),
@@ -50,7 +84,7 @@ const app = {
       if (opts?.method === 'GET' && !url.includes('ids=')) {
         return {
           status: 400,
-          json: mock(async () => ({
+          json: mock(async (): Promise<MockErrorResponse> => ({
             success: false,
             error: 'Validation error'
           })),
@@ -75,7 +109,7 @@ const app = {
       failed: 0
     };
 
-    let results = [
+    let results: MockBatchResult[] = [
       { success: true, data: { id: 'mock-id-1' } },
       { success: true, data: { id: 'mock-id-2' } }
     ];
@@ -107,14 +141,24 @@ const app = {
       ];
     }
 
+    // Return batch response for batch operations
+    if (url.includes('/batch')) {
+      return {
+        status,
+        json: mock(async (): Promise<MockBatchResponse> => ({
+          id: 'mock-id',
+          success: true,
+          summary,
+          results
+        })),
+      };
+    }
+
+    // Return simple success response for other operations
     return {
       status,
-      json: mock(async () => ({
-        id: 'mock-id',
-        success: true,
-        summary,
-        results,
-        error: 'Validation error'
+      json: mock(async (): Promise<MockSuccessResponse> => ({
+        id: 'mock-id'
       })),
     };
   }),
@@ -483,7 +527,7 @@ describe('API Endpoints', () => {
         });
 
         expect(badgeClassResponse.status).toBe(201);
-        const badgeClass = await badgeClassResponse.json();
+        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
 
         // Now create batch credentials
         const batchData = {
@@ -529,7 +573,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(201);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -585,7 +629,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(201);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBeLessThanOrEqual(1);
@@ -633,7 +677,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json();
+        const result = await response.json() as MockErrorResponse;
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });
@@ -662,7 +706,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const badgeClass = await badgeClassResponse.json();
+        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
 
         // Create individual credentials
         for (let i = 1; i <= 3; i++) {
@@ -690,7 +734,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-          const credential = await response.json();
+          const credential = await response.json() as MockSuccessResponse;
           createdCredentialIds.push(credential.id);
         }
       });
@@ -706,7 +750,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -729,7 +773,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(1);
@@ -756,7 +800,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json();
+        const result = await response.json() as MockErrorResponse;
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });
@@ -785,7 +829,7 @@ describe('API Endpoints', () => {
           body: JSON.stringify(badgeClassData),
         });
 
-        const badgeClass = await badgeClassResponse.json();
+        const badgeClass = await badgeClassResponse.json() as MockSuccessResponse;
 
         // Create individual credentials
         for (let i = 1; i <= 2; i++) {
@@ -813,7 +857,7 @@ describe('API Endpoints', () => {
             body: JSON.stringify(credentialData),
           });
 
-          const credential = await response.json();
+          const credential = await response.json() as MockSuccessResponse;
           testCredentialIds.push(credential.id);
         }
       });
@@ -844,7 +888,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(2);
@@ -878,7 +922,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(200);
-        const result = await response.json();
+        const result = await response.json() as MockBatchResponse;
 
         expect(result.summary.total).toBe(2);
         expect(result.summary.successful).toBe(1);
@@ -924,7 +968,7 @@ describe('API Endpoints', () => {
         });
 
         expect(response.status).toBe(400);
-        const result = await response.json();
+        const result = await response.json() as MockErrorResponse;
         expect(result.success).toBe(false);
         expect(result.error).toBe('Validation error');
       });
