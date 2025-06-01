@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/sqlite-core';
 
 // Users table - defined first to avoid circular references
-export const users = sqliteTable(
+const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
@@ -44,7 +44,7 @@ export const users = sqliteTable(
 );
 
 // Roles table
-export const roles = sqliteTable(
+const roles = sqliteTable(
   'roles',
   {
     id: text('id').primaryKey(),
@@ -63,7 +63,7 @@ export const roles = sqliteTable(
 );
 
 // API Keys table
-export const apiKeys = sqliteTable(
+const apiKeys = sqliteTable(
   'api_keys',
   {
     id: text('id').primaryKey(),
@@ -93,7 +93,7 @@ export const apiKeys = sqliteTable(
 );
 
 // Issuers table
-export const issuers = sqliteTable(
+const issuers = sqliteTable(
   'issuers',
   {
     id: text('id').primaryKey(),
@@ -122,7 +122,7 @@ export const issuers = sqliteTable(
 );
 
 // BadgeClasses table
-export const badgeClasses = sqliteTable(
+const badgeClasses = sqliteTable(
   'badge_classes',
   {
     id: text('id').primaryKey(),
@@ -153,7 +153,7 @@ export const badgeClasses = sqliteTable(
 );
 
 // Assertions table
-export const assertions = sqliteTable(
+const assertions = sqliteTable(
   'assertions',
   {
     id: text('id').primaryKey(),
@@ -191,7 +191,7 @@ export const assertions = sqliteTable(
 );
 
 // Platforms table - for registering external platforms
-export const platforms = sqliteTable(
+const platforms = sqliteTable(
   'platforms',
   {
     id: text('id').primaryKey(),
@@ -213,7 +213,7 @@ export const platforms = sqliteTable(
 );
 
 // Platform Users table - for storing external users
-export const platformUsers = sqliteTable(
+const platformUsers = sqliteTable(
   'platform_users',
   {
     id: text('id').primaryKey(),
@@ -239,7 +239,7 @@ export const platformUsers = sqliteTable(
 );
 
 // User Roles table (many-to-many relationship)
-export const userRoles = sqliteTable(
+const userRoles = sqliteTable(
   'user_roles',
   {
     id: text('id').primaryKey(),
@@ -267,7 +267,7 @@ export const userRoles = sqliteTable(
 );
 
 // User Assertions table (Backpack) - links users to assertions
-export const userAssertions = sqliteTable(
+const userAssertions = sqliteTable(
   'user_assertions',
   {
     id: text('id').primaryKey(),
@@ -295,7 +295,7 @@ export const userAssertions = sqliteTable(
 );
 
 // Status Lists table - for StatusList2021 implementation
-export const statusLists = sqliteTable(
+const statusLists = sqliteTable(
   'status_lists',
   {
     id: text('id').primaryKey(),
@@ -326,7 +326,7 @@ export const statusLists = sqliteTable(
 );
 
 // Credential Status Entries table - tracks individual credential status within status lists
-export const credentialStatusEntries = sqliteTable(
+const credentialStatusEntries = sqliteTable(
   'credential_status_entries',
   {
     id: text('id').primaryKey(),

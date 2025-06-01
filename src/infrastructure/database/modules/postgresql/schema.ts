@@ -10,7 +10,7 @@
 import { pgTable, text, timestamp, uuid, jsonb, index, boolean, varchar, integer } from 'drizzle-orm/pg-core';
 
 // Users table - defined first to avoid circular references
-export const users = pgTable(
+const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -38,7 +38,7 @@ export const users = pgTable(
 );
 
 // Roles table
-export const roles = pgTable(
+const roles = pgTable(
   'roles',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -57,7 +57,7 @@ export const roles = pgTable(
 );
 
 // API Keys table
-export const apiKeys = pgTable(
+const apiKeys = pgTable(
   'api_keys',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -85,7 +85,7 @@ export const apiKeys = pgTable(
 );
 
 // Issuer table
-export const issuers = pgTable(
+const issuers = pgTable(
   'issuers',
   {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -115,7 +115,7 @@ export const issuers = pgTable(
 );
 
 // BadgeClass table
-export const badgeClasses = pgTable(
+const badgeClasses = pgTable(
   'badge_classes',
   {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -144,7 +144,7 @@ export const badgeClasses = pgTable(
 );
 
 // Assertion table
-export const assertions = pgTable(
+const assertions = pgTable(
   'assertions',
   {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -179,7 +179,7 @@ export const assertions = pgTable(
 );
 
 // Platforms table - for registering external platforms
-export const platforms = pgTable(
+const platforms = pgTable(
   'platforms',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -201,7 +201,7 @@ export const platforms = pgTable(
 );
 
 // Platform Users table - for storing external users
-export const platformUsers = pgTable(
+const platformUsers = pgTable(
   'platform_users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -222,7 +222,7 @@ export const platformUsers = pgTable(
 );
 
 // User Roles table (many-to-many relationship)
-export const userRoles = pgTable(
+const userRoles = pgTable(
   'user_roles',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -243,7 +243,7 @@ export const userRoles = pgTable(
 );
 
 // User Assertions table (Backpack) - links users to assertions
-export const userAssertions = pgTable(
+const userAssertions = pgTable(
   'user_assertions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -262,7 +262,7 @@ export const userAssertions = pgTable(
 );
 
 // Status Lists table - for StatusList2021 implementation
-export const statusLists = pgTable(
+const statusLists = pgTable(
   'status_lists',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -291,7 +291,7 @@ export const statusLists = pgTable(
 );
 
 // Credential Status Entries table - tracks individual credential status within status lists
-export const credentialStatusEntries = pgTable(
+const credentialStatusEntries = pgTable(
   'credential_status_entries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
