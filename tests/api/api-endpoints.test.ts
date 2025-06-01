@@ -354,4 +354,475 @@ describe('API Endpoints', () => {
       );
     });
   });
+
+  describe('Batch Operations', () => {
+    describe('POST /v3/credentials/batch', () => {
+      it('should create multiple credentials successfully', async () => {
+        // First create a badge class
+        const badgeClassData = {
+          name: 'Batch Test Badge',
+          description: 'A badge for testing batch operations',
+          image: 'https://example.com/badge.png',
+          criteria: {
+            narrative: 'Complete the batch test',
+          },
+        };
+
+        const badgeClassResponse = await app.request('/v3/badge-classes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(badgeClassData),
+        });
+
+        expect(badgeClassResponse.status).toBe(201);
+        const badgeClass = await badgeClassResponse.json();
+
+        // Now create batch credentials
+        const batchData = {
+          credentials: [
+            {
+              recipient: {
+                identity: 'batch-user1@example.com',
+                type: 'email',
+              },
+              badgeClass: badgeClass.id,
+              evidence: [
+                {
+                  id: 'https://example.com/evidence1',
+                  type: 'Evidence',
+                  name: 'Batch Evidence 1',
+                },
+              ],
+            },
+            {
+              recipient: {
+                identity: 'batch-user2@example.com',
+                type: 'email',
+              },
+              badgeClass: badgeClass.id,
+              evidence: [
+                {
+                  id: 'https://example.com/evidence2',
+                  type: 'Evidence',
+                  name: 'Batch Evidence 2',
+                },
+              ],
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(batchData),
+        });
+
+        expect(response.status).toBe(201);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBe(2);
+        expect(result.summary.failed).toBe(0);
+        expect(result.results).toHaveLength(2);
+        expect(result.results[0].success).toBe(true);
+        expect(result.results[0].data).toBeDefined();
+        expect(result.results[1].success).toBe(true);
+        expect(result.results[1].data).toBeDefined();
+      });
+
+      it('should handle partial failures in batch creation', async () => {
+        const batchData = {
+          credentials: [
+            {
+              recipient: {
+                identity: 'valid-user@example.com',
+                type: 'email',
+              },
+              badgeClass: 'valid-badge-class-id', // This should exist from previous tests
+              evidence: [
+                {
+                  id: 'https://example.com/evidence',
+                  type: 'Evidence',
+                  name: 'Valid Evidence',
+                },
+              ],
+            },
+            {
+              recipient: {
+                identity: 'invalid-user@example.com',
+                type: 'email',
+              },
+              badgeClass: 'nonexistent-badge-class-id', // This doesn't exist
+              evidence: [
+                {
+                  id: 'https://example.com/evidence',
+                  type: 'Evidence',
+                  name: 'Invalid Evidence',
+                },
+              ],
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(batchData),
+        });
+
+        expect(response.status).toBe(201);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBeLessThanOrEqual(1);
+        expect(result.summary.failed).toBeGreaterThanOrEqual(1);
+        expect(result.results).toHaveLength(2);
+      });
+
+      it('should require authentication', async () => {
+        const batchData = {
+          credentials: [
+            {
+              recipient: {
+                identity: 'test@example.com',
+                type: 'email',
+              },
+              badgeClass: 'test-badge-class',
+              evidence: [],
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(batchData),
+        });
+
+        expect(response.status).toBe(401);
+      });
+
+      it('should validate request body', async () => {
+        const invalidBatchData = {
+          credentials: [], // Empty array should fail validation
+        };
+
+        const response = await app.request('/v3/credentials/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(invalidBatchData),
+        });
+
+        expect(response.status).toBe(400);
+        const result = await response.json();
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Validation error');
+      });
+    });
+
+    describe('GET /v3/credentials/batch', () => {
+      let createdCredentialIds: string[] = [];
+
+      beforeAll(async () => {
+        // Create some test credentials first
+        const badgeClassData = {
+          name: 'Batch Retrieval Test Badge',
+          description: 'A badge for testing batch retrieval',
+          image: 'https://example.com/badge.png',
+          criteria: {
+            narrative: 'Complete the batch retrieval test',
+          },
+        };
+
+        const badgeClassResponse = await app.request('/v3/badge-classes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(badgeClassData),
+        });
+
+        const badgeClass = await badgeClassResponse.json();
+
+        // Create individual credentials
+        for (let i = 1; i <= 3; i++) {
+          const credentialData = {
+            recipient: {
+              identity: `batch-retrieval-user${i}@example.com`,
+              type: 'email',
+            },
+            badgeClass: badgeClass.id,
+            evidence: [
+              {
+                id: `https://example.com/evidence${i}`,
+                type: 'Evidence',
+                name: `Batch Retrieval Evidence ${i}`,
+              },
+            ],
+          };
+
+          const response = await app.request('/v3/credentials', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(credentialData),
+          });
+
+          const credential = await response.json();
+          createdCredentialIds.push(credential.id);
+        }
+      });
+
+      it('should retrieve multiple credentials successfully', async () => {
+        const idsParam = createdCredentialIds.slice(0, 2).join(',');
+
+        const response = await app.request(`/v3/credentials/batch?ids=${idsParam}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        expect(response.status).toBe(200);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBe(2);
+        expect(result.summary.failed).toBe(0);
+        expect(result.results).toHaveLength(2);
+        expect(result.results[0].success).toBe(true);
+        expect(result.results[0].data).toBeDefined();
+        expect(result.results[1].success).toBe(true);
+        expect(result.results[1].data).toBeDefined();
+      });
+
+      it('should handle missing credentials gracefully', async () => {
+        const idsParam = `${createdCredentialIds[0]},nonexistent-id`;
+
+        const response = await app.request(`/v3/credentials/batch?ids=${idsParam}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        expect(response.status).toBe(200);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBe(1);
+        expect(result.summary.failed).toBe(1);
+        expect(result.results[0].success).toBe(true);
+        expect(result.results[1].success).toBe(false);
+        expect(result.results[1].error).toBe('Assertion not found');
+      });
+
+      it('should require authentication', async () => {
+        const response = await app.request('/v3/credentials/batch?ids=test-id', {
+          method: 'GET',
+        });
+
+        expect(response.status).toBe(401);
+      });
+
+      it('should validate query parameters', async () => {
+        const response = await app.request('/v3/credentials/batch', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        expect(response.status).toBe(400);
+        const result = await response.json();
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Validation error');
+      });
+    });
+
+    describe('PUT /v3/credentials/batch/status', () => {
+      let testCredentialIds: string[] = [];
+
+      beforeAll(async () => {
+        // Create test credentials for status updates
+        const badgeClassData = {
+          name: 'Batch Status Test Badge',
+          description: 'A badge for testing batch status updates',
+          image: 'https://example.com/badge.png',
+          criteria: {
+            narrative: 'Complete the batch status test',
+          },
+        };
+
+        const badgeClassResponse = await app.request('/v3/badge-classes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(badgeClassData),
+        });
+
+        const badgeClass = await badgeClassResponse.json();
+
+        // Create individual credentials
+        for (let i = 1; i <= 2; i++) {
+          const credentialData = {
+            recipient: {
+              identity: `batch-status-user${i}@example.com`,
+              type: 'email',
+            },
+            badgeClass: badgeClass.id,
+            evidence: [
+              {
+                id: `https://example.com/evidence${i}`,
+                type: 'Evidence',
+                name: `Batch Status Evidence ${i}`,
+              },
+            ],
+          };
+
+          const response = await app.request('/v3/credentials', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(credentialData),
+          });
+
+          const credential = await response.json();
+          testCredentialIds.push(credential.id);
+        }
+      });
+
+      it('should update multiple credential statuses successfully', async () => {
+        const updateData = {
+          updates: [
+            {
+              id: testCredentialIds[0],
+              status: 'revoked',
+              reason: 'Test revocation',
+            },
+            {
+              id: testCredentialIds[1],
+              status: 'suspended',
+              reason: 'Test suspension',
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        expect(response.status).toBe(200);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBe(2);
+        expect(result.summary.failed).toBe(0);
+        expect(result.results).toHaveLength(2);
+        expect(result.results[0].success).toBe(true);
+        expect(result.results[1].success).toBe(true);
+      });
+
+      it('should handle updates for non-existent credentials', async () => {
+        const updateData = {
+          updates: [
+            {
+              id: testCredentialIds[0],
+              status: 'active',
+            },
+            {
+              id: 'nonexistent-credential-id',
+              status: 'revoked',
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        expect(response.status).toBe(200);
+        const result = await response.json();
+
+        expect(result.summary.total).toBe(2);
+        expect(result.summary.successful).toBe(1);
+        expect(result.summary.failed).toBe(1);
+        expect(result.results[0].success).toBe(true);
+        expect(result.results[1].success).toBe(false);
+        expect(result.results[1].error).toContain('not found');
+      });
+
+      it('should require authentication', async () => {
+        const updateData = {
+          updates: [
+            {
+              id: 'test-id',
+              status: 'revoked',
+            },
+          ],
+        };
+
+        const response = await app.request('/v3/credentials/batch/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        expect(response.status).toBe(401);
+      });
+
+      it('should validate request body', async () => {
+        const invalidUpdateData = {
+          updates: [], // Empty array should fail validation
+        };
+
+        const response = await app.request('/v3/credentials/batch/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(invalidUpdateData),
+        });
+
+        expect(response.status).toBe(400);
+        const result = await response.json();
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Validation error');
+      });
+    });
+  });
 });

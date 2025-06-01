@@ -5,7 +5,7 @@
  * and the Data Mapper pattern.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import { Assertion } from '@domains/assertion/assertion.entity';
 import type { AssertionRepository } from '@domains/assertion/assertion.repository';
 import { assertions } from '../schema';
@@ -268,5 +268,164 @@ export class SqliteAssertionRepository
       this.logError(context, error);
       throw error;
     }
+  }
+
+  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<Array<{
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>> {
+    if (assertionList.length === 0) {
+      return [];
+    }
+
+    const context = this.createOperationContext('BATCH CREATE Assertions');
+
+    return this.executeTransaction(context, async (tx) => {
+      const results: Array<{
+        success: boolean;
+        assertion?: Assertion;
+        error?: string;
+      }> = [];
+
+      // Process each assertion individually within the transaction
+      for (const assertionData of assertionList) {
+        try {
+          const assertionWithId = Assertion.create(assertionData);
+          const record = this.mapper.toPersistence(assertionWithId);
+
+          const insertResult = await tx
+            .insert(assertions)
+            .values(record)
+            .returning();
+
+          const createdAssertion = this.mapper.toDomain(insertResult[0]);
+          results.push({
+            success: true,
+            assertion: createdAssertion,
+          });
+        } catch (error) {
+          results.push({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      return results;
+    });
+  }
+
+  async findByIds(ids: Shared.IRI[]): Promise<(Assertion | null)[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const context = this.createOperationContext('SELECT Assertions by IDs');
+
+    const result = await this.executeQuery(
+      context,
+      async (db) => {
+        const stringIds = ids.map(id => id as string);
+        return db
+          .select()
+          .from(assertions)
+          .where(inArray(assertions.id, stringIds));
+      },
+      ids
+    );
+
+    // Create a map for quick lookup
+    const assertionMap = new Map<string, Assertion>();
+    result.forEach(record => {
+      const domainEntity = this.mapper.toDomain(record);
+      assertionMap.set(domainEntity.id, domainEntity);
+    });
+
+    // Return results in the same order as input IDs
+    return ids.map(id => assertionMap.get(id) || null);
+  }
+
+  async updateStatusBatch(updates: Array<{
+    id: Shared.IRI;
+    status: 'revoked' | 'suspended' | 'active';
+    reason?: string;
+  }>): Promise<Array<{
+    id: Shared.IRI;
+    success: boolean;
+    assertion?: Assertion;
+    error?: string;
+  }>> {
+    if (updates.length === 0) {
+      return [];
+    }
+
+    const context = this.createOperationContext('BATCH UPDATE Assertion Status');
+
+    return this.executeTransaction(context, async () => {
+      const results: Array<{
+        id: Shared.IRI;
+        success: boolean;
+        assertion?: Assertion;
+        error?: string;
+      }> = [];
+
+      // Process each update individually within the transaction
+      for (const update of updates) {
+        try {
+          const existingAssertion = await this.findById(update.id);
+          if (!existingAssertion) {
+            results.push({
+              id: update.id,
+              success: false,
+              error: 'Assertion not found',
+            });
+            continue;
+          }
+
+          // Prepare update data based on status
+          const updateData: Partial<Assertion> = {};
+
+          switch (update.status) {
+            case 'revoked':
+              updateData.revoked = true;
+              updateData.revocationReason = update.reason || 'Revoked';
+              break;
+            case 'suspended':
+              // For now, treat suspended as revoked with a specific reason
+              updateData.revoked = true;
+              updateData.revocationReason = update.reason || 'Suspended';
+              break;
+            case 'active':
+              updateData.revoked = false;
+              updateData.revocationReason = undefined;
+              break;
+          }
+
+          const updatedAssertion = await this.update(update.id, updateData);
+          if (updatedAssertion) {
+            results.push({
+              id: update.id,
+              success: true,
+              assertion: updatedAssertion,
+            });
+          } else {
+            results.push({
+              id: update.id,
+              success: false,
+              error: 'Failed to update assertion',
+            });
+          }
+        } catch (error) {
+          results.push({
+            id: update.id,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      return results;
+    });
   }
 }

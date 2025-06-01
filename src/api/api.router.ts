@@ -14,6 +14,9 @@ import {
   UpdateBadgeClassDto,
   CreateAssertionDto,
   UpdateAssertionDto,
+  BatchCreateCredentialsDto,
+  BatchRetrieveCredentialsDto,
+  BatchUpdateCredentialStatusDto,
 } from './dtos';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
@@ -26,6 +29,9 @@ import {
   validateIssuerMiddleware,
   validateBadgeClassMiddleware,
   validateAssertionMiddleware,
+  validateBatchCreateCredentialsMiddleware,
+  validateBatchRetrieveCredentialsMiddleware,
+  validateBatchUpdateCredentialStatusMiddleware,
 } from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
@@ -443,6 +449,72 @@ function createVersionedRouter(
       });
     }
   });
+
+  // Batch credential operations
+  router.post(
+    '/credentials/batch',
+    requireAuth(),
+    validateBatchCreateCredentialsMiddleware(),
+    async (c) => {
+      try {
+        const body = getValidatedBody<BatchCreateCredentialsDto>(c);
+        const sign = c.req.query('sign') !== 'false'; // Default to true if not specified
+        const result = await assertionController.createAssertionsBatch(
+          body,
+          version,
+          sign
+        );
+        return c.json(result, 201);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /credentials/batch',
+          body: getValidatedBody(c),
+        });
+      }
+    }
+  );
+
+  router.get(
+    '/credentials/batch',
+    requireAuth(),
+    validateBatchRetrieveCredentialsMiddleware(),
+    async (c) => {
+      try {
+        const body = getValidatedBody<BatchRetrieveCredentialsDto>(c);
+        const result = await assertionController.getAssertionsBatch(
+          body,
+          version
+        );
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /credentials/batch',
+          query: c.req.query(),
+        });
+      }
+    }
+  );
+
+  router.put(
+    '/credentials/batch/status',
+    requireAuth(),
+    validateBatchUpdateCredentialStatusMiddleware(),
+    async (c) => {
+      try {
+        const body = getValidatedBody<BatchUpdateCredentialStatusDto>(c);
+        const result = await assertionController.updateAssertionStatusBatch(
+          body,
+          version
+        );
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'PUT /credentials/batch/status',
+          body: getValidatedBody(c),
+        });
+      }
+    }
+  );
 
   // Public key routes - handled by assertion controller
   router.get('/public-keys', async (c) => {

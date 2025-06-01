@@ -27,6 +27,11 @@ import {
   CreateAssertionDto,
   UpdateAssertionDto,
   AssertionResponseDto,
+  BatchCreateCredentialsDto,
+  BatchRetrieveCredentialsDto,
+  BatchUpdateCredentialStatusDto,
+  BatchOperationResponseDto,
+  BatchOperationResult,
 } from '../dtos';
 import { UserPermission } from '../../domains/user/user.entity';
 
@@ -660,6 +665,287 @@ export class AssertionController {
         error as Error
       );
       return null;
+    }
+  }
+
+  /**
+   * Creates multiple assertions in a batch operation
+   * @param data The batch creation data
+   * @param version The badge version to use for the response
+   * @param sign Whether to sign the assertions (default: true)
+   * @param user The authenticated user
+   * @returns Batch operation results
+   */
+  async createAssertionsBatch(
+    data: BatchCreateCredentialsDto,
+    version: BadgeVersion = BadgeVersion.V3,
+    sign: boolean = true,
+    user?: { claims?: Record<string, unknown> } | null
+  ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    // Check if user has permission to create assertions
+    if (user && !this.hasPermission(user, UserPermission.CREATE_ASSERTION)) {
+      logger.warn(
+        `User ${
+          user.claims?.['sub'] || 'unknown'
+        } attempted to create assertions batch without permission`
+      );
+      throw new BadRequestError('Insufficient permissions to create assertions');
+    }
+
+    try {
+      logger.debug('Batch assertion creation data', {
+        credentialCount: data.credentials.length
+      });
+
+      // Initialize the key service
+      await KeyService.initialize();
+
+      // Process each credential and prepare for batch creation
+      const assertionsToCreate: Omit<Assertion, 'id'>[] = [];
+      const validationResults: BatchOperationResult<AssertionResponseDto>[] = [];
+
+      for (let i = 0; i < data.credentials.length; i++) {
+        const credentialData = data.credentials[i];
+        try {
+          // Map incoming data to internal format
+          const mappedData = mapToAssertionEntity(credentialData);
+
+          // Validate that the badge class exists
+          const badgeClassId = mappedData.badgeClass;
+          if (!badgeClassId) {
+            validationResults.push({
+              success: false,
+              error: 'Badge class ID is required',
+            });
+            continue;
+          }
+
+          const badgeClass = await this.badgeClassRepository.findById(badgeClassId);
+          if (!badgeClass) {
+            validationResults.push({
+              success: false,
+              error: `Badge class with ID ${badgeClassId} does not exist`,
+            });
+            continue;
+          }
+
+          // Create the assertion using the mapped data
+          const assertion = Assertion.create(mappedData);
+
+          // Sign the assertion if requested
+          let signedAssertion = assertion;
+          if (sign) {
+            signedAssertion =
+              await VerificationService.createVerificationForAssertion(assertion);
+          }
+
+          assertionsToCreate.push(signedAssertion);
+          validationResults.push({ success: true });
+        } catch (error) {
+          logger.error(`Error processing credential ${i} in batch`, { error });
+          validationResults.push({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      // Perform batch creation for valid assertions
+      const batchResults = await this.assertionRepository.createBatch(assertionsToCreate);
+
+      // Combine validation and creation results
+      const results: BatchOperationResult<AssertionResponseDto>[] = [];
+      let batchIndex = 0;
+
+      for (let i = 0; i < validationResults.length; i++) {
+        const validationResult = validationResults[i];
+
+        if (validationResult.success) {
+          const batchResult = batchResults[batchIndex];
+          batchIndex++;
+
+          if (batchResult.success && batchResult.assertion) {
+            try {
+              // Convert to JSON-LD format
+              const jsonLdAssertion = await this.getAssertionById(
+                batchResult.assertion.id,
+                version
+              );
+
+              results.push({
+                id: batchResult.assertion.id,
+                success: true,
+                data: jsonLdAssertion as AssertionResponseDto,
+              });
+            } catch (error) {
+              results.push({
+                id: batchResult.assertion.id,
+                success: false,
+                error: 'Failed to convert assertion to response format',
+              });
+            }
+          } else {
+            results.push({
+              success: false,
+              error: batchResult.error || 'Failed to create assertion',
+            });
+          }
+        } else {
+          results.push(validationResult);
+        }
+      }
+
+      // Calculate summary
+      const successful = results.filter(r => r.success).length;
+      const failed = results.length - successful;
+
+      return {
+        results,
+        summary: {
+          total: results.length,
+          successful,
+          failed,
+        },
+      };
+    } catch (error) {
+      logger.logError('Failed to create assertions batch', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves multiple assertions in a batch operation
+   * @param data The batch retrieval data
+   * @param version The badge version to use for the response
+   * @returns Batch operation results
+   */
+  async getAssertionsBatch(
+    data: BatchRetrieveCredentialsDto,
+    version: BadgeVersion = BadgeVersion.V3
+  ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    try {
+      logger.debug('Batch assertion retrieval data', {
+        idCount: data.ids.length
+      });
+
+      // Retrieve assertions from repository
+      const assertions = await this.assertionRepository.findByIds(data.ids);
+
+      // Convert to response format
+      const results: BatchOperationResult<AssertionResponseDto>[] = [];
+
+      for (let i = 0; i < data.ids.length; i++) {
+        const id = data.ids[i];
+        const assertion = assertions[i];
+
+        if (assertion) {
+          try {
+            // Convert to JSON-LD format
+            const jsonLdAssertion = await this.getAssertionById(assertion.id, version);
+            results.push({
+              id,
+              success: true,
+              data: jsonLdAssertion as AssertionResponseDto,
+            });
+          } catch (error) {
+            results.push({
+              id,
+              success: false,
+              error: 'Failed to convert assertion to response format',
+            });
+          }
+        } else {
+          results.push({
+            id,
+            success: false,
+            error: 'Assertion not found',
+          });
+        }
+      }
+
+      // Calculate summary
+      const successful = results.filter(r => r.success).length;
+      const failed = results.length - successful;
+
+      return {
+        results,
+        summary: {
+          total: results.length,
+          successful,
+          failed,
+        },
+      };
+    } catch (error) {
+      logger.logError('Failed to retrieve assertions batch', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates the status of multiple assertions in a batch operation
+   * @param data The batch status update data
+   * @param version The badge version to use for the response
+   * @returns Batch operation results
+   */
+  async updateAssertionStatusBatch(
+    data: BatchUpdateCredentialStatusDto,
+    version: BadgeVersion = BadgeVersion.V3
+  ): Promise<BatchOperationResponseDto<AssertionResponseDto>> {
+    try {
+      logger.debug('Batch assertion status update data', {
+        updateCount: data.updates.length
+      });
+
+      // Perform batch status updates
+      const updateResults = await this.assertionRepository.updateStatusBatch(data.updates);
+
+      // Convert to response format
+      const results: BatchOperationResult<AssertionResponseDto>[] = [];
+
+      for (const updateResult of updateResults) {
+        if (updateResult.success && updateResult.assertion) {
+          try {
+            // Convert to JSON-LD format
+            const jsonLdAssertion = await this.getAssertionById(
+              updateResult.assertion.id,
+              version
+            );
+            results.push({
+              id: updateResult.id,
+              success: true,
+              data: jsonLdAssertion as AssertionResponseDto,
+            });
+          } catch (error) {
+            results.push({
+              id: updateResult.id,
+              success: false,
+              error: 'Failed to convert assertion to response format',
+            });
+          }
+        } else {
+          results.push({
+            id: updateResult.id,
+            success: false,
+            error: updateResult.error || 'Failed to update assertion status',
+          });
+        }
+      }
+
+      // Calculate summary
+      const successful = results.filter(r => r.success).length;
+      const failed = results.length - successful;
+
+      return {
+        results,
+        summary: {
+          total: results.length,
+          successful,
+          failed,
+        },
+      };
+    } catch (error) {
+      logger.logError('Failed to update assertion status batch', error as Error);
+      throw error;
     }
   }
 }
