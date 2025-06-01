@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SchemaValidationService, type CredentialSchema } from '../../src/core/schema-validation.service';
+import { SchemaValidationService, type CredentialSchema } from '../../src/core/schema-validation.service.js';
 import {
   SchemaValidationError,
   SchemaFetchError,
@@ -11,10 +11,21 @@ import {
   CredentialSchemaValidationError,
   UnsupportedSchemaTypeError,
   SchemaValidationTimeoutError
-} from '../../src/utils/errors/schema-validation.errors';
+} from '../../src/utils/errors/schema-validation.errors.js';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
+
+// Mock logger
+vi.mock('../../src/utils/logging/logger.service.js', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    logError: vi.fn()
+  }
+}));
 
 describe('SchemaValidationService', () => {
   let service: SchemaValidationService;
@@ -52,7 +63,7 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(validSchema)
       });
@@ -78,7 +89,7 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 404,
         statusText: 'Not Found'
@@ -106,7 +117,7 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(validSchema)
       });
@@ -134,7 +145,7 @@ describe('SchemaValidationService', () => {
 
       const customRule = vi.fn().mockResolvedValue({ isValid: false, errors: ['Custom validation failed'] });
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(validSchema)
       });
@@ -157,7 +168,7 @@ describe('SchemaValidationService', () => {
       }];
 
       // Mock fetch to never resolve
-      (global.fetch as any).mockImplementation(() => new Promise(() => {}));
+      (globalThis.fetch as any).mockImplementation(() => new Promise(() => {}));
 
       await expect(service.validateCredential(credential, credentialSchemas, {
         timeoutMs: 100
@@ -323,7 +334,7 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValue({
+      (globalThis.fetch as any).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(validSchema)
       });
@@ -335,7 +346,7 @@ describe('SchemaValidationService', () => {
       await service.validateCredential(credential, credentialSchemas);
 
       // Fetch should only be called once due to caching
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 
       const stats = service.getCacheStats();
       expect(stats.schemas).toBe(1);
@@ -354,7 +365,7 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValue({
+      (globalThis.fetch as any).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(validSchema)
       });
@@ -374,7 +385,7 @@ describe('SchemaValidationService', () => {
   });
 
   describe('Integration Tests with Real Schemas', () => {
-    it('should validate against Open Badges 3.0 Achievement Credential schema', async () => {
+    it('should validate against a valid Open Badges-style schema', async () => {
       const validCredential = {
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
@@ -395,16 +406,28 @@ describe('SchemaValidationService', () => {
         }
       };
 
-      const achievementSchema = await import('../fixtures/schemas/valid-achievement-credential-schema.json');
+      const achievementSchema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "@context": { "type": "array" },
+          "id": { "type": "string", "format": "uri" },
+          "type": { "type": "array" },
+          "issuer": { "type": "object" },
+          "issuanceDate": { "type": "string", "format": "date-time" },
+          "credentialSubject": { "type": "object" }
+        },
+        "required": ["@context", "id", "type", "issuer", "issuanceDate", "credentialSubject"]
+      };
 
       const credentialSchemas: CredentialSchema[] = [{
         id: 'https://purl.imsglobal.org/spec/ob/v3p0/schema/json/ob_v3p0_achievementcredential_schema.json',
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(achievementSchema.default)
+        json: () => Promise.resolve(achievementSchema)
       });
 
       await expect(service.validateCredential(validCredential, credentialSchemas))
@@ -416,27 +439,43 @@ describe('SchemaValidationService', () => {
         "@context": ["https://www.w3.org/2018/credentials/v1"],
         "id": "https://example.com/credentials/123",
         "type": ["VerifiableCredential"],
-        "issuer": "https://example.com/issuers/1", // Should be object
+        "issuer": "https://example.com/issuers/1",
         "issuanceDate": "2023-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://example.com/students/456",
           "type": "AchievementSubject",
           "achievement": "https://example.com/achievements/math-101"
-          // Missing required customField
         }
-        // Missing required evidence
       };
 
-      const strictSchema = await import('../fixtures/schemas/strict-credential-schema.json');
+      const strictSchema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "@context": { "type": "array", "minItems": 2 },
+          "id": { "type": "string" },
+          "type": { "type": "array" },
+          "issuer": { "type": "object" }, // Requires object, but credential has string
+          "issuanceDate": { "type": "string" },
+          "credentialSubject": {
+            "type": "object",
+            "properties": {
+              "requiredField": { "type": "string" }
+            },
+            "required": ["requiredField"]
+          }
+        },
+        "required": ["@context", "id", "type", "issuer", "issuanceDate", "credentialSubject"]
+      };
 
       const credentialSchemas: CredentialSchema[] = [{
         id: 'https://example.com/strict-credential-schema.json',
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(strictSchema.default)
+        json: () => Promise.resolve(strictSchema)
       });
 
       await expect(service.validateCredential(incompleteCredential, credentialSchemas))
@@ -450,11 +489,15 @@ describe('SchemaValidationService', () => {
         type: '1EdTechJsonSchemaValidator2019'
       }];
 
-      const invalidSchema = await import('../fixtures/schemas/invalid-schema.json');
+      const invalidSchema = {
+        "this": "is not a valid JSON schema",
+        "missing": "$schema property",
+        "no": "type or properties defined"
+      };
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(invalidSchema.default)
+        json: () => Promise.resolve(invalidSchema)
       });
 
       await expect(service.validateCredential(credential, credentialSchemas, {

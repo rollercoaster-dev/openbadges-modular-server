@@ -5,10 +5,9 @@
  * referenced by the credentialSchema property in verifiable credentials.
  */
 
-import { Injectable } from '@nestjs/common';
 import { type ValidateFunction } from 'ajv';
-import { ajvInstance, getValidationFunction } from '../utils/json-schema/ajv-config';
-import { logger } from '../utils/logging/logger.service';
+import { ajvInstance, getValidationFunction } from '../utils/json-schema/ajv-config.js';
+import { logger } from '../utils/logging/logger.service.js';
 import {
   SchemaValidationError,
   SchemaFetchError,
@@ -16,7 +15,7 @@ import {
   CredentialSchemaValidationError,
   UnsupportedSchemaTypeError,
   SchemaValidationTimeoutError
-} from '../utils/errors/schema-validation.errors';
+} from '../utils/errors/schema-validation.errors.js';
 
 /**
  * Represents a credential schema reference
@@ -80,7 +79,6 @@ const DEFAULT_OPTIONS: Required<Omit<SchemaValidationOptions, 'customRules'>> & 
   customRules: []
 };
 
-@Injectable()
 export class SchemaValidationService {
   private readonly schemaCache = new Map<string, object>();
   private readonly validationFunctionCache = new Map<string, ValidateFunction>();
@@ -213,9 +211,10 @@ export class SchemaValidationService {
 
     try {
       logger.info(`Fetching schema from: ${schemaUrl}`);
-      
-      const response = await fetch(schemaUrl);
-      
+
+      // Use globalThis.fetch to ensure it can be mocked in tests
+      const response = await globalThis.fetch(schemaUrl);
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

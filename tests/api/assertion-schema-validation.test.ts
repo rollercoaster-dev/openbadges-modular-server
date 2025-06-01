@@ -3,17 +3,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { AssertionController } from '../../src/api/controllers/assertion.controller';
-import { SchemaValidationService } from '../../src/core/schema-validation.service';
-import { AssertionRepository } from '../../src/domains/assertion/assertion.repository';
-import { BadgeClassRepository } from '../../src/domains/badgeClass/badgeClass.repository';
-import { IssuerRepository } from '../../src/domains/issuer/issuer.repository';
-import { BadRequestError } from '../../src/infrastructure/errors/bad-request.error';
-import { BadgeVersion } from '../../src/utils/version/badge-version';
-import { Assertion } from '../../src/domains/assertion/assertion.entity';
-import { BadgeClass } from '../../src/domains/badgeClass/badgeClass.entity';
-import { Issuer } from '../../src/domains/issuer/issuer.entity';
-import type { CreateAssertionDto } from '../../src/api/dtos';
+import { AssertionController } from '@/api/controllers/assertion.controller';
+import { SchemaValidationService } from '@core/schema-validation.service';
+import { AssertionRepository } from '@domains/assertion/assertion.repository';
+import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
+import { IssuerRepository } from '@domains/issuer/issuer.repository';
+import { BadRequestError } from '@infrastructure/errors/bad-request.error';
+import { BadgeVersion } from '@utils/version/badge-version';
+import { Assertion } from '@domains/assertion/assertion.entity';
+import { BadgeClass } from '@domains/badgeClass/badgeClass.entity';
+import { Issuer } from '@domains/issuer/issuer.entity';
+import type { CreateAssertionDto } from '@/api/dtos';
 
 // Mock fetch globally
 global.fetch = vi.fn();

@@ -22,7 +22,7 @@ import {
   createVerificationError,
 } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
-import { SchemaValidationService } from '../../core/schema-validation.service';
+import { SchemaValidationService } from '@core/schema-validation.service';
 import { logger } from '../../utils/logging/logger.service';
 import {
   CreateAssertionDto,
