@@ -8,7 +8,56 @@
 import { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { logger } from '../src/utils/logging/logger.service';
+import { logger } from './src/utils/logging/logger.service';
+
+// TypeScript interfaces for SQLite PRAGMA responses
+interface PragmaTableInfo {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: number;
+  dflt_value: string | null;
+  pk: number;
+}
+
+interface PragmaForeignKeyInfo {
+  id: number;
+  seq: number;
+  table: string;
+  from: string;
+  to: string;
+  on_update: string;
+  on_delete: string;
+  match: string;
+}
+
+interface PragmaIndexInfo {
+  seq: number;
+  name: string;
+  unique: number;
+  origin: string;
+  partial: number;
+}
+
+interface CountResult {
+  count: number;
+}
+
+interface AssertionRecord {
+  id: string;
+  badge_class_id: string;
+  issuer_id: string | null;
+  recipient: string;
+  issued_on: number;
+  expires: number | null;
+  evidence: string | null;
+  verification: string | null;
+  revoked: number | null;
+  revocation_reason: string | null;
+  created_at: number;
+  updated_at: number;
+  additional_fields: string | null;
+}
 
 async function testMigration() {
   logger.info('Testing SQLite foreign key constraint migration...');
@@ -111,9 +160,11 @@ async function testMigration() {
 
     // Step 3: Verify the old table structure doesn't have issuer_id column
     logger.info('Verifying old table structure...');
-    const oldTableInfo = db.prepare('PRAGMA table_info(assertions)').all();
+    const oldTableInfo = db
+      .prepare('PRAGMA table_info(assertions)')
+      .all() as PragmaTableInfo[];
     const hasIssuerIdBefore = oldTableInfo.some(
-      (col: any) => col.name === 'issuer_id'
+      (col) => col.name === 'issuer_id'
     );
 
     if (hasIssuerIdBefore) {
@@ -141,9 +192,11 @@ async function testMigration() {
     // Step 5: Verify the new table structure has issuer_id column with foreign key
     logger.info('Verifying new table structure...');
 
-    const newTableInfo = db.prepare('PRAGMA table_info(assertions)').all();
+    const newTableInfo = db
+      .prepare('PRAGMA table_info(assertions)')
+      .all() as PragmaTableInfo[];
     const hasIssuerIdAfter = newTableInfo.some(
-      (col: any) => col.name === 'issuer_id'
+      (col) => col.name === 'issuer_id'
     );
 
     if (!hasIssuerIdAfter) {
@@ -153,9 +206,11 @@ async function testMigration() {
     }
 
     // Check foreign key constraints
-    const foreignKeys = db.prepare('PRAGMA foreign_key_list(assertions)').all();
+    const foreignKeys = db
+      .prepare('PRAGMA foreign_key_list(assertions)')
+      .all() as PragmaForeignKeyInfo[];
     const hasIssuerIdForeignKey = foreignKeys.some(
-      (fk: any) => fk.from === 'issuer_id' && fk.table === 'issuers'
+      (fk) => fk.from === 'issuer_id' && fk.table === 'issuers'
     );
 
     if (!hasIssuerIdForeignKey) {
@@ -173,7 +228,7 @@ async function testMigration() {
 
     const assertionCount = db
       .prepare('SELECT COUNT(*) as count FROM assertions')
-      .get() as any;
+      .get() as CountResult;
     if (assertionCount.count !== 1) {
       throw new Error(
         `Data preservation failed: expected 1 assertion, found ${assertionCount.count}`
@@ -182,7 +237,7 @@ async function testMigration() {
 
     const assertion = db
       .prepare('SELECT * FROM assertions WHERE id = ?')
-      .get('assertion-1') as any;
+      .get('assertion-1') as AssertionRecord | undefined;
     if (!assertion) {
       throw new Error('Data preservation failed: test assertion not found');
     }
@@ -234,7 +289,7 @@ async function testMigration() {
 
     const newAssertionCount = db
       .prepare('SELECT COUNT(*) as count FROM assertions')
-      .get() as any;
+      .get() as CountResult;
     if (newAssertionCount.count !== 2) {
       throw new Error(
         `Valid insertion failed: expected 2 assertions, found ${newAssertionCount.count}`
@@ -246,7 +301,9 @@ async function testMigration() {
     // Step 9: Verify indexes were created
     logger.info('Verifying indexes...');
 
-    const indexes = db.prepare('PRAGMA index_list(assertions)').all();
+    const indexes = db
+      .prepare('PRAGMA index_list(assertions)')
+      .all() as PragmaIndexInfo[];
     const requiredIndexes = [
       'assertion_badge_class_idx',
       'assertion_issuer_idx',
@@ -256,9 +313,7 @@ async function testMigration() {
     ];
 
     for (const requiredIndex of requiredIndexes) {
-      const indexExists = indexes.some(
-        (idx: any) => idx.name === requiredIndex
-      );
+      const indexExists = indexes.some((idx) => idx.name === requiredIndex);
       if (!indexExists) {
         throw new Error(
           `Index verification failed: ${requiredIndex} not found`
