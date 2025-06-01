@@ -1,5 +1,5 @@
 -- Migration: Add StatusList2021 tables for Open Badges v3.0 compliance
--- Created: 2024-01-XX
+-- Created: 2024-01-01
 -- Description: Adds status_lists and credential_status_entries tables to support StatusList2021 specification
 
 -- Create status_lists table
@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS `credential_status_entries` (
 	FOREIGN KEY (`credential_id`) REFERENCES `assertions`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`status_list_id`) REFERENCES `status_lists`(`id`) ON UPDATE no action ON DELETE cascade
 );
+
+-- Add unique constraints for data integrity
+CREATE UNIQUE INDEX IF NOT EXISTS `status_list_issuer_purpose_unique` ON `status_lists` (`issuer_id`, `purpose`);
 
 -- Create indexes for status_lists table
 CREATE INDEX IF NOT EXISTS `status_list_issuer_idx` ON `status_lists` (`issuer_id`);

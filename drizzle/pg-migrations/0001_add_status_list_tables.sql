@@ -1,5 +1,5 @@
 -- Migration: Add StatusList2021 tables for Open Badges v3.0 compliance
--- Created: 2024-01-XX
+-- Created: 2024-01-01
 -- Description: Adds status_lists and credential_status_entries tables to support StatusList2021 specification
 
 -- Create status_lists table
@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS "status_lists" (
 	"bitstring" text NOT NULL,
 	"size" integer DEFAULT 16384 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "status_lists_unique_issuer_purpose" UNIQUE ("issuer_id", "purpose")
 );
 
 -- Create credential_status_entries table
@@ -22,7 +23,9 @@ CREATE TABLE IF NOT EXISTS "credential_status_entries" (
 	"status" integer DEFAULT 0 NOT NULL,
 	"reason" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "credential_status_unique_credential_list" UNIQUE ("credential_id", "status_list_id"),
+	CONSTRAINT "credential_status_unique_list_index" UNIQUE ("status_list_id", "status_list_index")
 );
 
 -- Add foreign key constraints

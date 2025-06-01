@@ -6,7 +6,6 @@
  */
 
 import { Shared } from 'openbadges-types';
-import { createOrGenerateIRI } from '../utils/types/iri-utils';
 import { createDateTime } from '../utils/types/date-utils';
 import { logger } from '../utils/logging/logger.service';
 import {
@@ -17,7 +16,6 @@ import {
   UpdateCredentialStatusRequest,
   UpdateCredentialStatusResponse,
   CreateStatusListOptions,
-  FindStatusListOptions,
   StatusPurpose,
   CredentialStatus,
   IStatusListService,
@@ -176,6 +174,11 @@ export class StatusListService implements IStatusListService {
 
       // Get next available index in the status list
       const statusListIndex = await this.credentialStatusEntryRepository.getNextAvailableIndex(statusList.id);
+
+      // Check if status list is full
+      if (statusListIndex === null || statusListIndex === undefined || statusListIndex >= statusList.size) {
+        throw new Error(`Status list ${statusList.id} is full. Cannot assign more credentials.`);
+      }
 
       // Create the status entry
       const entryData = {
@@ -428,8 +431,7 @@ export class StatusListService implements IStatusListService {
    * Encodes data to base64url
    */
   private base64urlEncode(data: Uint8Array): string {
-    // Convert to base64 and then to base64url
-    const base64 = btoa(String.fromCharCode(...data));
+    const base64 = Buffer.from(data).toString('base64');
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
@@ -437,21 +439,9 @@ export class StatusListService implements IStatusListService {
    * Decodes base64url data
    */
   private base64urlDecode(base64url: string): Uint8Array {
-    // Convert base64url to base64
+    // Convert base64url -> base64 (+ padding) -> Uint8Array
     let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-
-    // Add padding if needed
-    while (base64.length % 4) {
-      base64 += '=';
-    }
-
-    // Decode from base64
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    return bytes;
+    base64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    return new Uint8Array(Buffer.from(base64, 'base64'));
   }
 }
