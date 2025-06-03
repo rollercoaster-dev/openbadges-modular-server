@@ -1,0 +1,487 @@
+/**
+ * PostgreSQL implementation of StatusListRepository
+ */
+
+import { eq, and, sql, lt, desc, asc } from 'drizzle-orm';
+import postgres from 'postgres';
+import { StatusList } from '@domains/status-list/status-list.entity';
+import type { StatusListRepository } from '@domains/status-list/status-list.repository';
+import {
+  StatusPurpose,
+  StatusListQueryParams,
+  CredentialStatusEntryData,
+  UpdateCredentialStatusParams,
+  StatusUpdateResult
+} from '@domains/status-list/status-list.types';
+import { statusLists, credentialStatusEntries } from '../schema';
+import { PostgresStatusListMapper } from '../mappers/postgres-status-list.mapper';
+import { BasePostgresRepository } from './base-postgres.repository';
+import { PostgresEntityType } from '../types/postgres-database.types';
+import { logger } from '@utils/logging/logger.service';
+import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
+import { createOrGenerateIRI } from '@utils/validation/iri.utils';
+
+/**
+ * PostgreSQL StatusList repository implementation
+ */
+export class PostgresStatusListRepository extends BasePostgresRepository implements StatusListRepository {
+  private readonly mapper: PostgresStatusListMapper;
+
+  constructor(client: postgres.Sql) {
+    super(client);
+    this.mapper = new PostgresStatusListMapper();
+  }
+
+  protected getEntityType(): PostgresEntityType {
+    return 'StatusList';
+  }
+
+  async create(statusList: StatusList): Promise<StatusList> {
+    const context = this.createOperationContext('CREATE StatusList');
+
+    // Convert domain entity to database record
+    const record = this.mapper.toPersistence(statusList);
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db.insert(statusLists).values(record).returning();
+        return this.mapper.toDomain(result[0]);
+      },
+      1
+    );
+  }
+
+  async findById(id: string): Promise<StatusList | null> {
+    this.validateEntityId(id, 'findById');
+    const context = this.createOperationContext('SELECT StatusList by ID', id);
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(statusLists)
+          .where(eq(statusLists.id, id))
+          .limit(1);
+        
+        return result.length > 0 ? [this.mapper.toDomain(result[0])] : [];
+      },
+      [id]
+    ).then(results => results[0] || null);
+  }
+
+  async findMany(params: StatusListQueryParams): Promise<StatusList[]> {
+    const context = this.createOperationContext('SELECT StatusLists with filters');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        let query = db.select().from(statusLists);
+
+        // Apply filters
+        const conditions = [];
+        if (params.issuerId) {
+          conditions.push(eq(statusLists.issuerId, params.issuerId));
+        }
+        if (params.purpose) {
+          conditions.push(eq(statusLists.purpose, params.purpose));
+        }
+        if (params.statusSize) {
+          conditions.push(eq(statusLists.statusSize, params.statusSize.toString()));
+        }
+        if (params.hasCapacity) {
+          conditions.push(lt(statusLists.usedEntries, statusLists.totalEntries));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Apply ordering
+        query = query.orderBy(desc(statusLists.createdAt));
+
+        // Apply pagination
+        if (params.limit) {
+          query = query.limit(params.limit);
+        }
+        if (params.offset) {
+          query = query.offset(params.offset);
+        }
+
+        const result = await query;
+        return result.map(record => this.mapper.toDomain(record));
+      },
+      [params]
+    );
+  }
+
+  async findAvailableStatusList(
+    issuerId: string,
+    purpose: StatusPurpose,
+    statusSize: number
+  ): Promise<StatusList | null> {
+    const context = this.createOperationContext('SELECT Available StatusList');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(statusLists)
+          .where(
+            and(
+              eq(statusLists.issuerId, issuerId),
+              eq(statusLists.purpose, purpose),
+              eq(statusLists.statusSize, statusSize.toString()),
+              lt(statusLists.usedEntries, statusLists.totalEntries)
+            )
+          )
+          .orderBy(asc(statusLists.usedEntries))
+          .limit(1);
+        
+        return result.length > 0 ? [this.mapper.toDomain(result[0])] : [];
+      },
+      [issuerId, purpose, statusSize]
+    ).then(results => results[0] || null);
+  }
+
+  async update(statusList: StatusList): Promise<StatusList> {
+    const context = this.createOperationContext('UPDATE StatusList', statusList.id);
+
+    // Convert domain entity to database record
+    const record = this.mapper.toPersistence(statusList);
+    
+    // Remove id from update data
+    const { id, ...updateData } = record;
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db
+          .update(statusLists)
+          .set(updateData)
+          .where(eq(statusLists.id, statusList.id))
+          .returning();
+        
+        if (result.length === 0) {
+          throw new Error(`StatusList with id ${statusList.id} not found`);
+        }
+        
+        return this.mapper.toDomain(result[0]);
+      },
+      1
+    );
+  }
+
+  async delete(id: string): Promise<boolean> {
+    this.validateEntityId(id, 'delete');
+    const context = this.createOperationContext('DELETE StatusList', id);
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db
+          .delete(statusLists)
+          .where(eq(statusLists.id, id))
+          .returning({ id: statusLists.id });
+        
+        return result.length > 0;
+      },
+      1
+    );
+  }
+
+  async createStatusEntry(entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>): Promise<CredentialStatusEntryData> {
+    const context = this.createOperationContext('CREATE CredentialStatusEntry');
+
+    const now = new Date();
+    const entryWithDefaults = {
+      id: createOrGenerateIRI(),
+      ...entry,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
+        const result = await this.db.insert(credentialStatusEntries).values(record).returning();
+        return this.mapper.statusEntryToDomain(result[0]);
+      },
+      1
+    );
+  }
+
+  async findStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<CredentialStatusEntryData | null> {
+    const context = this.createOperationContext('SELECT CredentialStatusEntry');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(credentialStatusEntries)
+          .where(
+            and(
+              eq(credentialStatusEntries.credentialId, credentialId),
+              eq(credentialStatusEntries.purpose, purpose)
+            )
+          )
+          .limit(1);
+        
+        return result.length > 0 ? [this.mapper.statusEntryToDomain(result[0])] : [];
+      },
+      [credentialId, purpose]
+    ).then(results => results[0] || null);
+  }
+
+  async findStatusEntriesByList(statusListId: string): Promise<CredentialStatusEntryData[]> {
+    const context = this.createOperationContext('SELECT CredentialStatusEntries by StatusList');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(credentialStatusEntries)
+          .where(eq(credentialStatusEntries.statusListId, statusListId))
+          .orderBy(asc(credentialStatusEntries.statusListIndex));
+        
+        return result.map(record => this.mapper.statusEntryToDomain(record));
+      },
+      [statusListId]
+    );
+  }
+
+  async updateStatusEntry(entry: CredentialStatusEntryData): Promise<CredentialStatusEntryData> {
+    const context = this.createOperationContext('UPDATE CredentialStatusEntry', entry.id);
+
+    const record = this.mapper.statusEntryToPersistence({
+      ...entry,
+      updatedAt: new Date()
+    });
+    
+    // Remove id from update data
+    const { id, ...updateData } = record;
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db
+          .update(credentialStatusEntries)
+          .set(updateData)
+          .where(eq(credentialStatusEntries.id, entry.id))
+          .returning();
+        
+        if (result.length === 0) {
+          throw new Error(`CredentialStatusEntry with id ${entry.id} not found`);
+        }
+        
+        return this.mapper.statusEntryToDomain(result[0]);
+      },
+      1
+    );
+  }
+
+  async updateCredentialStatus(params: UpdateCredentialStatusParams): Promise<StatusUpdateResult> {
+    const context = this.createOperationContext('UPDATE Credential Status');
+
+    try {
+      return await this.executeOperation(
+        context,
+        async () => {
+          // Use transaction for atomic update
+          return await this.db.transaction(async (tx) => {
+            // Find the credential's status entry
+            const statusEntry = await this.findStatusEntry(params.credentialId, params.purpose);
+            if (!statusEntry) {
+              throw new Error(`No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`);
+            }
+
+            // Find the status list
+            const statusList = await this.findById(statusEntry.statusListId);
+            if (!statusList) {
+              throw new Error(`Status list ${statusEntry.statusListId} not found`);
+            }
+
+            // Update the bitstring
+            const bitstring = BitstringUtils.decodeBitstring(statusList.encodedList);
+            const updatedBitstring = BitstringUtils.setStatusAtIndex(
+              bitstring,
+              statusEntry.statusListIndex,
+              params.status,
+              statusList.statusSize
+            );
+            const encodedList = BitstringUtils.encodeBitstring(updatedBitstring);
+
+            // Update status list
+            statusList.updateEncodedList(encodedList);
+            await this.update(statusList);
+
+            // Update status entry
+            const updatedEntry = await this.updateStatusEntry({
+              ...statusEntry,
+              currentStatus: params.status,
+              statusReason: params.reason,
+              updatedAt: new Date()
+            });
+
+            return {
+              success: true,
+              statusEntry: updatedEntry
+            };
+          });
+        },
+        1
+      );
+    } catch (error) {
+      logger.error('Failed to update credential status', {
+        error: error instanceof Error ? error.message : String(error),
+        params
+      });
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  async deleteStatusEntry(id: string): Promise<boolean> {
+    this.validateEntityId(id, 'deleteStatusEntry');
+    const context = this.createOperationContext('DELETE CredentialStatusEntry', id);
+
+    return this.executeOperation(
+      context,
+      async () => {
+        const result = await this.db
+          .delete(credentialStatusEntries)
+          .where(eq(credentialStatusEntries.id, id))
+          .returning({ id: credentialStatusEntries.id });
+        
+        return result.length > 0;
+      },
+      1
+    );
+  }
+
+  async getUsedEntriesCount(statusListId: string): Promise<number> {
+    const context = this.createOperationContext('COUNT Used Entries');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(credentialStatusEntries)
+          .where(eq(credentialStatusEntries.statusListId, statusListId));
+        
+        return [result[0]?.count || 0];
+      },
+      [statusListId]
+    ).then(results => results[0]);
+  }
+
+  async findByIssuer(issuerId: string): Promise<StatusList[]> {
+    const context = this.createOperationContext('SELECT StatusLists by Issuer');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(statusLists)
+          .where(eq(statusLists.issuerId, issuerId))
+          .orderBy(desc(statusLists.createdAt));
+        
+        return result.map(record => this.mapper.toDomain(record));
+      },
+      [issuerId]
+    );
+  }
+
+  async findByPurpose(purpose: StatusPurpose): Promise<StatusList[]> {
+    const context = this.createOperationContext('SELECT StatusLists by Purpose');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select()
+          .from(statusLists)
+          .where(eq(statusLists.purpose, purpose))
+          .orderBy(desc(statusLists.createdAt));
+        
+        return result.map(record => this.mapper.toDomain(record));
+      },
+      [purpose]
+    );
+  }
+
+  async hasStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<boolean> {
+    const context = this.createOperationContext('CHECK StatusEntry Exists');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(credentialStatusEntries)
+          .where(
+            and(
+              eq(credentialStatusEntries.credentialId, credentialId),
+              eq(credentialStatusEntries.purpose, purpose)
+            )
+          );
+        
+        return [(result[0]?.count || 0) > 0];
+      },
+      [credentialId, purpose]
+    ).then(results => results[0]);
+  }
+
+  async getStatusListStats(statusListId: string): Promise<{
+    totalEntries: number;
+    usedEntries: number;
+    availableEntries: number;
+    utilizationPercent: number;
+  }> {
+    const statusList = await this.findById(statusListId);
+    if (!statusList) {
+      throw new Error(`Status list ${statusListId} not found`);
+    }
+
+    const usedEntries = await this.getUsedEntriesCount(statusListId);
+    const totalEntries = statusList.totalEntries;
+    const availableEntries = totalEntries - usedEntries;
+    const utilizationPercent = (usedEntries / totalEntries) * 100;
+
+    return {
+      totalEntries,
+      usedEntries,
+      availableEntries,
+      utilizationPercent
+    };
+  }
+
+  async findCredentialsNeedingStatus(
+    issuerId: string,
+    purpose: StatusPurpose,
+    limit: number = 100
+  ): Promise<string[]> {
+    const context = this.createOperationContext('SELECT Credentials Needing Status');
+
+    return this.executeQuery(
+      context,
+      async (db) => {
+        // This would need to join with assertions table to find credentials
+        // without status entries for the given purpose
+        // For now, return empty array as placeholder
+        return [];
+      },
+      [issuerId, purpose, limit]
+    );
+  }
+}
