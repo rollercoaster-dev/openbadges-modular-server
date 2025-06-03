@@ -1,6 +1,6 @@
 /**
  * StatusList entity for managing Bitstring Status Lists
- * 
+ *
  * This entity represents a status list that can contain the status of multiple
  * verifiable credentials using a compressed bitstring format.
  */
@@ -12,7 +12,7 @@ import {
   BitstringStatusList,
   BitstringStatusListCredential,
   CreateStatusListParams,
-  StatusMessage
+  StatusMessage,
 } from './status-list.types';
 import { createOrGenerateIRI } from '../../utils/validation/iri.utils';
 import { logger } from '../../utils/logging/logger.service';
@@ -56,15 +56,17 @@ export class StatusList {
   static create(params: CreateStatusListParams): StatusList {
     const now = new Date();
     const id = createOrGenerateIRI();
-    
+
     // Default values according to specification
     const statusSize = params.statusSize || 1;
     const totalEntries = params.totalEntries || 131072; // 16KB default
-    
+
     // Generate initial empty bitstring
-    const initialBitstring = new Uint8Array(Math.ceil(totalEntries * statusSize / 8));
+    const initialBitstring = new Uint8Array(
+      Math.ceil((totalEntries * statusSize) / 8)
+    );
     const encodedList = StatusList.encodeBitstring(initialBitstring);
-    
+
     const data: StatusListData = {
       id,
       issuerId: params.issuerId,
@@ -76,7 +78,7 @@ export class StatusList {
       usedEntries: 0,
       createdAt: now,
       updatedAt: now,
-      metadata: params.metadata
+      metadata: params.metadata,
     };
 
     logger.info('Created new StatusList', {
@@ -84,7 +86,7 @@ export class StatusList {
       issuerId: params.issuerId,
       purpose: params.purpose,
       statusSize,
-      totalEntries
+      totalEntries,
     });
 
     return new StatusList(data);
@@ -138,7 +140,7 @@ export class StatusList {
       id: this.id as Shared.IRI,
       type: 'BitstringStatusList',
       statusPurpose: this.purpose,
-      encodedList: this.encodedList
+      encodedList: this.encodedList,
     };
 
     if (this.ttl !== undefined) {
@@ -148,7 +150,7 @@ export class StatusList {
     if (this.statusSize > 1) {
       statusList.statusSize = this.statusSize;
       // Add default status messages for different values
-      statusList.statusMessages = this.generateDefaultStatusMessages();
+      statusList.statusMessages = this.generateDefaultStatusMessagesInternal();
     }
 
     return statusList;
@@ -157,16 +159,18 @@ export class StatusList {
   /**
    * Converts to BitstringStatusListCredential format
    */
-  toBitstringStatusListCredential(issuerData: { id: string; name?: string; url?: string }): BitstringStatusListCredential {
+  toBitstringStatusListCredential(issuerData: {
+    id: string;
+    name?: string;
+    url?: string;
+  }): BitstringStatusListCredential {
     const credential: BitstringStatusListCredential = {
-      '@context': [
-        'https://www.w3.org/ns/credentials/v2'
-      ],
+      '@context': ['https://www.w3.org/ns/credentials/v2'],
       id: this.id as Shared.IRI,
       type: ['VerifiableCredential', 'BitstringStatusListCredential'],
       issuer: issuerData.id as Shared.IRI,
       validFrom: this.createdAt.toISOString(),
-      credentialSubject: this.toBitstringStatusList()
+      credentialSubject: this.toBitstringStatusList(),
     };
 
     if (this.ttl) {
@@ -181,7 +185,7 @@ export class StatusList {
   /**
    * Generates default status messages for multi-bit status entries
    */
-  private generateDefaultStatusMessages(): StatusMessage[] {
+  private generateDefaultStatusMessagesInternal(): StatusMessage[] {
     const maxValues = Math.pow(2, this.statusSize);
     const messages: StatusMessage[] = [];
 
@@ -208,7 +212,7 @@ export class StatusList {
 
       messages.push({
         status: hexValue,
-        message
+        message,
       });
     }
 
@@ -234,7 +238,7 @@ export class StatusList {
     // and multibase decoding in the bitstring utilities
     const base64 = encodedList.replace(/-/g, '+').replace(/_/g, '/');
     // Add padding if needed
-    const padding = '='.repeat((4 - base64.length % 4) % 4);
+    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
     return new Uint8Array(Buffer.from(base64 + padding, 'base64'));
   }
 
@@ -264,6 +268,13 @@ export class StatusList {
   }
 
   /**
+   * Generates default status messages for multi-bit status entries (public method)
+   */
+  generateDefaultStatusMessages(): StatusMessage[] {
+    return this.generateDefaultStatusMessagesInternal();
+  }
+
+  /**
    * Converts to database data format
    */
   toData(): StatusListData {
@@ -278,7 +289,7 @@ export class StatusList {
       usedEntries: this.usedEntries,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      metadata: this.metadata
+      metadata: this.metadata,
     };
   }
 }
