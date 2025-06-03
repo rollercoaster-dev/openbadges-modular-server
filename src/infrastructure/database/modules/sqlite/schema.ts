@@ -160,8 +160,9 @@ export const assertions = sqliteTable(
     badgeClassId: text('badge_class_id')
       .notNull()
       .references(() => badgeClasses.id, { onDelete: 'cascade' }),
-    issuerId: text('issuer_id')
-      .references(() => issuers.id, { onDelete: 'cascade' }), // Add issuer_id foreign key
+    issuerId: text('issuer_id').references(() => issuers.id, {
+      onDelete: 'cascade',
+    }), // Add issuer_id foreign key
     // Add index on badgeClassId for faster lookups by badge class
     recipient: text('recipient').notNull(), // JSON stored as text
     issuedOn: integer('issued_on').notNull(),
@@ -208,6 +209,74 @@ export const platforms = sqliteTable(
     return {
       nameIdx: index('platform_name_idx').on(table.name),
       clientIdIdx: index('platform_client_id_idx').on(table.clientId),
+    };
+  }
+);
+
+// Status Lists table - for Bitstring Status Lists
+export const statusLists = sqliteTable(
+  'status_lists',
+  {
+    id: text('id').primaryKey(),
+    issuerId: text('issuer_id')
+      .notNull()
+      .references(() => issuers.id, { onDelete: 'cascade' }),
+    purpose: text('purpose').notNull(), // 'revocation', 'suspension', 'refresh', 'message'
+    statusSize: text('status_size').notNull().default('1'), // Size in bits (1, 2, 4, 8)
+    encodedList: text('encoded_list').notNull(), // GZIP-compressed, base64url-encoded bitstring
+    ttl: text('ttl'), // Time-to-live in milliseconds
+    totalEntries: text('total_entries').notNull().default('131072'), // Total number of entries
+    usedEntries: text('used_entries').notNull().default('0'), // Number of used entries
+    metadata: text('metadata'), // Additional metadata (JSON stored as text)
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      issuerIdIdx: index('status_lists_issuer_id_idx').on(table.issuerId),
+      purposeIdx: index('status_lists_purpose_idx').on(table.purpose),
+      issuerPurposeIdx: index('status_lists_issuer_purpose_idx').on(
+        table.issuerId,
+        table.purpose
+      ),
+    };
+  }
+);
+
+// Credential Status Entries table - tracks individual credential status entries
+export const credentialStatusEntries = sqliteTable(
+  'credential_status_entries',
+  {
+    id: text('id').primaryKey(),
+    credentialId: text('credential_id')
+      .notNull()
+      .references(() => assertions.id, { onDelete: 'cascade' }),
+    statusListId: text('status_list_id')
+      .notNull()
+      .references(() => statusLists.id, { onDelete: 'cascade' }),
+    statusListIndex: text('status_list_index').notNull(), // Position in bitstring
+    statusSize: text('status_size').notNull().default('1'), // Size in bits
+    purpose: text('purpose').notNull(), // Status purpose
+    currentStatus: text('current_status').notNull().default('0'), // Current status value
+    statusReason: text('status_reason'), // Reason for current status
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      credentialIdIdx: index('credential_status_entries_credential_id_idx').on(
+        table.credentialId
+      ),
+      statusListIdIdx: index('credential_status_entries_status_list_id_idx').on(
+        table.statusListId
+      ),
+      statusListIndexIdx: index(
+        'credential_status_entries_status_list_index_idx'
+      ).on(table.statusListId, table.statusListIndex),
+      // Unique constraint to prevent duplicate entries for the same credential and purpose
+      credentialPurposeUnique: index(
+        'credential_status_entries_credential_purpose_unique'
+      ).on(table.credentialId, table.purpose),
     };
   }
 );
