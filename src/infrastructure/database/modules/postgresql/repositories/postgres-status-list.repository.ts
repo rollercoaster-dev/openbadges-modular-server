@@ -11,7 +11,7 @@ import {
   StatusListQueryParams,
   CredentialStatusEntryData,
   UpdateCredentialStatusParams,
-  StatusUpdateResult
+  StatusUpdateResult,
 } from '@domains/status-list/status-list.types';
 import { statusLists, credentialStatusEntries } from '../schema';
 import { PostgresStatusListMapper } from '../mappers/postgres-status-list.mapper';
@@ -19,12 +19,15 @@ import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
 import { logger } from '@utils/logging/logger.service';
 import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
-import { createOrGenerateIRI } from '@utils/validation/iri.utils';
+import { createOrGenerateIRI } from '@utils/types/type-utils';
 
 /**
  * PostgreSQL StatusList repository implementation
  */
-export class PostgresStatusListRepository extends BasePostgresRepository implements StatusListRepository {
+export class PostgresStatusListRepository
+  extends BasePostgresRepository
+  implements StatusListRepository
+{
   private readonly mapper: PostgresStatusListMapper;
 
   constructor(client: postgres.Sql) {
@@ -45,7 +48,10 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
     return this.executeOperation(
       context,
       async () => {
-        const result = await this.db.insert(statusLists).values(record).returning();
+        const result = await this.db
+          .insert(statusLists)
+          .values(record)
+          .returning();
         return this.mapper.toDomain(result[0]);
       },
       1
@@ -64,15 +70,17 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .from(statusLists)
           .where(eq(statusLists.id, id))
           .limit(1);
-        
+
         return result.length > 0 ? [this.mapper.toDomain(result[0])] : [];
       },
       [id]
-    ).then(results => results[0] || null);
+    ).then((results) => results[0] || null);
   }
 
   async findMany(params: StatusListQueryParams): Promise<StatusList[]> {
-    const context = this.createOperationContext('SELECT StatusLists with filters');
+    const context = this.createOperationContext(
+      'SELECT StatusLists with filters'
+    );
 
     return this.executeQuery(
       context,
@@ -88,10 +96,14 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           conditions.push(eq(statusLists.purpose, params.purpose));
         }
         if (params.statusSize) {
-          conditions.push(eq(statusLists.statusSize, params.statusSize.toString()));
+          conditions.push(
+            eq(statusLists.statusSize, params.statusSize.toString())
+          );
         }
         if (params.hasCapacity) {
-          conditions.push(lt(statusLists.usedEntries, statusLists.totalEntries));
+          conditions.push(
+            lt(statusLists.usedEntries, statusLists.totalEntries)
+          );
         }
 
         if (conditions.length > 0) {
@@ -110,7 +122,7 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
         }
 
         const result = await query;
-        return result.map(record => this.mapper.toDomain(record));
+        return result.map((record) => this.mapper.toDomain(record));
       },
       [params]
     );
@@ -139,19 +151,22 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           )
           .orderBy(asc(statusLists.usedEntries))
           .limit(1);
-        
+
         return result.length > 0 ? [this.mapper.toDomain(result[0])] : [];
       },
       [issuerId, purpose, statusSize]
-    ).then(results => results[0] || null);
+    ).then((results) => results[0] || null);
   }
 
   async update(statusList: StatusList): Promise<StatusList> {
-    const context = this.createOperationContext('UPDATE StatusList', statusList.id);
+    const context = this.createOperationContext(
+      'UPDATE StatusList',
+      statusList.id
+    );
 
     // Convert domain entity to database record
     const record = this.mapper.toPersistence(statusList);
-    
+
     // Remove id from update data
     const { id, ...updateData } = record;
 
@@ -163,11 +178,11 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .set(updateData)
           .where(eq(statusLists.id, statusList.id))
           .returning();
-        
+
         if (result.length === 0) {
           throw new Error(`StatusList with id ${statusList.id} not found`);
         }
-        
+
         return this.mapper.toDomain(result[0]);
       },
       1
@@ -185,14 +200,16 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .delete(statusLists)
           .where(eq(statusLists.id, id))
           .returning({ id: statusLists.id });
-        
+
         return result.length > 0;
       },
       1
     );
   }
 
-  async createStatusEntry(entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>): Promise<CredentialStatusEntryData> {
+  async createStatusEntry(
+    entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CredentialStatusEntryData> {
     const context = this.createOperationContext('CREATE CredentialStatusEntry');
 
     const now = new Date();
@@ -200,21 +217,27 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
       id: createOrGenerateIRI(),
       ...entry,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     return this.executeOperation(
       context,
       async () => {
         const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
-        const result = await this.db.insert(credentialStatusEntries).values(record).returning();
+        const result = await this.db
+          .insert(credentialStatusEntries)
+          .values(record)
+          .returning();
         return this.mapper.statusEntryToDomain(result[0]);
       },
       1
     );
   }
 
-  async findStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<CredentialStatusEntryData | null> {
+  async findStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<CredentialStatusEntryData | null> {
     const context = this.createOperationContext('SELECT CredentialStatusEntry');
 
     return this.executeQuery(
@@ -230,15 +253,21 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
             )
           )
           .limit(1);
-        
-        return result.length > 0 ? [this.mapper.statusEntryToDomain(result[0])] : [];
+
+        return result.length > 0
+          ? [this.mapper.statusEntryToDomain(result[0])]
+          : [];
       },
       [credentialId, purpose]
-    ).then(results => results[0] || null);
+    ).then((results) => results[0] || null);
   }
 
-  async findStatusEntriesByList(statusListId: string): Promise<CredentialStatusEntryData[]> {
-    const context = this.createOperationContext('SELECT CredentialStatusEntries by StatusList');
+  async findStatusEntriesByList(
+    statusListId: string
+  ): Promise<CredentialStatusEntryData[]> {
+    const context = this.createOperationContext(
+      'SELECT CredentialStatusEntries by StatusList'
+    );
 
     return this.executeQuery(
       context,
@@ -248,21 +277,26 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .from(credentialStatusEntries)
           .where(eq(credentialStatusEntries.statusListId, statusListId))
           .orderBy(asc(credentialStatusEntries.statusListIndex));
-        
-        return result.map(record => this.mapper.statusEntryToDomain(record));
+
+        return result.map((record) => this.mapper.statusEntryToDomain(record));
       },
       [statusListId]
     );
   }
 
-  async updateStatusEntry(entry: CredentialStatusEntryData): Promise<CredentialStatusEntryData> {
-    const context = this.createOperationContext('UPDATE CredentialStatusEntry', entry.id);
+  async updateStatusEntry(
+    entry: CredentialStatusEntryData
+  ): Promise<CredentialStatusEntryData> {
+    const context = this.createOperationContext(
+      'UPDATE CredentialStatusEntry',
+      entry.id
+    );
 
     const record = this.mapper.statusEntryToPersistence({
       ...entry,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
+
     // Remove id from update data
     const { id, ...updateData } = record;
 
@@ -274,18 +308,22 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .set(updateData)
           .where(eq(credentialStatusEntries.id, entry.id))
           .returning();
-        
+
         if (result.length === 0) {
-          throw new Error(`CredentialStatusEntry with id ${entry.id} not found`);
+          throw new Error(
+            `CredentialStatusEntry with id ${entry.id} not found`
+          );
         }
-        
+
         return this.mapper.statusEntryToDomain(result[0]);
       },
       1
     );
   }
 
-  async updateCredentialStatus(params: UpdateCredentialStatusParams): Promise<StatusUpdateResult> {
+  async updateCredentialStatus(
+    params: UpdateCredentialStatusParams
+  ): Promise<StatusUpdateResult> {
     const context = this.createOperationContext('UPDATE Credential Status');
 
     try {
@@ -295,26 +333,36 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           // Use transaction for atomic update
           return await this.db.transaction(async (tx) => {
             // Find the credential's status entry
-            const statusEntry = await this.findStatusEntry(params.credentialId, params.purpose);
+            const statusEntry = await this.findStatusEntry(
+              params.credentialId,
+              params.purpose
+            );
             if (!statusEntry) {
-              throw new Error(`No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`);
+              throw new Error(
+                `No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`
+              );
             }
 
             // Find the status list
             const statusList = await this.findById(statusEntry.statusListId);
             if (!statusList) {
-              throw new Error(`Status list ${statusEntry.statusListId} not found`);
+              throw new Error(
+                `Status list ${statusEntry.statusListId} not found`
+              );
             }
 
             // Update the bitstring
-            const bitstring = BitstringUtils.decodeBitstring(statusList.encodedList);
+            const bitstring = BitstringUtils.decodeBitstring(
+              statusList.encodedList
+            );
             const updatedBitstring = BitstringUtils.setStatusAtIndex(
               bitstring,
               statusEntry.statusListIndex,
               params.status,
               statusList.statusSize
             );
-            const encodedList = BitstringUtils.encodeBitstring(updatedBitstring);
+            const encodedList =
+              BitstringUtils.encodeBitstring(updatedBitstring);
 
             // Update status list
             statusList.updateEncodedList(encodedList);
@@ -325,12 +373,12 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
               ...statusEntry,
               currentStatus: params.status,
               statusReason: params.reason,
-              updatedAt: new Date()
+              updatedAt: new Date(),
             });
 
             return {
               success: true,
-              statusEntry: updatedEntry
+              statusEntry: updatedEntry,
             };
           });
         },
@@ -339,19 +387,22 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
     } catch (error) {
       logger.error('Failed to update credential status', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
   async deleteStatusEntry(id: string): Promise<boolean> {
     this.validateEntityId(id, 'deleteStatusEntry');
-    const context = this.createOperationContext('DELETE CredentialStatusEntry', id);
+    const context = this.createOperationContext(
+      'DELETE CredentialStatusEntry',
+      id
+    );
 
     return this.executeOperation(
       context,
@@ -360,7 +411,7 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .delete(credentialStatusEntries)
           .where(eq(credentialStatusEntries.id, id))
           .returning({ id: credentialStatusEntries.id });
-        
+
         return result.length > 0;
       },
       1
@@ -377,11 +428,11 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .select({ count: sql<number>`count(*)` })
           .from(credentialStatusEntries)
           .where(eq(credentialStatusEntries.statusListId, statusListId));
-        
+
         return [result[0]?.count || 0];
       },
       [statusListId]
-    ).then(results => results[0]);
+    ).then((results) => results[0]);
   }
 
   async findByIssuer(issuerId: string): Promise<StatusList[]> {
@@ -395,15 +446,17 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .from(statusLists)
           .where(eq(statusLists.issuerId, issuerId))
           .orderBy(desc(statusLists.createdAt));
-        
-        return result.map(record => this.mapper.toDomain(record));
+
+        return result.map((record) => this.mapper.toDomain(record));
       },
       [issuerId]
     );
   }
 
   async findByPurpose(purpose: StatusPurpose): Promise<StatusList[]> {
-    const context = this.createOperationContext('SELECT StatusLists by Purpose');
+    const context = this.createOperationContext(
+      'SELECT StatusLists by Purpose'
+    );
 
     return this.executeQuery(
       context,
@@ -413,14 +466,17 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
           .from(statusLists)
           .where(eq(statusLists.purpose, purpose))
           .orderBy(desc(statusLists.createdAt));
-        
-        return result.map(record => this.mapper.toDomain(record));
+
+        return result.map((record) => this.mapper.toDomain(record));
       },
       [purpose]
     );
   }
 
-  async hasStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<boolean> {
+  async hasStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<boolean> {
     const context = this.createOperationContext('CHECK StatusEntry Exists');
 
     return this.executeQuery(
@@ -435,11 +491,11 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
               eq(credentialStatusEntries.purpose, purpose)
             )
           );
-        
+
         return [(result[0]?.count || 0) > 0];
       },
       [credentialId, purpose]
-    ).then(results => results[0]);
+    ).then((results) => results[0]);
   }
 
   async getStatusListStats(statusListId: string): Promise<{
@@ -462,7 +518,7 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
       totalEntries,
       usedEntries,
       availableEntries,
-      utilizationPercent
+      utilizationPercent,
     };
   }
 
@@ -471,7 +527,9 @@ export class PostgresStatusListRepository extends BasePostgresRepository impleme
     purpose: StatusPurpose,
     limit: number = 100
   ): Promise<string[]> {
-    const context = this.createOperationContext('SELECT Credentials Needing Status');
+    const context = this.createOperationContext(
+      'SELECT Credentials Needing Status'
+    );
 
     return this.executeQuery(
       context,

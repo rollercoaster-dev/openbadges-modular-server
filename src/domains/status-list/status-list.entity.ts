@@ -14,7 +14,7 @@ import {
   CreateStatusListParams,
   StatusMessage,
 } from './status-list.types';
-import { createOrGenerateIRI } from '../../utils/validation/iri.utils';
+import { createOrGenerateIRI } from '../../utils/types/type-utils';
 import { logger } from '../../utils/logging/logger.service';
 
 /**

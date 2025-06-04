@@ -938,6 +938,129 @@ export function createVersionedRouter(
     }
   });
 
+  // Status List routes (Bitstring Status List v1.0 / StatusList2021)
+  // Only available in v3.0 and later
+  if (version === BadgeVersion.V3) {
+    // GET /v3/status-lists/:id - Retrieve a specific status list credential
+    router.get('/status-lists/:id', async (c) => {
+      const id = c.req.param('id');
+      try {
+        // Get issuer data for the credential - this would need to be fetched based on the status list
+        // For now, we'll use a placeholder approach
+        const statusList = await statusListController.getStatusListById(id);
+        if (!statusList) {
+          return sendNotFoundError(c, 'Status list', {
+            endpoint: 'GET /status-lists/:id',
+            id,
+          });
+        }
+
+        // Get issuer information for the credential format
+        const issuerData = {
+          id: statusList.issuerId,
+          name: 'Issuer', // TODO: Fetch actual issuer name
+          url: `${c.req.url.split('/').slice(0, 3).join('/')}/v3/issuers/${
+            statusList.issuerId
+          }`,
+        };
+
+        const credential = await statusListController.getStatusListCredential(
+          id,
+          issuerData
+        );
+        if (!credential) {
+          return sendNotFoundError(c, 'Status list credential', {
+            endpoint: 'GET /status-lists/:id',
+            id,
+          });
+        }
+
+        // Set appropriate headers for status list credentials
+        c.header('Content-Type', 'application/vc+ld+json');
+        if (statusList.ttl) {
+          const maxAge = Math.floor(statusList.ttl / 1000);
+          c.header('Cache-Control', `public, max-age=${maxAge}`);
+        }
+
+        return c.json(credential);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /status-lists/:id',
+          id,
+        });
+      }
+    });
+
+    // POST /v3/status-lists - Create a new status list
+    router.post('/status-lists', requireAuth(), async (c) => {
+      try {
+        const body = (await c.req.json()) as CreateStatusListDto;
+
+        // Get issuer ID from authentication context
+        // TODO: Extract issuer ID from auth context properly
+        const issuerId = 'default-issuer'; // Placeholder
+
+        const result = await statusListController.createStatusList(
+          body,
+          issuerId
+        );
+        return c.json(result, 201);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /status-lists',
+          body: await c.req.json().catch(() => ({})),
+        });
+      }
+    });
+
+    // GET /v3/status-lists - Query status lists
+    router.get('/status-lists', requireAuth(), async (c) => {
+      try {
+        const query = c.req.query() as StatusListQueryDto;
+        const result = await statusListController.findStatusLists(query);
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /status-lists',
+          query: c.req.query(),
+        });
+      }
+    });
+
+    // GET /v3/status-lists/:id/stats - Get status list statistics
+    router.get('/status-lists/:id/stats', requireAuth(), async (c) => {
+      const id = c.req.param('id');
+      try {
+        const result = await statusListController.getStatusListStats(id);
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /status-lists/:id/stats',
+          id,
+        });
+      }
+    });
+
+// POST /v3/credentials/:id/status - Update credential status (for Task 1.2.8)
+router.post('/credentials/:id/status', requireAuth(), validateUpdateCredentialStatusMiddleware(), async (c) => {
+   const credentialId = c.req.param('id');
+   try {
+    const body = getValidatedBody<UpdateCredentialStatusDto>(c);
+        const result = await statusListController.updateCredentialStatus(
+          credentialId,
+          body
+        );
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /credentials/:id/status',
+          id: credentialId,
+          body: await c.req.json().catch(() => ({})),
+        });
+      }
+    });
+  }
+
   return router;
 }
 
@@ -1059,18 +1182,25 @@ export async function createApiRouter(
 
   // Validation middleware is applied per route
 
+  // Create status list controller for v3.0 features
+  const statusListRepository =
+    await RepositoryFactory.createStatusListRepository();
+  const statusListController = new StatusListController(statusListRepository);
+
   // Version-specific routes
   const v2Router = createVersionedRouter(
     BadgeVersion.V2,
     issuerController,
     badgeClassController,
-    assertionController
+    assertionController,
+    statusListController
   );
   const v3Router = createVersionedRouter(
     BadgeVersion.V3,
     issuerController,
     badgeClassController,
-    assertionController
+    assertionController,
+    statusListController
   );
 
   // Mount version-specific routers
@@ -1094,6 +1224,10 @@ export async function createApiRouter(
   }
   if (authController) {
     router.route('/auth', createAuthRouter(authController));
+  }
+
+  return router;
+}
   }
 
   return router;

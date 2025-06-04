@@ -49,6 +49,9 @@ uploads/*
 # Cryptographic keys
 keys/
 test-keys/
+test-keys-jwk/
+*.key
+*.pem
 
 .eslintrc.js
 

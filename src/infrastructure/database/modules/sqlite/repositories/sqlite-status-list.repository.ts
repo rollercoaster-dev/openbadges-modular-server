@@ -10,7 +10,7 @@ import {
   StatusListQueryParams,
   CredentialStatusEntryData,
   UpdateCredentialStatusParams,
-  StatusUpdateResult
+  StatusUpdateResult,
 } from '@domains/status-list/status-list.types';
 import { statusLists, credentialStatusEntries } from '../schema';
 import { SqliteStatusListMapper } from '../mappers/sqlite-status-list.mapper';
@@ -18,12 +18,15 @@ import { SqliteConnectionManager } from '../connection/sqlite-connection.manager
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { logger } from '@utils/logging/logger.service';
 import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
-import { createOrGenerateIRI } from '@utils/validation/iri.utils';
+import { createOrGenerateIRI } from '@utils/types/type-utils';
 
 /**
  * SQLite StatusList repository implementation
  */
-export class SqliteStatusListRepository extends BaseSqliteRepository implements StatusListRepository {
+export class SqliteStatusListRepository
+  extends BaseSqliteRepository
+  implements StatusListRepository
+{
   private readonly mapper: SqliteStatusListMapper;
 
   constructor(connectionManager: SqliteConnectionManager) {
@@ -71,7 +74,9 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
   }
 
   async findMany(params: StatusListQueryParams): Promise<StatusList[]> {
-    const context = this.createOperationContext('SELECT StatusLists with filters');
+    const context = this.createOperationContext(
+      'SELECT StatusLists with filters'
+    );
 
     const result = await this.executeQuery(
       context,
@@ -87,10 +92,14 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           conditions.push(eq(statusLists.purpose, params.purpose));
         }
         if (params.statusSize) {
-          conditions.push(eq(statusLists.statusSize, params.statusSize.toString()));
+          conditions.push(
+            eq(statusLists.statusSize, params.statusSize.toString())
+          );
         }
         if (params.hasCapacity) {
-          conditions.push(lt(statusLists.usedEntries, statusLists.totalEntries));
+          conditions.push(
+            lt(statusLists.usedEntries, statusLists.totalEntries)
+          );
         }
 
         if (conditions.length > 0) {
@@ -113,7 +122,7 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       [params]
     );
 
-    return result.map(record => this.mapper.toDomain(record));
+    return result.map((record) => this.mapper.toDomain(record));
   }
 
   async findAvailableStatusList(
@@ -147,11 +156,14 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
   }
 
   async update(statusList: StatusList): Promise<StatusList> {
-    const context = this.createOperationContext('UPDATE StatusList', statusList.id);
+    const context = this.createOperationContext(
+      'UPDATE StatusList',
+      statusList.id
+    );
 
     // Convert domain entity to database record
     const record = this.mapper.toPersistence(statusList);
-    
+
     // Remove id from update data
     const { id, ...updateData } = record;
 
@@ -163,11 +175,11 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           .set(updateData)
           .where(eq(statusLists.id, statusList.id))
           .returning();
-        
+
         if (result.length === 0) {
           throw new Error(`StatusList with id ${statusList.id} not found`);
         }
-        
+
         return this.mapper.toDomain(result[0]);
       },
       1
@@ -185,14 +197,16 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           .delete(statusLists)
           .where(eq(statusLists.id, id))
           .returning({ id: statusLists.id });
-        
+
         return result.length > 0;
       },
       1
     );
   }
 
-  async createStatusEntry(entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>): Promise<CredentialStatusEntryData> {
+  async createStatusEntry(
+    entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CredentialStatusEntryData> {
     const context = this.createOperationContext('CREATE CredentialStatusEntry');
 
     const now = new Date();
@@ -200,21 +214,27 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       id: createOrGenerateIRI(),
       ...entry,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     return this.executeOperation(
       context,
       async (db) => {
         const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
-        const result = await db.insert(credentialStatusEntries).values(record).returning();
+        const result = await db
+          .insert(credentialStatusEntries)
+          .values(record)
+          .returning();
         return this.mapper.statusEntryToDomain(result[0]);
       },
       1
     );
   }
 
-  async findStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<CredentialStatusEntryData | null> {
+  async findStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<CredentialStatusEntryData | null> {
     const context = this.createOperationContext('SELECT CredentialStatusEntry');
 
     const result = await this.executeQuery(
@@ -234,11 +254,17 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       [credentialId, purpose]
     );
 
-    return result.length > 0 ? this.mapper.statusEntryToDomain(result[0]) : null;
+    return result.length > 0
+      ? this.mapper.statusEntryToDomain(result[0])
+      : null;
   }
 
-  async findStatusEntriesByList(statusListId: string): Promise<CredentialStatusEntryData[]> {
-    const context = this.createOperationContext('SELECT CredentialStatusEntries by StatusList');
+  async findStatusEntriesByList(
+    statusListId: string
+  ): Promise<CredentialStatusEntryData[]> {
+    const context = this.createOperationContext(
+      'SELECT CredentialStatusEntries by StatusList'
+    );
 
     const result = await this.executeQuery(
       context,
@@ -252,17 +278,22 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       [statusListId]
     );
 
-    return result.map(record => this.mapper.statusEntryToDomain(record));
+    return result.map((record) => this.mapper.statusEntryToDomain(record));
   }
 
-  async updateStatusEntry(entry: CredentialStatusEntryData): Promise<CredentialStatusEntryData> {
-    const context = this.createOperationContext('UPDATE CredentialStatusEntry', entry.id);
+  async updateStatusEntry(
+    entry: CredentialStatusEntryData
+  ): Promise<CredentialStatusEntryData> {
+    const context = this.createOperationContext(
+      'UPDATE CredentialStatusEntry',
+      entry.id
+    );
 
     const record = this.mapper.statusEntryToPersistence({
       ...entry,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
+
     // Remove id from update data
     const { id, ...updateData } = record;
 
@@ -274,18 +305,22 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           .set(updateData)
           .where(eq(credentialStatusEntries.id, entry.id))
           .returning();
-        
+
         if (result.length === 0) {
-          throw new Error(`CredentialStatusEntry with id ${entry.id} not found`);
+          throw new Error(
+            `CredentialStatusEntry with id ${entry.id} not found`
+          );
         }
-        
+
         return this.mapper.statusEntryToDomain(result[0]);
       },
       1
     );
   }
 
-  async updateCredentialStatus(params: UpdateCredentialStatusParams): Promise<StatusUpdateResult> {
+  async updateCredentialStatus(
+    params: UpdateCredentialStatusParams
+  ): Promise<StatusUpdateResult> {
     const context = this.createOperationContext('UPDATE Credential Status');
 
     try {
@@ -295,26 +330,36 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           // Use transaction for atomic update
           return await db.transaction(async (tx) => {
             // Find the credential's status entry
-            const statusEntry = await this.findStatusEntry(params.credentialId, params.purpose);
+            const statusEntry = await this.findStatusEntry(
+              params.credentialId,
+              params.purpose
+            );
             if (!statusEntry) {
-              throw new Error(`No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`);
+              throw new Error(
+                `No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`
+              );
             }
 
             // Find the status list
             const statusList = await this.findById(statusEntry.statusListId);
             if (!statusList) {
-              throw new Error(`Status list ${statusEntry.statusListId} not found`);
+              throw new Error(
+                `Status list ${statusEntry.statusListId} not found`
+              );
             }
 
             // Update the bitstring
-            const bitstring = BitstringUtils.decodeBitstring(statusList.encodedList);
+            const bitstring = BitstringUtils.decodeBitstring(
+              statusList.encodedList
+            );
             const updatedBitstring = BitstringUtils.setStatusAtIndex(
               bitstring,
               statusEntry.statusListIndex,
               params.status,
               statusList.statusSize
             );
-            const encodedList = BitstringUtils.encodeBitstring(updatedBitstring);
+            const encodedList =
+              BitstringUtils.encodeBitstring(updatedBitstring);
 
             // Update status list
             statusList.updateEncodedList(encodedList);
@@ -325,12 +370,12 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
               ...statusEntry,
               currentStatus: params.status,
               statusReason: params.reason,
-              updatedAt: new Date()
+              updatedAt: new Date(),
             });
 
             return {
               success: true,
-              statusEntry: updatedEntry
+              statusEntry: updatedEntry,
             };
           });
         },
@@ -339,19 +384,22 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
     } catch (error) {
       logger.error('Failed to update credential status', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
   async deleteStatusEntry(id: string): Promise<boolean> {
     this.validateEntityId(id, 'deleteStatusEntry');
-    const context = this.createOperationContext('DELETE CredentialStatusEntry', id);
+    const context = this.createOperationContext(
+      'DELETE CredentialStatusEntry',
+      id
+    );
 
     return this.executeOperation(
       context,
@@ -360,7 +408,7 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
           .delete(credentialStatusEntries)
           .where(eq(credentialStatusEntries.id, id))
           .returning({ id: credentialStatusEntries.id });
-        
+
         return result.length > 0;
       },
       1
@@ -399,11 +447,13 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       [issuerId]
     );
 
-    return result.map(record => this.mapper.toDomain(record));
+    return result.map((record) => this.mapper.toDomain(record));
   }
 
   async findByPurpose(purpose: StatusPurpose): Promise<StatusList[]> {
-    const context = this.createOperationContext('SELECT StatusLists by Purpose');
+    const context = this.createOperationContext(
+      'SELECT StatusLists by Purpose'
+    );
 
     const result = await this.executeQuery(
       context,
@@ -417,10 +467,13 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       [purpose]
     );
 
-    return result.map(record => this.mapper.toDomain(record));
+    return result.map((record) => this.mapper.toDomain(record));
   }
 
-  async hasStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<boolean> {
+  async hasStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<boolean> {
     const context = this.createOperationContext('CHECK StatusEntry Exists');
 
     const result = await this.executeQuery(
@@ -462,7 +515,7 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
       totalEntries,
       usedEntries,
       availableEntries,
-      utilizationPercent
+      utilizationPercent,
     };
   }
 
@@ -471,7 +524,9 @@ export class SqliteStatusListRepository extends BaseSqliteRepository implements 
     purpose: StatusPurpose,
     limit: number = 100
   ): Promise<string[]> {
-    const context = this.createOperationContext('SELECT Credentials Needing Status');
+    const context = this.createOperationContext(
+      'SELECT Credentials Needing Status'
+    );
 
     // This would need to join with assertions table to find credentials
     // without status entries for the given purpose
