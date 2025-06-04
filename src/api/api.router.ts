@@ -945,8 +945,6 @@ export function createVersionedRouter(
     router.get('/status-lists/:id', async (c) => {
       const id = c.req.param('id');
       try {
-        // Get issuer data for the credential - this would need to be fetched based on the status list
-        // For now, we'll use a placeholder approach
         const statusList = await statusListController.getStatusListById(id);
         if (!statusList) {
           return sendNotFoundError(c, 'Status list', {
@@ -955,13 +953,22 @@ export function createVersionedRouter(
           });
         }
 
-        // Get issuer information for the credential format
+        // Fetch the actual issuer data from the database
+        const issuer = await issuerController.getIssuerById(
+          statusList.issuerId,
+          BadgeVersion.V3
+        );
+        if (!issuer) {
+          throw new Error('Issuer not found for status list');
+        }
+
         const issuerData = {
-          id: statusList.issuerId,
-          name: 'Issuer', // TODO: Fetch actual issuer name
-          url: `${c.req.url.split('/').slice(0, 3).join('/')}/v3/issuers/${
-            statusList.issuerId
-          }`,
+          id: issuer.id,
+          name:
+            typeof issuer.name === 'string'
+              ? issuer.name
+              : issuer.name?.en || Object.values(issuer.name)[0] || '',
+          url: issuer.url,
         };
 
         const credential = await statusListController.getStatusListCredential(
@@ -1008,7 +1015,9 @@ export function createVersionedRouter(
       } catch (error) {
         return sendApiError(c, error, {
           endpoint: 'POST /status-lists',
-          body: await c.req.json().catch(() => ({})),
+          body: await c.req
+            .json()
+            .catch((e) => ({ error: 'Invalid JSON', details: e.message })),
         });
       }
     });
@@ -1041,24 +1050,29 @@ export function createVersionedRouter(
       }
     });
 
-// POST /v3/credentials/:id/status - Update credential status (for Task 1.2.8)
-router.post('/credentials/:id/status', requireAuth(), validateUpdateCredentialStatusMiddleware(), async (c) => {
-   const credentialId = c.req.param('id');
-   try {
-    const body = getValidatedBody<UpdateCredentialStatusDto>(c);
-        const result = await statusListController.updateCredentialStatus(
-          credentialId,
-          body
-        );
-        return c.json(result);
-      } catch (error) {
-        return sendApiError(c, error, {
-          endpoint: 'POST /credentials/:id/status',
-          id: credentialId,
-          body: await c.req.json().catch(() => ({})),
-        });
+    // POST /v3/credentials/:id/status - Update credential status (for Task 1.2.8)
+    router.post(
+      '/credentials/:id/status',
+      requireAuth(),
+      validateBatchUpdateCredentialStatusMiddleware(),
+      async (c) => {
+        const credentialId = c.req.param('id');
+        try {
+          const body = getValidatedBody<UpdateCredentialStatusDto>(c);
+          const result = await statusListController.updateCredentialStatus(
+            credentialId,
+            body
+          );
+          return c.json(result);
+        } catch (error) {
+          return sendApiError(c, error, {
+            endpoint: 'POST /credentials/:id/status',
+            id: credentialId,
+            body: await c.req.json().catch(() => ({})),
+          });
+        }
       }
-    });
+    );
   }
 
   return router;
@@ -1224,10 +1238,6 @@ export async function createApiRouter(
   }
   if (authController) {
     router.route('/auth', createAuthRouter(authController));
-  }
-
-  return router;
-}
   }
 
   return router;

@@ -1,3 +1,9 @@
+---
+mode: 'agent'
+tools: ['codebase']
+description: 'Create a new repository class following OpenBadges modular server patterns'
+---
+
 # Create Repository Pattern
 
 Your goal is to create a new repository class following the established patterns in this OpenBadges modular server.

@@ -1,6 +1,6 @@
 /**
  * Repository interface for StatusList operations
- * 
+ *
  * This interface defines the contract for StatusList data access operations
  * across different database implementations.
  */
@@ -11,9 +11,8 @@ import {
   StatusListQueryParams,
   CredentialStatusEntryData,
   UpdateCredentialStatusParams,
-  StatusUpdateResult
+  StatusUpdateResult,
 } from './status-list.types';
-import { Shared } from 'openbadges-types';
 
 /**
  * StatusList repository interface
@@ -72,7 +71,9 @@ export interface StatusListRepository {
    * @param entry Credential status entry data
    * @returns Created credential status entry
    */
-  createStatusEntry(entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>): Promise<CredentialStatusEntryData>;
+  createStatusEntry(
+    entry: Omit<CredentialStatusEntryData, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CredentialStatusEntryData>;
 
   /**
    * Finds a credential status entry by credential ID and purpose
@@ -80,28 +81,37 @@ export interface StatusListRepository {
    * @param purpose Status purpose
    * @returns Credential status entry or null if not found
    */
-  findStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<CredentialStatusEntryData | null>;
+  findStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<CredentialStatusEntryData | null>;
 
   /**
    * Finds all status entries for a status list
    * @param statusListId Status list ID
    * @returns Array of credential status entries
    */
-  findStatusEntriesByList(statusListId: string): Promise<CredentialStatusEntryData[]>;
+  findStatusEntriesByList(
+    statusListId: string
+  ): Promise<CredentialStatusEntryData[]>;
 
   /**
    * Updates a credential status entry
    * @param entry Credential status entry data to update
    * @returns Updated credential status entry
    */
-  updateStatusEntry(entry: CredentialStatusEntryData): Promise<CredentialStatusEntryData>;
+  updateStatusEntry(
+    entry: CredentialStatusEntryData
+  ): Promise<CredentialStatusEntryData>;
 
   /**
    * Updates credential status atomically (both status entry and status list)
    * @param params Update parameters
    * @returns Result of the status update operation
    */
-  updateCredentialStatus(params: UpdateCredentialStatusParams): Promise<StatusUpdateResult>;
+  updateCredentialStatus(
+    params: UpdateCredentialStatusParams
+  ): Promise<StatusUpdateResult>;
 
   /**
    * Deletes a credential status entry
@@ -137,7 +147,10 @@ export interface StatusListRepository {
    * @param purpose Status purpose
    * @returns True if status entry exists
    */
-  hasStatusEntry(credentialId: string, purpose: StatusPurpose): Promise<boolean>;
+  hasStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<boolean>;
 
   /**
    * Gets status statistics for a status list

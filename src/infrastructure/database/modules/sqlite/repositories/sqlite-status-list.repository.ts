@@ -19,6 +19,8 @@ import { BaseSqliteRepository } from './base-sqlite.repository';
 import { logger } from '@utils/logging/logger.service';
 import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
 import { createOrGenerateIRI } from '@utils/types/type-utils';
+import { Shared } from 'openbadges-types';
+import { SqliteEntityType } from '../types/sqlite-database.types';
 
 /**
  * SQLite StatusList repository implementation
@@ -34,8 +36,12 @@ export class SqliteStatusListRepository
     this.mapper = new SqliteStatusListMapper();
   }
 
-  protected getEntityType(): string {
-    return 'StatusList';
+  protected getEntityType(): SqliteEntityType {
+    return 'statusList';
+  }
+
+  protected getTableName(): string {
+    return 'status_lists';
   }
 
   async create(statusList: StatusList): Promise<StatusList> {
@@ -46,7 +52,8 @@ export class SqliteStatusListRepository
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const result = await db.insert(statusLists).values(record).returning();
         return this.mapper.toDomain(result[0]);
       },
@@ -55,8 +62,11 @@ export class SqliteStatusListRepository
   }
 
   async findById(id: string): Promise<StatusList | null> {
-    this.validateEntityId(id, 'findById');
-    const context = this.createOperationContext('SELECT StatusList by ID', id);
+    this.validateEntityId(id as Shared.IRI, 'findById');
+    const context = this.createOperationContext(
+      'SELECT StatusList by ID',
+      id as Shared.IRI
+    );
 
     const result = await this.executeQuery(
       context,
@@ -103,18 +113,22 @@ export class SqliteStatusListRepository
         }
 
         if (conditions.length > 0) {
-          query = query.where(and(...conditions));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.where(and(...conditions)) as any;
         }
 
         // Apply ordering
-        query = query.orderBy(desc(statusLists.createdAt));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        query = query.orderBy(desc(statusLists.createdAt)) as any;
 
         // Apply pagination
         if (params.limit) {
-          query = query.limit(params.limit);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.limit(params.limit) as any;
         }
         if (params.offset) {
-          query = query.offset(params.offset);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.offset(params.offset) as any;
         }
 
         return query;
@@ -158,7 +172,7 @@ export class SqliteStatusListRepository
   async update(statusList: StatusList): Promise<StatusList> {
     const context = this.createOperationContext(
       'UPDATE StatusList',
-      statusList.id
+      statusList.id as Shared.IRI
     );
 
     // Convert domain entity to database record
@@ -169,7 +183,8 @@ export class SqliteStatusListRepository
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const result = await db
           .update(statusLists)
           .set(updateData)
@@ -187,12 +202,16 @@ export class SqliteStatusListRepository
   }
 
   async delete(id: string): Promise<boolean> {
-    this.validateEntityId(id, 'delete');
-    const context = this.createOperationContext('DELETE StatusList', id);
+    this.validateEntityId(id as Shared.IRI, 'delete');
+    const context = this.createOperationContext(
+      'DELETE StatusList',
+      id as Shared.IRI
+    );
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const result = await db
           .delete(statusLists)
           .where(eq(statusLists.id, id))
@@ -219,7 +238,8 @@ export class SqliteStatusListRepository
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
         const result = await db
           .insert(credentialStatusEntries)
@@ -286,7 +306,7 @@ export class SqliteStatusListRepository
   ): Promise<CredentialStatusEntryData> {
     const context = this.createOperationContext(
       'UPDATE CredentialStatusEntry',
-      entry.id
+      entry.id as Shared.IRI
     );
 
     const record = this.mapper.statusEntryToPersistence({
@@ -299,11 +319,12 @@ export class SqliteStatusListRepository
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const result = await db
           .update(credentialStatusEntries)
           .set(updateData)
-          .where(eq(credentialStatusEntries.id, entry.id))
+          .where(eq(credentialStatusEntries.id, entry.id as Shared.IRI))
           .returning();
 
         if (result.length === 0) {
@@ -326,9 +347,10 @@ export class SqliteStatusListRepository
     try {
       return await this.executeOperation(
         context,
-        async (db) => {
+        async () => {
+          const db = this.getDatabase();
           // Use transaction for atomic update
-          return await db.transaction(async (tx) => {
+          return await db.transaction(async (_tx) => {
             // Find the credential's status entry
             const statusEntry = await this.findStatusEntry(
               params.credentialId,
@@ -395,18 +417,19 @@ export class SqliteStatusListRepository
   }
 
   async deleteStatusEntry(id: string): Promise<boolean> {
-    this.validateEntityId(id, 'deleteStatusEntry');
+    this.validateEntityId(id as Shared.IRI, 'deleteStatusEntry');
     const context = this.createOperationContext(
       'DELETE CredentialStatusEntry',
-      id
+      id as Shared.IRI
     );
 
     return this.executeOperation(
       context,
-      async (db) => {
+      async () => {
+        const db = this.getDatabase();
         const result = await db
           .delete(credentialStatusEntries)
-          .where(eq(credentialStatusEntries.id, id))
+          .where(eq(credentialStatusEntries.id, id as Shared.IRI))
           .returning({ id: credentialStatusEntries.id });
 
         return result.length > 0;
@@ -533,7 +556,7 @@ export class SqliteStatusListRepository
     // For now, return empty array as placeholder
     await this.executeQuery(
       context,
-      async (db) => {
+      async (_db) => {
         return [];
       },
       [issuerId, purpose, limit]

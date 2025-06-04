@@ -1,3 +1,9 @@
+---
+mode: 'agent'
+tools: ['codebase']
+description: 'Create comprehensive test suites following OpenBadges modular server patterns'
+---
+
 # Create Test Suite Pattern
 
 Your goal is to create comprehensive test suites following the established patterns in this OpenBadges modular server.

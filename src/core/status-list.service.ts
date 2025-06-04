@@ -18,7 +18,6 @@ import {
 } from '../domains/status-list/status-list.types';
 import { BitstringUtils } from '../utils/bitstring/bitstring.utils';
 import { logger } from '../utils/logging/logger.service';
-import { createOrGenerateIRI } from '../utils/validation/iri.utils';
 import { Shared } from 'openbadges-types';
 
 /**
@@ -97,7 +96,7 @@ export class StatusListService {
    */
   async findStatusLists(params: StatusListQueryParams): Promise<StatusList[]> {
     try {
-      logger.debug('Finding status lists', params);
+      logger.debug('Finding status lists', { ...params });
 
       return await this.repository.findMany(params);
     } catch (error) {

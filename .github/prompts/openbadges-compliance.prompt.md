@@ -1,3 +1,9 @@
+---
+mode: 'edit'
+tools: ['codebase']
+description: 'Ensure code changes maintain Open Badges 3.0 specification compliance'
+---
+
 # Open Badges 3.0 Compliance Review
 
 Your goal is to ensure code changes maintain compliance with the Open Badges 3.0 specification in this OpenBadges modular server.

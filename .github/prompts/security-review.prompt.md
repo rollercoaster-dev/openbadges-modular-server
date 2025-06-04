@@ -1,3 +1,9 @@
+---
+mode: 'edit'
+tools: ['codebase']
+description: 'Perform comprehensive security review following OpenBadges modular server security practices'
+---
+
 # Security Review Pattern
 
 Your goal is to perform a comprehensive security review of code following the established security practices in this OpenBadges modular server.

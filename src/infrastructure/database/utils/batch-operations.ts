@@ -32,8 +32,7 @@ type DatabaseClient = {
       returning: () => Promise<unknown[]>;
     };
   };
-  eq: (field: unknown, value: unknown) => unknown;
-  inArray: (field: unknown, values: unknown[]) => unknown;
+  [key: string]: unknown; // Allow additional properties for different Drizzle implementations
 };
 
 type DatabaseTable = {
@@ -83,7 +82,8 @@ export async function executeBatch<T>(
       await db.query('COMMIT');
     } else if (dbType === 'sqlite') {
       if ('exec' in transaction) {
-        transaction.exec('COMMIT');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (transaction as any).exec('COMMIT');
       }
     }
 
@@ -103,7 +103,8 @@ export async function executeBatch<T>(
         await db.query('ROLLBACK');
       } else if (dbType === 'sqlite') {
         if (transaction && 'exec' in transaction) {
-          transaction.exec('ROLLBACK');
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (transaction as any).exec('ROLLBACK');
         }
       }
     } catch (rollbackError) {
@@ -237,7 +238,8 @@ export async function batchUpdate<T>(
         return await db
           .update(table)
           .set(updateData)
-          .where(db.eq(table[idField], id))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .where((db as any).eq(table[idField], id))
           .returning();
       };
     });
@@ -298,7 +300,8 @@ export async function batchDelete(
         return async () => {
           const result = await db
             .delete(table)
-            .where(db.eq(table[idField], id))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .where((db as any).eq(table[idField], id))
             .returning();
           return result.length;
         };
@@ -312,7 +315,8 @@ export async function batchDelete(
         // PostgreSQL supports IN clause
         const result = await db
           .delete(table)
-          .where(db.inArray(table[idField], ids))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .where((db as any).inArray(table[idField], ids))
           .returning();
         deletedCount = result.length;
       } else if (dbType === 'sqlite') {
@@ -322,7 +326,8 @@ export async function batchDelete(
           return async () => {
             const result = await db
               .delete(table)
-              .where(db.eq(table[idField], id))
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .where((db as any).eq(table[idField], id))
               .returning();
             return result.length;
           };

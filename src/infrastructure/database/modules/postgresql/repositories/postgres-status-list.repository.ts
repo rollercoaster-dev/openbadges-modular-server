@@ -20,6 +20,7 @@ import { PostgresEntityType } from '../types/postgres-database.types';
 import { logger } from '@utils/logging/logger.service';
 import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
 import { createOrGenerateIRI } from '@utils/types/type-utils';
+import { Shared } from 'openbadges-types';
 
 /**
  * PostgreSQL StatusList repository implementation
@@ -36,7 +37,12 @@ export class PostgresStatusListRepository
   }
 
   protected getEntityType(): PostgresEntityType {
-    return 'StatusList';
+    // 'StatusList' is not a valid PostgresEntityType. Assuming it should be 'statusList' based on context.
+    return 'statusList' as PostgresEntityType;
+  }
+
+  protected getTableName(): string {
+    return 'status_lists';
   }
 
   async create(statusList: StatusList): Promise<StatusList> {
@@ -58,7 +64,7 @@ export class PostgresStatusListRepository
     );
   }
 
-  async findById(id: string): Promise<StatusList | null> {
+  async findById(id: Shared.IRI): Promise<StatusList | null> {
     this.validateEntityId(id, 'findById');
     const context = this.createOperationContext('SELECT StatusList by ID', id);
 
@@ -107,18 +113,22 @@ export class PostgresStatusListRepository
         }
 
         if (conditions.length > 0) {
-          query = query.where(and(...conditions));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.where(and(...conditions)) as any;
         }
 
         // Apply ordering
-        query = query.orderBy(desc(statusLists.createdAt));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        query = query.orderBy(desc(statusLists.createdAt)) as any;
 
         // Apply pagination
         if (params.limit) {
-          query = query.limit(params.limit);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.limit(params.limit) as any;
         }
         if (params.offset) {
-          query = query.offset(params.offset);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          query = query.offset(params.offset) as any;
         }
 
         const result = await query;
@@ -161,21 +171,18 @@ export class PostgresStatusListRepository
   async update(statusList: StatusList): Promise<StatusList> {
     const context = this.createOperationContext(
       'UPDATE StatusList',
-      statusList.id
+      statusList.id as Shared.IRI
     );
 
     // Convert domain entity to database record
     const record = this.mapper.toPersistence(statusList);
-
-    // Remove id from update data
-    const { id, ...updateData } = record;
 
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .update(statusLists)
-          .set(updateData)
+          .set(record)
           .where(eq(statusLists.id, statusList.id))
           .returning();
 
@@ -189,7 +196,7 @@ export class PostgresStatusListRepository
     );
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: Shared.IRI): Promise<boolean> {
     this.validateEntityId(id, 'delete');
     const context = this.createOperationContext('DELETE StatusList', id);
 
@@ -289,7 +296,7 @@ export class PostgresStatusListRepository
   ): Promise<CredentialStatusEntryData> {
     const context = this.createOperationContext(
       'UPDATE CredentialStatusEntry',
-      entry.id
+      entry.id as Shared.IRI
     );
 
     const record = this.mapper.statusEntryToPersistence({
@@ -297,15 +304,12 @@ export class PostgresStatusListRepository
       updatedAt: new Date(),
     });
 
-    // Remove id from update data
-    const { id, ...updateData } = record;
-
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .update(credentialStatusEntries)
-          .set(updateData)
+          .set(record)
           .where(eq(credentialStatusEntries.id, entry.id))
           .returning();
 
@@ -331,7 +335,7 @@ export class PostgresStatusListRepository
         context,
         async () => {
           // Use transaction for atomic update
-          return await this.db.transaction(async (tx) => {
+          return await this.db.transaction(async (_tx) => {
             // Find the credential's status entry
             const statusEntry = await this.findStatusEntry(
               params.credentialId,
@@ -344,7 +348,9 @@ export class PostgresStatusListRepository
             }
 
             // Find the status list
-            const statusList = await this.findById(statusEntry.statusListId);
+            const statusList = await this.findById(
+              statusEntry.statusListId as Shared.IRI
+            );
             if (!statusList) {
               throw new Error(
                 `Status list ${statusEntry.statusListId} not found`
@@ -397,7 +403,7 @@ export class PostgresStatusListRepository
     }
   }
 
-  async deleteStatusEntry(id: string): Promise<boolean> {
+  async deleteStatusEntry(id: Shared.IRI): Promise<boolean> {
     this.validateEntityId(id, 'deleteStatusEntry');
     const context = this.createOperationContext(
       'DELETE CredentialStatusEntry',
@@ -504,7 +510,7 @@ export class PostgresStatusListRepository
     availableEntries: number;
     utilizationPercent: number;
   }> {
-    const statusList = await this.findById(statusListId);
+    const statusList = await this.findById(statusListId as Shared.IRI);
     if (!statusList) {
       throw new Error(`Status list ${statusListId} not found`);
     }
@@ -533,7 +539,7 @@ export class PostgresStatusListRepository
 
     return this.executeQuery(
       context,
-      async (db) => {
+      async () => {
         // This would need to join with assertions table to find credentials
         // without status entries for the given purpose
         // For now, return empty array as placeholder

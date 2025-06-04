@@ -272,6 +272,7 @@ export const SQLITE_ENTITY_TYPES = [
   'apiKey',
   'platformUser',
   'userAssertion',
+  'statusList',
 ] as const;
 
 /**

@@ -15,7 +15,10 @@ import { SqliteConnectionManager } from '../connection/sqlite-connection.manager
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { SqlitePaginationParams } from '../types/sqlite-database.types';
 import { SensitiveValue } from '@rollercoaster-dev/rd-logger'; // Correctly placed import
-import { batchInsert, batchUpdate } from '@infrastructure/database/utils/batch-operations';
+import {
+  batchInsert as _batchInsert,
+  batchUpdate as _batchUpdate,
+} from '@infrastructure/database/utils/batch-operations';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 export class SqliteAssertionRepository
@@ -271,11 +274,13 @@ export class SqliteAssertionRepository
     }
   }
 
-  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<Array<{
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<
+    Array<{
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     if (assertionList.length === 0) {
       return [];
     }
@@ -327,7 +332,7 @@ export class SqliteAssertionRepository
     const result = await this.executeQuery(
       context,
       async (db) => {
-        const stringIds = ids.map(id => id as string);
+        const stringIds = ids.map((id) => id as string);
         return db
           .select()
           .from(assertions)
@@ -338,30 +343,36 @@ export class SqliteAssertionRepository
 
     // Create a map for quick lookup
     const assertionMap = new Map<string, Assertion>();
-    result.forEach(record => {
+    result.forEach((record) => {
       const domainEntity = this.mapper.toDomain(record);
       assertionMap.set(domainEntity.id, domainEntity);
     });
 
     // Return results in the same order as input IDs
-    return ids.map(id => assertionMap.get(id) || null);
+    return ids.map((id) => assertionMap.get(id) || null);
   }
 
-  async updateStatusBatch(updates: Array<{
-    id: Shared.IRI;
-    status: 'revoked' | 'suspended' | 'active';
-    reason?: string;
-  }>): Promise<Array<{
-    id: Shared.IRI;
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async updateStatusBatch(
+    updates: Array<{
+      id: Shared.IRI;
+      status: 'revoked' | 'suspended' | 'active';
+      reason?: string;
+    }>
+  ): Promise<
+    Array<{
+      id: Shared.IRI;
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     if (updates.length === 0) {
       return [];
     }
 
-    const context = this.createOperationContext('BATCH UPDATE Assertion Status');
+    const context = this.createOperationContext(
+      'BATCH UPDATE Assertion Status'
+    );
 
     return this.executeTransaction(context, async () => {
       const results: Array<{

@@ -6,7 +6,7 @@ import { StatusList } from '@domains/status-list/status-list.entity';
 import {
   StatusListData,
   CredentialStatusEntryData,
-  StatusPurpose
+  StatusPurpose,
 } from '@domains/status-list/status-list.types';
 import { statusLists, credentialStatusEntries } from '../schema';
 import { logger } from '@utils/logging/logger.service';
@@ -19,7 +19,8 @@ export type PostgresStatusListRecord = typeof statusLists.$inferSelect;
 /**
  * Type for PostgreSQL credential status entry record
  */
-export type PostgresCredentialStatusEntryRecord = typeof credentialStatusEntries.$inferSelect;
+export type PostgresCredentialStatusEntryRecord =
+  typeof credentialStatusEntries.$inferSelect;
 
 /**
  * PostgreSQL StatusList mapper
@@ -28,10 +29,9 @@ export class PostgresStatusListMapper {
   /**
    * Converts a StatusList domain entity to PostgreSQL persistence format
    */
-  toPersistence(entity: StatusList): typeof statusLists.$inferInsert {
+  toPersistence(entity: StatusList) {
     try {
       return {
-        id: entity.id,
         issuerId: entity.issuerId,
         purpose: entity.purpose,
         statusSize: entity.statusSize.toString(),
@@ -41,12 +41,12 @@ export class PostgresStatusListMapper {
         usedEntries: entity.usedEntries.toString(),
         metadata: entity.metadata ? JSON.stringify(entity.metadata) : null,
         createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt
+        updatedAt: entity.updatedAt,
       };
     } catch (error) {
       logger.error('Failed to convert StatusList to persistence format', {
         error: error instanceof Error ? error.message : String(error),
-        entityId: entity.id
+        entityId: entity.id,
       });
       throw new Error('Failed to convert StatusList to persistence format');
     }
@@ -66,28 +66,34 @@ export class PostgresStatusListMapper {
         ttl: record.ttl ? parseInt(record.ttl, 10) : undefined,
         totalEntries: parseInt(record.totalEntries, 10),
         usedEntries: parseInt(record.usedEntries, 10),
-        metadata: record.metadata ? JSON.parse(record.metadata) : undefined,
+        metadata: record.metadata
+          ? JSON.parse(record.metadata as string)
+          : undefined,
         createdAt: record.createdAt,
-        updatedAt: record.updatedAt
+        updatedAt: record.updatedAt,
       };
 
       return StatusList.fromData(data);
     } catch (error) {
-      logger.error('Failed to convert PostgreSQL record to StatusList domain entity', {
-        error: error instanceof Error ? error.message : String(error),
-        recordId: record.id
-      });
-      throw new Error('Failed to convert PostgreSQL record to StatusList domain entity');
+      logger.error(
+        'Failed to convert PostgreSQL record to StatusList domain entity',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          recordId: record.id,
+        }
+      );
+      throw new Error(
+        'Failed to convert PostgreSQL record to StatusList domain entity'
+      );
     }
   }
 
   /**
    * Converts a CredentialStatusEntry domain entity to PostgreSQL persistence format
    */
-  statusEntryToPersistence(entity: CredentialStatusEntryData): typeof credentialStatusEntries.$inferInsert {
+  statusEntryToPersistence(entity: CredentialStatusEntryData) {
     try {
       return {
-        id: entity.id,
         credentialId: entity.credentialId,
         statusListId: entity.statusListId,
         statusListIndex: entity.statusListIndex.toString(),
@@ -96,21 +102,28 @@ export class PostgresStatusListMapper {
         currentStatus: entity.currentStatus.toString(),
         statusReason: entity.statusReason || null,
         createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt
+        updatedAt: entity.updatedAt,
       };
     } catch (error) {
-      logger.error('Failed to convert CredentialStatusEntry to persistence format', {
-        error: error instanceof Error ? error.message : String(error),
-        entityId: entity.id
-      });
-      throw new Error('Failed to convert CredentialStatusEntry to persistence format');
+      logger.error(
+        'Failed to convert CredentialStatusEntry to persistence format',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          entityId: entity.id,
+        }
+      );
+      throw new Error(
+        'Failed to convert CredentialStatusEntry to persistence format'
+      );
     }
   }
 
   /**
    * Converts a PostgreSQL record to CredentialStatusEntry domain entity
    */
-  statusEntryToDomain(record: PostgresCredentialStatusEntryRecord): CredentialStatusEntryData {
+  statusEntryToDomain(
+    record: PostgresCredentialStatusEntryRecord
+  ): CredentialStatusEntryData {
     try {
       return {
         id: record.id,
@@ -122,14 +135,19 @@ export class PostgresStatusListMapper {
         currentStatus: parseInt(record.currentStatus, 10),
         statusReason: record.statusReason || undefined,
         createdAt: record.createdAt,
-        updatedAt: record.updatedAt
+        updatedAt: record.updatedAt,
       };
     } catch (error) {
-      logger.error('Failed to convert PostgreSQL record to CredentialStatusEntry domain entity', {
-        error: error instanceof Error ? error.message : String(error),
-        recordId: record.id
-      });
-      throw new Error('Failed to convert PostgreSQL record to CredentialStatusEntry domain entity');
+      logger.error(
+        'Failed to convert PostgreSQL record to CredentialStatusEntry domain entity',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          recordId: record.id,
+        }
+      );
+      throw new Error(
+        'Failed to convert PostgreSQL record to CredentialStatusEntry domain entity'
+      );
     }
   }
 
@@ -162,7 +180,9 @@ export class PostgresStatusListMapper {
     }
 
     if (entity.usedEntries < 0 || entity.usedEntries > entity.totalEntries) {
-      throw new Error('StatusList usedEntries must be between 0 and totalEntries');
+      throw new Error(
+        'StatusList usedEntries must be between 0 and totalEntries'
+      );
     }
   }
 
@@ -183,11 +203,15 @@ export class PostgresStatusListMapper {
     }
 
     if (entity.statusListIndex < 0) {
-      throw new Error('CredentialStatusEntry statusListIndex must be non-negative');
+      throw new Error(
+        'CredentialStatusEntry statusListIndex must be non-negative'
+      );
     }
 
     if (entity.statusSize < 1 || entity.statusSize > 8) {
-      throw new Error('CredentialStatusEntry statusSize must be between 1 and 8');
+      throw new Error(
+        'CredentialStatusEntry statusSize must be between 1 and 8'
+      );
     }
 
     if (!entity.purpose) {
@@ -195,12 +219,16 @@ export class PostgresStatusListMapper {
     }
 
     if (entity.currentStatus < 0) {
-      throw new Error('CredentialStatusEntry currentStatus must be non-negative');
+      throw new Error(
+        'CredentialStatusEntry currentStatus must be non-negative'
+      );
     }
 
     const maxStatus = Math.pow(2, entity.statusSize) - 1;
     if (entity.currentStatus > maxStatus) {
-      throw new Error(`CredentialStatusEntry currentStatus must not exceed ${maxStatus} for ${entity.statusSize}-bit status`);
+      throw new Error(
+        `CredentialStatusEntry currentStatus must not exceed ${maxStatus} for ${entity.statusSize}-bit status`
+      );
     }
   }
 
@@ -208,27 +236,33 @@ export class PostgresStatusListMapper {
    * Converts multiple PostgreSQL records to StatusList domain entities
    */
   toDomainArray(records: PostgresStatusListRecord[]): StatusList[] {
-    return records.map(record => this.toDomain(record));
+    return records.map((record) => this.toDomain(record));
   }
 
   /**
    * Converts multiple PostgreSQL records to CredentialStatusEntry domain entities
    */
-  statusEntryToDomainArray(records: PostgresCredentialStatusEntryRecord[]): CredentialStatusEntryData[] {
-    return records.map(record => this.statusEntryToDomain(record));
+  statusEntryToDomainArray(
+    records: PostgresCredentialStatusEntryRecord[]
+  ): CredentialStatusEntryData[] {
+    return records.map((record) => this.statusEntryToDomain(record));
   }
 
   /**
    * Converts multiple StatusList entities to PostgreSQL persistence format
    */
-  toPersistenceArray(entities: StatusList[]): Array<typeof statusLists.$inferInsert> {
-    return entities.map(entity => this.toPersistence(entity));
+  toPersistenceArray(
+    entities: StatusList[]
+  ): Array<typeof statusLists.$inferInsert> {
+    return entities.map((entity) => this.toPersistence(entity));
   }
 
   /**
    * Converts multiple CredentialStatusEntry entities to PostgreSQL persistence format
    */
-  statusEntryToPersistenceArray(entities: CredentialStatusEntryData[]): Array<typeof credentialStatusEntries.$inferInsert> {
-    return entities.map(entity => this.statusEntryToPersistence(entity));
+  statusEntryToPersistenceArray(
+    entities: CredentialStatusEntryData[]
+  ): Array<typeof credentialStatusEntries.$inferInsert> {
+    return entities.map((entity) => this.statusEntryToPersistence(entity));
   }
 }

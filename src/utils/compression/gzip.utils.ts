@@ -1,6 +1,6 @@
 /**
  * GZIP compression utilities for StatusList2021 implementation
- * 
+ *
  * This module provides GZIP compression and decompression utilities
  * optimized for bitstring status lists.
  */
@@ -29,7 +29,7 @@ export const DEFAULT_GZIP_OPTIONS: GzipOptions = {
   level: 9, // Maximum compression for best space efficiency
   windowBits: 15, // Maximum window size for best compression
   memLevel: 8, // Good balance of memory usage and compression
-  strategy: constants.Z_DEFAULT_STRATEGY
+  strategy: constants.Z_DEFAULT_STRATEGY,
 };
 
 /**
@@ -42,36 +42,44 @@ export class GzipUtils {
    * @param options Compression options
    * @returns Compressed data
    */
-  static compress(data: Uint8Array | Buffer, options: GzipOptions = {}): Buffer {
+  static compress(
+    data: Uint8Array | Buffer,
+    options: GzipOptions = {}
+  ): Buffer {
     const opts = { ...DEFAULT_GZIP_OPTIONS, ...options };
-    
+
     try {
       const startTime = Date.now();
       const compressed = gzipSync(data, opts);
       const compressionTime = Date.now() - startTime;
-      
+
       const originalSize = data.length;
       const compressedSize = compressed.length;
       const compressionRatio = compressedSize / originalSize;
-      const spaceSavings = ((originalSize - compressedSize) / originalSize) * 100;
-      
+      const spaceSavings =
+        ((originalSize - compressedSize) / originalSize) * 100;
+
       logger.debug('GZIP compression completed', {
         originalSize,
         compressedSize,
         compressionRatio: compressionRatio.toFixed(3),
         spaceSavings: spaceSavings.toFixed(1) + '%',
         compressionTime: compressionTime + 'ms',
-        level: opts.level
+        level: opts.level,
       });
-      
+
       return compressed;
     } catch (error) {
-      logger.error('GZIP compression failed', { 
+      logger.error('GZIP compression failed', {
         error: error instanceof Error ? error.message : String(error),
         dataSize: data.length,
-        options: opts
+        options: opts,
       });
-      throw new Error(`GZIP compression failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `GZIP compression failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -85,21 +93,27 @@ export class GzipUtils {
       const startTime = Date.now();
       const decompressed = gunzipSync(compressedData);
       const decompressionTime = Date.now() - startTime;
-      
+
       logger.debug('GZIP decompression completed', {
         compressedSize: compressedData.length,
         decompressedSize: decompressed.length,
-        expansionRatio: (decompressed.length / compressedData.length).toFixed(3),
-        decompressionTime: decompressionTime + 'ms'
+        expansionRatio: (decompressed.length / compressedData.length).toFixed(
+          3
+        ),
+        decompressionTime: decompressionTime + 'ms',
       });
-      
+
       return new Uint8Array(decompressed);
     } catch (error) {
-      logger.error('GZIP decompression failed', { 
+      logger.error('GZIP decompression failed', {
         error: error instanceof Error ? error.message : String(error),
-        compressedSize: compressedData.length
+        compressedSize: compressedData.length,
       });
-      throw new Error(`GZIP decompression failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `GZIP decompression failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -115,30 +129,30 @@ export class GzipUtils {
     compressionTime: number;
   }> {
     const results = [];
-    
+
     for (let level = 1; level <= 9; level++) {
       const startTime = Date.now();
       const compressed = gzipSync(data, { level });
       const compressionTime = Date.now() - startTime;
-      
+
       results.push({
         level,
         compressedSize: compressed.length,
         compressionRatio: compressed.length / data.length,
-        compressionTime
+        compressionTime,
       });
     }
-    
+
     logger.info('Compression level test results', {
       originalSize: data.length,
-      results: results.map(r => ({
+      results: results.map((r) => ({
         level: r.level,
         size: r.compressedSize,
         ratio: r.compressionRatio.toFixed(3),
-        time: r.compressionTime + 'ms'
-      }))
+        time: r.compressionTime + 'ms',
+      })),
     });
-    
+
     return results;
   }
 
@@ -158,7 +172,10 @@ export class GzipUtils {
    * @param compressedData Compressed data
    * @returns Compression statistics
    */
-  static getCompressionStats(originalData: Uint8Array | Buffer, compressedData: Buffer): {
+  static getCompressionStats(
+    originalData: Uint8Array | Buffer,
+    compressedData: Buffer
+  ): {
     originalSize: number;
     compressedSize: number;
     compressionRatio: number;
@@ -169,14 +186,15 @@ export class GzipUtils {
     const compressedSize = compressedData.length;
     const compressionRatio = compressedSize / originalSize;
     const spaceSavings = originalSize - compressedSize;
-    const spaceSavingsPercent = ((spaceSavings / originalSize) * 100).toFixed(1) + '%';
-    
+    const spaceSavingsPercent =
+      ((spaceSavings / originalSize) * 100).toFixed(1) + '%';
+
     return {
       originalSize,
       compressedSize,
       compressionRatio,
       spaceSavings,
-      spaceSavingsPercent
+      spaceSavingsPercent,
     };
   }
 
@@ -190,12 +208,12 @@ export class GzipUtils {
     if (data.length < 1024) {
       return this.compress(data, { level: 9 });
     }
-    
+
     // For medium data (1KB - 100KB), use level 6 for good balance
     if (data.length < 102400) {
       return this.compress(data, { level: 6 });
     }
-    
+
     // For large data (> 100KB), use level 3 for faster compression
     return this.compress(data, { level: 3 });
   }
@@ -208,13 +226,13 @@ export class GzipUtils {
    * @returns Estimated compression ratio
    */
   static estimateBitstringCompressionRatio(
-    totalEntries: number, 
-    usedEntries: number, 
-    statusSize: number = 1
+    totalEntries: number,
+    usedEntries: number,
+    _statusSize: number = 1
   ): number {
     // For mostly empty bitstrings, GZIP achieves excellent compression
     const usageRatio = usedEntries / totalEntries;
-    
+
     if (usageRatio < 0.01) {
       // Less than 1% usage - excellent compression (>95% reduction)
       return 0.05;

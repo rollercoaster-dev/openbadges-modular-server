@@ -1,0 +1,26 @@
+{
+  // GitHub Copilot Configuration
+  // Enable experimental prompt and instruction files
+  "chat.promptFiles": true,
+  
+  // Enable automatic application of .github/copilot-instructions.md
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  
+  // Configure locations for instruction files (.instructions.md)
+  "chat.instructionsFilesLocations": [
+    ".github/instructions"
+  ],
+  
+  // Configure locations for prompt files (.prompt.md)
+  "chat.promptFilesLocations": [
+    ".github/prompts"
+  ],
+  
+  // Additional Copilot settings for better integration
+  "github.copilot.enable": {
+    "*": false
+  },
+  
+  // Enable Copilot suggestions in comments
+  "github.copilot.editor.enableAutoCompletions": true
+}

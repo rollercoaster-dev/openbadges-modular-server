@@ -64,6 +64,28 @@ Reusable prompt files for common development tasks:
 - Implements proper badge verification patterns
 - Maintains JSON-LD structure requirements
 
+## VS Code Setup
+
+### Required Settings
+
+The following settings are configured in `.vscode/settings.json` to enable all Copilot features:
+
+```json
+{
+  "chat.promptFiles": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.instructionsFilesLocations": [".github/instructions"],
+  "chat.promptFilesLocations": [".github/prompts"]
+}
+```
+
+### What These Settings Enable
+
+- **`chat.promptFiles`**: Enables experimental prompt and instruction files
+- **`github.copilot.chat.codeGeneration.useInstructionFiles`**: Automatically applies `.github/copilot-instructions.md`
+- **`chat.instructionsFilesLocations`**: Configures location for `.instructions.md` files
+- **`chat.promptFilesLocations`**: Configures location for `.prompt.md` files
+
 ## How to Use
 
 ### Automatic Application
@@ -145,13 +167,20 @@ When adding new prompt files:
 
 ### Instructions Not Applied
 - Ensure you're working within the repository context
-- Check that custom instructions are enabled in your Copilot settings
-- Verify the `.github/copilot-instructions.md` file is present and valid
+- Check that `chat.promptFiles` is enabled in VS Code settings
+- Verify `github.copilot.chat.codeGeneration.useInstructionFiles` is set to `true`
+- Confirm the `.github/copilot-instructions.md` file is present and valid
 
 ### Prompt Files Not Available
-- Ensure prompt files are enabled in VS Code settings
-- Check that files are in the correct `.github/prompts/` directory
-- Verify file names end with `.prompt.md`
+- Ensure `chat.promptFiles` is enabled in VS Code settings
+- Check that `chat.promptFilesLocations` includes `[".github/prompts"]`
+- Verify files are in the correct `.github/prompts/` directory
+- Confirm file names end with `.prompt.md` and include YAML front matter
+
+### Instruction Files Not Working
+- Verify `chat.instructionsFilesLocations` includes `[".github/instructions"]`
+- Check that instruction files end with `.instructions.md`
+- Ensure instruction files have proper YAML front matter with `applyTo` property
 
 ### Conflicting Suggestions
 - Repository instructions take precedence over general Copilot knowledge

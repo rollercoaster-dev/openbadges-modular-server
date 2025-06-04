@@ -7,26 +7,25 @@
 
 import { StatusListService } from '../../core/status-list.service';
 import { StatusListRepository } from '../../domains/status-list/status-list.repository';
+
 import {
   StatusPurpose,
   CreateStatusListParams,
   UpdateCredentialStatusParams,
   StatusListQueryParams,
+  StatusListData,
+  CredentialStatusEntryData,
 } from '../../domains/status-list/status-list.types';
 import {
   CreateStatusListDto,
   UpdateCredentialStatusDto,
-  BatchUpdateCredentialStatusDto,
   StatusListQueryDto,
   StatusListResponseDto,
   CredentialStatusEntryResponseDto,
   StatusUpdateResponseDto,
-  BatchStatusUpdateResponseDto,
   StatusListStatsResponseDto,
   BitstringStatusListCredentialResponseDto,
   StatusListValidationResponseDto,
-  StatusListSearchDto,
-  PaginatedStatusListResponseDto,
 } from '../dtos/status-list.dto';
 import { logger } from '../../utils/logging/logger.service';
 import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
@@ -170,7 +169,7 @@ export class StatusListController {
     params: StatusListQueryDto
   ): Promise<StatusListResponseDto[]> {
     try {
-      logger.debug('Finding status lists', params);
+      logger.debug('Finding status lists', { ...params });
 
       const queryParams: StatusListQueryParams = {
         issuerId: params.issuerId,
@@ -297,7 +296,7 @@ export class StatusListController {
    * @returns Validation result
    */
   async validateStatusListCredential(
-    credential: any
+    credential: BitstringStatusListCredentialResponseDto
   ): Promise<StatusListValidationResponseDto> {
     try {
       logger.debug('Validating status list credential', {
@@ -331,7 +330,9 @@ export class StatusListController {
   /**
    * Converts a StatusList entity to a response DTO
    */
-  private toStatusListResponseDto(statusList: any): StatusListResponseDto {
+  private toStatusListResponseDto(
+    statusList: StatusListData
+  ): StatusListResponseDto {
     const utilizationPercent =
       (statusList.usedEntries / statusList.totalEntries) * 100;
     const availableEntries = statusList.totalEntries - statusList.usedEntries;
@@ -356,7 +357,7 @@ export class StatusListController {
    * Converts a CredentialStatusEntry to a response DTO
    */
   private toCredentialStatusEntryResponseDto(
-    entry: any
+    entry: CredentialStatusEntryData
   ): CredentialStatusEntryResponseDto {
     return {
       id: entry.id,
