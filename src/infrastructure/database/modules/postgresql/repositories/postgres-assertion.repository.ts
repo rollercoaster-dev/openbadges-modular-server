@@ -278,10 +278,12 @@ export class PostgresAssertionRepository
       );
 
       // Use batch insert utility
-       
-      const results = await batchInsert(
-        this.db as any,
-        assertions as any,
+
+      const results = await batchInsert<typeof assertions.$inferSelect>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.db as any, // DatabaseClient interface compatibility
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        assertions as any, // DatabaseTable interface compatibility
         records,
         'postgresql'
       );
@@ -290,7 +292,7 @@ export class PostgresAssertionRepository
       return results.map((result, _index) => {
         try {
           if (result) {
-            const domainEntity = this.mapper.toDomain(result as any);
+            const domainEntity = this.mapper.toDomain(result);
             return {
               success: true,
               assertion: domainEntity,

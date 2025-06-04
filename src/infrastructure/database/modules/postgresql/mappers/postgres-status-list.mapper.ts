@@ -29,14 +29,14 @@ export class PostgresStatusListMapper {
   /**
    * Converts a StatusList domain entity to PostgreSQL persistence format
    */
-  toPersistence(entity: StatusList) {
+  toPersistence(entity: StatusList): Record<string, unknown> {
     try {
       return {
         issuerId: entity.issuerId,
         purpose: entity.purpose,
         statusSize: entity.statusSize.toString(),
         encodedList: entity.encodedList,
-        ttl: entity.ttl?.toString(),
+        ttl: entity.ttl?.toString() || null,
         totalEntries: entity.totalEntries.toString(),
         usedEntries: entity.usedEntries.toString(),
         metadata: entity.metadata ? JSON.stringify(entity.metadata) : null,
@@ -91,7 +91,9 @@ export class PostgresStatusListMapper {
   /**
    * Converts a CredentialStatusEntry domain entity to PostgreSQL persistence format
    */
-  statusEntryToPersistence(entity: CredentialStatusEntryData) {
+  statusEntryToPersistence(
+    entity: CredentialStatusEntryData
+  ): Record<string, unknown> {
     try {
       return {
         credentialId: entity.credentialId,
@@ -251,9 +253,7 @@ export class PostgresStatusListMapper {
   /**
    * Converts multiple StatusList entities to PostgreSQL persistence format
    */
-  toPersistenceArray(
-    entities: StatusList[]
-  ): Array<typeof statusLists.$inferInsert> {
+  toPersistenceArray(entities: StatusList[]): Array<Record<string, unknown>> {
     return entities.map((entity) => this.toPersistence(entity));
   }
 
@@ -262,7 +262,7 @@ export class PostgresStatusListMapper {
    */
   statusEntryToPersistenceArray(
     entities: CredentialStatusEntryData[]
-  ): Array<typeof credentialStatusEntries.$inferInsert> {
+  ): Array<Record<string, unknown>> {
     return entities.map((entity) => this.statusEntryToPersistence(entity));
   }
 }

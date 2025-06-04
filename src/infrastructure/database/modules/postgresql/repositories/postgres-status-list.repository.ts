@@ -56,7 +56,7 @@ export class PostgresStatusListRepository
       async () => {
         const result = await this.db
           .insert(statusLists)
-          .values(record)
+          .values(record as typeof statusLists.$inferInsert)
           .returning();
         return this.mapper.toDomain(result[0]);
       },
@@ -182,7 +182,7 @@ export class PostgresStatusListRepository
       async () => {
         const result = await this.db
           .update(statusLists)
-          .set(record)
+          .set(record as Partial<typeof statusLists.$inferInsert>)
           .where(eq(statusLists.id, statusList.id))
           .returning();
 
@@ -233,7 +233,7 @@ export class PostgresStatusListRepository
         const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
         const result = await this.db
           .insert(credentialStatusEntries)
-          .values(record)
+          .values(record as typeof credentialStatusEntries.$inferInsert)
           .returning();
         return this.mapper.statusEntryToDomain(result[0]);
       },
@@ -309,7 +309,7 @@ export class PostgresStatusListRepository
       async () => {
         const result = await this.db
           .update(credentialStatusEntries)
-          .set(record)
+          .set(record as Partial<typeof credentialStatusEntries.$inferInsert>)
           .where(eq(credentialStatusEntries.id, entry.id))
           .returning();
 

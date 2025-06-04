@@ -118,13 +118,21 @@ describe('Batch Operations Unit Tests', () => {
 
       const mockAssertions = [
         Assertion.create({
-          recipient: { identity: 'user1@example.com' } as any,
+          recipient: {
+            identity: 'user1@example.com',
+            type: 'email',
+            hashed: false,
+          } as OB2.IdentityObject,
           badgeClass: 'badge-class-1' as Shared.IRI,
           evidence: [{ id: 'evidence-1' as Shared.IRI }],
           issuer: 'test-issuer' as Shared.IRI,
         }),
         Assertion.create({
-          recipient: { identity: 'user2@example.com' } as any,
+          recipient: {
+            identity: 'user2@example.com',
+            type: 'email',
+            hashed: false,
+          } as OB2.IdentityObject,
           badgeClass: 'badge-class-1' as Shared.IRI,
           evidence: [{ id: 'evidence-2' as Shared.IRI }],
           issuer: 'test-issuer' as Shared.IRI,
@@ -198,7 +206,11 @@ describe('Batch Operations Unit Tests', () => {
       });
 
       const mockAssertion = Assertion.create({
-        recipient: { identity: 'user1@example.com' } as any,
+        recipient: {
+          identity: 'user1@example.com',
+          type: 'email',
+          hashed: false,
+        } as OB2.IdentityObject,
         badgeClass: 'badge-class-1' as Shared.IRI,
         evidence: [{ id: 'evidence-1' as Shared.IRI }],
         issuer: 'test-issuer' as Shared.IRI,

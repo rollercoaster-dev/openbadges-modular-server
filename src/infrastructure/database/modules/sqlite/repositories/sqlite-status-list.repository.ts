@@ -54,7 +54,10 @@ export class SqliteStatusListRepository
       context,
       async () => {
         const db = this.getDatabase();
-        const result = await db.insert(statusLists).values(record).returning();
+        const result = await db
+          .insert(statusLists)
+          .values(record as typeof statusLists.$inferInsert)
+          .returning();
         return this.mapper.toDomain(result[0]);
       },
       1
@@ -179,7 +182,7 @@ export class SqliteStatusListRepository
     const record = this.mapper.toPersistence(statusList);
 
     // Remove id from update data
-    const { id, ...updateData } = record;
+    const { id: _id, ...updateData } = record;
 
     return this.executeOperation(
       context,
@@ -187,7 +190,7 @@ export class SqliteStatusListRepository
         const db = this.getDatabase();
         const result = await db
           .update(statusLists)
-          .set(updateData)
+          .set(updateData as Partial<typeof statusLists.$inferInsert>)
           .where(eq(statusLists.id, statusList.id))
           .returning();
 
@@ -243,7 +246,7 @@ export class SqliteStatusListRepository
         const record = this.mapper.statusEntryToPersistence(entryWithDefaults);
         const result = await db
           .insert(credentialStatusEntries)
-          .values(record)
+          .values(record as typeof credentialStatusEntries.$inferInsert)
           .returning();
         return this.mapper.statusEntryToDomain(result[0]);
       },
@@ -315,7 +318,7 @@ export class SqliteStatusListRepository
     });
 
     // Remove id from update data
-    const { id, ...updateData } = record;
+    const { id: _id, ...updateData } = record;
 
     return this.executeOperation(
       context,
@@ -323,7 +326,9 @@ export class SqliteStatusListRepository
         const db = this.getDatabase();
         const result = await db
           .update(credentialStatusEntries)
-          .set(updateData)
+          .set(
+            updateData as Partial<typeof credentialStatusEntries.$inferInsert>
+          )
           .where(eq(credentialStatusEntries.id, entry.id as Shared.IRI))
           .returning();
 

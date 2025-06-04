@@ -29,7 +29,7 @@ export class SqliteStatusListMapper {
   /**
    * Converts a StatusList domain entity to SQLite persistence format
    */
-  toPersistence(entity: StatusList) {
+  toPersistence(entity: StatusList): Record<string, unknown> {
     try {
       return {
         id: entity.id,
@@ -90,7 +90,9 @@ export class SqliteStatusListMapper {
   /**
    * Converts a CredentialStatusEntry domain entity to SQLite persistence format
    */
-  statusEntryToPersistence(entity: CredentialStatusEntryData) {
+  statusEntryToPersistence(
+    entity: CredentialStatusEntryData
+  ): Record<string, unknown> {
     try {
       return {
         id: entity.id,
@@ -251,9 +253,7 @@ export class SqliteStatusListMapper {
   /**
    * Converts multiple StatusList entities to SQLite persistence format
    */
-  toPersistenceArray(
-    entities: StatusList[]
-  ): Array<typeof statusLists.$inferInsert> {
+  toPersistenceArray(entities: StatusList[]): Array<Record<string, unknown>> {
     return entities.map((entity) => this.toPersistence(entity));
   }
 
@@ -262,7 +262,7 @@ export class SqliteStatusListMapper {
    */
   statusEntryToPersistenceArray(
     entities: CredentialStatusEntryData[]
-  ): Array<typeof credentialStatusEntries.$inferInsert> {
+  ): Array<Record<string, unknown>> {
     return entities.map((entity) => this.statusEntryToPersistence(entity));
   }
 }

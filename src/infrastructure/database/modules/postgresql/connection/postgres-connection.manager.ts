@@ -19,7 +19,7 @@ import {
 
 /**
  * PostgreSQL Connection Manager
- * 
+ *
  * Provides centralized connection management for PostgreSQL databases with:
  * - Connection state tracking and health monitoring
  * - Automatic reconnection with exponential backoff
@@ -36,7 +36,9 @@ export class PostgresConnectionManager {
   private readonly maxRetries = 3;
   private readonly baseRetryDelay = 1000; // 1 second
 
-  constructor(config: Partial<PostgresConnectionConfig> & { connectionString: string }) {
+  constructor(
+    config: Partial<PostgresConnectionConfig> & { connectionString: string }
+  ) {
     this.config = createPostgresConnectionConfig(config);
     this.validateConfiguration();
   }
@@ -45,23 +47,40 @@ export class PostgresConnectionManager {
    * Validates the PostgreSQL configuration
    */
   private validateConfiguration(): void {
-    if (!this.config.connectionString || typeof this.config.connectionString !== 'string') {
-      throw new Error('PostgreSQL connection string is required and must be a string');
+    if (
+      !this.config.connectionString ||
+      typeof this.config.connectionString !== 'string'
+    ) {
+      throw new Error(
+        'PostgreSQL connection string is required and must be a string'
+      );
     }
 
     // Basic connection string validation
-    if (!this.config.connectionString.startsWith('postgres://') && 
-        !this.config.connectionString.startsWith('postgresql://')) {
-      throw new Error('PostgreSQL connection string must start with postgres:// or postgresql://');
+    if (
+      !this.config.connectionString.startsWith('postgres://') &&
+      !this.config.connectionString.startsWith('postgresql://')
+    ) {
+      throw new Error(
+        'PostgreSQL connection string must start with postgres:// or postgresql://'
+      );
     }
 
     // Validate numeric configuration values
-    if (this.config.maxConnections && (this.config.maxConnections <= 0 || this.config.maxConnections > 1000)) {
+    if (
+      this.config.maxConnections &&
+      (this.config.maxConnections <= 0 || this.config.maxConnections > 1000)
+    ) {
       throw new Error('PostgreSQL maxConnections must be between 1 and 1000');
     }
 
-    if (this.config.connectTimeout && (this.config.connectTimeout <= 0 || this.config.connectTimeout > 60)) {
-      throw new Error('PostgreSQL connectTimeout must be between 1 and 60 seconds');
+    if (
+      this.config.connectTimeout &&
+      (this.config.connectTimeout <= 0 || this.config.connectTimeout > 60)
+    ) {
+      throw new Error(
+        'PostgreSQL connectTimeout must be between 1 and 60 seconds'
+      );
     }
   }
 
@@ -78,7 +97,9 @@ export class PostgresConnectionManager {
     }
 
     if (this.connectionState === 'closed') {
-      throw new Error('Connection manager has been closed. Create a new instance to reconnect.');
+      throw new Error(
+        'Connection manager has been closed. Create a new instance to reconnect.'
+      );
     }
 
     this.connectionState = 'connecting';
@@ -118,11 +139,53 @@ export class PostgresConnectionManager {
       }
     } catch (error) {
       this.connectionState = 'error';
-      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
 
-      logger.error('Failed to connect to PostgreSQL database', {
-        error: this.lastError.message,
-        stack: this.lastError.stack,
+      // Enhanced error logging with helpful troubleshooting tips
+      const errorMessage = this.lastError.message;
+
+      logger.error('🚨 PostgreSQL Database Connection Failed 🚨');
+      logger.error(`   Error: ${errorMessage}`);
+
+      // Provide specific troubleshooting guidance based on error type
+      if (
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('Failed to connect')
+      ) {
+        logger.warn('💡 PostgreSQL server is not running or not accessible');
+        logger.warn('   • Check if PostgreSQL is installed and running');
+        logger.warn('   • Verify the connection string and port');
+        logger.warn(
+          '   • For Docker: docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres'
+        );
+        logger.warn('   • Or switch to SQLite: DB_TYPE=sqlite bun run dev');
+      } else if (
+        errorMessage.includes('authentication failed') ||
+        errorMessage.includes('password authentication failed')
+      ) {
+        logger.warn('💡 PostgreSQL authentication failed');
+        logger.warn('   • Check username and password in connection string');
+        logger.warn('   • Verify user permissions');
+        logger.warn('   • Check DATABASE_URL environment variable');
+      } else if (
+        errorMessage.includes('database') &&
+        errorMessage.includes('does not exist')
+      ) {
+        logger.warn('💡 PostgreSQL database does not exist');
+        logger.warn('   • Create the database first');
+        logger.warn('   • Or check the database name in connection string');
+      } else if (
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ETIMEDOUT')
+      ) {
+        logger.warn('💡 PostgreSQL connection timeout');
+        logger.warn('   • Check network connectivity');
+        logger.warn('   • Verify PostgreSQL server is responding');
+        logger.warn('   • Check firewall settings');
+      }
+
+      logger.error('Additional connection details:', {
         attempts: this.connectionAttempts,
         config: {
           maxConnections: this.config.maxConnections,
@@ -137,7 +200,10 @@ export class PostgresConnectionManager {
           await this.client.end();
         } catch (cleanupError) {
           logger.warn('Error during connection cleanup', {
-            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError),
           });
         }
         this.client = null;
@@ -160,7 +226,9 @@ export class PostgresConnectionManager {
       await this.client`SELECT 1 as test`;
     } catch (error) {
       const pgError = error as PostgresConnectionError;
-      throw new Error(`PostgreSQL connection test failed: ${pgError.message || String(error)}`);
+      throw new Error(
+        `PostgreSQL connection test failed: ${pgError.message || String(error)}`
+      );
     }
   }
 
@@ -169,16 +237,21 @@ export class PostgresConnectionManager {
    */
   async reconnect(): Promise<void> {
     if (this.connectionState === 'closed') {
-      throw new Error('Connection manager has been closed. Create a new instance to reconnect.');
+      throw new Error(
+        'Connection manager has been closed. Create a new instance to reconnect.'
+      );
     }
 
     if (this.connectionAttempts >= this.maxRetries) {
-      throw new Error(`Maximum reconnection attempts (${this.maxRetries}) exceeded`);
+      throw new Error(
+        `Maximum reconnection attempts (${this.maxRetries}) exceeded`
+      );
     }
 
     // Calculate delay with exponential backoff
-    const delay = this.baseRetryDelay * Math.pow(2, this.connectionAttempts - 1);
-    
+    const delay =
+      this.baseRetryDelay * Math.pow(2, this.connectionAttempts - 1);
+
     logger.info('Attempting to reconnect to PostgreSQL database', {
       attempt: this.connectionAttempts + 1,
       maxRetries: this.maxRetries,
@@ -186,7 +259,7 @@ export class PostgresConnectionManager {
     });
 
     // Wait before attempting reconnection
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     // Disconnect first if needed
     if (this.connectionState !== 'disconnected') {
@@ -221,7 +294,8 @@ export class PostgresConnectionManager {
       }
     } catch (error) {
       this.connectionState = 'error';
-      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
 
       logger.error('Failed to disconnect PostgreSQL database', {
         error: this.lastError.message,
@@ -255,7 +329,8 @@ export class PostgresConnectionManager {
       }
     } catch (error) {
       this.connectionState = 'error';
-      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.lastError =
+        error instanceof Error ? error : new Error(String(error));
 
       logger.error('Failed to close PostgreSQL database connection manager', {
         error: this.lastError.message,
@@ -280,7 +355,9 @@ export class PostgresConnectionManager {
    */
   getClient(): postgres.Sql {
     if (!this.client || this.connectionState !== 'connected') {
-      throw new Error('Database client is not connected. Call connect() first.');
+      throw new Error(
+        'Database client is not connected. Call connect() first.'
+      );
     }
     return this.client;
   }
@@ -296,7 +373,11 @@ export class PostgresConnectionManager {
    * Checks if the database is connected
    */
   isConnected(): boolean {
-    return this.connectionState === 'connected' && this.client !== null && this.db !== null;
+    return (
+      this.connectionState === 'connected' &&
+      this.client !== null &&
+      this.db !== null
+    );
   }
 
   /**

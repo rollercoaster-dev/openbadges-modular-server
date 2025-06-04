@@ -645,7 +645,9 @@ export async function setupTestApp(
     );
 
     // Create JWKS controller
-    const { JwksController } = await import('../../src/api/controllers/jwks.controller');
+    const { JwksController } = await import(
+      '../../src/api/controllers/jwks.controller'
+    );
     const jwksController = new JwksController();
 
     // Create API router with controllers
