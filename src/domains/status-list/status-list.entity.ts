@@ -53,7 +53,7 @@ export class StatusList {
   /**
    * Factory method to create a new StatusList instance
    */
-  static create(params: CreateStatusListParams): StatusList {
+  static async create(params: CreateStatusListParams): Promise<StatusList> {
     const now = new Date();
     const id = createOrGenerateIRI();
 
@@ -65,7 +65,7 @@ export class StatusList {
     const initialBitstring = new Uint8Array(
       Math.ceil((totalEntries * statusSize) / 8)
     );
-    const encodedList = StatusList.encodeBitstring(initialBitstring);
+    const encodedList = await StatusList.encodeBitstring(initialBitstring);
 
     const data: StatusListData = {
       id,
@@ -222,24 +222,17 @@ export class StatusList {
   /**
    * Encodes a bitstring using GZIP compression and base64url encoding
    */
-  static encodeBitstring(bitstring: Uint8Array): string {
-    // This is a placeholder - actual implementation will use GZIP compression
-    // and multibase encoding in the bitstring utilities
-    const base64 = Buffer.from(bitstring).toString('base64');
-    // Convert to base64url (no padding)
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  static async encodeBitstring(bitstring: Uint8Array): Promise<string> {
+    const { BitstringUtils } = await import('@/utils/bitstring/bitstring.utils');
+    return BitstringUtils.encodeBitstring(bitstring);
   }
 
   /**
    * Decodes a bitstring from the encoded format
    */
-  static decodeBitstring(encodedList: string): Uint8Array {
-    // This is a placeholder - actual implementation will use GZIP decompression
-    // and multibase decoding in the bitstring utilities
-    const base64 = encodedList.replace(/-/g, '+').replace(/_/g, '/');
-    // Add padding if needed
-    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-    return new Uint8Array(Buffer.from(base64 + padding, 'base64'));
+  static async decodeBitstring(encodedList: string): Promise<Uint8Array> {
+    const { BitstringUtils } = await import('@/utils/bitstring/bitstring.utils');
+    return BitstringUtils.decodeBitstring(encodedList);
   }
 
   /**

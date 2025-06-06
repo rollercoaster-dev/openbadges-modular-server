@@ -304,7 +304,7 @@ export class StatusListController {
       });
 
       const isValid =
-        this.statusListService.validateStatusListCredential(credential);
+        await this.statusListService.validateStatusListCredential(credential);
 
       return {
         isValid,

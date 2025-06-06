@@ -374,7 +374,7 @@ export class SqliteStatusListRepository
             }
 
             // Update the bitstring
-            const bitstring = BitstringUtils.decodeBitstring(
+            const bitstring = await BitstringUtils.decodeBitstring(
               statusList.encodedList
             );
             const updatedBitstring = BitstringUtils.setStatusAtIndex(
@@ -383,8 +383,7 @@ export class SqliteStatusListRepository
               params.status,
               statusList.statusSize
             );
-            const encodedList =
-              BitstringUtils.encodeBitstring(updatedBitstring);
+            const encodedList = await BitstringUtils.encodeBitstring(updatedBitstring);
 
             // Update status list
             statusList.updateEncodedList(encodedList);

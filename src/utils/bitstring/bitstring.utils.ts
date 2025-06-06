@@ -5,8 +5,12 @@
  * W3C Bitstring Status List v1.0 specification.
  */
 
-import { gzipSync, gunzipSync } from 'zlib';
-import { logger } from '../logging/logger.service';
+import { gzip, gunzip } from 'zlib';
+import { promisify } from 'util';
+import { logger } from '@/utils/logging/logger.service';
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 /**
  * Default bitstring size (131,072 bits = 16KB)
@@ -122,7 +126,12 @@ export class BitstringUtils {
 
     // Handle remaining bits in the next byte if status spans byte boundary
     const remainingBits = statusSize - firstPartBits;
-    if (remainingBits > 0 && byteIndex + 1 < result.length) {
+    if (remainingBits > 0) {
+      if (byteIndex + 1 >= result.length) {
+        throw new Error(
+          `Index ${index} causes overflow; bitstring too small for ${statusSize}-bit status`
+        );
+      }
       const nextByteClearMask = ~(
         ((1 << remainingBits) - 1) <<
         (8 - remainingBits)
@@ -209,9 +218,9 @@ export class BitstringUtils {
    * @param bitstring The bitstring to compress
    * @returns Compressed bitstring
    */
-  static compressBitstring(bitstring: Uint8Array): Buffer {
+  static async compressBitstring(bitstring: Uint8Array): Promise<Buffer> {
     try {
-      const compressed = gzipSync(bitstring, {
+      const compressed = await gzipAsync(bitstring, {
         level: 9, // Maximum compression
         windowBits: 15,
         memLevel: 8,
@@ -235,9 +244,9 @@ export class BitstringUtils {
    * @param compressedData The compressed bitstring
    * @returns Decompressed bitstring
    */
-  static decompressBitstring(compressedData: Buffer): Uint8Array {
+  static async decompressBitstring(compressedData: Buffer): Promise<Uint8Array> {
     try {
-      const decompressed = gunzipSync(compressedData);
+      const decompressed = await gunzipAsync(compressedData);
 
       logger.debug('Decompressed bitstring', {
         compressedSize: compressedData.length,
@@ -256,10 +265,10 @@ export class BitstringUtils {
    * @param bitstring The bitstring to encode
    * @returns Base64url-encoded string with multibase prefix
    */
-  static encodeBitstring(bitstring: Uint8Array): string {
+  static async encodeBitstring(bitstring: Uint8Array): Promise<string> {
     try {
       // First compress the bitstring
-      const compressed = this.compressBitstring(bitstring);
+      const compressed = await this.compressBitstring(bitstring);
 
       // Convert to base64url (no padding)
       const base64 = compressed.toString('base64');
@@ -289,7 +298,7 @@ export class BitstringUtils {
    * @param encodedList The encoded bitstring
    * @returns Decoded bitstring
    */
-  static decodeBitstring(encodedList: string): Uint8Array {
+  static async decodeBitstring(encodedList: string): Promise<Uint8Array> {
     try {
       // Remove multibase prefix if present
       let base64url = encodedList;
@@ -308,7 +317,7 @@ export class BitstringUtils {
       const compressed = Buffer.from(paddedBase64, 'base64');
 
       // Decompress the bitstring
-      const bitstring = this.decompressBitstring(compressed);
+      const bitstring = await this.decompressBitstring(compressed);
 
       logger.debug('Decoded bitstring', {
         encodedLength: encodedList.length,

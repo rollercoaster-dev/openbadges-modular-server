@@ -12,9 +12,9 @@ import { SqliteStatusListMapper } from '@infrastructure/database/modules/sqlite/
 describe('Status List Numeric Columns', () => {
   let statusList: StatusList;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create a test status list with numeric values
-    statusList = StatusList.create({
+    statusList = await StatusList.create({
       issuerId: 'test-issuer-id',
       purpose: StatusPurpose.REVOCATION,
       statusSize: 2,
@@ -75,9 +75,9 @@ describe('Status List Numeric Columns', () => {
       expect(domainEntity.ttl).toBe(86400000);
     });
 
-    it('should handle null ttl correctly', () => {
+    it('should handle null ttl correctly', async () => {
       // Create status list without TTL
-      const statusListWithoutTtl = StatusList.create({
+      const statusListWithoutTtl = await StatusList.create({
         issuerId: 'test-issuer-id',
         purpose: StatusPurpose.REVOCATION,
         statusSize: 1,
@@ -155,9 +155,9 @@ describe('Status List Numeric Columns', () => {
       expect(domainEntity.ttl).toBe(86400000);
     });
 
-    it('should handle null ttl correctly', () => {
+    it('should handle null ttl correctly', async () => {
       // Create status list without TTL
-      const statusListWithoutTtl = StatusList.create({
+      const statusListWithoutTtl = await StatusList.create({
         issuerId: 'test-issuer-id',
         purpose: StatusPurpose.REVOCATION,
         statusSize: 1,

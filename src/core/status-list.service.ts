@@ -48,7 +48,7 @@ export class StatusListService {
       StatusList.validateParams(params);
 
       // Create the status list entity
-      const statusList = StatusList.create(params);
+      const statusList = await StatusList.create(params);
 
       // Save to repository
       const savedStatusList = await this.repository.create(statusList);
@@ -176,11 +176,11 @@ export class StatusListService {
    * @param statusSize Size of each status entry in bits
    * @returns Encoded bitstring
    */
-  static generateBitstring(
+  static async generateBitstring(
     entries: Array<{ index: number; value: number }>,
     totalEntries: number = 131072,
     statusSize: number = 1
-  ): string {
+  ): Promise<string> {
     try {
       logger.debug('Generating bitstring', {
         entriesCount: entries.length,
@@ -208,7 +208,7 @@ export class StatusListService {
       }
 
       // Encode the bitstring
-      const encodedList = BitstringUtils.encodeBitstring(bitstring);
+      const encodedList = await BitstringUtils.encodeBitstring(bitstring);
 
       logger.info('Bitstring generated successfully', {
         entriesCount: entries.length,
@@ -235,17 +235,17 @@ export class StatusListService {
    * @param statusSize Size of each status entry in bits
    * @returns Decoded bitstring
    */
-  static expandBitstring(
+  static async expandBitstring(
     encodedList: string,
     statusSize: number = 1
-  ): Uint8Array {
+  ): Promise<Uint8Array> {
     try {
       logger.debug('Expanding bitstring', {
         encodedLength: encodedList.length,
         statusSize,
       });
 
-      const bitstring = BitstringUtils.decodeBitstring(encodedList);
+      const bitstring = await BitstringUtils.decodeBitstring(encodedList);
 
       logger.debug('Bitstring expanded successfully', {
         encodedLength: encodedList.length,
@@ -386,9 +386,9 @@ export class StatusListService {
    * @param credential The credential to validate
    * @returns True if valid, throws error if invalid
    */
-  validateStatusListCredential(
+  async validateStatusListCredential(
     credential: BitstringStatusListCredential
-  ): boolean {
+  ): Promise<boolean> {
     try {
       // Validate required fields
       if (!credential.id) {
@@ -432,7 +432,7 @@ export class StatusListService {
       }
 
       // Validate encoded list format
-      BitstringUtils.decodeBitstring(subject.encodedList);
+      await BitstringUtils.decodeBitstring(subject.encodedList);
 
       logger.debug('Status list credential validation passed', {
         credentialId: credential.id,
