@@ -520,4 +520,12 @@ export class RepositoryFactory {
       return false;
     }
   }
+
+  /**
+   * Gets the SQLite connection manager for migrations and other operations
+   * @returns The SQLite connection manager or null if not initialized
+   */
+  static getSqliteConnectionManager() {
+    return RepositoryFactory.sqliteConnectionManager;
+  }
 }

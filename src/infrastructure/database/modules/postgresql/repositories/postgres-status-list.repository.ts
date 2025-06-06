@@ -20,6 +20,7 @@ import { PostgresEntityType } from '../types/postgres-database.types';
 import { logger } from '@utils/logging/logger.service';
 import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
 import { createOrGenerateIRI } from '@utils/types/type-utils';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { Shared } from 'openbadges-types';
 
 /**
@@ -143,6 +144,9 @@ export class PostgresStatusListRepository
   ): Promise<StatusList | null> {
     const context = this.createOperationContext('SELECT Available StatusList');
 
+    // Convert issuer ID from URN format to UUID format for database query
+    const dbIssuerId = convertUuid(issuerId, 'postgresql', 'to');
+
     return this.executeQuery(
       context,
       async (db) => {
@@ -151,7 +155,7 @@ export class PostgresStatusListRepository
           .from(statusLists)
           .where(
             and(
-              eq(statusLists.issuerId, issuerId),
+              eq(statusLists.issuerId, dbIssuerId),
               eq(statusLists.purpose, purpose),
               eq(statusLists.statusSize, statusSize),
               lt(statusLists.usedEntries, statusLists.totalEntries)
@@ -162,7 +166,7 @@ export class PostgresStatusListRepository
 
         return result.length > 0 ? [this.mapper.toDomain(result[0])] : [];
       },
-      [issuerId, purpose, statusSize]
+      [dbIssuerId, purpose, statusSize]
     ).then((results) => results[0] || null);
   }
 
@@ -245,6 +249,9 @@ export class PostgresStatusListRepository
   ): Promise<CredentialStatusEntryData | null> {
     const context = this.createOperationContext('SELECT CredentialStatusEntry');
 
+    // Convert credential ID from URN format to UUID format for database query
+    const dbCredentialId = convertUuid(credentialId, 'postgresql', 'to');
+
     return this.executeQuery(
       context,
       async (db) => {
@@ -253,7 +260,7 @@ export class PostgresStatusListRepository
           .from(credentialStatusEntries)
           .where(
             and(
-              eq(credentialStatusEntries.credentialId, credentialId),
+              eq(credentialStatusEntries.credentialId, dbCredentialId),
               eq(credentialStatusEntries.purpose, purpose)
             )
           )
@@ -263,7 +270,7 @@ export class PostgresStatusListRepository
           ? [this.mapper.statusEntryToDomain(result[0])]
           : [];
       },
-      [credentialId, purpose]
+      [dbCredentialId, purpose]
     ).then((results) => results[0] || null);
   }
 
@@ -345,10 +352,13 @@ export class PostgresStatusListRepository
               );
             }
 
-            // Find the status list
-            const statusList = await this.findById(
-              statusEntry.statusListId as Shared.IRI
+            // Find the status list (convert URN to UUID format for database query)
+            const statusListId = convertUuid(
+              statusEntry.statusListId,
+              'postgresql',
+              'to'
             );
+            const statusList = await this.findById(statusListId as Shared.IRI);
             if (!statusList) {
               throw new Error(
                 `Status list ${statusEntry.statusListId} not found`
@@ -426,22 +436,28 @@ export class PostgresStatusListRepository
   async getUsedEntriesCount(statusListId: string): Promise<number> {
     const context = this.createOperationContext('COUNT Used Entries');
 
+    // Convert status list ID from URN format to UUID format for database query
+    const dbStatusListId = convertUuid(statusListId, 'postgresql', 'to');
+
     return this.executeQuery(
       context,
       async (db) => {
         const result = await db
           .select({ count: sql<number>`count(*)` })
           .from(credentialStatusEntries)
-          .where(eq(credentialStatusEntries.statusListId, statusListId));
+          .where(eq(credentialStatusEntries.statusListId, dbStatusListId));
 
         return [result[0]?.count || 0];
       },
-      [statusListId]
+      [dbStatusListId]
     ).then((results) => results[0]);
   }
 
   async findByIssuer(issuerId: string): Promise<StatusList[]> {
     const context = this.createOperationContext('SELECT StatusLists by Issuer');
+
+    // Convert issuer ID from URN format to UUID format for database query
+    const dbIssuerId = convertUuid(issuerId, 'postgresql', 'to');
 
     return this.executeQuery(
       context,
@@ -449,12 +465,12 @@ export class PostgresStatusListRepository
         const result = await db
           .select()
           .from(statusLists)
-          .where(eq(statusLists.issuerId, issuerId))
+          .where(eq(statusLists.issuerId, dbIssuerId))
           .orderBy(desc(statusLists.createdAt));
 
         return result.map((record) => this.mapper.toDomain(record));
       },
-      [issuerId]
+      [dbIssuerId]
     );
   }
 
@@ -484,6 +500,9 @@ export class PostgresStatusListRepository
   ): Promise<boolean> {
     const context = this.createOperationContext('CHECK StatusEntry Exists');
 
+    // Convert credential ID from URN format to UUID format for database query
+    const dbCredentialId = convertUuid(credentialId, 'postgresql', 'to');
+
     return this.executeQuery(
       context,
       async (db) => {
@@ -492,14 +511,14 @@ export class PostgresStatusListRepository
           .from(credentialStatusEntries)
           .where(
             and(
-              eq(credentialStatusEntries.credentialId, credentialId),
+              eq(credentialStatusEntries.credentialId, dbCredentialId),
               eq(credentialStatusEntries.purpose, purpose)
             )
           );
 
         return [(result[0]?.count || 0) > 0];
       },
-      [credentialId, purpose]
+      [dbCredentialId, purpose]
     ).then((results) => results[0]);
   }
 

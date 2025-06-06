@@ -10,6 +10,7 @@ import {
 } from '@domains/status-list/status-list.types';
 import { statusLists, credentialStatusEntries } from '../schema';
 import { logger } from '@utils/logging/logger.service';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 /**
  * Type for PostgreSQL status list record
@@ -96,7 +97,7 @@ export class PostgresStatusListMapper {
   ): Record<string, unknown> {
     try {
       return {
-        credentialId: entity.credentialId,
+        credentialId: convertUuid(entity.credentialId, 'postgresql', 'to'),
         statusListId: entity.statusListId,
         statusListIndex: entity.statusListIndex,
         statusSize: entity.statusSize,
@@ -129,7 +130,7 @@ export class PostgresStatusListMapper {
     try {
       return {
         id: record.id,
-        credentialId: record.credentialId,
+        credentialId: convertUuid(record.credentialId, 'postgresql', 'from'),
         statusListId: record.statusListId,
         statusListIndex: record.statusListIndex,
         statusSize: record.statusSize,

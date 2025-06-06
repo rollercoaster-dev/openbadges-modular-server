@@ -234,7 +234,20 @@ export class AssertionController {
       // Create the assertion using the mapped data
       const assertion = Assertion.create(mappedData);
 
+      // Sign the assertion if requested
+      let signedAssertion = assertion;
+      if (sign) {
+        signedAssertion =
+          await VerificationService.createVerificationForAssertion(assertion);
+      }
+
+      // Save the assertion first (required for foreign key constraints)
+      const createdAssertion = await this.assertionRepository.create(
+        signedAssertion
+      );
+
       // Assign credential status for v3.0 credentials if service is available
+      // This must happen AFTER the assertion is saved to satisfy foreign key constraints
       if (
         version === BadgeVersion.V3 &&
         this.credentialStatusService &&
@@ -243,7 +256,7 @@ export class AssertionController {
         try {
           const statusAssignment =
             await this.credentialStatusService.assignCredentialStatus({
-              credentialId: assertion.id,
+              credentialId: createdAssertion.id,
               issuerId: issuer.id,
               purpose: StatusPurpose.REVOCATION,
               statusSize: 1,
@@ -252,9 +265,16 @@ export class AssertionController {
 
           if (statusAssignment.success && statusAssignment.credentialStatus) {
             // Update the assertion with the assigned credential status
-            assertion.credentialStatus = statusAssignment.credentialStatus;
+            createdAssertion.credentialStatus =
+              statusAssignment.credentialStatus;
+
+            // Update the assertion in the database with the credential status
+            await this.assertionRepository.update(createdAssertion.id, {
+              credentialStatus: statusAssignment.credentialStatus,
+            });
+
             logger.info('Credential status assigned to assertion', {
-              assertionId: assertion.id,
+              assertionId: createdAssertion.id,
               statusListIndex:
                 statusAssignment.credentialStatus.statusListIndex,
               statusListCredential:
@@ -262,30 +282,18 @@ export class AssertionController {
             });
           } else {
             logger.warn('Failed to assign credential status', {
-              assertionId: assertion.id,
+              assertionId: createdAssertion.id,
               error: statusAssignment.error,
             });
           }
         } catch (error) {
           logger.error('Error during credential status assignment', {
-            assertionId: assertion.id,
+            assertionId: createdAssertion.id,
             error: error instanceof Error ? error.message : String(error),
           });
           // Continue without status assignment - this is not a critical failure
         }
       }
-
-      // Sign the assertion if requested
-      let signedAssertion = assertion;
-      if (sign) {
-        signedAssertion =
-          await VerificationService.createVerificationForAssertion(assertion);
-      }
-
-      // Save the assertion
-      const createdAssertion = await this.assertionRepository.create(
-        signedAssertion
-      );
 
       // For a complete response, we need the badge class and issuer
       if (version === BadgeVersion.V3) {

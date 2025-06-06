@@ -42,6 +42,18 @@ const mockStatusListController = {
     updatedAt: new Date().toISOString(),
   })),
   getStatusListById: mock(async () => ({
+    id: 'test-status-list-1',
+    issuerId: 'test-issuer-1',
+    purpose: StatusPurpose.REVOCATION,
+    statusSize: 1,
+    totalEntries: 100000,
+    usedEntries: 0,
+    encodedList:
+      'H4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })),
+  getStatusListCredential: mock(async () => ({
     '@context': [
       'https://www.w3.org/2018/credentials/v1',
       'https://w3id.org/vc/status-list/2021/v1',
@@ -58,23 +70,18 @@ const mockStatusListController = {
         'H4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA',
     },
   })),
-  getStatusLists: mock(async () => ({
-    statusLists: [
-      {
-        id: 'test-status-list-1',
-        issuerId: 'test-issuer-1',
-        purpose: StatusPurpose.REVOCATION,
-        statusSize: 1,
-        totalEntries: 100000,
-        usedEntries: 10,
-      },
-    ],
-    pagination: {
-      page: 1,
-      limit: 10,
-      total: 1,
+  findStatusLists: mock(async () => [
+    {
+      id: 'test-status-list-1',
+      issuerId: 'test-issuer-1',
+      purpose: StatusPurpose.REVOCATION,
+      statusSize: 1,
+      totalEntries: 100000,
+      usedEntries: 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
-  })),
+  ]),
   getStatusListStats: mock(async () => ({
     totalEntries: 100000,
     usedEntries: 1500,

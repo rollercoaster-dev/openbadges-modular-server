@@ -968,7 +968,9 @@ export function createVersionedRouter(
           name:
             typeof issuer.name === 'string'
               ? issuer.name
-              : issuer.name?.en || Object.values(issuer.name)[0] || '',
+              : issuer.name?.en ||
+                (issuer.name ? Object.values(issuer.name)[0] : '') ||
+                '',
           url: issuer.url,
         };
 

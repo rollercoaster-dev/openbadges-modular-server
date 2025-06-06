@@ -10,6 +10,7 @@ import {
 } from '@domains/status-list/status-list.types';
 import { statusLists, credentialStatusEntries } from '../schema';
 import { logger } from '@utils/logging/logger.service';
+import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 
 /**
  * Type for SQLite status list record
@@ -33,7 +34,7 @@ export class SqliteStatusListMapper {
     try {
       return {
         id: entity.id,
-        issuerId: entity.issuerId,
+        issuerId: convertUuid(entity.issuerId, 'sqlite', 'to'), // Convert URN to UUID for SQLite storage
         purpose: entity.purpose,
         statusSize: entity.statusSize,
         encodedList: entity.encodedList,
@@ -60,7 +61,7 @@ export class SqliteStatusListMapper {
     try {
       const data: StatusListData = {
         id: record.id,
-        issuerId: record.issuerId,
+        issuerId: convertUuid(record.issuerId, 'sqlite', 'from'), // Convert UUID to URN for domain entity
         purpose: record.purpose as StatusPurpose,
         statusSize: record.statusSize,
         encodedList: record.encodedList,
@@ -96,8 +97,8 @@ export class SqliteStatusListMapper {
     try {
       return {
         id: entity.id,
-        credentialId: entity.credentialId,
-        statusListId: entity.statusListId,
+        credentialId: convertUuid(entity.credentialId, 'sqlite', 'to'), // Convert URN to UUID for SQLite storage
+        statusListId: convertUuid(entity.statusListId, 'sqlite', 'to'), // Convert URN to UUID for SQLite storage
         statusListIndex: entity.statusListIndex,
         statusSize: entity.statusSize,
         purpose: entity.purpose,
@@ -129,8 +130,8 @@ export class SqliteStatusListMapper {
     try {
       return {
         id: record.id,
-        credentialId: record.credentialId,
-        statusListId: record.statusListId,
+        credentialId: convertUuid(record.credentialId, 'sqlite', 'from'), // Convert UUID to URN for domain entity
+        statusListId: convertUuid(record.statusListId, 'sqlite', 'from'), // Convert UUID to URN for domain entity
         statusListIndex: record.statusListIndex,
         statusSize: record.statusSize,
         purpose: record.purpose as StatusPurpose,
