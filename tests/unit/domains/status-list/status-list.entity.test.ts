@@ -12,6 +12,7 @@ import {
   StatusListData,
   CreateStatusListParams,
 } from '@domains/status-list/status-list.types';
+import { Shared } from 'openbadges-types';
 
 // Mock the logger to avoid console output during tests
 mock.module('@utils/logging/logger.service', () => ({
@@ -216,7 +217,7 @@ describe('StatusList Entity', () => {
         const bitstringStatusList = minimalStatusList.toBitstringStatusList();
 
         expect(bitstringStatusList).toEqual({
-          id: validStatusListData.id,
+          id: validStatusListData.id as Shared.IRI,
           type: 'BitstringStatusList',
           statusPurpose: validStatusListData.purpose,
           encodedList: validStatusListData.encodedList,

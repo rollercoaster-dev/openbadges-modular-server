@@ -225,3 +225,6 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// Export the app for testing
+export { app };

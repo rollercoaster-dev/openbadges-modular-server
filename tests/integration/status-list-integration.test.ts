@@ -12,6 +12,11 @@ import {
 } from '../../src/domains/status-list/status-list.types';
 import { Shared } from 'openbadges-types';
 
+interface TestCredentialStatus {
+  type: string;
+  statusPurpose: string;
+}
+
 describe('StatusList2021 Integration with Assertion Entity', () => {
   describe('BitstringStatusListEntry Integration', () => {
     it('should create assertion with BitstringStatusListEntry credentialStatus', () => {
@@ -26,7 +31,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -56,7 +62,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -70,16 +77,19 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
       const v3Object = assertion.toObject(BadgeVersion.V3);
 
       expect(v3Object.credentialStatus).toEqual(credentialStatus);
-      expect(v3Object.credentialStatus?.type).toBe('BitstringStatusListEntry');
-      expect(v3Object.credentialStatus?.statusPurpose).toBe(
-        StatusPurpose.REVOCATION
+      expect((v3Object.credentialStatus as TestCredentialStatus)?.type).toBe(
+        'BitstringStatusListEntry'
       );
+      expect(
+        (v3Object.credentialStatus as TestCredentialStatus)?.statusPurpose
+      ).toBe(StatusPurpose.REVOCATION);
     });
 
     it('should not create placeholder credentialStatus for revoked assertions', () => {
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -105,7 +115,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-2' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -133,7 +144,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -148,7 +160,9 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       // Check that credentialStatus is included in the output
       expect(jsonLd).toHaveProperty('credentialStatus');
-      expect((jsonLd as Record<string, unknown>).credentialStatus).toEqual(credentialStatus);
+      expect((jsonLd as Record<string, unknown>).credentialStatus).toEqual(
+        credentialStatus
+      );
       expect(jsonLd.type).toEqual([
         'VerifiableCredential',
         'OpenBadgeCredential',
@@ -170,7 +184,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
       const assertion = Assertion.create({
         id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
+        badgeClass:
+          'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',

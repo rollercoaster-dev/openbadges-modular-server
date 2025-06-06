@@ -12,6 +12,7 @@ import {
   AssertionData,
   VerifiableCredentialData,
 } from '../types/badge-data.types';
+import { StatusPurpose } from '../../domains/status-list/status-list.types';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 
 /**
@@ -158,7 +159,7 @@ export function createVerifiableCredential(
       credentialStatus: {
         id: `${assertion.id}#status` as Shared.IRI,
         type: 'BitstringStatusListEntry',
-        statusPurpose: 'revocation',
+        statusPurpose: StatusPurpose.REVOCATION,
         statusListIndex: '0',
         statusListCredential: `${assertion.id}#list` as Shared.IRI,
       },
