@@ -180,44 +180,73 @@ export async function ensureDatabaseSync(
 }
 
 /**
- * Ensures database transaction is committed by performing a simple write-read cycle.
+ * Ensures database transaction is committed by verifying database responsiveness.
  *
- * This is useful when you need to ensure that a transaction has been committed
- * but don't have specific entity IDs to verify.
+ * This function uses the existing RepositoryFactory infrastructure to perform
+ * database-agnostic connectivity verification, replacing fragile error-dependent
+ * approaches with robust health check patterns.
  *
  * @param config Optional configuration for synchronization behavior
  */
 export async function ensureTransactionCommitted(
-  _config: Partial<DatabaseSyncConfig> = {}
+  config: Partial<DatabaseSyncConfig> = {}
 ): Promise<void> {
-  logger.debug('Ensuring transaction committed');
+  const syncConfig = { ...DEFAULT_SYNC_CONFIG, ...config };
+  logger.debug('Ensuring transaction committed using database health check');
 
   try {
-    // For SQLite, we can use a simple PRAGMA query to ensure the database is responsive
-    // For PostgreSQL, we can use a simple SELECT query
+    // Use RepositoryFactory's robust database connection health check
+    // This leverages the existing infrastructure and is database-agnostic
+    const isConnected = await RepositoryFactory.isConnected();
 
-    // This is a lightweight operation that forces the database to respond
-    // and confirms that any pending transactions have been processed
-    const userRepository = await RepositoryFactory.createUserRepository();
-
-    // Perform a simple query that doesn't depend on specific data
-    // This forces the database to process any pending operations
-    await userRepository.findById('non-existent-id' as Shared.IRI);
-
-    logger.debug('Transaction commit verification completed');
-  } catch (error) {
-    // We expect this to fail (entity not found), but the database should be responsive
-    if (error instanceof Error && error.message.includes('not found')) {
-      // This is expected - the query executed successfully
-      logger.debug(
-        'Transaction commit verification completed (expected not found)'
+    if (!isConnected) {
+      logger.warn(
+        'Database connection not available during transaction verification'
       );
-      return;
+      throw new Error('Database connection is not available');
     }
 
-    // Unexpected error - rethrow
+    // Additional verification with polling if needed
+    let attempts = 0;
+    let verificationSuccessful = false;
+
+    while (attempts < syncConfig.maxAttempts && !verificationSuccessful) {
+      try {
+        // Use the RepositoryFactory's connection verification which includes
+        // proper health checks for both SQLite and PostgreSQL
+        verificationSuccessful = await RepositoryFactory.isConnected();
+
+        if (!verificationSuccessful && attempts < syncConfig.maxAttempts - 1) {
+          // Wait before retrying if not on the last attempt
+          await new Promise((resolve) =>
+            setTimeout(resolve, syncConfig.pollIntervalMs)
+          );
+        }
+
+        attempts++;
+      } catch (verificationError) {
+        attempts++;
+        if (attempts >= syncConfig.maxAttempts) {
+          throw verificationError;
+        }
+        // Wait before retrying on error
+        await new Promise((resolve) =>
+          setTimeout(resolve, syncConfig.pollIntervalMs)
+        );
+      }
+    }
+
+    if (!verificationSuccessful) {
+      throw new Error(
+        `Database verification failed after ${syncConfig.maxAttempts} attempts`
+      );
+    }
+
+    logger.debug('Transaction commit verification completed successfully');
+  } catch (error) {
     logger.error('Transaction commit verification failed', {
       error: error instanceof Error ? error.message : String(error),
+      attempts: config.maxAttempts || DEFAULT_SYNC_CONFIG.maxAttempts,
     });
     throw error;
   }

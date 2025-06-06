@@ -1,16 +1,16 @@
 /**
  * Tests for Database Synchronization Helper
- * 
+ *
  * These tests verify that our database synchronization utilities work correctly
  * and provide better alternatives to setTimeout-based approaches.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { 
-  ensureDatabaseSync, 
+import {
+  ensureDatabaseSync,
   ensureTransactionCommitted,
   retryWithBackoff,
-  pollUntilCondition 
+  pollUntilCondition,
 } from './database-sync.helper';
 import { RepositoryFactory } from '@/infrastructure/repository.factory';
 import { User } from '@/domains/user/user.entity';
@@ -55,13 +55,13 @@ describe('Database Synchronization Helper', () => {
 
     it('should complete quickly with custom config', async () => {
       const startTime = Date.now();
-      
+
       await ensureTransactionCommitted({
         maxWaitMs: 1000,
         pollIntervalMs: 10,
         maxAttempts: 10,
       });
-      
+
       const duration = Date.now() - startTime;
       expect(duration).toBeLessThan(1000); // Should complete quickly
     });
@@ -92,7 +92,7 @@ describe('Database Synchronization Helper', () => {
 
     it('should timeout for non-existent entities', async () => {
       const nonExistentId = createOrGenerateIRI();
-      
+
       // This should timeout quickly since the entity doesn't exist
       await expect(
         ensureDatabaseSync([nonExistentId], {
@@ -107,7 +107,7 @@ describe('Database Synchronization Helper', () => {
   describe('retryWithBackoff', () => {
     it('should succeed on first attempt for successful operations', async () => {
       let attemptCount = 0;
-      
+
       const result = await retryWithBackoff(async () => {
         attemptCount++;
         return 'success';
@@ -119,14 +119,18 @@ describe('Database Synchronization Helper', () => {
 
     it('should retry failed operations with exponential backoff', async () => {
       let attemptCount = 0;
-      
-      const result = await retryWithBackoff(async () => {
-        attemptCount++;
-        if (attemptCount < 3) {
-          throw new Error('Temporary failure');
-        }
-        return 'success after retries';
-      }, 3, 10); // 3 retries, 10ms base delay
+
+      const result = await retryWithBackoff(
+        async () => {
+          attemptCount++;
+          if (attemptCount < 3) {
+            throw new Error('Temporary failure');
+          }
+          return 'success after retries';
+        },
+        3,
+        10
+      ); // 3 retries, 10ms base delay
 
       expect(result).toBe('success after retries');
       expect(attemptCount).toBe(3);
@@ -134,12 +138,16 @@ describe('Database Synchronization Helper', () => {
 
     it('should fail after exhausting all retries', async () => {
       let attemptCount = 0;
-      
+
       await expect(
-        retryWithBackoff(async () => {
-          attemptCount++;
-          throw new Error('Persistent failure');
-        }, 2, 10) // 2 retries, 10ms base delay
+        retryWithBackoff(
+          async () => {
+            attemptCount++;
+            throw new Error('Persistent failure');
+          },
+          2,
+          10
+        ) // 2 retries, 10ms base delay
       ).rejects.toThrow('Persistent failure');
 
       expect(attemptCount).toBe(3); // Initial attempt + 2 retries
@@ -155,14 +163,17 @@ describe('Database Synchronization Helper', () => {
 
     it('should succeed when condition becomes true after some attempts', async () => {
       let attemptCount = 0;
-      
+
       await expect(
-        pollUntilCondition(async () => {
-          attemptCount++;
-          return attemptCount >= 3;
-        }, {
-          pollIntervalMs: 10,
-        })
+        pollUntilCondition(
+          async () => {
+            attemptCount++;
+            return attemptCount >= 3;
+          },
+          {
+            pollIntervalMs: 10,
+          }
+        )
       ).resolves.toBeUndefined();
 
       expect(attemptCount).toBeGreaterThanOrEqual(3);

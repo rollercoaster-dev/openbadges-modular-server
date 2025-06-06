@@ -339,7 +339,8 @@ describe('Credential Status Update API', () => {
 
       expect(response.status).toBe(200);
 
-      const credential = (await response.json()) as BitstringStatusListCredentialResponseDto;
+      const credential =
+        (await response.json()) as BitstringStatusListCredentialResponseDto;
 
       // Validate BitstringStatusListCredential structure
       expect(credential).toMatchObject({

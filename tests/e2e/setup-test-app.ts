@@ -664,8 +664,23 @@ export async function setupTestApp(
       await RepositoryFactory.createBadgeClassRepository();
     const assertionRepository =
       await RepositoryFactory.createAssertionRepository();
+    const statusListRepository =
+      await RepositoryFactory.createStatusListRepository();
 
-    // Initialize controllers with repositories
+    // Initialize services
+    const { StatusListService } = await import(
+      '../../src/core/status-list.service'
+    );
+    const { CredentialStatusService } = await import(
+      '../../src/core/credential-status.service'
+    );
+
+    const statusListService = new StatusListService(statusListRepository);
+    const credentialStatusService = new CredentialStatusService(
+      statusListService
+    );
+
+    // Initialize controllers with repositories and services
     const issuerController = new IssuerController(issuerRepository);
     const badgeClassController = new BadgeClassController(
       badgeClassRepository,
@@ -674,7 +689,8 @@ export async function setupTestApp(
     const assertionController = new AssertionController(
       assertionRepository,
       badgeClassRepository,
-      issuerRepository
+      issuerRepository,
+      credentialStatusService
     );
 
     // Create JWKS controller
@@ -698,8 +714,14 @@ export async function setupTestApp(
 
     // Start the server with Bun
     const testPort = port || parseInt(process.env.TEST_PORT || '3001');
+
+    // Set BASE_URL for status list credential URL generation
+    const baseUrl = `http://${config.server.host || 'localhost'}:${testPort}`;
+    process.env.BASE_URL = baseUrl;
+
     logger.info(
-      `Starting test server on port ${testPort} with host ${config.server.host}`
+      `Starting test server on port ${testPort} with host ${config.server.host}`,
+      { baseUrl }
     );
 
     const server = Bun.serve({
