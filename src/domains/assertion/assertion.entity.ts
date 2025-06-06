@@ -81,12 +81,14 @@ export class Assertion {
     }
 
     // If revoked is true but no credentialStatus is provided, create a default one
+    // Note: This is a fallback for legacy support. New credentials should use
+    // the CredentialStatusService for proper BitstringStatusListEntry assignment
     if (data.revoked && !data.credentialStatus) {
       data.credentialStatus = {
-        id: `${data.id}#status` as Shared.IRI,
-        type: 'StatusList2021Entry',
+        type: 'BitstringStatusListEntry',
         statusPurpose: 'revocation',
-        statusList: `${data.id}#list` as Shared.IRI,
+        statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
+        statusListCredential: `${data.id}#list` as Shared.IRI, // Placeholder URL
       };
     }
 
@@ -99,7 +101,9 @@ export class Assertion {
    */
   validateForV3(): void {
     if (!this.issuer) {
-      throw new Error('Issuer is required for Open Badges v3.0 VerifiableCredential format');
+      throw new Error(
+        'Issuer is required for Open Badges v3.0 VerifiableCredential format'
+      );
     }
 
     // If issuer is an object, validate required fields
@@ -188,10 +192,10 @@ export class Assertion {
       // Add credentialStatus if present or if revoked
       if (this.credentialStatus || this.revoked) {
         ob3Data.credentialStatus = this.credentialStatus || {
-          id: `${this.id}#status` as Shared.IRI,
-          type: 'StatusList2021Entry',
+          type: 'BitstringStatusListEntry',
           statusPurpose: 'revocation',
-          statusList: `${this.id}#list` as Shared.IRI,
+          statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
+          statusListCredential: `${this.id}#list` as Shared.IRI, // Placeholder URL
         };
       }
 
@@ -249,10 +253,10 @@ export class Assertion {
       (this.credentialStatus || this.revoked)
     ) {
       assertionData.credentialStatus = this.credentialStatus || {
-        id: `${this.id}#status` as Shared.IRI,
-        type: 'StatusList2021Entry',
+        type: 'BitstringStatusListEntry',
         statusPurpose: 'revocation',
-        statusList: `${this.id}#list` as Shared.IRI,
+        statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
+        statusListCredential: `${this.id}#list` as Shared.IRI, // Placeholder URL
       };
     }
 

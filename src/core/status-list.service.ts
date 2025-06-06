@@ -15,6 +15,7 @@ import {
   StatusListQueryParams,
   BitstringStatusListEntry,
   BitstringStatusListCredential,
+  CredentialStatusEntryData,
 } from '../domains/status-list/status-list.types';
 import { BitstringUtils } from '../utils/bitstring/bitstring.utils';
 import { logger } from '../utils/logging/logger.service';
@@ -376,6 +377,137 @@ export class StatusListService {
         error: error instanceof Error ? error.message : String(error),
         statusListId: statusList.id,
         issuerId: issuerData.id,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets the next available index in a status list
+   * @param statusListId The status list ID
+   * @returns The next available index or null if no slots available
+   */
+  async getNextAvailableIndex(statusListId: string): Promise<number | null> {
+    try {
+      logger.debug('Getting next available index', { statusListId });
+
+      const statusList = await this.repository.findById(statusListId);
+      if (!statusList) {
+        throw new Error('Status list not found');
+      }
+
+      // Check if there's capacity
+      if (statusList.usedEntries >= statusList.totalEntries) {
+        logger.warn('Status list is at capacity', {
+          statusListId,
+          usedEntries: statusList.usedEntries,
+          totalEntries: statusList.totalEntries,
+        });
+        return null;
+      }
+
+      // Get the next available index (simple sequential allocation)
+      const nextIndex = statusList.usedEntries;
+
+      logger.debug('Next available index found', {
+        statusListId,
+        nextIndex,
+        usedEntries: statusList.usedEntries,
+      });
+
+      return nextIndex;
+    } catch (error) {
+      logger.error('Failed to get next available index', {
+        error: error instanceof Error ? error.message : String(error),
+        statusListId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a status entry for a credential
+   * @param params Status entry parameters
+   * @returns Created status entry
+   */
+  async createStatusEntry(params: {
+    credentialId: string;
+    statusListId: string;
+    statusListIndex: number;
+    statusSize: number;
+    purpose: StatusPurpose;
+    currentStatus: number;
+  }): Promise<CredentialStatusEntryData> {
+    try {
+      logger.debug('Creating status entry', params);
+
+      const statusEntry = await this.repository.createStatusEntry({
+        credentialId: params.credentialId,
+        statusListId: params.statusListId,
+        statusListIndex: params.statusListIndex,
+        statusSize: params.statusSize,
+        purpose: params.purpose,
+        currentStatus: params.currentStatus,
+      });
+
+      // Update the status list's used entries count
+      const statusList = await this.repository.findById(params.statusListId);
+      if (statusList) {
+        statusList.usedEntries += 1;
+        await this.repository.update(statusList);
+      }
+
+      logger.info('Status entry created successfully', {
+        entryId: statusEntry.id,
+        credentialId: params.credentialId,
+        statusListId: params.statusListId,
+        statusListIndex: params.statusListIndex,
+      });
+
+      return statusEntry;
+    } catch (error) {
+      logger.error('Failed to create status entry', {
+        error: error instanceof Error ? error.message : String(error),
+        params,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets a status entry for a credential
+   * @param credentialId The credential ID
+   * @param purpose The status purpose
+   * @returns Status entry or null if not found
+   */
+  async getStatusEntry(
+    credentialId: string,
+    purpose: StatusPurpose
+  ): Promise<CredentialStatusEntryData | null> {
+    try {
+      logger.debug('Getting status entry', { credentialId, purpose });
+
+      const statusEntry = await this.repository.findStatusEntry(
+        credentialId,
+        purpose
+      );
+
+      if (statusEntry) {
+        logger.debug('Status entry found', {
+          entryId: statusEntry.id,
+          credentialId,
+          statusListIndex: statusEntry.statusListIndex,
+        });
+      } else {
+        logger.debug('No status entry found', { credentialId, purpose });
+      }
+
+      return statusEntry;
+    } catch (error) {
+      logger.error('Failed to get status entry', {
+        error: error instanceof Error ? error.message : String(error),
+        credentialId,
+        purpose,
       });
       throw error;
     }

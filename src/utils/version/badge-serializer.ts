@@ -32,9 +32,7 @@ export interface BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in the appropriate format
    */
-  serializeBadgeClass(
-    badgeClass: BadgeClassData
-  ): BadgeClassData & {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & {
     '@context': string | string[];
     type: string | string[];
   };
@@ -94,9 +92,7 @@ export class OpenBadges2Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 2.0 format
    */
-  serializeBadgeClass(
-    badgeClass: BadgeClassData
-  ): BadgeClassData & {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & {
     '@context': string | string[];
     type: string | string[];
   } {
@@ -198,9 +194,7 @@ export class OpenBadges3Serializer implements BadgeSerializer {
    * @param badgeClass The badge class object
    * @returns A serialized badge class in Open Badges 3.0 format
    */
-  serializeBadgeClass(
-    badgeClass: BadgeClassData
-  ): BadgeClassData & {
+  serializeBadgeClass(badgeClass: BadgeClassData): BadgeClassData & {
     '@context': string | string[];
     type: string | string[];
   } {
@@ -366,10 +360,10 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(!assertion.credentialStatus &&
         assertion.revoked !== undefined && {
           credentialStatus: {
-            id: `${assertion.id}#status` as Shared.IRI,
-            type: 'StatusList2021Entry',
+            type: 'BitstringStatusListEntry',
             statusPurpose: 'revocation',
-            statusList: `${assertion.id}#list` as Shared.IRI,
+            statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
+            statusListCredential: `${assertion.id}#list` as Shared.IRI, // Placeholder URL
           },
         }),
     };
