@@ -14,6 +14,16 @@ import type { IssuerController } from '@/api/controllers/issuer.controller';
 import type { BadgeClassController } from '@/api/controllers/badgeClass.controller';
 import type { AssertionController } from '@/api/controllers/assertion.controller';
 import type { StatusListController } from '@/api/controllers/status-list.controller';
+import {
+  StatusUpdateResponseDto,
+  BitstringStatusListCredentialResponseDto,
+} from '@/api/dtos';
+
+// Error response interface for validation errors
+interface ErrorResponse {
+  success: boolean;
+  error: string;
+}
 
 // Mock controllers
 const mockIssuerController = {
@@ -203,7 +213,7 @@ describe('Credential Status Update API', () => {
 
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = (await response.json()) as StatusUpdateResponseDto;
       expect(data.success).toBe(true);
       expect(data.statusEntry).toBeDefined();
     });
@@ -227,7 +237,7 @@ describe('Credential Status Update API', () => {
 
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = (await response.json()) as StatusUpdateResponseDto;
       expect(data.success).toBe(true);
     });
 
@@ -248,7 +258,7 @@ describe('Credential Status Update API', () => {
       );
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = (await response.json()) as ErrorResponse;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
@@ -270,7 +280,7 @@ describe('Credential Status Update API', () => {
       );
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = (await response.json()) as ErrorResponse;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
@@ -310,7 +320,7 @@ describe('Credential Status Update API', () => {
       );
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = (await response.json()) as ErrorResponse;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
@@ -329,7 +339,7 @@ describe('Credential Status Update API', () => {
 
       expect(response.status).toBe(200);
 
-      const credential = await response.json();
+      const credential = (await response.json()) as BitstringStatusListCredentialResponseDto;
 
       // Validate BitstringStatusListCredential structure
       expect(credential).toMatchObject({

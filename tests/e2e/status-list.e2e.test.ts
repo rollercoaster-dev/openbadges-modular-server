@@ -14,6 +14,7 @@ import { createOrGenerateIRI } from '../../src/utils/types/type-utils';
 import type { UserRepository } from '../../src/domains/user/user.repository';
 import type { IssuerRepository } from '../../src/domains/issuer/issuer.repository';
 import type { BadgeClassRepository } from '../../src/domains/badgeClass/badgeClass.repository';
+import { ensureTransactionCommitted } from './helpers/database-sync.helper';
 
 // Test interfaces for API responses
 interface TestAssertionResponse {
@@ -107,8 +108,7 @@ describe('Status List E2E', () => {
     await badgeClassRepository.create(testBadgeClass);
 
     // Ensure database operations are committed before HTTP requests
-    // Add a small delay to allow SQLite to commit the transactions
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await ensureTransactionCommitted();
 
     // Get auth token (simplified for testing)
     authToken = 'Bearer test-token';
@@ -386,7 +386,7 @@ describe('Status List E2E', () => {
       await badgeClassRepository.create(testBadgeClass2);
 
       // Ensure database operations are committed before HTTP requests
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await ensureTransactionCommitted();
 
       try {
         // Create credentials from both issuers

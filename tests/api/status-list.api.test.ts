@@ -11,6 +11,13 @@ import type { IssuerController } from '@/api/controllers/issuer.controller';
 import type { BadgeClassController } from '@/api/controllers/badgeClass.controller';
 import type { AssertionController } from '@/api/controllers/assertion.controller';
 import type { StatusListController } from '@/api/controllers/status-list.controller';
+import { StatusUpdateResponseDto } from '@/api/dtos';
+
+// Error response interface for validation errors
+interface ErrorResponse {
+  success: boolean;
+  error: string;
+}
 
 // Mock controllers
 const mockIssuerController = {
@@ -234,7 +241,7 @@ describe('Status List API', () => {
       });
 
       expect(response.status).toBe(404);
-      const data = await response.json();
+      const data = (await response.json()) as ErrorResponse;
       expect(data.error).toBe('Not Found');
     });
 
@@ -402,7 +409,7 @@ describe('Status List API', () => {
       );
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = (await response.json()) as StatusUpdateResponseDto;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
