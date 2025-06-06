@@ -35,11 +35,11 @@ export class SqliteStatusListMapper {
         id: entity.id,
         issuerId: entity.issuerId,
         purpose: entity.purpose,
-        statusSize: entity.statusSize.toString(),
+        statusSize: entity.statusSize,
         encodedList: entity.encodedList,
-        ttl: entity.ttl?.toString(),
-        totalEntries: entity.totalEntries.toString(),
-        usedEntries: entity.usedEntries.toString(),
+        ttl: entity.ttl || null,
+        totalEntries: entity.totalEntries,
+        usedEntries: entity.usedEntries,
         metadata: entity.metadata ? JSON.stringify(entity.metadata) : null,
         createdAt: Math.floor(entity.createdAt.getTime() / 1000), // Convert to Unix timestamp
         updatedAt: Math.floor(entity.updatedAt.getTime() / 1000), // Convert to Unix timestamp
@@ -62,11 +62,11 @@ export class SqliteStatusListMapper {
         id: record.id,
         issuerId: record.issuerId,
         purpose: record.purpose as StatusPurpose,
-        statusSize: parseInt(record.statusSize, 10),
+        statusSize: record.statusSize,
         encodedList: record.encodedList,
-        ttl: record.ttl ? parseInt(record.ttl, 10) : undefined,
-        totalEntries: parseInt(record.totalEntries, 10),
-        usedEntries: parseInt(record.usedEntries, 10),
+        ttl: record.ttl || undefined,
+        totalEntries: record.totalEntries,
+        usedEntries: record.usedEntries,
         metadata: record.metadata ? JSON.parse(record.metadata) : undefined,
         createdAt: new Date(record.createdAt * 1000), // Convert from Unix timestamp
         updatedAt: new Date(record.updatedAt * 1000), // Convert from Unix timestamp
@@ -98,10 +98,10 @@ export class SqliteStatusListMapper {
         id: entity.id,
         credentialId: entity.credentialId,
         statusListId: entity.statusListId,
-        statusListIndex: entity.statusListIndex.toString(),
-        statusSize: entity.statusSize.toString(),
+        statusListIndex: entity.statusListIndex,
+        statusSize: entity.statusSize,
         purpose: entity.purpose,
-        currentStatus: entity.currentStatus.toString(),
+        currentStatus: entity.currentStatus,
         statusReason: entity.statusReason || null,
         createdAt: Math.floor(entity.createdAt.getTime() / 1000), // Convert to Unix timestamp
         updatedAt: Math.floor(entity.updatedAt.getTime() / 1000), // Convert to Unix timestamp
@@ -131,10 +131,10 @@ export class SqliteStatusListMapper {
         id: record.id,
         credentialId: record.credentialId,
         statusListId: record.statusListId,
-        statusListIndex: parseInt(record.statusListIndex, 10),
-        statusSize: parseInt(record.statusSize, 10),
+        statusListIndex: record.statusListIndex,
+        statusSize: record.statusSize,
         purpose: record.purpose as StatusPurpose,
-        currentStatus: parseInt(record.currentStatus, 10),
+        currentStatus: record.currentStatus,
         statusReason: record.statusReason || undefined,
         createdAt: new Date(record.createdAt * 1000), // Convert from Unix timestamp
         updatedAt: new Date(record.updatedAt * 1000), // Convert from Unix timestamp

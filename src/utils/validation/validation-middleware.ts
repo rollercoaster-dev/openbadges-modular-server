@@ -21,7 +21,8 @@ import {
   CreateAssertionSchema,
   BatchCreateCredentialsSchema,
   BatchRetrieveCredentialsSchema,
-  BatchUpdateCredentialStatusSchema
+  UpdateCredentialStatusSchema,
+  BatchUpdateCredentialStatusSchema,
 } from '../../api/validation/assertion.schemas';
 
 // Define the variables that will be set in the context by validation middleware
@@ -378,7 +379,10 @@ export function validateBatchRetrieveCredentialsMiddleware(): MiddlewareHandler<
       }
 
       // Parse comma-separated IDs
-      const ids = idsParam.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const ids = idsParam
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
       const body = { ids };
 
       // Validate with Zod schema
@@ -404,6 +408,49 @@ export function validateBatchRetrieveCredentialsMiddleware(): MiddlewareHandler<
           success: false,
           error: 'Invalid request body',
           details: { general: ['Invalid query parameters'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating single credential status update
+ * @returns A Hono middleware handler
+ */
+export function validateUpdateCredentialStatusMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // First validate with Zod schema
+      const result = UpdateCredentialStatusSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', body);
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Request body must be valid JSON'] },
         },
         400
       );
@@ -438,7 +485,7 @@ export function validateBatchUpdateCredentialStatusMiddleware(): MiddlewareHandl
       }
 
       // Store the validated body in context for route handlers to use
-      c.set('validatedBody', body);
+      c.set('validatedBody', result.data);
 
       await next();
     } catch (_error) {

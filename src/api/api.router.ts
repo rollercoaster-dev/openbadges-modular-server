@@ -37,6 +37,7 @@ import {
   validateAssertionMiddleware,
   validateBatchCreateCredentialsMiddleware,
   validateBatchRetrieveCredentialsMiddleware,
+  validateUpdateCredentialStatusMiddleware,
   validateBatchUpdateCredentialStatusMiddleware,
 } from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
@@ -1004,8 +1005,18 @@ export function createVersionedRouter(
         const body = (await c.req.json()) as CreateStatusListDto;
 
         // Get issuer ID from authentication context
-        // TODO: Extract issuer ID from auth context properly
-        const issuerId = 'default-issuer'; // Placeholder
+        const user = c.get('user');
+        const issuerId = (user?.claims?.sub as string) || user?.id;
+
+        if (!issuerId) {
+          return c.json(
+            {
+              success: false,
+              error: 'Authentication required - unable to determine issuer ID',
+            },
+            401
+          );
+        }
 
         const result = await statusListController.createStatusList(
           body,
@@ -1054,7 +1065,7 @@ export function createVersionedRouter(
     router.post(
       '/credentials/:id/status',
       requireAuth(),
-      validateBatchUpdateCredentialStatusMiddleware(),
+      validateUpdateCredentialStatusMiddleware(),
       async (c) => {
         const credentialId = c.req.param('id');
         try {

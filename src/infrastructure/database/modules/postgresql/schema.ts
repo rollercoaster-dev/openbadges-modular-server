@@ -16,6 +16,9 @@ import {
   index,
   boolean,
   varchar,
+  smallint,
+  integer,
+  bigint,
 } from 'drizzle-orm/pg-core';
 
 // Users table - defined first to avoid circular references
@@ -226,11 +229,11 @@ export const statusLists = pgTable(
       .notNull()
       .references(() => issuers.id, { onDelete: 'cascade' }),
     purpose: text('purpose').notNull(), // 'revocation', 'suspension', 'refresh', 'message'
-    statusSize: text('status_size').notNull().default('1'), // Size in bits (1, 2, 4, 8)
+    statusSize: smallint('status_size').notNull().default(1), // Size in bits (1, 2, 4, 8)
     encodedList: text('encoded_list').notNull(), // GZIP-compressed, base64url-encoded bitstring
-    ttl: text('ttl'), // Time-to-live in milliseconds (stored as text for large values)
-    totalEntries: text('total_entries').notNull().default('131072'), // Total number of entries
-    usedEntries: text('used_entries').notNull().default('0'), // Number of used entries
+    ttl: bigint('ttl', { mode: 'number' }), // Time-to-live in milliseconds
+    totalEntries: integer('total_entries').notNull().default(131072), // Total number of entries
+    usedEntries: integer('used_entries').notNull().default(0), // Number of used entries
     metadata: jsonb('metadata'), // Additional metadata
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -258,10 +261,10 @@ export const credentialStatusEntries = pgTable(
     statusListId: uuid('status_list_id')
       .notNull()
       .references(() => statusLists.id, { onDelete: 'cascade' }),
-    statusListIndex: text('status_list_index').notNull(), // Position in bitstring (stored as text for large values)
-    statusSize: text('status_size').notNull().default('1'), // Size in bits
+    statusListIndex: bigint('status_list_index', { mode: 'number' }).notNull(), // Position in bitstring
+    statusSize: smallint('status_size').notNull().default(1), // Size in bits
     purpose: text('purpose').notNull(), // Status purpose
-    currentStatus: text('current_status').notNull().default('0'), // Current status value
+    currentStatus: smallint('current_status').notNull().default(0), // Current status value
     statusReason: text('status_reason'), // Reason for current status
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

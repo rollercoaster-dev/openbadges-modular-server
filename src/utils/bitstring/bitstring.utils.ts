@@ -1,6 +1,6 @@
 /**
  * Bitstring utilities for StatusList2021 (Bitstring Status List) implementation
- * 
+ *
  * This module provides utilities for manipulating bitstrings according to the
  * W3C Bitstring Status List v1.0 specification.
  */
@@ -34,9 +34,14 @@ export class BitstringUtils {
    * @param statusSize Size of each status entry in bits (1, 2, 4, or 8)
    * @returns Empty bitstring as Uint8Array
    */
-  static createEmptyBitstring(totalEntries: number = DEFAULT_BITSTRING_SIZE, statusSize: number = 1): Uint8Array {
+  static createEmptyBitstring(
+    totalEntries: number = DEFAULT_BITSTRING_SIZE,
+    statusSize: number = 1
+  ): Uint8Array {
     if (totalEntries < MIN_BITSTRING_SIZE) {
-      throw new Error(`Bitstring must have at least ${MIN_BITSTRING_SIZE} entries for privacy`);
+      throw new Error(
+        `Bitstring must have at least ${MIN_BITSTRING_SIZE} entries for privacy`
+      );
     }
 
     if (![1, 2, 4, 8].includes(statusSize)) {
@@ -45,12 +50,12 @@ export class BitstringUtils {
 
     const totalBits = totalEntries * statusSize;
     const totalBytes = Math.ceil(totalBits / 8);
-    
+
     logger.debug('Creating empty bitstring', {
       totalEntries,
       statusSize,
       totalBits,
-      totalBytes
+      totalBytes,
     });
 
     return new Uint8Array(totalBytes);
@@ -65,9 +70,9 @@ export class BitstringUtils {
    * @returns Modified bitstring
    */
   static setStatusAtIndex(
-    bitstring: Uint8Array, 
-    index: number, 
-    value: number, 
+    bitstring: Uint8Array,
+    index: number,
+    value: number,
     statusSize: number = 1
   ): Uint8Array {
     if (index < 0) {
@@ -80,14 +85,18 @@ export class BitstringUtils {
 
     const maxValue = Math.pow(2, statusSize) - 1;
     if (value < 0 || value > maxValue) {
-      throw new Error(`Value must be between 0 and ${maxValue} for ${statusSize}-bit status`);
+      throw new Error(
+        `Value must be between 0 and ${maxValue} for ${statusSize}-bit status`
+      );
     }
 
     const totalBits = bitstring.length * 8;
     const totalEntries = Math.floor(totalBits / statusSize);
-    
+
     if (index >= totalEntries) {
-      throw new Error(`Index ${index} exceeds bitstring capacity of ${totalEntries} entries`);
+      throw new Error(
+        `Index ${index} exceeds bitstring capacity of ${totalEntries} entries`
+      );
     }
 
     // Calculate bit position (left-most bit is index 0)
@@ -98,21 +107,30 @@ export class BitstringUtils {
     // Create a copy of the bitstring to avoid mutation
     const result = new Uint8Array(bitstring);
 
-    // Clear existing bits at this position
-    const clearMask = ~(((1 << statusSize) - 1) << (8 - bitOffset - statusSize));
-    result[byteIndex] &= clearMask;
+    // Handle negative-shift hazard by calculating bits that fit in first byte
+    // This prevents (8 - bitOffset - statusSize) from becoming negative
+    const firstPartBits = Math.min(statusSize, 8 - bitOffset);
+    const firstPartMask =
+      ((1 << firstPartBits) - 1) << (8 - bitOffset - firstPartBits);
 
-    // Set new value
-    const valueMask = value << (8 - bitOffset - statusSize);
-    result[byteIndex] |= valueMask;
+    // Clear and set bits in the first byte
+    result[byteIndex] &= ~firstPartMask & 0xff;
+    result[byteIndex] |=
+      ((value >> (statusSize - firstPartBits)) <<
+        (8 - bitOffset - firstPartBits)) &
+      0xff;
 
-    // Handle multi-byte status entries (for statusSize > 8 - bitOffset)
-    if (statusSize > 8 - bitOffset && byteIndex + 1 < result.length) {
-      const remainingBits = statusSize - (8 - bitOffset);
-      const nextByteClearMask = ~(((1 << remainingBits) - 1) << (8 - remainingBits));
-      result[byteIndex + 1] &= nextByteClearMask;
-      
-      const nextByteValueMask = (value >> (8 - bitOffset)) << (8 - remainingBits);
+    // Handle remaining bits in the next byte if status spans byte boundary
+    const remainingBits = statusSize - firstPartBits;
+    if (remainingBits > 0 && byteIndex + 1 < result.length) {
+      const nextByteClearMask = ~(
+        ((1 << remainingBits) - 1) <<
+        (8 - remainingBits)
+      );
+      result[byteIndex + 1] &= nextByteClearMask & 0xff;
+
+      const nextByteValueMask =
+        (value & ((1 << remainingBits) - 1)) << (8 - remainingBits);
       result[byteIndex + 1] |= nextByteValueMask;
     }
 
@@ -122,7 +140,7 @@ export class BitstringUtils {
       statusSize,
       bitPosition,
       byteIndex,
-      bitOffset
+      bitOffset,
     });
 
     return result;
@@ -135,7 +153,11 @@ export class BitstringUtils {
    * @param statusSize Size of each status entry in bits
    * @returns Status value at the specified index
    */
-  static getStatusAtIndex(bitstring: Uint8Array, index: number, statusSize: number = 1): number {
+  static getStatusAtIndex(
+    bitstring: Uint8Array,
+    index: number,
+    statusSize: number = 1
+  ): number {
     if (index < 0) {
       throw new Error('Index must be non-negative');
     }
@@ -146,9 +168,11 @@ export class BitstringUtils {
 
     const totalBits = bitstring.length * 8;
     const totalEntries = Math.floor(totalBits / statusSize);
-    
+
     if (index >= totalEntries) {
-      throw new Error(`Index ${index} exceeds bitstring capacity of ${totalEntries} entries`);
+      throw new Error(
+        `Index ${index} exceeds bitstring capacity of ${totalEntries} entries`
+      );
     }
 
     // Calculate bit position (left-most bit is index 0)
@@ -156,13 +180,24 @@ export class BitstringUtils {
     const byteIndex = Math.floor(bitPosition / 8);
     const bitOffset = bitPosition % 8;
 
-    // Extract value from the byte(s)
-    let value = (bitstring[byteIndex] >> (8 - bitOffset - statusSize)) & ((1 << statusSize) - 1);
+    // Handle negative-shift hazard by calculating bits that fit in first byte
+    // This prevents (8 - bitOffset - statusSize) from becoming negative
+    const firstPartBits = Math.min(statusSize, 8 - bitOffset);
+    const firstPartShift = 8 - bitOffset - firstPartBits;
 
-    // Handle multi-byte status entries (for statusSize > 8 - bitOffset)
-    if (statusSize > 8 - bitOffset && byteIndex + 1 < bitstring.length) {
-      const remainingBits = statusSize - (8 - bitOffset);
-      const nextByteValue = (bitstring[byteIndex + 1] >> (8 - remainingBits)) & ((1 << remainingBits) - 1);
+    // Extract bits from the first byte
+    let value =
+      (bitstring[byteIndex] >> firstPartShift) & ((1 << firstPartBits) - 1);
+
+    // Handle remaining bits from the next byte if status spans byte boundary
+    const remainingBits = statusSize - firstPartBits;
+    if (remainingBits > 0 && byteIndex + 1 < bitstring.length) {
+      const nextByteShift = 8 - remainingBits;
+      const nextByteValue =
+        (bitstring[byteIndex + 1] >> nextByteShift) &
+        ((1 << remainingBits) - 1);
+
+      // Combine the two parts: shift first part left and OR with second part
       value = (value << remainingBits) | nextByteValue;
     }
 
@@ -179,13 +214,13 @@ export class BitstringUtils {
       const compressed = gzipSync(bitstring, {
         level: 9, // Maximum compression
         windowBits: 15,
-        memLevel: 8
+        memLevel: 8,
       });
 
       logger.debug('Compressed bitstring', {
         originalSize: bitstring.length,
         compressedSize: compressed.length,
-        compressionRatio: (compressed.length / bitstring.length).toFixed(3)
+        compressionRatio: (compressed.length / bitstring.length).toFixed(3),
       });
 
       return compressed;
@@ -203,10 +238,10 @@ export class BitstringUtils {
   static decompressBitstring(compressedData: Buffer): Uint8Array {
     try {
       const decompressed = gunzipSync(compressedData);
-      
+
       logger.debug('Decompressed bitstring', {
         compressedSize: compressedData.length,
-        decompressedSize: decompressed.length
+        decompressedSize: decompressed.length,
       });
 
       return new Uint8Array(decompressed);
@@ -225,18 +260,21 @@ export class BitstringUtils {
     try {
       // First compress the bitstring
       const compressed = this.compressBitstring(bitstring);
-      
+
       // Convert to base64url (no padding)
       const base64 = compressed.toString('base64');
-      const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-      
+      const base64url = base64
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
       // Add multibase prefix 'u' for base64url
       const encoded = 'u' + base64url;
 
       logger.debug('Encoded bitstring', {
         originalSize: bitstring.length,
         compressedSize: compressed.length,
-        encodedLength: encoded.length
+        encodedLength: encoded.length,
       });
 
       return encoded;
@@ -261,26 +299,29 @@ export class BitstringUtils {
 
       // Convert from base64url to base64
       const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-      
+
       // Add padding if needed
-      const padding = '='.repeat((4 - base64.length % 4) % 4);
+      const padding = '='.repeat((4 - (base64.length % 4)) % 4);
       const paddedBase64 = base64 + padding;
 
       // Decode from base64
       const compressed = Buffer.from(paddedBase64, 'base64');
-      
+
       // Decompress the bitstring
       const bitstring = this.decompressBitstring(compressed);
 
       logger.debug('Decoded bitstring', {
         encodedLength: encodedList.length,
         compressedSize: compressed.length,
-        decompressedSize: bitstring.length
+        decompressedSize: bitstring.length,
       });
 
       return bitstring;
     } catch (error) {
-      logger.error('Failed to decode bitstring', { error, encodedList: encodedList.substring(0, 50) + '...' });
+      logger.error('Failed to decode bitstring', {
+        error,
+        encodedList: encodedList.substring(0, 50) + '...',
+      });
       throw new Error('Failed to decode bitstring');
     }
   }
@@ -290,9 +331,14 @@ export class BitstringUtils {
    * @param totalEntries Total number of entries
    * @param statusSize Size of each status entry in bits
    */
-  static validateBitstringParams(totalEntries: number, statusSize: number): void {
+  static validateBitstringParams(
+    totalEntries: number,
+    statusSize: number
+  ): void {
     if (!Number.isInteger(totalEntries) || totalEntries < MIN_BITSTRING_SIZE) {
-      throw new Error(`Total entries must be an integer >= ${MIN_BITSTRING_SIZE}`);
+      throw new Error(
+        `Total entries must be an integer >= ${MIN_BITSTRING_SIZE}`
+      );
     }
 
     if (![1, 2, 4, 8].includes(statusSize)) {
@@ -301,7 +347,11 @@ export class BitstringUtils {
 
     const totalBits = totalEntries * statusSize;
     if (totalBits % 8 !== 0) {
-      logger.warn('Bitstring size is not byte-aligned', { totalEntries, statusSize, totalBits });
+      logger.warn('Bitstring size is not byte-aligned', {
+        totalEntries,
+        statusSize,
+        totalBits,
+      });
     }
   }
 
@@ -311,7 +361,10 @@ export class BitstringUtils {
    * @param statusSize Size of each status entry in bits
    * @returns Total number of entries the bitstring can hold
    */
-  static getBitstringCapacity(bitstring: Uint8Array, statusSize: number = 1): number {
+  static getBitstringCapacity(
+    bitstring: Uint8Array,
+    statusSize: number = 1
+  ): number {
     const totalBits = bitstring.length * 8;
     return Math.floor(totalBits / statusSize);
   }
@@ -322,7 +375,10 @@ export class BitstringUtils {
    * @param statusSize Size of each status entry in bits
    * @returns Number of set entries
    */
-  static countSetEntries(bitstring: Uint8Array, statusSize: number = 1): number {
+  static countSetEntries(
+    bitstring: Uint8Array,
+    statusSize: number = 1
+  ): number {
     const capacity = this.getBitstringCapacity(bitstring, statusSize);
     let setCount = 0;
 

@@ -105,9 +105,7 @@ export class SqliteStatusListRepository
           conditions.push(eq(statusLists.purpose, params.purpose));
         }
         if (params.statusSize) {
-          conditions.push(
-            eq(statusLists.statusSize, params.statusSize.toString())
-          );
+          conditions.push(eq(statusLists.statusSize, params.statusSize));
         }
         if (params.hasCapacity) {
           conditions.push(
@@ -159,7 +157,7 @@ export class SqliteStatusListRepository
             and(
               eq(statusLists.issuerId, issuerId),
               eq(statusLists.purpose, purpose),
-              eq(statusLists.statusSize, statusSize.toString()),
+              eq(statusLists.statusSize, statusSize),
               lt(statusLists.usedEntries, statusLists.totalEntries)
             )
           )

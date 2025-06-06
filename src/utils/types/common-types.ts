@@ -21,11 +21,10 @@ export interface DatabaseRecord {
 }
 
 /**
- * Generic database table type
+ * Generic database table type that represents Drizzle table objects
+ * This type is compatible with both SQLite and PostgreSQL Drizzle tables
  */
-export interface DatabaseTable {
-  name: string;
-}
+export type DatabaseTable = Record<string, unknown>;
 
 /**
  * Generic database query result
@@ -54,7 +53,13 @@ export interface JsonObject {
 /**
  * Generic JSON value
  */
-export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonObject
+  | JsonValue[];
 
 /**
  * HTTP context type
@@ -71,7 +76,9 @@ export interface HttpContext {
 /**
  * Generic middleware handler
  */
-export type MiddlewareHandler = (context: HttpContext) => Promise<unknown> | unknown;
+export type MiddlewareHandler = (
+  context: HttpContext
+) => Promise<unknown> | unknown;
 
 /**
  * Generic service response

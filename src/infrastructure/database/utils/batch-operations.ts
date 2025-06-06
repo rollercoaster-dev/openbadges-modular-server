@@ -4,10 +4,25 @@
  * This utility provides functions for performing batch database operations.
  */
 
+import { eq, inArray } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import { QueryLoggerService } from './query-logger.service';
 import { logger } from '@/utils/logging/logger.service';
 
-// Define types for database operations
+// Re-export the types we need for batch operations
+export type { DatabaseClient } from '@/utils/types/common-types';
+
+// Define proper Drizzle table types that support column access
+type DrizzleColumn = SQLiteColumn | PgColumn;
+
+type DrizzleTable = {
+  [columnName: string]: DrizzleColumn;
+} & {
+  [Symbol.toStringTag]: string;
+  [key: string]: unknown;
+};
+
 type DatabaseClient = {
   query?: (sql: string) => Promise<unknown>;
   session?: {
@@ -15,29 +30,24 @@ type DatabaseClient = {
       exec: (sql: string) => void;
     };
   };
-  insert: (table: DatabaseTable) => {
+  insert: (table: DrizzleTable) => {
     values: (record: Record<string, unknown> | Record<string, unknown>[]) => {
       returning: () => Promise<unknown[]>;
     };
   };
-  update: (table: DatabaseTable) => {
+  update: (table: DrizzleTable) => {
     set: (data: Record<string, unknown>) => {
       where: (condition: unknown) => {
         returning: () => Promise<unknown[]>;
       };
     };
   };
-  delete: (table: DatabaseTable) => {
+  delete: (table: DrizzleTable) => {
     where: (condition: unknown) => {
       returning: () => Promise<unknown[]>;
     };
   };
   [key: string]: unknown; // Allow additional properties for different Drizzle implementations
-};
-
-type DatabaseTable = {
-  name: string;
-  [key: string]: unknown;
 };
 
 /**
@@ -136,7 +146,7 @@ export async function executeBatch<T>(
  */
 export async function batchInsert<T>(
   db: DatabaseClient,
-  table: DatabaseTable,
+  table: DrizzleTable,
   records: Record<string, unknown>[],
   dbType: 'sqlite' | 'postgresql'
 ): Promise<T[]> {
@@ -211,7 +221,7 @@ export async function batchInsert<T>(
  */
 export async function batchUpdate<T>(
   db: DatabaseClient,
-  table: DatabaseTable,
+  table: DrizzleTable,
   records: Record<string, unknown>[],
   idField: string,
   dbType: 'sqlite' | 'postgresql'
@@ -238,8 +248,7 @@ export async function batchUpdate<T>(
         return await db
           .update(table)
           .set(updateData)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .where((db as any).eq(table[idField], id))
+          .where(eq(table[idField], id))
           .returning();
       };
     });
@@ -280,7 +289,7 @@ export async function batchUpdate<T>(
  */
 export async function batchDelete(
   db: DatabaseClient,
-  table: DatabaseTable,
+  table: DrizzleTable,
   ids: string[],
   idField: string,
   dbType: 'sqlite' | 'postgresql'
@@ -300,8 +309,7 @@ export async function batchDelete(
         return async () => {
           const result = await db
             .delete(table)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .where((db as any).eq(table[idField], id))
+            .where(eq(table[idField], id))
             .returning();
           return result.length;
         };
@@ -315,8 +323,7 @@ export async function batchDelete(
         // PostgreSQL supports IN clause
         const result = await db
           .delete(table)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .where((db as any).inArray(table[idField], ids))
+          .where(inArray(table[idField], ids))
           .returning();
         deletedCount = result.length;
       } else if (dbType === 'sqlite') {
@@ -326,8 +333,7 @@ export async function batchDelete(
           return async () => {
             const result = await db
               .delete(table)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .where((db as any).eq(table[idField], id))
+              .where(eq(table[idField], id))
               .returning();
             return result.length;
           };
