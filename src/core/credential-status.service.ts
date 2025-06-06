@@ -6,10 +6,10 @@
  */
 
 import { StatusListService } from './status-list.service';
-import { 
-  StatusPurpose, 
+import {
+  StatusPurpose,
   BitstringStatusListEntry,
-  CredentialStatusEntryData 
+  CredentialStatusEntryData,
 } from '../domains/status-list/status-list.types';
 import { logger } from '../utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
@@ -20,16 +20,16 @@ import { Shared } from 'openbadges-types';
 export interface AssignCredentialStatusParams {
   /** ID of the credential */
   credentialId: string;
-  
+
   /** ID of the issuer */
   issuerId: string;
-  
+
   /** Purpose of the status (default: revocation) */
   purpose?: StatusPurpose;
-  
+
   /** Size of the status entry in bits (default: 1) */
   statusSize?: number;
-  
+
   /** Initial status value (default: 0 for active) */
   initialStatus?: number;
 }
@@ -40,13 +40,13 @@ export interface AssignCredentialStatusParams {
 export interface CredentialStatusAssignmentResult {
   /** Whether the assignment was successful */
   success: boolean;
-  
+
   /** The generated BitstringStatusListEntry */
   credentialStatus?: BitstringStatusListEntry;
-  
+
   /** The created status entry data */
   statusEntry?: CredentialStatusEntryData;
-  
+
   /** Error message if assignment failed */
   error?: string;
 }
@@ -111,7 +111,9 @@ export class CredentialStatusService {
         type: 'BitstringStatusListEntry',
         statusPurpose: purpose,
         statusListIndex: nextIndex.toString(),
-        statusListCredential: this.generateStatusListCredentialUrl(statusList.id),
+        statusListCredential: this.generateStatusListCredentialUrl(
+          statusList.id
+        ),
         statusSize,
       };
 

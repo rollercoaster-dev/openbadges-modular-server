@@ -2,8 +2,17 @@
  * End-to-end tests for status list functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { app } from '../../src/index';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from 'bun:test';
+import { setupTestApp, stopTestServer } from './setup-test-app';
+import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 import { RepositoryFactory } from '../../src/infrastructure/repository.factory';
 import { StatusPurpose } from '../../src/domains/status-list/status-list.types';
 import { User } from '../../src/domains/user/user.entity';
@@ -15,6 +24,22 @@ import type { UserRepository } from '../../src/domains/user/user.repository';
 import type { IssuerRepository } from '../../src/domains/issuer/issuer.repository';
 import type { BadgeClassRepository } from '../../src/domains/badgeClass/badgeClass.repository';
 import { ensureTransactionCommitted } from './helpers/database-sync.helper';
+import { logger } from '../../src/utils/logging/logger.service';
+
+// Ensure DB-related env-vars are set **before** any module import that may read them
+if (!process.env.DB_TYPE) {
+  process.env.DB_TYPE = 'sqlite';
+}
+if (process.env.DB_TYPE === 'sqlite' && !process.env.SQLITE_DB_PATH) {
+  process.env.SQLITE_DB_PATH = ':memory:';
+}
+
+// Tests must run in "test" mode *before* config is imported
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
+import { config } from '../../src/config/config'; // safe to import after env is prepared
 
 // Test interfaces for API responses
 interface TestAssertionResponse {
@@ -49,16 +74,74 @@ interface TestStatsResponse {
 }
 
 describe('Status List E2E', () => {
+  // Test server variables
+  let TEST_PORT: number;
+  let API_URL: string;
+  let server: unknown = null;
+
+  // Repository variables
   let userRepository: UserRepository;
   let issuerRepository: IssuerRepository;
   let badgeClassRepository: BadgeClassRepository;
   // Note: These repositories would be used for cleanup if deleteByIssuer methods existed
   // Currently not used since those methods don't exist
 
+  // Test data variables
   let testUser: User;
   let testIssuer: Issuer;
   let testBadgeClass: BadgeClass;
-  let authToken: string;
+
+  // API key for protected endpoints
+  const API_KEY = 'verysecretkeye2e';
+
+  // Start the server before all tests
+  beforeAll(async () => {
+    // Get an available port to avoid conflicts
+    TEST_PORT = await getAvailablePort();
+
+    // Set up API URLs after getting the port
+    const host = config.server.host ?? '127.0.0.1';
+    API_URL = `http://${host}:${TEST_PORT}`;
+
+    // Log the API URL for debugging
+    logger.info(`E2E Test: Using API URL: ${API_URL}`);
+
+    try {
+      logger.info(`E2E Test: Starting server on port ${TEST_PORT}`);
+      const result = await setupTestApp(TEST_PORT);
+      server = result.server;
+      logger.info('E2E Test: Server started successfully');
+      // Wait for the server to be fully ready
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (error) {
+      logger.error('E2E Test: Failed to start server', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+  });
+
+  // Stop the server after all tests
+  afterAll(async () => {
+    if (server) {
+      try {
+        logger.info('E2E Test: Stopping server');
+        stopTestServer(server);
+        logger.info('E2E Test: Server stopped successfully');
+      } catch (error) {
+        logger.error('E2E Test: Error stopping server', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+    }
+
+    // Release the allocated port
+    if (TEST_PORT) {
+      releasePort(TEST_PORT);
+    }
+  });
 
   beforeEach(async () => {
     // Initialize repositories
@@ -108,10 +191,7 @@ describe('Status List E2E', () => {
     await badgeClassRepository.create(testBadgeClass);
 
     // Ensure database operations are committed before HTTP requests
-    await ensureTransactionCommitted();
-
-    // Get auth token (simplified for testing)
-    authToken = 'Bearer test-token';
+    await ensureTransactionCommitted(50);
   });
 
   afterEach(async () => {
@@ -130,11 +210,11 @@ describe('Status List E2E', () => {
   describe('Complete credential lifecycle with status tracking', () => {
     it('should create credential with automatic status assignment and track status changes', async () => {
       // Step 1: Create a credential (assertion) with v3.0 format
-      const createAssertionResponse = await app.request('/v3/assertions', {
+      const createAssertionResponse = await fetch(`${API_URL}/v3/assertions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: authToken,
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           recipient: {
@@ -167,7 +247,7 @@ describe('Status List E2E', () => {
       const statusListId = statusListUrl.split('/').pop();
 
       // Step 2: Verify the status list was created and is accessible
-      const statusListResponse = await app.request(statusListUrl);
+      const statusListResponse = await fetch(statusListUrl);
       expect(statusListResponse.status).toBe(200);
 
       const statusListCredential =
@@ -193,13 +273,13 @@ describe('Status List E2E', () => {
       expect(statusIndex).toBeGreaterThanOrEqual(0);
 
       // Step 4: Update credential status to revoked
-      const updateStatusResponse = await app.request(
-        `/v3/credentials/${credentialId}/status`,
+      const updateStatusResponse = await fetch(
+        `${API_URL}/v3/credentials/${credentialId}/status`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
             status: 1, // 1 = revoked
@@ -223,7 +303,7 @@ describe('Status List E2E', () => {
       });
 
       // Step 5: Verify the status list was updated
-      const updatedStatusListResponse = await app.request(statusListUrl);
+      const updatedStatusListResponse = await fetch(statusListUrl);
       expect(updatedStatusListResponse.status).toBe(200);
 
       const updatedStatusListCredential =
@@ -238,11 +318,11 @@ describe('Status List E2E', () => {
       ).not.toBe(statusListCredential.credentialSubject.encodedList);
 
       // Step 6: Verify status list statistics
-      const statsResponse = await app.request(
-        `/v3/status-lists/${statusListId}/stats`,
+      const statsResponse = await fetch(
+        `${API_URL}/v3/status-lists/${statusListId}/stats`,
         {
           headers: {
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
         }
       );
@@ -260,11 +340,11 @@ describe('Status List E2E', () => {
       expect(stats.usedEntries).toBeGreaterThan(0);
 
       // Step 7: Create another credential to test multiple credentials in same status list
-      const createAssertion2Response = await app.request('/v3/assertions', {
+      const createAssertion2Response = await fetch(`${API_URL}/v3/assertions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: authToken,
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           recipient: {
@@ -290,11 +370,11 @@ describe('Status List E2E', () => {
       );
 
       // Step 8: Verify both credentials are tracked in the same status list
-      const finalStatsResponse = await app.request(
-        `/v3/status-lists/${statusListId}/stats`,
+      const finalStatsResponse = await fetch(
+        `${API_URL}/v3/status-lists/${statusListId}/stats`,
         {
           headers: {
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
         }
       );
@@ -309,11 +389,11 @@ describe('Status List E2E', () => {
 
     it('should handle suspension status purpose', async () => {
       // Create a credential
-      const createAssertionResponse = await app.request('/v3/assertions', {
+      const createAssertionResponse = await fetch(`${API_URL}/v3/assertions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: authToken,
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           recipient: {
@@ -332,13 +412,13 @@ describe('Status List E2E', () => {
       const credentialId = assertion.id;
 
       // Update status for suspension (different purpose)
-      const updateStatusResponse = await app.request(
-        `/v3/credentials/${credentialId}/status`,
+      const updateStatusResponse = await fetch(
+        `${API_URL}/v3/credentials/${credentialId}/status`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
             status: 1, // 1 = suspended
@@ -386,15 +466,15 @@ describe('Status List E2E', () => {
       await badgeClassRepository.create(testBadgeClass2);
 
       // Ensure database operations are committed before HTTP requests
-      await ensureTransactionCommitted();
+      await ensureTransactionCommitted(50);
 
       try {
         // Create credentials from both issuers
-        const assertion1Response = await app.request('/v3/assertions', {
+        const assertion1Response = await fetch(`${API_URL}/v3/assertions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
             recipient: {
@@ -407,11 +487,11 @@ describe('Status List E2E', () => {
           }),
         });
 
-        const assertion2Response = await app.request('/v3/assertions', {
+        const assertion2Response = await fetch(`${API_URL}/v3/assertions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: authToken,
+            'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
             recipient: {
@@ -438,10 +518,10 @@ describe('Status List E2E', () => {
         );
 
         // Verify both status lists are accessible
-        const statusList1Response = await app.request(
+        const statusList1Response = await fetch(
           assertion1.credentialStatus.statusListCredential
         );
-        const statusList2Response = await app.request(
+        const statusList2Response = await fetch(
           assertion2.credentialStatus.statusListCredential
         );
 
@@ -472,11 +552,11 @@ describe('Status List E2E', () => {
   describe('Status list credential format validation', () => {
     it('should return valid BitstringStatusListCredential format', async () => {
       // Create a credential to ensure status list exists
-      const createAssertionResponse = await app.request('/v3/assertions', {
+      const createAssertionResponse = await fetch(`${API_URL}/v3/assertions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: authToken,
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({
           recipient: {
@@ -494,7 +574,7 @@ describe('Status List E2E', () => {
       const statusListUrl = assertion.credentialStatus.statusListCredential;
 
       // Fetch and validate the status list credential
-      const response = await app.request(statusListUrl);
+      const response = await fetch(statusListUrl);
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toContain(
         'application/json'
