@@ -1,11 +1,14 @@
 /**
- * Unit tests for StatusListService
+ import { StatusListService } from '../../../src/core/status-list.service';
+import { StatusListRepository } from '../../../src/domains/status-list/status-list.repository';
+import { StatusList as _StatusList } from '../../../src/domains/status-list/status-list.entity';
+import { StatusPurpose } from '../../../src/domains/status-list/status-list.types';it tests for StatusListService
  */
 
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { StatusListService } from '../../../src/core/status-list.service';
 import { StatusListRepository } from '../../../src/domains/status-list/status-list.repository';
-import { StatusList } from '../../../src/domains/status-list/status-list.entity';
+import { StatusList as _StatusList } from '../../../src/domains/status-list/status-list.entity';
 import { StatusPurpose } from '../../../src/domains/status-list/status-list.types';
 
 // Mock StatusListRepository

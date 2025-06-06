@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { CredentialStatusService } from '../../../src/core/credential-status.service';
+import { StatusListService } from '../../../src/core/status-list.service';
 import { StatusPurpose } from '../../../src/domains/status-list/status-list.types';
 
 describe('CredentialStatusService', () => {
@@ -11,7 +12,7 @@ describe('CredentialStatusService', () => {
 
   beforeEach(() => {
     // Create service with null dependency for testing utility methods
-    credentialStatusService = new CredentialStatusService(null as any);
+    credentialStatusService = new CredentialStatusService(null as unknown as StatusListService);
   });
 
   describe('createBitstringStatusListEntry', () => {

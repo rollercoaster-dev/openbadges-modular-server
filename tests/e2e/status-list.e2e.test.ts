@@ -11,13 +11,18 @@ import { User } from '../../src/domains/user/user.entity';
 import { Issuer } from '../../src/domains/issuer/issuer.entity';
 import { BadgeClass } from '../../src/domains/badge-class/badge-class.entity';
 import { UserRole } from '../../src/domains/user/user.types';
+import type { UserRepository } from '../../src/domains/user/user.repository';
+import type { IssuerRepository } from '../../src/domains/issuer/issuer.repository';
+import type { BadgeClassRepository } from '../../src/domains/badge-class/badge-class.repository';
+import type { AssertionRepository } from '../../src/domains/assertion/assertion.repository';
+import type { StatusListRepository } from '../../src/domains/status-list/status-list.repository';
 
 describe('Status List E2E', () => {
-  let userRepository: any;
-  let issuerRepository: any;
-  let badgeClassRepository: any;
-  let assertionRepository: any;
-  let statusListRepository: any;
+  let userRepository: UserRepository;
+  let issuerRepository: IssuerRepository;
+  let badgeClassRepository: BadgeClassRepository;
+  let assertionRepository: AssertionRepository;
+  let statusListRepository: StatusListRepository;
   
   let testUser: User;
   let testIssuer: Issuer;
@@ -80,7 +85,7 @@ describe('Status List E2E', () => {
       await badgeClassRepository.delete(testBadgeClass.id);
       await issuerRepository.delete(testIssuer.id);
       await userRepository.delete(testUser.id);
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors
     }
   });

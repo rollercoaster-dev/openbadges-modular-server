@@ -157,7 +157,7 @@ export function createVerifiableCredential(
     ...(assertion.revoked !== undefined && {
       credentialStatus: {
         id: `${assertion.id}#status` as Shared.IRI,
-        type: 'StatusList2021Entry',
+        type: 'BitstringStatusListEntry',
         statusPurpose: 'revocation',
         statusListIndex: '0',
         statusListCredential: `${assertion.id}#list` as Shared.IRI,

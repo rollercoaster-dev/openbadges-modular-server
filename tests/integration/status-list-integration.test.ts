@@ -10,6 +10,7 @@ import {
   StatusPurpose,
   BitstringStatusListEntry,
 } from '../../src/domains/status-list/status-list.types';
+import { Shared } from 'openbadges-types';
 
 describe('StatusList2021 Integration with Assertion Entity', () => {
   describe('BitstringStatusListEntry Integration', () => {
@@ -19,13 +20,13 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         statusPurpose: StatusPurpose.REVOCATION,
         statusListIndex: '42',
         statusListCredential:
-          'https://example.com/status-lists/test-list-1' as any,
+          'https://example.com/status-lists/test-list-1' as Shared.IRI,
         statusSize: 1,
       };
 
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-1' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -49,13 +50,13 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         statusPurpose: StatusPurpose.REVOCATION,
         statusListIndex: '42',
         statusListCredential:
-          'https://example.com/status-lists/test-list-1' as any,
+          'https://example.com/status-lists/test-list-1' as Shared.IRI,
         statusSize: 1,
       };
 
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-1' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -63,7 +64,7 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         },
         issuedOn: new Date().toISOString(),
         credentialStatus,
-        issuer: 'https://example.com/issuers/test-issuer-1' as any,
+        issuer: 'https://example.com/issuers/test-issuer-1' as Shared.IRI,
       });
 
       const v3Object = assertion.toObject(BadgeVersion.V3);
@@ -77,8 +78,8 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
 
     it('should not create placeholder credentialStatus for revoked assertions', () => {
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-1' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -98,13 +99,13 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         statusPurpose: StatusPurpose.SUSPENSION,
         statusListIndex: '123',
         statusListCredential:
-          'https://example.com/status-lists/suspension-list' as any,
+          'https://example.com/status-lists/suspension-list' as Shared.IRI,
         statusSize: 2,
       };
 
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-2' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-2' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -126,13 +127,13 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         statusPurpose: StatusPurpose.REVOCATION,
         statusListIndex: '42',
         statusListCredential:
-          'https://example.com/status-lists/test-list-1' as any,
+          'https://example.com/status-lists/test-list-1' as Shared.IRI,
         statusSize: 1,
       };
 
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-1' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',
@@ -140,14 +141,14 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         },
         issuedOn: new Date().toISOString(),
         credentialStatus,
-        issuer: 'https://example.com/issuers/test-issuer-1' as any,
+        issuer: 'https://example.com/issuers/test-issuer-1' as Shared.IRI,
       });
 
       const jsonLd = assertion.toJsonLd(BadgeVersion.V3);
 
       // Check that credentialStatus is included in the output
       expect(jsonLd).toHaveProperty('credentialStatus');
-      expect((jsonLd as any).credentialStatus).toEqual(credentialStatus);
+      expect((jsonLd as Record<string, unknown>).credentialStatus).toEqual(credentialStatus);
       expect(jsonLd.type).toEqual([
         'VerifiableCredential',
         'OpenBadgeCredential',
@@ -163,13 +164,13 @@ describe('StatusList2021 Integration with Assertion Entity', () => {
         statusPurpose: StatusPurpose.REVOCATION,
         statusListIndex: '42',
         statusListCredential:
-          'https://example.com/status-lists/test-list-1' as any,
+          'https://example.com/status-lists/test-list-1' as Shared.IRI,
         statusSize: 1,
       };
 
       const assertion = Assertion.create({
-        id: 'https://example.com/assertions/test-assertion-1' as any,
-        badgeClass: 'https://example.com/badge-classes/test-badge-1' as any,
+        id: 'https://example.com/assertions/test-assertion-1' as Shared.IRI,
+        badgeClass: 'https://example.com/badge-classes/test-badge-1' as Shared.IRI,
         recipient: {
           type: 'email',
           identity: 'test@example.com',

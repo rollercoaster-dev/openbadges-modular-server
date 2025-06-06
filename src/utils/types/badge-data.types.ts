@@ -5,8 +5,8 @@
  * JSON-LD context handling, and API responses.
  */
 
-import { Shared, OB2, OB3 } from 'openbadges-types';
-import { BitstringStatusListEntry } from '../domains/status-list/status-list.types';
+import { Shared, OB2 } from 'openbadges-types';
+import { BitstringStatusListEntry } from '../../domains/status-list/status-list.types';
 
 /**
  * Common data structure for issuers

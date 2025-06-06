@@ -23,7 +23,6 @@ import {
 } from '../../utils/types/verification-status';
 import { KeyService } from '../../core/key.service';
 import { CredentialStatusService } from '../../core/credential-status.service';
-import { StatusListService } from '../../core/status-list.service';
 import { StatusPurpose } from '../../domains/status-list/status-list.types';
 import { logger } from '../../utils/logging/logger.service';
 import {
