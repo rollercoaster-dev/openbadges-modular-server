@@ -21,6 +21,7 @@ import { BadgeClass } from '../badgeClass/badgeClass.entity';
 import { Issuer } from '../issuer/issuer.entity';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { createOrGenerateIRI, isValidIRI } from '@utils/types/iri-utils';
+import { BitstringStatusListEntry } from '../status-list/status-list.types';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -44,7 +45,7 @@ export class Assertion {
   expires?: string;
   evidence?: OB2.Evidence[] | OB3.Evidence[];
   verification?: OB2.VerificationObject | OB3.Proof;
-  credentialStatus?: OB3.CredentialStatus;
+  credentialStatus?: BitstringStatusListEntry;
   revoked?: boolean;
   revocationReason?: string;
   issuer?: Shared.IRI | OB3.Issuer;
@@ -80,17 +81,9 @@ export class Assertion {
       };
     }
 
-    // If revoked is true but no credentialStatus is provided, create a default one
-    // Note: This is a fallback for legacy support. New credentials should use
-    // the CredentialStatusService for proper BitstringStatusListEntry assignment
-    if (data.revoked && !data.credentialStatus) {
-      data.credentialStatus = {
-        type: 'BitstringStatusListEntry',
-        statusPurpose: 'revocation',
-        statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
-        statusListCredential: `${data.id}#list` as Shared.IRI, // Placeholder URL
-      };
-    }
+    // Note: credentialStatus should be assigned by CredentialStatusService during creation
+    // Legacy revoked field is maintained for backward compatibility but should not
+    // generate placeholder credentialStatus entries
 
     return new Assertion(data);
   }
@@ -189,14 +182,9 @@ export class Assertion {
         };
       }
 
-      // Add credentialStatus if present or if revoked
-      if (this.credentialStatus || this.revoked) {
-        ob3Data.credentialStatus = this.credentialStatus || {
-          type: 'BitstringStatusListEntry',
-          statusPurpose: 'revocation',
-          statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
-          statusListCredential: `${this.id}#list` as Shared.IRI, // Placeholder URL
-        };
+      // Add credentialStatus if present
+      if (this.credentialStatus) {
+        ob3Data.credentialStatus = this.credentialStatus;
       }
 
       // Create a proper CredentialSubject with required achievement property
@@ -247,17 +235,9 @@ export class Assertion {
       revocationReason: this.revocationReason,
     };
 
-    // Add credentialStatus for OB3 if present or if revoked
-    if (
-      version === BadgeVersion.V3 &&
-      (this.credentialStatus || this.revoked)
-    ) {
-      assertionData.credentialStatus = this.credentialStatus || {
-        type: 'BitstringStatusListEntry',
-        statusPurpose: 'revocation',
-        statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
-        statusListCredential: `${this.id}#list` as Shared.IRI, // Placeholder URL
-      };
+    // Add credentialStatus for OB3 if present
+    if (version === BadgeVersion.V3 && this.credentialStatus) {
+      assertionData.credentialStatus = this.credentialStatus;
     }
 
     // Get JSON-LD representation from passed entities if they exist

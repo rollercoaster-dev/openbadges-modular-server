@@ -6,6 +6,7 @@
  */
 
 import { Shared, OB2, OB3 } from 'openbadges-types';
+import { BitstringStatusListEntry } from '../domains/status-list/status-list.types';
 
 /**
  * Common data structure for issuers
@@ -52,7 +53,7 @@ export interface AssertionData extends Record<string, unknown> {
   expires?: string;
   evidence?: unknown;
   verification?: VerificationData;
-  credentialStatus?: OB3.CredentialStatus;
+  credentialStatus?: BitstringStatusListEntry;
   revoked?: boolean;
   revocationReason?: string;
   type?: string | string[];
@@ -115,5 +116,5 @@ export interface VerifiableCredentialData {
     proofPurpose: string;
     proofValue: string;
   };
-  credentialStatus?: OB3.CredentialStatus;
+  credentialStatus?: BitstringStatusListEntry;
 }

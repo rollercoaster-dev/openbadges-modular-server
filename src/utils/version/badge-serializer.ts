@@ -286,6 +286,9 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(assertion.revocationReason && {
         revocationReason: assertion.revocationReason,
       }),
+      ...(assertion.credentialStatus && {
+        credentialStatus: assertion.credentialStatus,
+      }),
     };
   }
 
@@ -357,15 +360,6 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       ...(assertion.credentialStatus && {
         credentialStatus: assertion.credentialStatus,
       }),
-      ...(!assertion.credentialStatus &&
-        assertion.revoked !== undefined && {
-          credentialStatus: {
-            type: 'BitstringStatusListEntry',
-            statusPurpose: 'revocation',
-            statusListIndex: '0', // Placeholder - should be assigned by CredentialStatusService
-            statusListCredential: `${assertion.id}#list` as Shared.IRI, // Placeholder URL
-          },
-        }),
     };
   }
 
