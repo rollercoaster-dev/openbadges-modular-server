@@ -223,7 +223,9 @@ export class StatusList {
    * Encodes a bitstring using GZIP compression and base64url encoding
    */
   static async encodeBitstring(bitstring: Uint8Array): Promise<string> {
-    const { BitstringUtils } = await import('@/utils/bitstring/bitstring.utils');
+    const { BitstringUtils } = await import(
+      '@/utils/bitstring/bitstring.utils'
+    );
     return BitstringUtils.encodeBitstring(bitstring);
   }
 
@@ -231,7 +233,9 @@ export class StatusList {
    * Decodes a bitstring from the encoded format
    */
   static async decodeBitstring(encodedList: string): Promise<Uint8Array> {
-    const { BitstringUtils } = await import('@/utils/bitstring/bitstring.utils');
+    const { BitstringUtils } = await import(
+      '@/utils/bitstring/bitstring.utils'
+    );
     return BitstringUtils.decodeBitstring(encodedList);
   }
 

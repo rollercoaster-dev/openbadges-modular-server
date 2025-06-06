@@ -303,8 +303,9 @@ export class StatusListController {
         credentialId: credential.id,
       });
 
-      const isValid =
-        await this.statusListService.validateStatusListCredential(credential);
+      const isValid = await this.statusListService.validateStatusListCredential(
+        credential
+      );
 
       return {
         isValid,

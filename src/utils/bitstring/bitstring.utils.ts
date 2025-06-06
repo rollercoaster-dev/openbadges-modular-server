@@ -244,7 +244,9 @@ export class BitstringUtils {
    * @param compressedData The compressed bitstring
    * @returns Decompressed bitstring
    */
-  static async decompressBitstring(compressedData: Buffer): Promise<Uint8Array> {
+  static async decompressBitstring(
+    compressedData: Buffer
+  ): Promise<Uint8Array> {
     try {
       const decompressed = await gunzipAsync(compressedData);
 
