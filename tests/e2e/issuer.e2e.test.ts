@@ -20,6 +20,7 @@ import { setupTestApp, stopTestServer } from './setup-test-app';
 // Import only the types we need
 import { IssuerResponseDto } from '@/api/dtos';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
+import { headersToObject } from '../test-utils/headers.helper';
 
 // Use getPort to reliably get an available port to avoid conflicts
 let TEST_PORT: number;
@@ -161,7 +162,7 @@ describe('Issuer API - E2E', () => {
         status: res.status,
         statusText: res.statusText,
         body: responseBody,
-        headers: Object.fromEntries(res.headers.entries()),
+        headers: headersToObject(res.headers),
         requestUrl: ISSUERS_ENDPOINT,
         requestMethod: 'POST',
         requestHeaders: {
@@ -250,7 +251,7 @@ describe('Issuer API - E2E', () => {
         status: res.status,
         statusText: res.statusText,
         responseText,
-        headers: Object.fromEntries(res.headers.entries()),
+        headers: headersToObject(res.headers),
         requestUrl: `${ISSUERS_ENDPOINT}/${issuerId}`,
         requestMethod: 'GET',
         requestHeaders: {
@@ -406,7 +407,7 @@ describe('Issuer API - E2E', () => {
           status: res.status,
           statusText: res.statusText,
           responseText,
-          headers: Object.fromEntries(res.headers.entries()),
+          headers: headersToObject(res.headers),
           requestUrl: `${ISSUERS_ENDPOINT}/${issuerId}`,
           requestMethod: 'PUT',
           requestHeaders: {
