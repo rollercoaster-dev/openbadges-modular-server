@@ -33,7 +33,7 @@ export class PostgresStatusListMapper {
   toPersistence(entity: StatusList): Record<string, unknown> {
     try {
       return {
-        issuerId: entity.issuerId,
+        issuerId: convertUuid(entity.issuerId, 'postgresql', 'to'),
         purpose: entity.purpose,
         statusSize: entity.statusSize,
         encodedList: entity.encodedList,
@@ -60,7 +60,7 @@ export class PostgresStatusListMapper {
     try {
       const data: StatusListData = {
         id: record.id,
-        issuerId: record.issuerId,
+        issuerId: convertUuid(record.issuerId, 'postgresql', 'from'),
         purpose: record.purpose as StatusPurpose,
         statusSize: record.statusSize,
         encodedList: record.encodedList,

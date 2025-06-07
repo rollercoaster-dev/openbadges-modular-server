@@ -347,9 +347,10 @@ export class PostgresStatusListRepository
               params.purpose
             );
             if (!statusEntry) {
-              throw new Error(
-                `No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`
-              );
+              return {
+                success: false,
+                error: `No status entry found for credential ${params.credentialId} with purpose ${params.purpose}`,
+              };
             }
 
             // Find the status list (convert URN to UUID format for database query)
@@ -360,9 +361,10 @@ export class PostgresStatusListRepository
             );
             const statusList = await this.findById(statusListId as Shared.IRI);
             if (!statusList) {
-              throw new Error(
-                `Status list ${statusEntry.statusListId} not found`
-              );
+              return {
+                success: false,
+                error: `Status list ${statusEntry.statusListId} not found`,
+              };
             }
 
             // Update the bitstring
@@ -443,11 +445,13 @@ export class PostgresStatusListRepository
       context,
       async (db) => {
         const result = await db
-          .select({ count: sql<number>`count(*)` })
+          .select({ count: sql<string>`count(*)` })
           .from(credentialStatusEntries)
           .where(eq(credentialStatusEntries.statusListId, dbStatusListId));
 
-        return [result[0]?.count || 0];
+        // PostgreSQL returns count as string, convert to number
+        const count = result[0]?.count || '0';
+        return [parseInt(count, 10)];
       },
       [dbStatusListId]
     ).then((results) => results[0]);
@@ -507,7 +511,7 @@ export class PostgresStatusListRepository
       context,
       async (db) => {
         const result = await db
-          .select({ count: sql<number>`count(*)` })
+          .select({ count: sql<string>`count(*)` })
           .from(credentialStatusEntries)
           .where(
             and(
@@ -516,7 +520,9 @@ export class PostgresStatusListRepository
             )
           );
 
-        return [(result[0]?.count || 0) > 0];
+        // PostgreSQL returns count as string, convert to number
+        const count = parseInt(result[0]?.count || '0', 10);
+        return [count > 0];
       },
       [dbCredentialId, purpose]
     ).then((results) => results[0]);

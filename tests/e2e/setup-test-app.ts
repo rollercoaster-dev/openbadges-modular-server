@@ -463,6 +463,47 @@ export async function setupTestApp(
                     );
                   }
                 }
+
+                // Apply status list migration for PostgreSQL
+                const statusListMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/pg-migrations/0004_add_status_lists.sql'
+                );
+                if (fs.existsSync(statusListMigrationPath)) {
+                  logger.info(
+                    'Applying PostgreSQL status list migration for E2E tests'
+                  );
+                  try {
+                    const statusListSql = fs.readFileSync(
+                      statusListMigrationPath,
+                      'utf8'
+                    );
+                    await client.unsafe(statusListSql);
+                    logger.info(
+                      'PostgreSQL status list migration applied successfully'
+                    );
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    // If tables already exist, that's fine
+                    if (errorMessage.includes('already exists')) {
+                      logger.info(
+                        'Status list tables already exist, skipping migration'
+                      );
+                    } else {
+                      logger.warn(
+                        'Status list migration failed (may be expected)',
+                        {
+                          error: errorMessage,
+                        }
+                      );
+                    }
+                  }
+                } else {
+                  logger.warn(
+                    `Status list migration file not found: ${statusListMigrationPath}`
+                  );
+                }
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -568,6 +609,47 @@ export async function setupTestApp(
                   }
 
                   logger.info('Original PostgreSQL SQL applied successfully');
+
+                  // Apply status list migration for PostgreSQL (fallback path)
+                  const statusListMigrationPath = join(
+                    process.cwd(),
+                    'drizzle/pg-migrations/0004_add_status_lists.sql'
+                  );
+                  if (fs.existsSync(statusListMigrationPath)) {
+                    logger.info(
+                      'Applying PostgreSQL status list migration for E2E tests (fallback)'
+                    );
+                    try {
+                      const statusListSql = fs.readFileSync(
+                        statusListMigrationPath,
+                        'utf8'
+                      );
+                      await client.unsafe(statusListSql);
+                      logger.info(
+                        'PostgreSQL status list migration applied successfully (fallback)'
+                      );
+                    } catch (error) {
+                      const errorMessage =
+                        error instanceof Error ? error.message : String(error);
+                      // If tables already exist, that's fine
+                      if (errorMessage.includes('already exists')) {
+                        logger.info(
+                          'Status list tables already exist, skipping migration (fallback)'
+                        );
+                      } else {
+                        logger.warn(
+                          'Status list migration failed (may be expected) (fallback)',
+                          {
+                            error: errorMessage,
+                          }
+                        );
+                      }
+                    }
+                  } else {
+                    logger.warn(
+                      `Status list migration file not found: ${statusListMigrationPath} (fallback)`
+                    );
+                  }
                 } catch (error) {
                   // If tables already exist, that's fine
                   if (error.message?.includes('already exists')) {
