@@ -1,6 +1,6 @@
 # E2E Testing Guide
 
-This guide explains how to run and write E2E tests for the OpenBadges Modular Server, with a focus on the multidatabase setup.
+This guide explains how to run and write E2E tests for the OpenBadges Modular Server, with a focus on the multi-database setup.
 
 ## Test Structure
 
@@ -22,7 +22,7 @@ The E2E tests use several helper files to standardize testing:
 - `setup/globalTeardown.ts`: Cleans up the test environment after all tests
 - `setup-test-app.ts`: Provides methods for setting up and tearing down the test server
 
-## Multidatabase Architecture
+## Multi-Database Architecture
 
 The OpenBadges Modular Server is designed to work with multiple database backends. The current implementation supports:
 

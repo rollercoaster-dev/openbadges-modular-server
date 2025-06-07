@@ -124,7 +124,7 @@ export function convertJson<T>(
   direction: 'to' | 'from'
 ): T | string | null | undefined {
   // Handle null/undefined
-  if (value === null || value === undefined) {
+  if (value == null) {
     return value;
   }
 
@@ -323,7 +323,7 @@ export function convertTimestamp(
  * @returns A Date object or undefined.
  */
 export function safeConvertToDate(value: unknown): Date | undefined {
-  if (value === null || value === undefined) {
+  if (value == null) {
     return undefined;
   }
   const date = new Date(value as string | number | Date);
@@ -347,7 +347,7 @@ export function convertUuid(
   direction: 'to' | 'from'
 ): string | null | undefined {
   // Handle null/undefined
-  if (value === null || value === undefined) {
+  if (value == null) {
     return value;
   }
 
@@ -429,7 +429,7 @@ export function convertBoolean(
   direction: 'to' | 'from'
 ): boolean | number | null | undefined {
   // Handle null/undefined
-  if (value === null || value === undefined) {
+  if (value == null) {
     return value;
   }
 

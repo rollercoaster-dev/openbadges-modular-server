@@ -1,3 +1,9 @@
+---
+mode: 'agent'
+tools: ['codebase', 'githubRepo']
+description: 'Create a new API endpoint following OpenBadges modular server patterns'
+---
+
 # Create API Endpoint Pattern
 
 Your goal is to create a new API endpoint following the established patterns in this OpenBadges modular server.

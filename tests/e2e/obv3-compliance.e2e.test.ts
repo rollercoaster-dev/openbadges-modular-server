@@ -689,4 +689,194 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       expect(verifyResult.isRevoked).toBe(false);
     }
   });
+
+  it('should create credentials with BitstringStatusListEntry compliance', async () => {
+    // Step 1: Create an issuer
+    const issuerData = {
+      name: 'Status List Test Issuer',
+      url: EXAMPLE_ISSUER_URL,
+      email: 'statuslist@example.com',
+      description: 'A test issuer for status list compliance testing',
+    };
+
+    const issuerResponse = await fetch(ISSUERS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY,
+      },
+      body: JSON.stringify(issuerData),
+    });
+
+    if (await checkDatabaseConnectionIssue(issuerResponse)) {
+      return;
+    }
+
+    if (issuerResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(
+        issuerResponse,
+        'issuer'
+      );
+      if (!isAcceptableError) {
+        const errorText = await issuerResponse.clone().text();
+        throw new Error(
+          `Unacceptable validation error for issuer: ${errorText}`
+        );
+      }
+      return;
+    }
+
+    expect(issuerResponse.status).toBe(201);
+    const issuer = (await issuerResponse.json()) as Record<string, unknown>;
+    createdResources.issuerId = issuer.id as string;
+
+    // Step 2: Create a badge class
+    const badgeClassData = {
+      name: 'Status List Test Badge',
+      description: 'A test badge for status list compliance testing',
+      image: EXAMPLE_BADGE_IMAGE_URL,
+      criteria: {
+        narrative: 'Complete the status list compliance test',
+      },
+      issuer: issuer.id as string,
+    };
+
+    const badgeClassResponse = await fetch(BADGE_CLASSES_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY,
+      },
+      body: JSON.stringify(badgeClassData),
+    });
+
+    if (await checkDatabaseConnectionIssue(badgeClassResponse)) {
+      return;
+    }
+
+    if (badgeClassResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(
+        badgeClassResponse,
+        'badgeClass'
+      );
+      if (!isAcceptableError) {
+        const errorText = await badgeClassResponse.clone().text();
+        throw new Error(
+          `Unacceptable validation error for badge class: ${errorText}`
+        );
+      }
+      return;
+    }
+
+    expect(badgeClassResponse.status).toBe(201);
+    const badgeClass = (await badgeClassResponse.json()) as Record<
+      string,
+      unknown
+    >;
+    createdResources.badgeClassId = badgeClass.id as string;
+
+    // Step 3: Create an assertion with automatic status assignment
+    const assertionData = {
+      recipient: {
+        type: 'email',
+        hashed: false,
+        identity: 'statustest@example.com',
+      },
+      badge: badgeClass.id as string,
+      issuedOn: new Date().toISOString(),
+    };
+
+    const assertionResponse = await fetch(ASSERTIONS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY,
+      },
+      body: JSON.stringify(assertionData),
+    });
+
+    if (await checkDatabaseConnectionIssue(assertionResponse)) {
+      return;
+    }
+
+    if (assertionResponse.status === 400) {
+      const isAcceptableError = await isAcceptableValidationError(
+        assertionResponse,
+        'assertion'
+      );
+      if (!isAcceptableError) {
+        const errorText = await assertionResponse.clone().text();
+        throw new Error(
+          `Unacceptable validation error for assertion: ${errorText}`
+        );
+      }
+      return;
+    }
+
+    expect(assertionResponse.status).toBe(201);
+    const assertion = (await assertionResponse.json()) as Record<
+      string,
+      unknown
+    >;
+    createdResources.assertionId = assertion.id as string;
+
+    // Step 4: Verify BitstringStatusListEntry compliance
+    expect(assertion.credentialStatus).toBeDefined();
+    const credentialStatus = assertion.credentialStatus as Record<
+      string,
+      unknown
+    >;
+
+    // Verify BitstringStatusListEntry format compliance
+    expect(credentialStatus.type).toBe('BitstringStatusListEntry');
+    expect(credentialStatus.statusPurpose).toBe('revocation');
+    expect(credentialStatus.statusListIndex).toBeDefined();
+    expect(typeof credentialStatus.statusListIndex).toBe('string');
+    expect(credentialStatus.statusListCredential).toBeDefined();
+    expect(typeof credentialStatus.statusListCredential).toBe('string');
+    expect(credentialStatus.statusListCredential).toContain(
+      '/v3/status-lists/'
+    );
+
+    // Step 5: Verify the status list credential is accessible and compliant
+    const statusListUrl = credentialStatus.statusListCredential as string;
+    const statusListResponse = await fetch(statusListUrl);
+
+    if (await checkDatabaseConnectionIssue(statusListResponse)) {
+      return;
+    }
+
+    expect(statusListResponse.status).toBe(200);
+    const statusListCredential = (await statusListResponse.json()) as Record<
+      string,
+      unknown
+    >;
+
+    // Verify BitstringStatusListCredential format compliance
+    expect(statusListCredential['@context']).toBeDefined();
+    expect(statusListCredential['@context']).toContain(
+      'https://www.w3.org/ns/credentials/v2'
+    );
+    expect(statusListCredential.type).toContain('VerifiableCredential');
+    expect(statusListCredential.type).toContain(
+      'BitstringStatusListCredential'
+    );
+    expect(statusListCredential.id).toBeDefined();
+    expect(statusListCredential.issuer).toBeDefined();
+    expect(statusListCredential.validFrom).toBeDefined();
+
+    // Verify credentialSubject compliance
+    const credentialSubject = statusListCredential.credentialSubject as Record<
+      string,
+      unknown
+    >;
+    expect(credentialSubject.type).toBe('BitstringStatusList');
+    expect(credentialSubject.statusPurpose).toBe('revocation');
+    expect(credentialSubject.encodedList).toBeDefined();
+    expect(typeof credentialSubject.encodedList).toBe('string');
+
+    // Verify the encoded list is valid base64url
+    const encodedList = credentialSubject.encodedList as string;
+    expect(encodedList).toMatch(/^[A-Za-z0-9_-]*=*$/);
+  });
 });

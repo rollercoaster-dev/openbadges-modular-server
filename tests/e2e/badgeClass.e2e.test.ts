@@ -34,6 +34,7 @@ import { setupTestApp, stopTestServer } from './setup-test-app';
 import { BadgeClassResponseDto } from '@/api/dtos';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 import { config } from '@/config/config'; // safe to import after env is prepared
+import { RepositoryFactory } from '@/infrastructure/repository.factory';
 
 // Use getPort to reliably get an available port to avoid conflicts
 let TEST_PORT: number;
@@ -133,6 +134,9 @@ describe('Badge Class API - E2E', () => {
         });
       }
     }
+
+    // Close the database connection
+    await RepositoryFactory.close();
 
     // Release the allocated port
     if (TEST_PORT) {

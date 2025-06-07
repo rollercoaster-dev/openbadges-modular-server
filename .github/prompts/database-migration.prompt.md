@@ -1,3 +1,9 @@
+---
+mode: 'agent'
+tools: ['codebase', 'terminalLastCommand']
+description: 'Create database migrations following OpenBadges modular server patterns'
+---
+
 # Database Migration Pattern
 
 Your goal is to create database migrations following the established patterns in this OpenBadges modular server.

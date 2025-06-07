@@ -31,11 +31,11 @@ export interface PostgresConnectionConfig {
 /**
  * PostgreSQL connection state
  */
-export type PostgresConnectionState = 
-  | 'disconnected' 
-  | 'connecting' 
-  | 'connected' 
-  | 'error' 
+export type PostgresConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'error'
   | 'closed';
 
 /**
@@ -51,15 +51,16 @@ export interface PostgresOperationContext {
 /**
  * PostgreSQL entity types
  */
-export type PostgresEntityType = 
-  | 'issuer' 
-  | 'badgeClass' 
-  | 'assertion' 
-  | 'user' 
-  | 'apiKey' 
-  | 'platform' 
-  | 'platformUser' 
-  | 'userAssertion';
+export type PostgresEntityType =
+  | 'issuer'
+  | 'badgeClass'
+  | 'assertion'
+  | 'user'
+  | 'apiKey'
+  | 'platform'
+  | 'platformUser'
+  | 'userAssertion'
+  | 'statusList';
 
 /**
  * PostgreSQL query metrics
@@ -130,7 +131,9 @@ export const MAX_POSTGRES_PAGINATION_LIMIT = 1000;
 /**
  * PostgreSQL transaction type
  */
-export type PostgresTransaction = Parameters<Parameters<ReturnType<typeof drizzle>['transaction']>[0]>[0];
+export type PostgresTransaction = Parameters<
+  Parameters<ReturnType<typeof drizzle>['transaction']>[0]
+>[0];
 
 /**
  * Factory function to create PostgreSQL connection config with defaults

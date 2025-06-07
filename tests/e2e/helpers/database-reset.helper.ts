@@ -6,7 +6,6 @@
  */
 
 import { DatabaseFactory } from '@/infrastructure/database/database.factory';
-import { config } from '@/config/config';
 import { logger } from '@/utils/logging/logger.service';
 
 /**
@@ -190,14 +189,12 @@ async function resetPostgresDatabase(): Promise<void> {
  * Reset the database to a clean state
  */
 export async function resetDatabase(): Promise<void> {
-  const dbType = process.env.DB_TYPE || config.database.type;
+  // Force SQLite for E2E tests
+  const dbType = 'sqlite';
 
   logger.info('Resetting database', {
     dbType,
-    sqliteFile: process.env.SQLITE_DB_PATH || process.env.SQLITE_FILE,
-    postgresUrl: process.env.DATABASE_URL
-      ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@')
-      : undefined,
+    sqliteFile: ':memory:',
   });
 
   try {

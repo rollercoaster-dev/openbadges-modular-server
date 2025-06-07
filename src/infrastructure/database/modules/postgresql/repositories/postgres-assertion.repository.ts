@@ -258,11 +258,13 @@ export class PostgresAssertionRepository
     return { isValid: true };
   }
 
-  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<Array<{
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async createBatch(assertionList: Omit<Assertion, 'id'>[]): Promise<
+    Array<{
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     if (assertionList.length === 0) {
       return [];
     }
@@ -271,11 +273,18 @@ export class PostgresAssertionRepository
 
     try {
       // Convert domain entities to database records
-      const records = assertionList.map(assertion => this.mapper.toPersistence(assertion));
+      const records = assertionList.map((assertion) =>
+        this.mapper.toPersistence(assertion)
+      );
 
       // Use batch insert utility
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const results = await batchInsert(this.db, assertions as any, records, 'postgresql');
+
+      const results = await batchInsert<typeof assertions.$inferSelect>(
+        this.db as unknown as Parameters<typeof batchInsert>[0], // DatabaseClient interface compatibility
+        assertions as unknown as Parameters<typeof batchInsert>[1], // DatabaseTable interface compatibility
+        records,
+        'postgresql'
+      );
 
       // Convert results back to domain entities
       return results.map((result, _index) => {
@@ -303,7 +312,8 @@ export class PostgresAssertionRepository
       // If batch operation fails, return error for all items
       return assertionList.map(() => ({
         success: false,
-        error: error instanceof Error ? error.message : 'Batch operation failed',
+        error:
+          error instanceof Error ? error.message : 'Batch operation failed',
       }));
     }
   }
@@ -319,7 +329,9 @@ export class PostgresAssertionRepository
       context,
       async (db) => {
         // Convert URNs to UUIDs for PostgreSQL query
-        const dbIds = ids.map(id => convertUuid(id as string, 'postgresql', 'to'));
+        const dbIds = ids.map((id) =>
+          convertUuid(id as string, 'postgresql', 'to')
+        );
 
         const result = await db
           .select()
@@ -328,28 +340,32 @@ export class PostgresAssertionRepository
 
         // Create a map for quick lookup
         const assertionMap = new Map<string, Assertion>();
-        result.forEach(record => {
+        result.forEach((record) => {
           const domainEntity = this.mapper.toDomain(record);
           assertionMap.set(domainEntity.id, domainEntity);
         });
 
         // Return results in the same order as input IDs
-        return ids.map(id => assertionMap.get(id) || null);
+        return ids.map((id) => assertionMap.get(id) || null);
       },
       ids
     );
   }
 
-  async updateStatusBatch(updates: Array<{
-    id: Shared.IRI;
-    status: 'revoked' | 'suspended' | 'active';
-    reason?: string;
-  }>): Promise<Array<{
-    id: Shared.IRI;
-    success: boolean;
-    assertion?: Assertion;
-    error?: string;
-  }>> {
+  async updateStatusBatch(
+    updates: Array<{
+      id: Shared.IRI;
+      status: 'revoked' | 'suspended' | 'active';
+      reason?: string;
+    }>
+  ): Promise<
+    Array<{
+      id: Shared.IRI;
+      success: boolean;
+      assertion?: Assertion;
+      error?: string;
+    }>
+  > {
     if (updates.length === 0) {
       return [];
     }

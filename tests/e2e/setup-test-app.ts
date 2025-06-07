@@ -209,55 +209,88 @@ export async function setupTestApp(
       );
       logger.info('Database connection established successfully');
 
-      // Run migrations for the database
+      // Run migrations for the database using the same connection as repositories
       try {
         if (dbConfig.type === 'sqlite') {
-          logger.info('Running SQLite migrations for E2E tests');
+          logger.info(
+            'Running SQLite migrations for E2E tests using repository connection'
+          );
           const fs = require('fs');
           const { join } = require('path');
-          const { Database } = require('bun:sqlite');
 
-          // Create SQLite database connection
-          const sqliteFile =
-            process.env.SQLITE_DB_PATH ||
-            config.database.sqliteFile ||
-            ':memory:';
-          logger.debug(`Using SQLite database at: ${sqliteFile}`);
-          const db = new Database(sqliteFile);
-
-          try {
-            // Apply the latest migration SQL that includes issuer_id column
-            const sqlFilePath = join(
-              process.cwd(),
-              'drizzle/migrations/0000_fixed_migration.sql'
+          // Use the repository factory's SQLite connection manager instead of creating a separate connection
+          const connectionManager =
+            RepositoryFactory.getSqliteConnectionManager();
+          if (!connectionManager) {
+            throw new Error(
+              'SQLite connection manager not initialized for migrations'
             );
-            if (fs.existsSync(sqlFilePath)) {
-              logger.info(`Applying SQL migration from ${sqlFilePath}`);
-              try {
-                const sql = fs.readFileSync(sqlFilePath, 'utf8');
-                db.exec(sql);
-                logger.info('Base SQLite migration applied successfully');
+          }
 
-                // Note: The 0000_fixed_migration.sql already includes the issuer_id column
-                // so we don't need to apply the additional issuer_id migrations
-                logger.info(
-                  'All SQLite migrations applied successfully (issuer_id already included in base migration)'
-                );
-              } catch (error) {
-                // If tables already exist, that's fine
-                if (error.message && error.message.includes('already exists')) {
-                  logger.info('Tables already exist, skipping migration');
-                } else {
-                  throw error;
+          // Get the underlying database client from the connection manager
+          const db = connectionManager.getClient();
+
+          // Apply the latest migration SQL that includes issuer_id column
+          const sqlFilePath = join(
+            process.cwd(),
+            'drizzle/migrations/0000_fixed_migration.sql'
+          );
+          if (fs.existsSync(sqlFilePath)) {
+            logger.info(`Applying SQL migration from ${sqlFilePath}`);
+            try {
+              const sql = fs.readFileSync(sqlFilePath, 'utf8');
+              db.exec(sql);
+              logger.info('Base SQLite migration applied successfully');
+
+              // Note: The 0000_fixed_migration.sql already includes the issuer_id column
+              // so we don't need to apply the additional issuer_id migrations
+
+              // Apply the status list migration
+              const statusListMigrationPath = join(
+                process.cwd(),
+                'drizzle/migrations/0003_add_status_lists.sql'
+              );
+              if (fs.existsSync(statusListMigrationPath)) {
+                logger.info('Applying status list migration for E2E tests');
+                try {
+                  const statusListSql = fs.readFileSync(
+                    statusListMigrationPath,
+                    'utf8'
+                  );
+                  db.exec(statusListSql);
+                  logger.info('Status list migration applied successfully');
+                } catch (error) {
+                  // If tables already exist, that's fine
+                  if (
+                    error.message &&
+                    error.message.includes('already exists')
+                  ) {
+                    logger.info(
+                      'Status list tables already exist, skipping migration'
+                    );
+                  } else {
+                    throw error;
+                  }
                 }
+              } else {
+                logger.warn(
+                  `Status list migration file not found: ${statusListMigrationPath}`
+                );
               }
-            } else {
-              logger.warn(`Migration file not found: ${sqlFilePath}`);
+
+              logger.info(
+                'All SQLite migrations applied successfully (including status lists)'
+              );
+            } catch (error) {
+              // If tables already exist, that's fine
+              if (error.message && error.message.includes('already exists')) {
+                logger.info('Tables already exist, skipping migration');
+              } else {
+                throw error;
+              }
             }
-          } finally {
-            // Always close the database connection to prevent file locks and descriptor leaks
-            db.close();
-            logger.debug('SQLite migration connection closed');
+          } else {
+            logger.warn(`Migration file not found: ${sqlFilePath}`);
           }
         } else if (dbConfig.type === 'postgresql') {
           logger.info('Running PostgreSQL migrations for E2E tests');
@@ -430,6 +463,47 @@ export async function setupTestApp(
                     );
                   }
                 }
+
+                // Apply status list migration for PostgreSQL
+                const statusListMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/pg-migrations/0004_add_status_lists.sql'
+                );
+                if (fs.existsSync(statusListMigrationPath)) {
+                  logger.info(
+                    'Applying PostgreSQL status list migration for E2E tests'
+                  );
+                  try {
+                    const statusListSql = fs.readFileSync(
+                      statusListMigrationPath,
+                      'utf8'
+                    );
+                    await client.unsafe(statusListSql);
+                    logger.info(
+                      'PostgreSQL status list migration applied successfully'
+                    );
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    // If tables already exist, that's fine
+                    if (errorMessage.includes('already exists')) {
+                      logger.info(
+                        'Status list tables already exist, skipping migration'
+                      );
+                    } else {
+                      logger.warn(
+                        'Status list migration failed (may be expected)',
+                        {
+                          error: errorMessage,
+                        }
+                      );
+                    }
+                  }
+                } else {
+                  logger.warn(
+                    `Status list migration file not found: ${statusListMigrationPath}`
+                  );
+                }
               } catch (error) {
                 // If tables already exist, that's fine
                 if (error.message && error.message.includes('already exists')) {
@@ -535,6 +609,47 @@ export async function setupTestApp(
                   }
 
                   logger.info('Original PostgreSQL SQL applied successfully');
+
+                  // Apply status list migration for PostgreSQL (fallback path)
+                  const statusListMigrationPath = join(
+                    process.cwd(),
+                    'drizzle/pg-migrations/0004_add_status_lists.sql'
+                  );
+                  if (fs.existsSync(statusListMigrationPath)) {
+                    logger.info(
+                      'Applying PostgreSQL status list migration for E2E tests (fallback)'
+                    );
+                    try {
+                      const statusListSql = fs.readFileSync(
+                        statusListMigrationPath,
+                        'utf8'
+                      );
+                      await client.unsafe(statusListSql);
+                      logger.info(
+                        'PostgreSQL status list migration applied successfully (fallback)'
+                      );
+                    } catch (error) {
+                      const errorMessage =
+                        error instanceof Error ? error.message : String(error);
+                      // If tables already exist, that's fine
+                      if (errorMessage.includes('already exists')) {
+                        logger.info(
+                          'Status list tables already exist, skipping migration (fallback)'
+                        );
+                      } else {
+                        logger.warn(
+                          'Status list migration failed (may be expected) (fallback)',
+                          {
+                            error: errorMessage,
+                          }
+                        );
+                      }
+                    }
+                  } else {
+                    logger.warn(
+                      `Status list migration file not found: ${statusListMigrationPath} (fallback)`
+                    );
+                  }
                 } catch (error) {
                   // If tables already exist, that's fine
                   if (error.message?.includes('already exists')) {
@@ -631,8 +746,23 @@ export async function setupTestApp(
       await RepositoryFactory.createBadgeClassRepository();
     const assertionRepository =
       await RepositoryFactory.createAssertionRepository();
+    const statusListRepository =
+      await RepositoryFactory.createStatusListRepository();
 
-    // Initialize controllers with repositories
+    // Initialize services
+    const { StatusListService } = await import(
+      '../../src/core/status-list.service'
+    );
+    const { CredentialStatusService } = await import(
+      '../../src/core/credential-status.service'
+    );
+
+    const statusListService = new StatusListService(statusListRepository);
+    const credentialStatusService = new CredentialStatusService(
+      statusListService
+    );
+
+    // Initialize controllers with repositories and services
     const issuerController = new IssuerController(issuerRepository);
     const badgeClassController = new BadgeClassController(
       badgeClassRepository,
@@ -641,11 +771,14 @@ export async function setupTestApp(
     const assertionController = new AssertionController(
       assertionRepository,
       badgeClassRepository,
-      issuerRepository
+      issuerRepository,
+      credentialStatusService
     );
 
     // Create JWKS controller
-    const { JwksController } = await import('../../src/api/controllers/jwks.controller');
+    const { JwksController } = await import(
+      '../../src/api/controllers/jwks.controller'
+    );
     const jwksController = new JwksController();
 
     // Create API router with controllers
@@ -663,8 +796,14 @@ export async function setupTestApp(
 
     // Start the server with Bun
     const testPort = port || parseInt(process.env.TEST_PORT || '3001');
+
+    // Set BASE_URL for status list credential URL generation
+    const baseUrl = `http://${config.server.host || 'localhost'}:${testPort}`;
+    process.env.BASE_URL = baseUrl;
+
     logger.info(
-      `Starting test server on port ${testPort} with host ${config.server.host}`
+      `Starting test server on port ${testPort} with host ${config.server.host}`,
+      { baseUrl }
     );
 
     const server = Bun.serve({

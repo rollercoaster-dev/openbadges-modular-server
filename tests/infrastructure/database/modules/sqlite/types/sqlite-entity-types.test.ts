@@ -1,5 +1,19 @@
 /**
- * Test for centralized SQLite entity type definitions
+ * Test  it('should contain all expected entity types', () => {
+    const expectedTypes = [
+      'issuer',
+      'badgeClass',
+      'assertion',
+      'user',
+      'platform',
+      'apiKey',
+      'platformUser',
+      'userAssertion',
+      'statusList',
+    ] as const;
+
+    expect(SQLITE_ENTITY_TYPES).toEqual(expectedTypes);
+  });ed SQLite entity type definitions
  */
 
 import { describe, it, expect } from 'bun:test';
@@ -19,6 +33,7 @@ describe('SQLite Entity Types', () => {
       'apiKey',
       'platformUser',
       'userAssertion',
+      'statusList',
     ] as const;
 
     expect(SQLITE_ENTITY_TYPES).toEqual(expectedTypes);
@@ -39,7 +54,7 @@ describe('SQLite Entity Types', () => {
 
   it('should maintain consistency with expected entity types', () => {
     // Verify that we have the expected number of entity types
-    expect(SQLITE_ENTITY_TYPES.length).toBe(8);
+    expect(SQLITE_ENTITY_TYPES.length).toBe(9);
 
     // Verify that each type is a non-empty string
     SQLITE_ENTITY_TYPES.forEach((entityType) => {

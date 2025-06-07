@@ -1,6 +1,6 @@
-# Multidatabase Testing Guide
+# Multi-Database Testing Guide
 
-This guide provides detailed information about the multidatabase testing setup in the OpenBadges Modular Server. It explains how tests are configured to work with different database backends and how to write database-agnostic tests.
+This guide provides detailed information about the multi-database testing setup in the OpenBadges Modular Server. It explains how tests are configured to work with different database backends and how to write database-agnostic tests.
 
 ## Architecture Overview
 

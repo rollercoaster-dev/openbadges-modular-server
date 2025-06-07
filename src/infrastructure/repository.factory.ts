@@ -10,6 +10,7 @@ import postgres from 'postgres';
 import { IssuerRepository } from '@domains/issuer/issuer.repository';
 import { BadgeClassRepository } from '@domains/badgeClass/badgeClass.repository';
 import { AssertionRepository } from '@domains/assertion/assertion.repository';
+import { StatusListRepository } from '@domains/status-list/status-list.repository';
 import { ApiKeyRepository } from '@domains/auth/apiKey.repository';
 import { UserRepository } from '@domains/user/user.repository';
 import { PlatformRepository } from '@domains/backpack/platform.repository';
@@ -18,6 +19,7 @@ import { UserAssertionRepository } from '@domains/backpack/user-assertion.reposi
 import { PostgresIssuerRepository } from './database/modules/postgresql/repositories/postgres-issuer.repository';
 import { PostgresBadgeClassRepository } from './database/modules/postgresql/repositories/postgres-badge-class.repository';
 import { PostgresAssertionRepository } from './database/modules/postgresql/repositories/postgres-assertion.repository';
+import { PostgresStatusListRepository } from './database/modules/postgresql/repositories/postgres-status-list.repository';
 import { PostgresApiKeyRepository } from './database/modules/postgresql/repositories/postgres-api-key.repository';
 import { PostgresUserRepository } from './database/modules/postgresql/repositories/postgres-user.repository';
 import { PostgresPlatformRepository } from './database/modules/postgresql/repositories/postgres-platform.repository';
@@ -27,6 +29,7 @@ import { PostgresUserAssertionRepository } from './database/modules/postgresql/r
 import { SqliteIssuerRepository } from './database/modules/sqlite/repositories/sqlite-issuer.repository';
 import { SqliteBadgeClassRepository } from './database/modules/sqlite/repositories/sqlite-badge-class.repository';
 import { SqliteAssertionRepository } from './database/modules/sqlite/repositories/sqlite-assertion.repository';
+import { SqliteStatusListRepository } from './database/modules/sqlite/repositories/sqlite-status-list.repository';
 import { SqliteApiKeyRepository } from './database/modules/sqlite/repositories/sqlite-api-key.repository';
 import { SqliteUserRepository } from './database/modules/sqlite/repositories/sqlite-user.repository';
 import { SqlitePlatformRepository } from './database/modules/sqlite/repositories/sqlite-platform.repository';
@@ -268,6 +271,33 @@ export class RepositoryFactory {
   }
 
   /**
+   * Creates a status list repository
+   * @returns An implementation of StatusListRepository
+   */
+  static async createStatusListRepository(): Promise<StatusListRepository> {
+    if (RepositoryFactory.dbType === 'postgresql') {
+      if (!RepositoryFactory.client) {
+        throw new Error('PostgreSQL client not initialized');
+      }
+
+      // Create the repository
+      return new PostgresStatusListRepository(RepositoryFactory.client);
+    } else if (RepositoryFactory.dbType === 'sqlite') {
+      // Use the shared SQLite connection manager
+      if (!RepositoryFactory.sqliteConnectionManager) {
+        throw new Error('SQLite connection manager not initialized');
+      }
+
+      // Create the repository using the shared connection manager
+      return new SqliteStatusListRepository(
+        RepositoryFactory.sqliteConnectionManager
+      );
+    }
+
+    throw new Error(`Unsupported database type: ${RepositoryFactory.dbType}`);
+  }
+
+  /**
    * Creates an API Key repository
    * @returns An implementation of ApiKeyRepository
    */
@@ -478,13 +508,26 @@ export class RepositoryFactory {
         RepositoryFactory.sqliteConnectionManager
       ) {
         // Test SQLite connection
-        const ok = await RepositoryFactory.sqliteConnectionManager.isConnected();
+        const ok =
+          await RepositoryFactory.sqliteConnectionManager.isConnected();
         return ok;
       }
       return false;
     } catch {
-      logger.debug('RepositoryFactory.isConnected(): connectivity check failed');
+      logger.debug(
+        'RepositoryFactory.isConnected(): connectivity check failed'
+      );
       return false;
     }
+  }
+
+  /**
+   * Gets the SQLite connection manager for migrations and other operations
+   * @returns The SQLite connection manager or null if not initialized
+   */
+  static getSqliteConnectionManager():
+    | import('./database/modules/sqlite/connection/sqlite-connection.manager').SqliteConnectionManager
+    | null {
+    return RepositoryFactory.sqliteConnectionManager;
   }
 }

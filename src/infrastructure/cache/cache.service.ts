@@ -20,8 +20,6 @@ type LRUType = {
   size: number;
 };
 
-
-
 import { CacheInterface, CacheStats } from './cache.interface';
 
 export interface CacheOptions {
@@ -138,7 +136,7 @@ export class CacheService implements CacheInterface {
       misses: this.misses,
       keys: this.size(),
       ksize: this.calculateKeysSize(),
-      vsize: this.calculateValuesSize()
+      vsize: this.calculateValuesSize(),
     };
   }
 
@@ -147,8 +145,10 @@ export class CacheService implements CacheInterface {
    * @returns Array of cache keys
    */
   keys(): string[] {
-    // Convert IterableIterator to array
-    return Array.from(this.cache.keys());
+    // Convert IterableIterator to array and filter out any undefined/null values
+    return Array.from(this.cache.keys()).filter(
+      (key): key is string => key != null && typeof key === 'string'
+    );
   }
 
   /**
@@ -164,7 +164,7 @@ export class CacheService implements CacheInterface {
    * @returns Size in bytes
    */
   private calculateKeysSize(): number {
-    return this.keys().reduce((size, key) => size + (key.length * 2), 0);
+    return this.keys().reduce((size, key) => size + key.length * 2, 0);
   }
 
   /**
@@ -209,7 +209,10 @@ export class CacheService implements CacheInterface {
     }
 
     if (Array.isArray(obj)) {
-      return obj.reduce((size, item) => size + this.estimateObjectSize(item), 0);
+      return obj.reduce(
+        (size, item) => size + this.estimateObjectSize(item),
+        0
+      );
     }
 
     if (typeof obj === 'object') {

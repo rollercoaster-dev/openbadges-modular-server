@@ -20,6 +20,8 @@ import { BackpackController } from './domains/backpack/backpack.controller';
 import { UserController } from './domains/user/user.controller';
 import { UserService } from './domains/user/user.service';
 import { BackpackService } from './domains/backpack/backpack.service';
+import { StatusListService } from './core/status-list.service';
+import { CredentialStatusService } from './core/credential-status.service';
 import {
   createErrorHandlerMiddleware,
   handleNotFound,
@@ -112,6 +114,8 @@ export async function setupApp(): Promise<Hono> {
       await RepositoryFactory.createBadgeClassRepository();
     const assertionRepository =
       await RepositoryFactory.createAssertionRepository();
+    const statusListRepository =
+      await RepositoryFactory.createStatusListRepository();
     const userRepository = await RepositoryFactory.createUserRepository();
 
     // Initialize backpack repositories
@@ -122,7 +126,13 @@ export async function setupApp(): Promise<Hono> {
     const userAssertionRepository =
       await RepositoryFactory.createUserAssertionRepository();
 
-    // Initialize controllers with repositories
+    // Initialize services
+    const statusListService = new StatusListService(statusListRepository);
+    const credentialStatusService = new CredentialStatusService(
+      statusListService
+    );
+
+    // Initialize controllers with repositories and services
     const issuerController = new IssuerController(issuerRepository);
     const badgeClassController = new BadgeClassController(
       badgeClassRepository,
@@ -131,7 +141,8 @@ export async function setupApp(): Promise<Hono> {
     const assertionController = new AssertionController(
       assertionRepository,
       badgeClassRepository,
-      issuerRepository
+      issuerRepository,
+      credentialStatusService
     );
 
     // Initialize backpack service and controller
@@ -214,3 +225,6 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// Export the app for testing
+export { app };

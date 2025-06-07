@@ -42,6 +42,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *test_database*
 test_database.sqlite
 tests/e2e/test_database.sqlite
+*.pub
 
 
 uploads/*
@@ -49,6 +50,9 @@ uploads/*
 # Cryptographic keys
 keys/
 test-keys/
+test-keys-jwk/
+*.key
+*.pem
 
 .eslintrc.js
 

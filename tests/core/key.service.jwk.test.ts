@@ -76,12 +76,15 @@ describe('KeyService JWK Functionality', () => {
       expect(typeof jwk.x).toBe('string');
     });
 
-    it('should throw error for unsupported key type', () => {
-      const mockPublicKey = '-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----';
+    it('should throw error for unsupported key type', async () => {
+      // Generate a valid RSA key pair to ensure the PEM parsing itself doesn't fail first
+      // This allows us to specifically test the 'Unsupported key type' error from our switch case
+      const keyPair = await KeyService.generateKeyPair('temp-rsa-for-unsupported-test', KeyType.RSA);
+      const unsupportedKeyType = 'UNSUPPORTED_MOCK_TYPE' as KeyType;
 
       expect(() => {
-        KeyService.convertPemToJwk(mockPublicKey, 'UNSUPPORTED' as KeyType, 'test');
-      }).toThrow(); // Just verify it throws, since the mock key causes a parse error first
+        KeyService.convertPemToJwk(keyPair.publicKey, unsupportedKeyType, 'test-unsupported');
+      }).toThrowError(new RegExp(`Unsupported key type for JWK conversion: ${unsupportedKeyType}`));
     });
   });
 

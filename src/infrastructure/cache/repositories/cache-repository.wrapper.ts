@@ -59,8 +59,10 @@ export abstract class CacheRepositoryWrapper<T, R> {
     if (!this.enabled) return;
 
     // Find all keys that start with 'collection:'
+    // Filter out any undefined/null values that might be returned by the cache
     const keys = this.cache
       .keys()
+      .filter((key): key is string => key != null && typeof key === 'string')
       .filter((key) => key.startsWith('collection:'));
 
     // Delete all collection keys

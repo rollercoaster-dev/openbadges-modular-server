@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
  * Checks if a value is a valid IRI (strict: URL or UUID)
  */
 export function isValidIRI(value: unknown): boolean {
-  if (value === null || value === undefined || value === '') return false;
+  if (value == null || value === '') return false;
   try {
     new URL(value.toString());
     return true;
@@ -30,7 +30,7 @@ export function isValidIRI(value: unknown): boolean {
  * Use for Open Badges and general IRI validation.
  */
 export function toIRI(value: IRICompatible): Shared.IRI | null {
-  if (value === null || value === undefined || value === '') return null;
+  if (value == null || value === '') return null;
   if (typeof value === 'object' && value !== null) return value;
   if (isValidIRI(value)) return value as Shared.IRI;
   logger.warn('Invalid IRI value', { value });
@@ -43,7 +43,7 @@ export function toIRI(value: IRICompatible): Shared.IRI | null {
  * @returns The converted string
  */
 export function toString(value: IRICompatible): string | null {
-  if (value === null || value === undefined || value === '') {
+  if (value == null || value === '') {
     return null;
   }
   return value.toString();
@@ -60,7 +60,7 @@ export function toString(value: IRICompatible): string | null {
  * Use ONLY for issuer resource lookups, not for Open Badges data validation.
  */
 export function toIssuerId(value: IRICompatible): Shared.IRI | null {
-  if (value === null || value === undefined || value === '') return null;
+  if (value == null || value === '') return null;
   return value as Shared.IRI;
 }
 
@@ -104,7 +104,7 @@ export function toIRIArray(
 export function toStringArray(
   values: IRICompatible[] | null | undefined
 ): string[] {
-  if (values === null || values === undefined) {
+  if (values == null) {
     return [];
   }
   return values.map((value) => toString(value)).filter(Boolean) as string[];
@@ -123,7 +123,7 @@ export function objectWithIRIToString<T extends Record<string, unknown>>(
   const result: Record<string, unknown> = { ...obj };
 
   for (const prop of iriProperties) {
-    if (result[prop] !== undefined && result[prop] !== null) {
+    if (result[prop] != null) {
       result[prop] = toString(result[prop] as Shared.IRI);
     }
   }
@@ -146,7 +146,7 @@ export function objectWithStringToIRI<T extends Record<string, unknown>>(
   const invalidProps: string[] = [];
 
   for (const prop of iriProperties) {
-    if (result[prop] !== undefined && result[prop] !== null) {
+    if (result[prop] != null) {
       const iri = toIRI(result[prop] as string);
       if (iri === null) {
         // Track invalid properties

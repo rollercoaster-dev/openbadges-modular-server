@@ -1,7 +1,7 @@
 /**
  * DTOs for Assertion-related API endpoints
- * 
- * These DTOs define the expected request and response structures for assertion operations.
+ *
+ * These DTOs define the expected request and response structures for assertions.
  * They provide type safety and validation for the API.
  */
 
@@ -52,12 +52,14 @@ export interface AssertionBaseDto {
   evidence?: EvidenceDto | EvidenceDto[];
   narrative?: string;
   expires?: string; // ISO date string
-  image?: string | {
-    id?: string;
-    type?: string;
-    url?: string;
-    caption?: string;
-  };
+  image?:
+    | string
+    | {
+        id?: string;
+        type?: string;
+        url?: string;
+        caption?: string;
+      };
   revoked?: boolean;
   revocationReason?: string;
   [key: string]: unknown;
@@ -75,7 +77,7 @@ export interface CreateAssertionOB2Dto extends AssertionBaseDto {
  */
 export interface CreateAssertionOB3Dto extends AssertionBaseDto {
   type?: string; // In OB3, type is typically a string
-  id?: string;   // Allow client to suggest an ID (optional)
+  id?: string; // Allow client to suggest an ID (optional)
   credentialSubject?: Record<string, unknown>;
 }
 
@@ -124,17 +126,6 @@ export interface BatchCreateCredentialsDto {
  */
 export interface BatchRetrieveCredentialsDto {
   ids: string[];
-}
-
-/**
- * DTO for batch credential status update
- */
-export interface BatchUpdateCredentialStatusDto {
-  updates: Array<{
-    id: string;
-    status: 'revoked' | 'suspended' | 'active';
-    reason?: string;
-  }>;
 }
 
 /**

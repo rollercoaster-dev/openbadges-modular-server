@@ -22,7 +22,10 @@ export class DatabaseFactory {
    * @param module The database module to register
    * @param isDefault Whether this module should be the default
    */
-  static registerModule(module: DatabaseModuleInterface, isDefault: boolean = false): void {
+  static registerModule(
+    module: DatabaseModuleInterface,
+    isDefault: boolean = false
+  ): void {
     const moduleName = module.getModuleName();
     this.modules.set(moduleName, module);
 

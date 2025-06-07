@@ -46,9 +46,16 @@ export interface JwtPayload {
 }
 
 export class JwtService {
-  private static readonly SECRET = new TextEncoder().encode(config.auth?.jwtSecret || 'temp_secret_replace_in_production');
-  private static readonly TOKEN_EXPIRY = config.auth?.tokenExpirySeconds || 3600; // 1 hour default
-  private static readonly ISSUER = config.auth?.issuer || config.openBadges.baseUrl;
+  // Encode the JWT secret as bytes for use with the jose library
+  private static readonly SECRET = new TextEncoder().encode(
+    config.auth?.jwtSecret || 'temp_secret_replace_in_production'
+  );
+  private static readonly TOKEN_EXPIRY =
+    config.auth?.tokenExpirySeconds || 3600; // 1 hour default
+  // Use the configured issuer or fall back to the base URL for the badge server
+  private static readonly ISSUER =
+    config.auth?.issuer || config.openBadges.baseUrl;
+  // Use HMAC SHA-256 for token signing (symmetric key algorithm)
   private static readonly ALGORITHM = 'HS256';
 
   /**
@@ -96,18 +103,19 @@ export class JwtService {
         issuer: this.ISSUER,
       });
 
-      // Ensure the payload has the required provider property
+      // Ensure the payload has the required provider property for authentication context
       if (!payload['provider']) {
         throw new Error('Token payload missing required provider property');
       }
 
+      // Convert the generic JWTPayload to our specific JwtPayload interface
       return {
-        sub: payload.sub as string,
-        provider: payload['provider'] as string,
-        claims: payload['claims'] as Record<string, unknown> | undefined,
-        iss: payload.iss,
-        exp: payload.exp,
-        iat: payload.iat,
+        sub: payload.sub as string, // Subject (user ID)
+        provider: payload['provider'] as string, // Authentication provider
+        claims: payload['claims'] as Record<string, unknown> | undefined, // Additional user claims
+        iss: payload.iss, // Issuer
+        exp: payload.exp, // Expiration time
+        iat: payload.iat, // Issued at time
       };
     } catch (error) {
       logger.logError('JWT token verification failed', error as Error);

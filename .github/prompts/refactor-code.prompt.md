@@ -1,3 +1,9 @@
+---
+mode: 'edit'
+tools: ['codebase']
+description: 'Refactor existing code following OpenBadges modular server patterns and best practices'
+---
+
 # Code Refactoring Pattern
 
 Your goal is to refactor existing code following the established patterns and best practices in this OpenBadges modular server.
