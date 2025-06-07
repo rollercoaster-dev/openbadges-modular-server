@@ -361,7 +361,9 @@ export async function decodeBitstring(
   } catch (error) {
     logger.error('Failed to decode bitstring', {
       error,
-      encodedList: encodedList.substring(0, 50) + '...',
+      encodedList: encodedList.length > 50
+        ? encodedList.substring(0, 50) + '...'
+        : encodedList,
     });
     throw new Error('Failed to decode bitstring');
   }
