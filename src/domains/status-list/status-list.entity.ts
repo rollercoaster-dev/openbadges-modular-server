@@ -223,20 +223,20 @@ export class StatusList {
    * Encodes a bitstring using GZIP compression and base64url encoding
    */
   static async encodeBitstring(bitstring: Uint8Array): Promise<string> {
-    const { BitstringUtils } = await import(
+    const { encodeBitstring } = await import(
       '@/utils/bitstring/bitstring.utils'
     );
-    return BitstringUtils.encodeBitstring(bitstring);
+    return encodeBitstring(bitstring);
   }
 
   /**
    * Decodes a bitstring from the encoded format
    */
   static async decodeBitstring(encodedList: string): Promise<Uint8Array> {
-    const { BitstringUtils } = await import(
+    const { decodeBitstring } = await import(
       '@/utils/bitstring/bitstring.utils'
     );
-    return BitstringUtils.decodeBitstring(encodedList);
+    return decodeBitstring(encodedList);
   }
 
   /**

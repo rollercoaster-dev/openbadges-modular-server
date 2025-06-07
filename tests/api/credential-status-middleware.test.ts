@@ -1,6 +1,6 @@
 /**
  * Test to verify the fix for inconsistent middleware usage in credential status endpoint
- * 
+ *
  * This test ensures that the POST /credentials/:id/status endpoint uses the correct
  * validation middleware for single credential status updates, not batch operations.
  */
@@ -33,13 +33,13 @@ const mockAssertionController = {
 const mockStatusListController = {
   createStatusList: async () => ({ id: 'test-status-list-id' }),
   getStatusList: async () => ({ id: 'test-status-list-id' }),
-  updateCredentialStatus: async () => ({ 
+  updateCredentialStatus: async () => ({
     success: true,
     statusEntry: {
       id: 'test-status-entry-id',
       credentialId: 'test-credential-id',
       currentStatus: 1,
-    }
+    },
   }),
 } as unknown as StatusListController;
 
@@ -73,19 +73,22 @@ describe('Credential Status Middleware Fix', () => {
   describe('POST /v3/credentials/:id/status', () => {
     it('should accept valid single credential status update data', async () => {
       const validStatusUpdate = {
-        status: 1,
+        status: '1',
         reason: 'Test revocation',
         purpose: 'revocation',
       };
 
-      const response = await app.request('/v3/credentials/test-credential-id/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validStatusUpdate),
-      });
+      const response = await app.request(
+        '/v3/credentials/test-credential-id/status',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(validStatusUpdate),
+        }
+      );
 
       expect(response.status).toBe(200);
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
       expect(data.success).toBe(true);
     });
 
@@ -95,32 +98,38 @@ describe('Credential Status Middleware Fix', () => {
         purpose: 'revocation',
       };
 
-      const response = await app.request('/v3/credentials/test-credential-id/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invalidStatusUpdate),
-      });
+      const response = await app.request(
+        '/v3/credentials/test-credential-id/status',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invalidStatusUpdate),
+        }
+      );
 
       expect(response.status).toBe(400);
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
 
     it('should reject invalid purpose', async () => {
       const invalidStatusUpdate = {
-        status: 1,
+        status: '1',
         purpose: 'invalid-purpose', // Invalid purpose
       };
 
-      const response = await app.request('/v3/credentials/test-credential-id/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invalidStatusUpdate),
-      });
+      const response = await app.request(
+        '/v3/credentials/test-credential-id/status',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invalidStatusUpdate),
+        }
+      );
 
       expect(response.status).toBe(400);
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
@@ -135,36 +144,42 @@ describe('Credential Status Middleware Fix', () => {
             status: 'revoked',
             reason: 'Test revocation',
             purpose: 'revocation',
-          }
-        ]
+          },
+        ],
       };
 
-      const response = await app.request('/v3/credentials/test-credential-id/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batchFormatData),
-      });
+      const response = await app.request(
+        '/v3/credentials/test-credential-id/status',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(batchFormatData),
+        }
+      );
 
       expect(response.status).toBe(400);
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });
 
     it('should require all mandatory fields', async () => {
       const incompleteData = {
-        status: 1,
+        status: '1',
         // Missing required 'purpose' field
       };
 
-      const response = await app.request('/v3/credentials/test-credential-id/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(incompleteData),
-      });
+      const response = await app.request(
+        '/v3/credentials/test-credential-id/status',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(incompleteData),
+        }
+      );
 
       expect(response.status).toBe(400);
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
       expect(data.success).toBe(false);
       expect(data.error).toBe('Validation error');
     });

@@ -280,10 +280,8 @@ export class PostgresAssertionRepository
       // Use batch insert utility
 
       const results = await batchInsert<typeof assertions.$inferSelect>(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        this.db as any, // DatabaseClient interface compatibility
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        assertions as any, // DatabaseTable interface compatibility
+        this.db as unknown as Parameters<typeof batchInsert>[0], // DatabaseClient interface compatibility
+        assertions as unknown as Parameters<typeof batchInsert>[1], // DatabaseTable interface compatibility
         records,
         'postgresql'
       );

@@ -17,7 +17,11 @@ import { SqliteStatusListMapper } from '../mappers/sqlite-status-list.mapper';
 import { SqliteConnectionManager } from '../connection/sqlite-connection.manager';
 import { BaseSqliteRepository } from './base-sqlite.repository';
 import { logger } from '@utils/logging/logger.service';
-import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
+import {
+  decodeBitstring,
+  setStatusAtIndex,
+  encodeBitstring,
+} from '@utils/bitstring/bitstring.utils';
 import { createOrGenerateIRI } from '@utils/types/type-utils';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { Shared } from 'openbadges-types';
@@ -115,22 +119,18 @@ export class SqliteStatusListRepository
         }
 
         if (conditions.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.where(and(...conditions)) as any;
+          query = query.where(and(...conditions)) as typeof query;
         }
 
         // Apply ordering
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        query = query.orderBy(desc(statusLists.createdAt)) as any;
+        query = query.orderBy(desc(statusLists.createdAt)) as typeof query;
 
         // Apply pagination
         if (params.limit) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.limit(params.limit) as any;
+          query = query.limit(params.limit) as typeof query;
         }
         if (params.offset) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.offset(params.offset) as any;
+          query = query.offset(params.offset) as typeof query;
         }
 
         return query;
@@ -386,18 +386,14 @@ export class SqliteStatusListRepository
             }
 
             // Update the bitstring
-            const bitstring = await BitstringUtils.decodeBitstring(
-              statusList.encodedList
-            );
-            const updatedBitstring = BitstringUtils.setStatusAtIndex(
+            const bitstring = await decodeBitstring(statusList.encodedList);
+            const updatedBitstring = setStatusAtIndex(
               bitstring,
               statusEntry.statusListIndex,
               params.status,
               statusList.statusSize
             );
-            const encodedList = await BitstringUtils.encodeBitstring(
-              updatedBitstring
-            );
+            const encodedList = await encodeBitstring(updatedBitstring);
 
             // Update status list
             statusList.updateEncodedList(encodedList);

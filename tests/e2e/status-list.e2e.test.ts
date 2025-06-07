@@ -282,7 +282,7 @@ describe('Status List E2E', () => {
             'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
-            status: 1, // 1 = revoked
+            status: '1', // 1 = revoked
             reason: 'E2E test revocation',
             purpose: StatusPurpose.REVOCATION,
           }),
@@ -421,7 +421,7 @@ describe('Status List E2E', () => {
             'X-API-Key': API_KEY,
           },
           body: JSON.stringify({
-            status: 1, // 1 = suspended
+            status: '1', // 1 = suspended
             reason: 'Temporary suspension for review',
             purpose: StatusPurpose.SUSPENSION,
           }),

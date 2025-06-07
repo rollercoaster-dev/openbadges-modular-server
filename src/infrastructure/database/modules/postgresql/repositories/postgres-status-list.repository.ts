@@ -18,7 +18,11 @@ import { PostgresStatusListMapper } from '../mappers/postgres-status-list.mapper
 import { BasePostgresRepository } from './base-postgres.repository';
 import { PostgresEntityType } from '../types/postgres-database.types';
 import { logger } from '@utils/logging/logger.service';
-import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
+import {
+  decodeBitstring,
+  setStatusAtIndex,
+  encodeBitstring,
+} from '@utils/bitstring/bitstring.utils';
 import { createOrGenerateIRI } from '@utils/types/type-utils';
 import { convertUuid } from '@infrastructure/database/utils/type-conversion';
 import { Shared } from 'openbadges-types';
@@ -112,22 +116,18 @@ export class PostgresStatusListRepository
         }
 
         if (conditions.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.where(and(...conditions)) as any;
+          query = query.where(and(...conditions)) as typeof query;
         }
 
         // Apply ordering
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        query = query.orderBy(desc(statusLists.createdAt)) as any;
+        query = query.orderBy(desc(statusLists.createdAt)) as typeof query;
 
         // Apply pagination
         if (params.limit) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.limit(params.limit) as any;
+          query = query.limit(params.limit) as typeof query;
         }
         if (params.offset) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          query = query.offset(params.offset) as any;
+          query = query.offset(params.offset) as typeof query;
         }
 
         const result = await query;
@@ -179,13 +179,16 @@ export class PostgresStatusListRepository
     // Convert domain entity to database record
     const record = this.mapper.toPersistence(statusList);
 
+    // Convert ID from URN to UUID format for WHERE clause
+    const dbId = convertUuid(statusList.id, 'postgresql', 'to');
+
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .update(statusLists)
           .set(record as Partial<typeof statusLists.$inferInsert>)
-          .where(eq(statusLists.id, statusList.id))
+          .where(eq(statusLists.id, dbId))
           .returning();
 
         if (result.length === 0) {
@@ -202,12 +205,15 @@ export class PostgresStatusListRepository
     this.validateEntityId(id, 'delete');
     const context = this.createOperationContext('DELETE StatusList', id);
 
+    // Convert ID from URN to UUID format for WHERE clause
+    const dbId = convertUuid(id, 'postgresql', 'to');
+
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .delete(statusLists)
-          .where(eq(statusLists.id, id))
+          .where(eq(statusLists.id, dbId))
           .returning({ id: statusLists.id });
 
         return result.length > 0;
@@ -309,13 +315,16 @@ export class PostgresStatusListRepository
       updatedAt: new Date(),
     });
 
+    // Convert ID from URN to UUID format for WHERE clause
+    const dbId = convertUuid(entry.id, 'postgresql', 'to');
+
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .update(credentialStatusEntries)
           .set(record as Partial<typeof credentialStatusEntries.$inferInsert>)
-          .where(eq(credentialStatusEntries.id, entry.id))
+          .where(eq(credentialStatusEntries.id, dbId))
           .returning();
 
         if (result.length === 0) {
@@ -368,18 +377,14 @@ export class PostgresStatusListRepository
             }
 
             // Update the bitstring
-            const bitstring = await BitstringUtils.decodeBitstring(
-              statusList.encodedList
-            );
-            const updatedBitstring = BitstringUtils.setStatusAtIndex(
+            const bitstring = await decodeBitstring(statusList.encodedList);
+            const updatedBitstring = setStatusAtIndex(
               bitstring,
               statusEntry.statusListIndex,
               params.status,
               statusList.statusSize
             );
-            const encodedList = await BitstringUtils.encodeBitstring(
-              updatedBitstring
-            );
+            const encodedList = await encodeBitstring(updatedBitstring);
 
             // Update status list
             statusList.updateEncodedList(encodedList);
@@ -421,12 +426,15 @@ export class PostgresStatusListRepository
       id
     );
 
+    // Convert ID from URN to UUID format for WHERE clause
+    const dbId = convertUuid(id, 'postgresql', 'to');
+
     return this.executeOperation(
       context,
       async () => {
         const result = await this.db
           .delete(credentialStatusEntries)
-          .where(eq(credentialStatusEntries.id, id))
+          .where(eq(credentialStatusEntries.id, dbId))
           .returning({ id: credentialStatusEntries.id });
 
         return result.length > 0;

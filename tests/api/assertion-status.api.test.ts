@@ -167,7 +167,7 @@ describe('Credential Status Update API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             reason: 'Credential revoked due to policy violation',
             purpose: StatusPurpose.REVOCATION,
           }),
@@ -204,7 +204,7 @@ describe('Credential Status Update API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             reason: 'Credential suspended pending investigation',
             purpose: StatusPurpose.SUSPENSION,
           }),
@@ -228,7 +228,7 @@ describe('Credential Status Update API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 0,
+            status: '0',
             reason: 'Credential status restored',
             purpose: StatusPurpose.REVOCATION,
           }),
@@ -273,7 +273,7 @@ describe('Credential Status Update API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             purpose: 'invalid-purpose',
           }),
         }
@@ -294,7 +294,7 @@ describe('Credential Status Update API', () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             purpose: StatusPurpose.REVOCATION,
           }),
         }
@@ -313,7 +313,7 @@ describe('Credential Status Update API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             // Missing required 'purpose' field
           }),
         }

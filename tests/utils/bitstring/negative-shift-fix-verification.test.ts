@@ -5,7 +5,11 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { BitstringUtils } from '@utils/bitstring/bitstring.utils';
+import {
+  createEmptyBitstring,
+  setStatusAtIndex,
+  getStatusAtIndex,
+} from '@utils/bitstring/bitstring.utils';
 
 describe('Negative-Shift Hazard Fix Verification', () => {
   describe('Critical edge cases that would cause negative shifts', () => {
@@ -25,7 +29,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
       // Let's test with a different approach - use statusSize=2 to get bitOffset=6
       // For statusSize=2: we need index * 2 ≡ 6 (mod 8), so index = 3
-      const bitstring = BitstringUtils.createEmptyBitstring(131072, 2);
+      const bitstring = createEmptyBitstring(131072, 2);
 
       // Index 3 with statusSize=2: bitPosition=6, bitOffset=6
       // Now test with statusSize=4 at the same bit position (this simulates the problematic case)
@@ -33,8 +37,8 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
       for (let value = 0; value < 4; value++) {
         // 2-bit values
-        const updated = BitstringUtils.setStatusAtIndex(bitstring, 3, value, 2);
-        const retrieved = BitstringUtils.getStatusAtIndex(updated, 3, 2);
+        const updated = setStatusAtIndex(bitstring, 3, value, 2);
+        const retrieved = getStatusAtIndex(updated, 3, 2);
         expect(retrieved).toBe(value);
       }
     });
@@ -46,17 +50,17 @@ describe('Negative-Shift Hazard Fix Verification', () => {
       // Since statusSize=8 always aligns to byte boundaries, let's test with statusSize=1
       // to create various bitOffsets, then test larger status sizes
 
-      const bitstring1 = BitstringUtils.createEmptyBitstring(131072, 1);
+      const bitstring1 = createEmptyBitstring(131072, 1);
 
       // Test all possible bitOffsets (0-7) with statusSize=1
       for (let bitOffset = 0; bitOffset < 8; bitOffset++) {
-        const updated = BitstringUtils.setStatusAtIndex(
+        const updated = setStatusAtIndex(
           bitstring1,
           bitOffset,
           1,
           1
         );
-        const retrieved = BitstringUtils.getStatusAtIndex(
+        const retrieved = getStatusAtIndex(
           updated,
           bitOffset,
           1
@@ -67,7 +71,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
     it('should handle statusSize=4 with all possible bitOffsets', () => {
       // Test statusSize=4 with different bitOffsets
-      const bitstring = BitstringUtils.createEmptyBitstring(131072, 4);
+      const bitstring = createEmptyBitstring(131072, 4);
 
       // With statusSize=4, possible bitOffsets are 0 and 4
       const testCases = [
@@ -83,13 +87,13 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
         // Test all possible 4-bit values
         for (let value = 0; value < 16; value++) {
-          const updated = BitstringUtils.setStatusAtIndex(
+          const updated = setStatusAtIndex(
             bitstring,
             index,
             value,
             4
           );
-          const retrieved = BitstringUtils.getStatusAtIndex(updated, index, 4);
+          const retrieved = getStatusAtIndex(updated, index, 4);
           expect(retrieved).toBe(value);
         }
       });
@@ -97,7 +101,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
     it('should handle statusSize=2 with all possible bitOffsets', () => {
       // Test statusSize=2 with different bitOffsets
-      const bitstring = BitstringUtils.createEmptyBitstring(131072, 2);
+      const bitstring = createEmptyBitstring(131072, 2);
 
       // With statusSize=2, possible bitOffsets are 0, 2, 4, 6
       const testCases = [
@@ -114,13 +118,13 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
         // Test all possible 2-bit values
         for (let value = 0; value < 4; value++) {
-          const updated = BitstringUtils.setStatusAtIndex(
+          const updated = setStatusAtIndex(
             bitstring,
             index,
             value,
             2
           );
-          const retrieved = BitstringUtils.getStatusAtIndex(updated, index, 2);
+          const retrieved = getStatusAtIndex(updated, index, 2);
           expect(retrieved).toBe(value);
         }
       });
@@ -148,20 +152,20 @@ describe('Negative-Shift Hazard Fix Verification', () => {
         }
 
         if (testIndex !== -1) {
-          const bitstring = BitstringUtils.createEmptyBitstring(
+          const bitstring = createEmptyBitstring(
             131072,
             statusSize
           );
           const maxValue = Math.pow(2, statusSize) - 1;
 
           for (let value = 0; value <= maxValue; value++) {
-            const updated = BitstringUtils.setStatusAtIndex(
+            const updated = setStatusAtIndex(
               bitstring,
               testIndex,
               value,
               statusSize
             );
-            const retrieved = BitstringUtils.getStatusAtIndex(
+            const retrieved = getStatusAtIndex(
               updated,
               testIndex,
               statusSize
@@ -178,20 +182,20 @@ describe('Negative-Shift Hazard Fix Verification', () => {
       // Index 7 gives bitOffset=6, so firstPartBits=min(2,8-6)=2, remainingBits=2-2=0 (no span)
 
       // Let's test with statusSize=1 to create spanning scenarios
-      const bitstring1 = BitstringUtils.createEmptyBitstring(131072, 1);
+      const bitstring1 = createEmptyBitstring(131072, 1);
 
       // All 1-bit values fit within single bytes, so let's test sequential operations
       // that might reveal issues with byte boundary handling
 
       for (let i = 0; i < 16; i++) {
         const value = i % 2; // 0 or 1
-        const updated = BitstringUtils.setStatusAtIndex(
+        const updated = setStatusAtIndex(
           bitstring1,
           i,
           value,
           1
         );
-        const retrieved = BitstringUtils.getStatusAtIndex(updated, i, 1);
+        const retrieved = getStatusAtIndex(updated, i, 1);
         expect(retrieved).toBe(value);
       }
     });
@@ -205,7 +209,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
       const statusSizes = [1, 2, 4, 8];
 
       statusSizes.forEach((statusSize) => {
-        const bitstring = BitstringUtils.createEmptyBitstring(
+        const bitstring = createEmptyBitstring(
           131072,
           statusSize
         );
@@ -216,13 +220,13 @@ describe('Negative-Shift Hazard Fix Verification', () => {
           // This should never throw an error
           expect(() => {
             for (let value = 0; value <= maxValue; value++) {
-              const updated = BitstringUtils.setStatusAtIndex(
+              const updated = setStatusAtIndex(
                 bitstring,
                 index,
                 value,
                 statusSize
               );
-              const retrieved = BitstringUtils.getStatusAtIndex(
+              const retrieved = getStatusAtIndex(
                 updated,
                 index,
                 statusSize
@@ -236,7 +240,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
     it('should produce consistent results across multiple operations', () => {
       // Test that repeated set/get operations produce consistent results
-      const bitstring = BitstringUtils.createEmptyBitstring(131072, 4);
+      const bitstring = createEmptyBitstring(131072, 4);
 
       // Set some values
       const testData = [
@@ -249,7 +253,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
       // Set all values
       let currentBitstring = bitstring;
       testData.forEach(({ index, value }) => {
-        currentBitstring = BitstringUtils.setStatusAtIndex(
+        currentBitstring = setStatusAtIndex(
           currentBitstring,
           index,
           value,
@@ -259,7 +263,7 @@ describe('Negative-Shift Hazard Fix Verification', () => {
 
       // Verify all values are correct
       testData.forEach(({ index, value }) => {
-        const retrieved = BitstringUtils.getStatusAtIndex(
+        const retrieved = getStatusAtIndex(
           currentBitstring,
           index,
           4
@@ -268,17 +272,17 @@ describe('Negative-Shift Hazard Fix Verification', () => {
       });
 
       // Modify one value and verify others remain unchanged
-      currentBitstring = BitstringUtils.setStatusAtIndex(
+      currentBitstring = setStatusAtIndex(
         currentBitstring,
         1,
         7,
         4
       );
 
-      expect(BitstringUtils.getStatusAtIndex(currentBitstring, 0, 4)).toBe(5);
-      expect(BitstringUtils.getStatusAtIndex(currentBitstring, 1, 4)).toBe(7); // changed
-      expect(BitstringUtils.getStatusAtIndex(currentBitstring, 2, 4)).toBe(15);
-      expect(BitstringUtils.getStatusAtIndex(currentBitstring, 3, 4)).toBe(3);
+      expect(getStatusAtIndex(currentBitstring, 0, 4)).toBe(5);
+      expect(getStatusAtIndex(currentBitstring, 1, 4)).toBe(7); // changed
+      expect(getStatusAtIndex(currentBitstring, 2, 4)).toBe(15);
+      expect(getStatusAtIndex(currentBitstring, 3, 4)).toBe(3);
     });
   });
 });

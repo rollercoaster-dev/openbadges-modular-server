@@ -81,7 +81,14 @@ export const CreateAssertionOB2Schema = AssertionBaseSchema.extend({
 export const CreateAssertionOB3Schema = AssertionBaseSchema.extend({
   type: z.string().optional(), // Typically string in OB3
   id: z.string().optional(), // Allow client-suggested ID
-  credentialSubject: z.record(z.unknown()).optional(), // Allow flexible credentialSubject
+  credentialSubject: z
+    .object({
+      id: z.string().optional(),
+      type: z.string().optional(),
+      achievement: z.record(z.unknown()).optional(),
+    })
+    .passthrough() // Allow additional properties for OB3 flexibility
+    .optional(), // Allow flexible credentialSubject with basic structure
   '@context': z.string().optional(), // Allow @context field for OB3
 }).strict('Unrecognized fields in OB3 assertion data');
 
@@ -129,7 +136,13 @@ export const BatchRetrieveCredentialsSchema = z
 // Schema for UpdateCredentialStatusDto (single credential)
 export const UpdateCredentialStatusSchema = z
   .object({
-    status: z.number().int().min(0, 'Status must be a non-negative integer'),
+    status: z
+      .enum(['0', '1'], {
+        errorMap: () => ({
+          message: 'Status must be 0 (active) or 1 (revoked/suspended)',
+        }),
+      })
+      .transform(Number),
     reason: z.string().min(1, 'Reason cannot be empty if provided').optional(),
     purpose: z.enum(['revocation', 'suspension'], {
       errorMap: () => ({

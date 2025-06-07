@@ -356,7 +356,7 @@ describe('Status List API', () => {
             Authorization: authToken,
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             reason: 'Credential revoked for testing',
             purpose: StatusPurpose.REVOCATION,
           }),
@@ -383,7 +383,7 @@ describe('Status List API', () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            status: 1,
+            status: '1',
             purpose: StatusPurpose.REVOCATION,
           }),
         }

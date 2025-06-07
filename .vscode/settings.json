@@ -6,21 +6,28 @@
   // Enable automatic application of .github/copilot-instructions.md
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
   
-  // Configure locations for instruction files (.instructions.md)
-  "chat.instructionsFilesLocations": [
-    ".github/instructions"
-  ],
-  
-  // Configure locations for prompt files (.prompt.md)
-  "chat.promptFilesLocations": [
-    ".github/prompts"
-  ],
-  
   // Additional Copilot settings for better integration
   "github.copilot.enable": {
     "*": false
   },
   
-  // Enable Copilot suggestions in comments
-  "github.copilot.editor.enableAutoCompletions": true
+  // Font Configuration - Geist Mono Nerd Font Mono Thin for clean, modern coding
+  "editor.fontFamily": "'Monoid Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+  "editor.fontWeight": "100",
+  "editor.fontSize": 12,
+  "editor.fontLigatures": true,
+   "editor.lineHeight": 2.0,
+  
+  // Terminal font configuration
+  "terminal.integrated.fontFamily": "'Monoid Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+  "terminal.integrated.fontWeight": "200",
+  "terminal.integrated.fontSize": 12,
+  "terminal.integrated.lineHeight": 1.3,
+  
+  // Debug console font
+  "debug.console.fontFamily": "'GeistMono Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+  "debug.console.fontWeight": "100",
+  
+  // Enhanced accessibility support
+  // "editor.accessibilitySupport": "on"
 }

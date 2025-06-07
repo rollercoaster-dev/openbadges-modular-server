@@ -150,7 +150,7 @@ describe('Validation Middleware', () => {
       const mockContext = {
         req: {
           json: async () => ({
-            status: 1,
+            status: '1',
             reason: 'Test revocation',
             purpose: 'revocation',
           }),

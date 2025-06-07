@@ -17,7 +17,14 @@ import {
   BitstringStatusListCredential,
   CredentialStatusEntryData,
 } from '../domains/status-list/status-list.types';
-import { BitstringUtils } from '../utils/bitstring/bitstring.utils';
+import {
+  validateBitstringParams,
+  createEmptyBitstring,
+  setStatusAtIndex,
+  encodeBitstring,
+  decodeBitstring,
+  getBitstringCapacity,
+} from '../utils/bitstring/bitstring.utils';
 import { logger } from '../utils/logging/logger.service';
 import { Shared } from 'openbadges-types';
 
@@ -190,17 +197,14 @@ export class StatusListService {
       });
 
       // Validate parameters
-      BitstringUtils.validateBitstringParams(totalEntries, statusSize);
+      validateBitstringParams(totalEntries, statusSize);
 
       // Create empty bitstring
-      let bitstring = BitstringUtils.createEmptyBitstring(
-        totalEntries,
-        statusSize
-      );
+      let bitstring = createEmptyBitstring(totalEntries, statusSize);
 
       // Set status values for each entry
       for (const entry of entries) {
-        bitstring = BitstringUtils.setStatusAtIndex(
+        bitstring = setStatusAtIndex(
           bitstring,
           entry.index,
           entry.value,
@@ -209,7 +213,7 @@ export class StatusListService {
       }
 
       // Encode the bitstring
-      const encodedList = await BitstringUtils.encodeBitstring(bitstring);
+      const encodedList = await encodeBitstring(bitstring);
 
       logger.info('Bitstring generated successfully', {
         entriesCount: entries.length,
@@ -246,12 +250,12 @@ export class StatusListService {
         statusSize,
       });
 
-      const bitstring = await BitstringUtils.decodeBitstring(encodedList);
+      const bitstring = await decodeBitstring(encodedList);
 
       logger.debug('Bitstring expanded successfully', {
         encodedLength: encodedList.length,
         decodedSize: bitstring.length,
-        capacity: BitstringUtils.getBitstringCapacity(bitstring, statusSize),
+        capacity: getBitstringCapacity(bitstring, statusSize),
       });
 
       return bitstring;
@@ -564,7 +568,7 @@ export class StatusListService {
       }
 
       // Validate encoded list format
-      await BitstringUtils.decodeBitstring(subject.encodedList);
+      await decodeBitstring(subject.encodedList);
 
       logger.debug('Status list credential validation passed', {
         credentialId: credential.id,
