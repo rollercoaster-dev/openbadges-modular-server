@@ -14,12 +14,9 @@ import {
   generateJWTProof,
   getRecommendedAlgorithm,
   type JWTProofGenerationOptions,
-  type SupportedJWTAlgorithm,
 } from './jwt-proof';
 import {
-  ProofType,
   ProofArray,
-  JWTProof,
   ProofFormat,
   type VerifiableCredentialClaims,
 } from '../types/proof.types';

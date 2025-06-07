@@ -12,7 +12,11 @@ import { VerificationErrorCode } from '@/utils/types/verification-status';
 import { KeyService } from '@/core/key.service';
 import { Assertion } from '@/domains/assertion/assertion.entity';
 import { Shared, OB3 } from 'openbadges-types'; // Use correct imports
-import { isJWTProof, isDataIntegrityProof } from '@/utils/types/proof.types';
+import {
+  isJWTProof,
+  isDataIntegrityProof,
+  ProofType,
+} from '@/utils/types/proof.types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -372,7 +376,7 @@ describe('Verification Service', () => {
       );
 
       // Add both proofs to the assertion
-      assertion.addProof(dataIntegrityProof as any);
+      assertion.addProof(dataIntegrityProof as ProofType);
       assertion.addProof(jwtProof);
 
       // Check that the assertion has multiple proofs
@@ -413,7 +417,7 @@ describe('Verification Service', () => {
       );
 
       // Set the JWT proof as the verification
-      assertion.verification = jwtProof as any;
+      assertion.verification = jwtProof as OB3.Proof;
 
       // Verify the assertion signature (should handle JWT proof)
       const verificationStatus =

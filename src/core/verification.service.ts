@@ -24,12 +24,8 @@ import {
   type SupportedJWTAlgorithm,
 } from '@utils/crypto/jwt-proof';
 import {
-  ProofType,
-  ProofArray,
   JWTProof,
   isJWTProof,
-  isDataIntegrityProof,
-  ProofFormat,
   type VerifiableCredentialClaims,
 } from '@utils/types/proof.types';
 import { logger } from '@utils/logging/logger.service';
@@ -98,7 +94,10 @@ export class VerificationService {
         },
         ...(assertion.expires && { expirationDate: assertion.expires }),
         ...(assertion.credentialStatus && {
-          credentialStatus: assertion.credentialStatus,
+          credentialStatus: assertion.credentialStatus as unknown as Record<
+            string,
+            unknown
+          >,
         }),
       };
 
@@ -269,7 +268,6 @@ export class VerificationService {
       if (result.isValid) {
         return createSuccessfulVerification({
           verificationMethod: result.verificationMethod,
-          algorithm: result.algorithm,
         });
       } else {
         return createVerificationError(

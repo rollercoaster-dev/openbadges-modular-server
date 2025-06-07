@@ -22,13 +22,7 @@ import { Issuer } from '../issuer/issuer.entity';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { createOrGenerateIRI, isValidIRI } from '@utils/types/iri-utils';
 import { BitstringStatusListEntry } from '../status-list/status-list.types';
-import {
-  ProofType,
-  ProofArray,
-  isProofArray,
-  isDataIntegrityProof,
-  isJWTProof,
-} from '../../utils/types/proof.types';
+import { ProofType, ProofArray } from '../../utils/types/proof.types';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
