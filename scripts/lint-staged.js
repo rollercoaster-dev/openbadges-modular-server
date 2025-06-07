@@ -26,24 +26,13 @@ if (files.length === 0) {
 }
 
 /**
- * Run a command and return its output, failing if there are errors
+ * Run a command and return its exit status, showing output in real-time
  */
 async function runCommand(command, args) {
-  logger.info(`🔍 Running ${command}...`);
+  logger.info(`🔍 Running ${command} ${args.join(' ')}...`);
 
   try {
-    const proc = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+    const proc = spawn(command, args, { stdio: 'inherit' });
 
     const exitCode = await new Promise((resolve) => {
       proc.on('close', resolve);
@@ -51,17 +40,14 @@ async function runCommand(command, args) {
 
     if (exitCode === 0) {
       logger.info(`✅ ${command} check passed!`);
-      return { success: true, output: stdout };
+      return { success: true };
     } else {
-      logger.error(`❌ ${command} found issues:`);
-      logger.error(stderr || stdout);
-      logger.error(`\n❌ Commit blocked due to ${command} errors. Please fix them before committing.`);
-      return { success: false, output: stderr || stdout };
+      logger.error(`❌ ${command} failed with exit code ${exitCode}`);
+      return { success: false };
     }
   } catch (error) {
     logger.error(`❌ Failed to run ${command}: ${error.message}`);
-    logger.error(`\n❌ Commit blocked. Please fix any issues before committing.`);
-    return { success: false, output: error.message };
+    return { success: false };
   }
 }
 
@@ -69,21 +55,21 @@ async function runCommand(command, args) {
 let hasErrors = false;
 
 // Run ESLint with auto-fix
-const eslintResult = await runCommand('bun', ['run', 'eslint', '--fix', ...files]);
+const eslintResult = await runCommand('eslint', ['--fix', ...files]);
 if (!eslintResult.success) {
   hasErrors = true;
 }
 
 // Run TypeScript type checking
 logger.info(''); // Empty line for better readability
-const tscResult = await runCommand('bun', ['run', 'tsc-files', '--noEmit', '--skipLibCheck', ...files]);
+const tscResult = await runCommand('tsc', ['--noEmit', '--skipLibCheck', ...files]);
 if (!tscResult.success) {
   hasErrors = true;
 }
 
 // Exit with appropriate code
 if (hasErrors) {
-  logger.error('\n❌ Quality gates failed. Please fix all errors before committing.');
+  logger.error('\n❌ Quality gates failed. Please fix the errors shown above and try again.');
   process.exit(1);
 } else {
   logger.info('\n✅ All quality gates passed!');

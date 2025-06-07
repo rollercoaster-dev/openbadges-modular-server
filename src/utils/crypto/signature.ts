@@ -490,7 +490,7 @@ export async function createProofsByFormat(
 
     for (const format of formats) {
       switch (format) {
-        case ProofFormat.DataIntegrity:
+        case ProofFormat.DataIntegrity: {
           const canonicalData = JSON.stringify(
             credentialData,
             Object.keys(credentialData).sort()
@@ -504,9 +504,10 @@ export async function createProofsByFormat(
           );
           proofs.push(dataIntegrityProof);
           break;
+        }
 
         case ProofFormat.JWT:
-        case ProofFormat.JWS:
+        case ProofFormat.JWS: {
           const algorithm = getRecommendedAlgorithm(actualKeyType);
           const jwtOptions: JWTProofGenerationOptions = {
             privateKey,
@@ -521,10 +522,12 @@ export async function createProofsByFormat(
           const jwtProof = await generateJWTProof(credentialData, jwtOptions);
           proofs.push(jwtProof);
           break;
+        }
 
-        default:
+        default: {
           logger.warn(`Unsupported proof format: ${format}`);
           break;
+        }
       }
     }
 
