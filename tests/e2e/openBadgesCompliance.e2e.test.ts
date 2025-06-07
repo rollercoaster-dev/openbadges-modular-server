@@ -6,6 +6,7 @@ import { logger } from '@/utils/logging/logger.service';
 import { setupTestApp, stopTestServer } from './setup-test-app';
 import { OPENBADGES_V3_CONTEXT_EXAMPLE } from '@/constants/urls';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
+import { headersToObject } from '../test-utils/headers.helper';
 
 // No need for complex types in this simplified test
 
@@ -21,7 +22,7 @@ async function checkResponseIssues(
   logger.debug(`Response from ${endpoint}:`, {
     status: response.status,
     statusText: response.statusText,
-    headers: Object.fromEntries(response.headers.entries()),
+    headers: headersToObject(response.headers),
   });
 
   // Check for any error status code
@@ -208,7 +209,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       logger.debug('Issuers response', {
         status: issuersResponse.status,
         statusText: issuersResponse.statusText,
-        headers: Object.fromEntries(issuersResponse.headers.entries()),
+        headers: headersToObject(issuersResponse.headers),
       });
     } catch (error) {
       logger.error('Failed to fetch issuers', {
@@ -248,7 +249,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       logger.debug('Badge classes response', {
         status: badgeClassesResponse.status,
         statusText: badgeClassesResponse.statusText,
-        headers: Object.fromEntries(badgeClassesResponse.headers.entries()),
+        headers: headersToObject(badgeClassesResponse.headers),
       });
     } catch (error) {
       logger.error('Failed to fetch badge classes', {
@@ -288,7 +289,7 @@ describe('OpenBadges v3.0 Compliance - E2E', () => {
       logger.debug('Assertions response', {
         status: assertionsResponse.status,
         statusText: assertionsResponse.statusText,
-        headers: Object.fromEntries(assertionsResponse.headers.entries()),
+        headers: headersToObject(assertionsResponse.headers),
       });
     } catch (error) {
       logger.error('Failed to fetch assertions', {
