@@ -56,7 +56,8 @@
   },
   "lint-staged": {
     "*.ts": [
-      "bun ./scripts/lint-staged.js"
+      "bun run lint:fix",
+      "tsc-files --noEmit --skipLibCheck"
     ]
   },
   "devDependencies": {
@@ -92,7 +93,7 @@
     "drizzle-orm": "^0.41.0",
     "hono": "^4.7.8",
     "hono-rate-limiter": "^0.4.2",
-    "jose": "^6.0.10",
+    "jose": "^6.0.11",
     "lru.min": "^1.1.2",
     "mock-aws-s3": "^4.0.2",
     "nock": "^14.0.4",

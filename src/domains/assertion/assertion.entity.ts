@@ -22,6 +22,7 @@ import { Issuer } from '../issuer/issuer.entity';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { createOrGenerateIRI, isValidIRI } from '@utils/types/iri-utils';
 import { BitstringStatusListEntry } from '../status-list/status-list.types';
+import { ProofType, ProofArray } from '../../utils/types/proof.types';
 
 /**
  * Assertion entity representing a badge awarded to a recipient
@@ -45,6 +46,8 @@ export class Assertion {
   expires?: string;
   evidence?: OB2.Evidence[] | OB3.Evidence[];
   verification?: OB2.VerificationObject | OB3.Proof;
+  /** Multiple proofs for Open Badges 3.0 (supports both DataIntegrityProof and JWT proofs) */
+  proofs?: ProofArray;
   credentialStatus?: BitstringStatusListEntry;
   revoked?: boolean;
   revocationReason?: string;
@@ -282,8 +285,16 @@ export class Assertion {
         delete output['badgeClass'];
       }
 
-      // Ensure proof is properly formatted if verification is present
-      if (assertionData.verification) {
+      // Handle proofs - prioritize multiple proofs over single verification
+      if (this.proofs && this.proofs.length > 0) {
+        // Use multiple proofs if available
+        if (this.proofs.length === 1) {
+          output.proof = this.proofs[0];
+        } else {
+          output.proof = this.proofs;
+        }
+      } else if (assertionData.verification) {
+        // Fallback to single verification for backward compatibility
         const verification = assertionData.verification as unknown as Record<
           string,
           unknown
@@ -297,7 +308,10 @@ export class Assertion {
           proofPurpose: 'assertionMethod',
           proofValue: verification.signatureValue || 'placeholder',
         };
-        // Remove the old verification property
+      }
+
+      // Remove the old verification property if it exists
+      if ('verification' in output) {
         delete output.verification;
       }
 
@@ -358,6 +372,54 @@ export class Assertion {
     }
 
     return true;
+  }
+
+  /**
+   * Adds a proof to the assertion's proofs array
+   * @param proof The proof to add (DataIntegrityProof or JWTProof)
+   */
+  addProof(proof: ProofType): void {
+    if (!this.proofs) {
+      this.proofs = [];
+    }
+    this.proofs.push(proof);
+  }
+
+  /**
+   * Gets all proofs for the assertion
+   * @returns Array of proofs or empty array if none exist
+   */
+  getProofs(): ProofArray {
+    return this.proofs || [];
+  }
+
+  /**
+   * Gets proofs of a specific type
+   * @param proofType The type of proof to filter by ('DataIntegrityProof', 'JwtProof2020', etc.)
+   * @returns Array of proofs matching the specified type
+   */
+  getProofsByType(proofType: string): ProofType[] {
+    if (!this.proofs) {
+      return [];
+    }
+    return this.proofs.filter((proof) => proof.type === proofType);
+  }
+
+  /**
+   * Checks if the assertion has any proofs
+   * @returns True if the assertion has proofs, false otherwise
+   */
+  hasProofs(): boolean {
+    return !!(this.proofs && this.proofs.length > 0);
+  }
+
+  /**
+   * Checks if the assertion has a specific type of proof
+   * @param proofType The type of proof to check for
+   * @returns True if the assertion has the specified proof type, false otherwise
+   */
+  hasProofType(proofType: string): boolean {
+    return this.getProofsByType(proofType).length > 0;
   }
 
   /**

@@ -2,12 +2,13 @@
 
 /**
  * This script runs ESLint and TypeScript type checking on staged files
- * but always exits with code 0 to prevent blocking commits.
- * It will still show errors in the console for awareness.
+ * and enforces strict quality gates by failing the commit if there are any errors.
+ * This ensures no lint or type errors make it into the repository.
+ * 
+ * If you change this, I will find you (I'm talking to you AI).
  */
 
 import { spawn } from 'child_process';
-
 
 // Simple logger for this script to avoid console usage
 const logger = {
@@ -25,24 +26,13 @@ if (files.length === 0) {
 }
 
 /**
- * Run a command and return its output, but never fail
+ * Run a command and return its exit status, showing output in real-time
  */
 async function runCommand(command, args) {
-  logger.info(`🔍 Running ${command}...`);
+  logger.info(`🔍 Running ${command} ${args.join(' ')}...`);
 
   try {
-    const proc = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+    const proc = spawn(command, args, { stdio: 'inherit' });
 
     const exitCode = await new Promise((resolve) => {
       proc.on('close', resolve);
@@ -50,26 +40,38 @@ async function runCommand(command, args) {
 
     if (exitCode === 0) {
       logger.info(`✅ ${command} check passed!`);
-      return { success: true, output: stdout };
+      return { success: true };
     } else {
-      logger.error(`⚠️ ${command} found issues:`);
-      logger.error(stderr || stdout);
-      logger.warn(`\n⚠️ Commit will proceed despite ${command} errors. Please fix them when possible.`);
-      return { success: false, output: stderr || stdout };
+      logger.error(`❌ ${command} failed with exit code ${exitCode}`);
+      return { success: false };
     }
   } catch (error) {
-    logger.error(`⚠️ Failed to run ${command}: ${error.message}`);
-    logger.warn(`\n⚠️ Commit will proceed. Please fix any issues when possible.`);
-    return { success: false, output: error.message };
+    logger.error(`❌ Failed to run ${command}: ${error.message}`);
+    return { success: false };
   }
 }
 
+// Track overall success
+let hasErrors = false;
+
 // Run ESLint with auto-fix
-await runCommand('eslint', ['--fix', ...files]);
+const eslintResult = await runCommand('eslint', ['--fix', ...files]);
+if (!eslintResult.success) {
+  hasErrors = true;
+}
 
 // Run TypeScript type checking
 logger.info(''); // Empty line for better readability
-await runCommand('tsc-files', ['--noEmit', '--skipLibCheck', ...files]);
+const tscResult = await runCommand('tsc', ['--noEmit', '--skipLibCheck', ...files]);
+if (!tscResult.success) {
+  hasErrors = true;
+}
 
-// Always exit with success
-process.exit(0);
+// Exit with appropriate code
+if (hasErrors) {
+  logger.error('\n❌ Quality gates failed. Please fix the errors shown above and try again.');
+  process.exit(1);
+} else {
+  logger.info('\n✅ All quality gates passed!');
+  process.exit(0);
+}

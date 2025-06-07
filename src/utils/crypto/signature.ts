@@ -10,6 +10,16 @@ import { logger } from '../logging/logger.service';
 import { config } from '../../config/config';
 import { Shared } from 'openbadges-types';
 import { toIRI } from '../types/iri-utils';
+import {
+  generateJWTProof,
+  getRecommendedAlgorithm,
+  type JWTProofGenerationOptions,
+} from './jwt-proof';
+import {
+  ProofArray,
+  ProofFormat,
+  type VerifiableCredentialClaims,
+} from '../types/proof.types';
 
 /**
  * Represents the structure of a Data Integrity Proof object.
@@ -29,7 +39,7 @@ export interface DataIntegrityProof {
  */
 export enum KeyType {
   RSA = 'rsa',
-  Ed25519 = 'ed25519'
+  Ed25519 = 'ed25519',
 }
 
 /**
@@ -50,12 +60,12 @@ export function generateKeyPair(
         modulusLength,
         publicKeyEncoding: {
           type: 'spki',
-          format: 'pem'
+          format: 'pem',
         },
         privateKeyEncoding: {
           type: 'pkcs8',
-          format: 'pem'
-        }
+          format: 'pem',
+        },
       });
       return { publicKey, privateKey };
 
@@ -64,16 +74,16 @@ export function generateKeyPair(
       const ed25519KeyPair = crypto.generateKeyPairSync('ed25519', {
         publicKeyEncoding: {
           type: 'spki',
-          format: 'pem'
+          format: 'pem',
         },
         privateKeyEncoding: {
           type: 'pkcs8',
-          format: 'pem'
-        }
+          format: 'pem',
+        },
       });
       return {
         publicKey: ed25519KeyPair.publicKey,
-        privateKey: ed25519KeyPair.privateKey
+        privateKey: ed25519KeyPair.privateKey,
       };
 
     default:
@@ -89,7 +99,10 @@ export function generateKeyPair(
 export function detectKeyType(key: string): KeyType {
   try {
     // First, check for explicit RSA headers which are definitive
-    if (key.includes('BEGIN RSA PRIVATE KEY') || key.includes('BEGIN RSA PUBLIC KEY')) {
+    if (
+      key.includes('BEGIN RSA PRIVATE KEY') ||
+      key.includes('BEGIN RSA PUBLIC KEY')
+    ) {
       return KeyType.RSA;
     }
 
@@ -124,7 +137,9 @@ export function detectKeyType(key: string): KeyType {
           return KeyType.Ed25519;
         }
       } catch (_error) {
-        logger.warn('Error examining key details, falling back to length-based detection');
+        logger.warn(
+          'Error examining key details, falling back to length-based detection'
+        );
         // Fallback to length-based detection
         if (key.length < 500) {
           return KeyType.Ed25519;
@@ -150,11 +165,17 @@ export function detectKeyType(key: string): KeyType {
  * @param keyType Optional key type (if not provided, will be auto-detected)
  * @returns The signature as a base64 string
  */
-export function signData(data: string, privateKey: string, keyType?: KeyType): string {
+export function signData(
+  data: string,
+  privateKey: string,
+  keyType?: KeyType
+): string {
   // Auto-detect key type if not provided
   if (!keyType) {
     if (process.env.NODE_ENV !== 'production') {
-      logger.warn('Key type not provided. Auto-detecting key type for signing.');
+      logger.warn(
+        'Key type not provided. Auto-detecting key type for signing.'
+      );
     }
   }
   const actualKeyType = keyType || detectKeyType(privateKey);
@@ -170,7 +191,11 @@ export function signData(data: string, privateKey: string, keyType?: KeyType): s
       try {
         // For Ed25519, we use the crypto.sign method
         const privateKeyBuffer = crypto.createPrivateKey(privateKey);
-        const signature = crypto.sign(null, Buffer.from(data), privateKeyBuffer);
+        const signature = crypto.sign(
+          null,
+          Buffer.from(data),
+          privateKeyBuffer
+        );
         return signature.toString('base64');
       } catch (error) {
         logger.logError('Error signing data with Ed25519', error as Error);
@@ -190,7 +215,12 @@ export function signData(data: string, privateKey: string, keyType?: KeyType): s
  * @param keyType Optional key type (if not provided, will be auto-detected)
  * @returns True if the signature is valid, false otherwise
  */
-export function verifySignature(data: string, signature: string, publicKey: string, keyType?: KeyType): boolean {
+export function verifySignature(
+  data: string,
+  signature: string,
+  publicKey: string,
+  keyType?: KeyType
+): boolean {
   try {
     // Auto-detect key type if not provided
     const actualKeyType = keyType || detectKeyType(publicKey);
@@ -233,7 +263,7 @@ export function verifySignature(data: string, signature: string, publicKey: stri
 export enum Cryptosuite {
   RsaSha256 = 'rsa-sha256',
   Ed25519 = 'ed25519-2020',
-  EddsaRdfc2022 = 'eddsa-rdfc-2022'
+  EddsaRdfc2022 = 'eddsa-rdfc-2022',
 }
 
 /**
@@ -267,7 +297,9 @@ export function createVerification(
           actualCryptosuite = Cryptosuite.Ed25519;
           break;
         default:
-          throw new Error(`Unsupported key type for creating verification: ${actualKeyType}`);
+          throw new Error(
+            `Unsupported key type for creating verification: ${actualKeyType}`
+          );
       }
     }
 
@@ -275,7 +307,8 @@ export function createVerification(
     const signature = signData(dataToSign, privateKey, actualKeyType);
 
     // Determine verification method ID
-    const methodId = verificationMethodId ||
+    const methodId =
+      verificationMethodId ||
       `${config.openBadges.baseUrl}/public-keys/default`;
 
     // Create the DataIntegrityProof object
@@ -285,7 +318,7 @@ export function createVerification(
       created: new Date().toISOString() as Shared.DateTime,
       proofPurpose: 'assertionMethod',
       verificationMethod: toIRI(methodId),
-      proofValue: signature
+      proofValue: signature,
     };
   } catch (error) {
     logger.logError('Failed to create verification proof', error as Error);
@@ -300,7 +333,11 @@ export function createVerification(
  * @param publicKey The public key to use for verification
  * @returns True if the signature is valid, false otherwise
  */
-export function verifyAssertion(dataToVerify: string, proof: DataIntegrityProof, publicKey: string): boolean {
+export function verifyAssertion(
+  dataToVerify: string,
+  proof: DataIntegrityProof,
+  publicKey: string
+): boolean {
   try {
     if (!proof || !proof.proofValue) {
       logger.warn('Proof object is missing or has no proofValue');
@@ -320,7 +357,9 @@ export function verifyAssertion(dataToVerify: string, proof: DataIntegrityProof,
           break;
         default:
           // For unknown cryptosuites, set a default key type
-          logger.warn(`Unknown cryptosuite: ${proof.cryptosuite}, setting default key type to RSA`);
+          logger.warn(
+            `Unknown cryptosuite: ${proof.cryptosuite}, setting default key type to RSA`
+          );
           keyType = KeyType.RSA; // Default to RSA as a fallback
           break;
       }
@@ -356,4 +395,155 @@ export function hashData(data: string): string {
  */
 export function generateNonce(length: number = 16): string {
   return crypto.randomBytes(length).toString('hex');
+}
+
+/**
+ * Creates multiple proofs for an assertion (both DataIntegrityProof and JWT proof)
+ * @param credentialData The credential data to include in proofs
+ * @param privateKey The private key to use for signing
+ * @param keyId The key ID to use for signing
+ * @param keyType Optional key type (if not provided, will be auto-detected)
+ * @param issuer The issuer IRI for JWT proof
+ * @returns Array containing both DataIntegrityProof and JWTProof
+ */
+export async function createMultipleProofs(
+  credentialData: VerifiableCredentialClaims,
+  privateKey: string,
+  keyId: string = 'default',
+  keyType?: KeyType,
+  issuer?: Shared.IRI
+): Promise<ProofArray> {
+  try {
+    const proofs: ProofArray = [];
+
+    // Auto-detect key type if not provided
+    const actualKeyType = keyType || detectKeyType(privateKey);
+
+    // Create canonical data for DataIntegrityProof
+    const canonicalData = JSON.stringify(
+      credentialData,
+      Object.keys(credentialData).sort()
+    );
+
+    // Create DataIntegrityProof
+    const dataIntegrityProof = createVerification(
+      canonicalData,
+      privateKey,
+      actualKeyType,
+      undefined, // Let it auto-determine cryptosuite
+      `${config.openBadges.baseUrl}/public-keys/${keyId}`
+    );
+    proofs.push(dataIntegrityProof);
+
+    // Create JWT proof
+    const algorithm = getRecommendedAlgorithm(actualKeyType);
+    const jwtOptions: JWTProofGenerationOptions = {
+      privateKey,
+      algorithm,
+      keyId,
+      verificationMethod:
+        `${config.openBadges.baseUrl}/public-keys/${keyId}` as Shared.IRI,
+      issuer: issuer || (`${config.openBadges.baseUrl}` as Shared.IRI),
+      proofPurpose: 'assertionMethod',
+    };
+
+    const jwtProof = await generateJWTProof(credentialData, jwtOptions);
+    proofs.push(jwtProof);
+
+    logger.info('Created multiple proofs for assertion', {
+      proofCount: proofs.length,
+      proofTypes: proofs.map((p) => p.type),
+      keyId,
+    });
+
+    return proofs;
+  } catch (error) {
+    logger.error('Failed to create multiple proofs', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      keyId,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Creates proofs based on specified formats
+ * @param credentialData The credential data to include in proofs
+ * @param privateKey The private key to use for signing
+ * @param formats Array of proof formats to generate
+ * @param keyId The key ID to use for signing
+ * @param keyType Optional key type (if not provided, will be auto-detected)
+ * @param issuer The issuer IRI for JWT proof
+ * @returns Array containing the requested proof types
+ */
+export async function createProofsByFormat(
+  credentialData: VerifiableCredentialClaims,
+  privateKey: string,
+  formats: ProofFormat[],
+  keyId: string = 'default',
+  keyType?: KeyType,
+  issuer?: Shared.IRI
+): Promise<ProofArray> {
+  try {
+    const proofs: ProofArray = [];
+    const actualKeyType = keyType || detectKeyType(privateKey);
+
+    for (const format of formats) {
+      switch (format) {
+        case ProofFormat.DataIntegrity: {
+          const canonicalData = JSON.stringify(
+            credentialData,
+            Object.keys(credentialData).sort()
+          );
+          const dataIntegrityProof = createVerification(
+            canonicalData,
+            privateKey,
+            actualKeyType,
+            undefined,
+            `${config.openBadges.baseUrl}/public-keys/${keyId}`
+          );
+          proofs.push(dataIntegrityProof);
+          break;
+        }
+
+        case ProofFormat.JWT:
+        case ProofFormat.JWS: {
+          const algorithm = getRecommendedAlgorithm(actualKeyType);
+          const jwtOptions: JWTProofGenerationOptions = {
+            privateKey,
+            algorithm,
+            keyId,
+            verificationMethod:
+              `${config.openBadges.baseUrl}/public-keys/${keyId}` as Shared.IRI,
+            issuer: issuer || (`${config.openBadges.baseUrl}` as Shared.IRI),
+            proofPurpose: 'assertionMethod',
+          };
+
+          const jwtProof = await generateJWTProof(credentialData, jwtOptions);
+          proofs.push(jwtProof);
+          break;
+        }
+
+        default: {
+          logger.warn(`Unsupported proof format: ${format}`);
+          break;
+        }
+      }
+    }
+
+    logger.info('Created proofs by format', {
+      proofCount: proofs.length,
+      formats: formats,
+      keyId,
+    });
+
+    return proofs;
+  } catch (error) {
+    logger.error('Failed to create proofs by format', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      formats,
+      keyId,
+    });
+    throw error;
+  }
 }

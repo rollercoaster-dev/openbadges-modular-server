@@ -35,6 +35,7 @@ import { BadgeClassResponseDto } from '@/api/dtos';
 import { getAvailablePort, releasePort } from './helpers/port-manager.helper';
 import { config } from '@/config/config'; // safe to import after env is prepared
 import { RepositoryFactory } from '@/infrastructure/repository.factory';
+import { headersToObject } from '../test-utils/headers.helper';
 
 // Use getPort to reliably get an available port to avoid conflicts
 let TEST_PORT: number;
@@ -176,7 +177,7 @@ describe('Badge Class API - E2E', () => {
         status: res.status,
         statusText: res.statusText,
         body: responseBody,
-        headers: Object.fromEntries(res.headers.entries()),
+        headers: headersToObject(res.headers),
         requestUrl: BADGE_CLASSES_ENDPOINT,
         requestMethod: 'POST',
         requestHeaders: {
@@ -271,7 +272,7 @@ describe('Badge Class API - E2E', () => {
         status: res.status,
         statusText: res.statusText,
         responseText,
-        headers: Object.fromEntries(res.headers.entries()),
+        headers: headersToObject(res.headers),
         requestUrl: `${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`,
         requestMethod: 'GET',
         requestHeaders: {
@@ -437,7 +438,7 @@ describe('Badge Class API - E2E', () => {
           status: res.status,
           statusText: res.statusText,
           responseText,
-          headers: Object.fromEntries(res.headers.entries()),
+          headers: headersToObject(res.headers),
           requestUrl: `${BADGE_CLASSES_ENDPOINT}/${badgeClassId}`,
           requestMethod: 'PUT',
           requestHeaders: {
