@@ -243,6 +243,8 @@ export class OpenBadges3Serializer implements BadgeSerializer {
       serialized['version'] = badgeClass.version;
     }
 
+    // Note: previousVersion is for internal tracking only, not included in JSON-LD output
+
     // Add relationship fields for OB 3.0
     if (badgeClass.related) {
       serialized['related'] = badgeClass.related;

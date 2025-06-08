@@ -22,6 +22,15 @@ import {
   UpdateCredentialStatusDto,
   StatusListQueryDto,
 } from './dtos';
+import {
+  RelatedAchievementDto,
+  EndorsementCredentialDto,
+} from './validation/badgeClass.schemas';
+import {
+  Related,
+  EndorsementCredential,
+} from '../domains/badgeClass/badgeClass.entity';
+import { toIRI } from '../utils/types/iri-utils';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
@@ -39,6 +48,8 @@ import {
   validateBatchRetrieveCredentialsMiddleware,
   validateUpdateCredentialStatusMiddleware,
   validateBatchUpdateCredentialStatusMiddleware,
+  validateRelatedAchievementMiddleware,
+  validateEndorsementCredentialMiddleware,
 } from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
@@ -62,6 +73,68 @@ function getValidatedBody<T = unknown>(c: {
   get: (key: 'validatedBody') => T;
 }): T {
   return c.get('validatedBody');
+}
+
+/**
+ * Convert RelatedAchievementDto to Related domain type
+ */
+function convertToRelated(dto: RelatedAchievementDto): Related {
+  return {
+    id: toIRI(dto.id),
+    type: ['Related'] as ['Related'],
+    inLanguage: dto.inLanguage,
+    version: dto.version,
+  };
+}
+
+/**
+ * Convert EndorsementCredentialDto to EndorsementCredential domain type
+ */
+function convertToEndorsementCredential(
+  dto: EndorsementCredentialDto
+): EndorsementCredential {
+  // Convert issuer to proper format
+  let issuer: EndorsementCredential['issuer'];
+  if (typeof dto.issuer === 'string') {
+    issuer = toIRI(dto.issuer);
+  } else if (dto.issuer && typeof dto.issuer === 'object') {
+    // Ensure the issuer object has the required 'url' property
+    issuer = {
+      id: dto.issuer.id ? toIRI(dto.issuer.id) : undefined,
+      name: dto.issuer.name,
+      type: dto.issuer.type,
+      url: dto.issuer.id ? toIRI(dto.issuer.id) : toIRI(''), // Use id as url since DTO doesn't have url field
+    };
+  } else {
+    throw new Error('Invalid issuer format in endorsement credential');
+  }
+
+  return {
+    '@context': dto['@context'],
+    id: toIRI(dto.id),
+    type: dto.type as ['VerifiableCredential', 'EndorsementCredential'],
+    issuer,
+    validFrom: dto.validFrom,
+    credentialSubject: {
+      id: toIRI(dto.credentialSubject.id),
+      type: dto.credentialSubject.type,
+      endorsementComment: dto.credentialSubject.endorsementComment,
+    },
+    // Pass through any additional fields
+    ...Object.fromEntries(
+      Object.entries(dto).filter(
+        ([key]) =>
+          ![
+            '@context',
+            'id',
+            'type',
+            'issuer',
+            'validFrom',
+            'credentialSubject',
+          ].includes(key)
+      )
+    ),
+  };
 }
 
 /**
@@ -633,49 +706,37 @@ export function createVersionedRouter(
     }
   });
 
-  router.post('/achievements/:id/related', requireAuth(), async (c) => {
-    try {
-      const id = c.req.param('id');
-      const body = await c.req.json();
-
-      // Validate the related achievement data
-      if (
-        !body.id ||
-        !body.type ||
-        !Array.isArray(body.type) ||
-        body.type[0] !== 'Related'
-      ) {
-        return c.json(
-          {
-            error:
-              'Invalid related achievement data. Must include id and type: ["Related"]',
-          },
-          400
-        );
-      }
-
-      const user = c.get('user');
-      const result = await badgeClassController.addRelatedAchievement(
-        id,
-        body,
-        version,
-        user
-      );
-      if (!result) {
-        return sendNotFoundError(c, 'Achievement', {
-          endpoint: 'POST /achievements/:id/related',
+  router.post(
+    '/achievements/:id/related',
+    requireAuth(),
+    validateRelatedAchievementMiddleware(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = getValidatedBody<RelatedAchievementDto>(c);
+        const user = c.get('user');
+        const result = await badgeClassController.addRelatedAchievement(
           id,
+          convertToRelated(body),
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'POST /achievements/:id/related',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /achievements/:id/related',
+          id: c.req.param('id'),
+          body: getValidatedBody<RelatedAchievementDto>(c),
         });
       }
-      return c.json(result);
-    } catch (error) {
-      return sendApiError(c, error, {
-        endpoint: 'POST /achievements/:id/related',
-        id: c.req.param('id'),
-        body: await c.req.json().catch(() => ({})),
-      });
     }
-  });
+  );
 
   router.delete(
     '/achievements/:id/related/:relatedId',
@@ -722,48 +783,39 @@ export function createVersionedRouter(
     }
   });
 
-  router.post('/achievements/:id/endorsements', requireAuth(), async (c) => {
-    try {
-      const id = c.req.param('id');
-      const body = await c.req.json();
-
-      // Basic validation for endorsement credential
-      if (
-        !body['@context'] ||
-        !body.id ||
-        !body.type ||
-        !body.issuer ||
-        !body.credentialSubject
-      ) {
-        return c.json(
-          {
-            error:
-              'Invalid endorsement credential. Must be a valid VerifiableCredential.',
-          },
-          400
-        );
-      }
-
-      const user = c.get('user');
-      const result = await badgeClassController.addEndorsement(id, body, user);
-      if (!result) {
-        return sendNotFoundError(c, 'Achievement', {
-          endpoint: 'POST /achievements/:id/endorsements',
+  router.post(
+    '/achievements/:id/endorsements',
+    requireAuth(),
+    validateEndorsementCredentialMiddleware(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = getValidatedBody<EndorsementCredentialDto>(c);
+        const user = c.get('user');
+        const result = await badgeClassController.addEndorsement(
           id,
+          convertToEndorsementCredential(body),
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'POST /achievements/:id/endorsements',
+            id,
+          });
+        }
+        return c.json({
+          message: 'Endorsement added successfully',
+          achievement: result.toJsonLd(version),
+        });
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /achievements/:id/endorsements',
+          id: c.req.param('id'),
+          body: getValidatedBody<EndorsementCredentialDto>(c),
         });
       }
-      return c.json({
-        message: 'Endorsement added successfully',
-        achievement: result.toJsonLd(version),
-      });
-    } catch (error) {
-      return sendApiError(c, error, {
-        endpoint: 'POST /achievements/:id/endorsements',
-        id: c.req.param('id'),
-        body: await c.req.json().catch(() => ({})),
-      });
     }
-  });
+  );
 
   router.get(
     '/badge-classes/:id/assertions',
@@ -812,31 +864,15 @@ export function createVersionedRouter(
     '/badge-classes/:id/related',
     addDeprecationWarning('/achievements/:id/related'),
     requireAuth(),
+    validateRelatedAchievementMiddleware(),
     async (c) => {
       try {
         const id = c.req.param('id');
-        const body = await c.req.json();
-
-        // Validate the related achievement data
-        if (
-          !body.id ||
-          !body.type ||
-          !Array.isArray(body.type) ||
-          body.type[0] !== 'Related'
-        ) {
-          return c.json(
-            {
-              error:
-                'Invalid related achievement data. Must include id and type: ["Related"]',
-            },
-            400
-          );
-        }
-
+        const body = getValidatedBody<RelatedAchievementDto>(c);
         const user = c.get('user');
         const result = await badgeClassController.addRelatedAchievement(
           id,
-          body,
+          convertToRelated(body),
           version,
           user
         );
@@ -851,7 +887,7 @@ export function createVersionedRouter(
         return sendApiError(c, error, {
           endpoint: 'POST /badge-classes/:id/related',
           id: c.req.param('id'),
-          body: await c.req.json().catch(() => ({})),
+          body: getValidatedBody<RelatedAchievementDto>(c),
         });
       }
     }

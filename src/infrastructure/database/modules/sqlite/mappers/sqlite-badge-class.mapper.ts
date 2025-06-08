@@ -115,7 +115,9 @@ export class SqliteBadgeClassMapper {
       tags: tags as string[] | undefined,
       // Versioning fields (OB 3.0)
       version,
-      previousVersion: previousVersion as Shared.IRI | undefined,
+      previousVersion: previousVersion
+        ? (convertUuid(previousVersion, 'sqlite', 'from') as Shared.IRI)
+        : undefined,
       // Relationship fields (OB 3.0)
       related,
       endorsement,
@@ -199,7 +201,9 @@ export class SqliteBadgeClassMapper {
       updatedAt: updatedAtTimestamp as number,
       // Versioning fields (OB 3.0)
       version: entity.version || null,
-      previousVersion: entity.previousVersion || null,
+      previousVersion: entity.previousVersion
+        ? (convertUuid(entity.previousVersion, 'sqlite', 'to') as string)
+        : null,
       // Relationship fields (OB 3.0)
       related: entity.related
         ? (convertJson(entity.related, 'sqlite', 'to') as string)

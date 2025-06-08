@@ -1,6 +1,6 @@
 /**
  * Validation schemas for BadgeClass (Achievement) entities
- * 
+ *
  * Supports both Open Badges 2.0 and 3.0 specifications with proper validation
  * for versioning and relationship fields introduced in OB 3.0.
  */
@@ -23,16 +23,20 @@ const AlignmentSchema = z.object({
  * Includes all standard OB 2.0 fields plus OB 3.0 extensions
  */
 const BaseBadgeClassSchema = z.object({
-  '@context': z.union([
-    z.string(),
-    z.array(z.string()),
-    z.object({}).passthrough(), // Allow context objects
-  ]).optional(),
+  '@context': z
+    .union([
+      z.string(),
+      z.array(z.string()),
+      z.object({}).passthrough(), // Allow context objects
+    ])
+    .optional(),
   id: z.string().optional(), // IRI - optional for creation, required for updates
-  type: z.union([
-    z.literal('BadgeClass'), // OB 2.0
-    z.array(z.string()), // OB 3.0 - array of types including 'Achievement'
-  ]).optional(),
+  type: z
+    .union([
+      z.literal('BadgeClass'), // OB 2.0
+      z.array(z.string()), // OB 3.0 - array of types including 'Achievement'
+    ])
+    .optional(),
   name: z.string().min(1, 'Name is required'),
   description: z.string().min(1, 'Description is required'),
   image: z.union([
@@ -54,33 +58,43 @@ const BaseBadgeClassSchema = z.object({
   alignment: z.array(AlignmentSchema).optional(),
   // Achievement versioning fields (OB 3.0)
   version: z.string().optional(),
-  previousVersion: z.string().optional(), // IRI reference to previous version
+  previousVersion: z.string().url().optional(), // IRI reference to previous version
   // Achievement relationship fields (OB 3.0)
-  related: z.array(z.object({
-    id: z.string(), // IRI of related achievement
-    type: z.tuple([z.literal('Related')]), // Must be ["Related"]
-    inLanguage: z.string().optional(), // BCP47 language code
-    version: z.string().optional(), // Version of related achievement
-  })).optional(),
-  endorsement: z.array(z.object({
-    '@context': z.array(z.string()),
-    id: z.string(),
-    type: z.array(z.string()),
-    issuer: z.union([
-      z.string(),
+  related: z
+    .array(
       z.object({
-        id: z.string(),
-        type: z.array(z.string()),
-        name: z.string().optional(),
+        id: z.string(), // IRI of related achievement
+        type: z.tuple([z.literal('Related')]), // Must be ["Related"]
+        inLanguage: z.string().optional(), // BCP47 language code
+        version: z.string().optional(), // Version of related achievement
       })
-    ]),
-    validFrom: z.string(),
-    credentialSubject: z.object({
-      id: z.string(),
-      type: z.array(z.string()),
-      endorsementComment: z.string().optional(),
-    }),
-  }).passthrough()).optional(), // Allow additional VC fields
+    )
+    .optional(),
+  endorsement: z
+    .array(
+      z
+        .object({
+          '@context': z.array(z.string()),
+          id: z.string(),
+          type: z.array(z.string()),
+          issuer: z.union([
+            z.string(),
+            z.object({
+              id: z.string(),
+              type: z.array(z.string()),
+              name: z.string().optional(),
+            }),
+          ]),
+          validFrom: z.string(),
+          credentialSubject: z.object({
+            id: z.string(),
+            type: z.array(z.string()),
+            endorsementComment: z.string().optional(),
+          }),
+        })
+        .passthrough()
+    )
+    .optional(), // Allow additional VC fields
 }); // Not strict here, allow extension by OB2/OB3 and unknown keys
 
 /**
@@ -110,25 +124,27 @@ export const RelatedAchievementSchema = z.object({
 /**
  * Schema for validating endorsement credentials
  */
-export const EndorsementCredentialSchema = z.object({
-  '@context': z.array(z.string()),
-  id: z.string(),
-  type: z.array(z.string()),
-  issuer: z.union([
-    z.string(),
-    z.object({
-      id: z.string(),
-      type: z.array(z.string()),
-      name: z.string().optional(),
-    })
-  ]),
-  validFrom: z.string(),
-  credentialSubject: z.object({
+export const EndorsementCredentialSchema = z
+  .object({
+    '@context': z.array(z.string()),
     id: z.string(),
     type: z.array(z.string()),
-    endorsementComment: z.string().optional(),
-  }),
-}).passthrough(); // Allow additional VerifiableCredential fields
+    issuer: z.union([
+      z.string(),
+      z.object({
+        id: z.string(),
+        type: z.array(z.string()),
+        name: z.string().optional(),
+      }),
+    ]),
+    validFrom: z.string(),
+    credentialSubject: z.object({
+      id: z.string(),
+      type: z.array(z.string()),
+      endorsementComment: z.string().optional(),
+    }),
+  })
+  .passthrough(); // Allow additional VerifiableCredential fields
 
 /**
  * Type definitions derived from schemas
@@ -136,4 +152,6 @@ export const EndorsementCredentialSchema = z.object({
 export type CreateBadgeClassDto = z.infer<typeof CreateBadgeClassSchema>;
 export type UpdateBadgeClassDto = z.infer<typeof UpdateBadgeClassSchema>;
 export type RelatedAchievementDto = z.infer<typeof RelatedAchievementSchema>;
-export type EndorsementCredentialDto = z.infer<typeof EndorsementCredentialSchema>;
+export type EndorsementCredentialDto = z.infer<
+  typeof EndorsementCredentialSchema
+>;

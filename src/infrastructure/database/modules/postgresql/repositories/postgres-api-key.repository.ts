@@ -26,7 +26,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return apiKey;
     } catch (error) {
-      logger.logError('Error creating API Key', error as Error);
+      logger.error('Error creating API Key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -36,7 +38,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error finding API Key by ID', error as Error);
+      logger.error('Error finding API Key by ID', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -46,7 +50,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error finding API Key by key', error as Error);
+      logger.error('Error finding API Key by key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -56,7 +62,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return [];
     } catch (error) {
-      logger.logError('Error finding API Keys by user ID', error as Error);
+      logger.error('Error finding API Keys by user ID', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -66,17 +74,24 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return [];
     } catch (error) {
-      logger.logError('Error finding all API Keys', error as Error);
+      logger.error('Error finding all API Keys', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  async update(_id: Shared.IRI, _data: Partial<ApiKey>): Promise<ApiKey | null> {
+  async update(
+    _id: Shared.IRI,
+    _data: Partial<ApiKey>
+  ): Promise<ApiKey | null> {
     try {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error updating API Key', error as Error);
+      logger.error('Error updating API Key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -86,7 +101,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return false;
     } catch (error) {
-      logger.logError('Error deleting API Key', error as Error);
+      logger.error('Error deleting API Key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -96,7 +113,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error revoking API Key', error as Error);
+      logger.error('Error revoking API Key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -106,7 +125,9 @@ export class PostgresApiKeyRepository implements ApiKeyRepository {
       // Implementation will be added later
       return null;
     } catch (error) {
-      logger.logError('Error updating API Key last used timestamp', error as Error);
+      logger.error('Error updating API Key last used timestamp', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }

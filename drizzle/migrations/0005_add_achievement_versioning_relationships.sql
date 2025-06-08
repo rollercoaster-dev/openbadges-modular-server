@@ -3,19 +3,19 @@
 -- Adds: version, previous_version, related, and endorsement fields
 
 -- Add version field for achievement versioning
-ALTER TABLE badge_classes ADD COLUMN version TEXT;
+ALTER TABLE badge_classes ADD COLUMN IF NOT EXISTS version TEXT;
 
 -- Add previous_version field for version chain tracking
 -- Self-referencing foreign key to badge_classes.id
-ALTER TABLE badge_classes ADD COLUMN previous_version TEXT REFERENCES badge_classes(id);
+ALTER TABLE badge_classes ADD COLUMN IF NOT EXISTS previous_version TEXT REFERENCES badge_classes(id);
 
 -- Add related field for achievement relationships (JSON array)
 -- Stores array of Related objects as per OB 3.0 specification
-ALTER TABLE badge_classes ADD COLUMN related TEXT;
+ALTER TABLE badge_classes ADD COLUMN IF NOT EXISTS related TEXT;
 
 -- Add endorsement field for achievement endorsements (JSON array)
 -- Stores array of EndorsementCredential objects as per OB 3.0 specification
-ALTER TABLE badge_classes ADD COLUMN endorsement TEXT;
+ALTER TABLE badge_classes ADD COLUMN IF NOT EXISTS endorsement TEXT;
 
 -- Create indexes for performance optimization
 

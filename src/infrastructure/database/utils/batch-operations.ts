@@ -118,7 +118,11 @@ export async function executeBatch<T>(
         }
       }
     } catch (rollbackError) {
-      logger.logError('Error rolling back transaction', rollbackError, {
+      logger.error('Error rolling back transaction', {
+        error:
+          rollbackError instanceof Error
+            ? rollbackError.message
+            : 'Unknown error',
         dbType,
         operationsCount: operations.length,
       });

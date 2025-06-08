@@ -34,13 +34,13 @@ CREATE INDEX IF NOT EXISTS badge_class_issuer_version_idx ON badge_classes (issu
 
 -- Specific JSONB indexes for common query patterns
 
--- Index for finding achievements related to a specific achievement
--- Supports queries like: WHERE related @> '[{"id": "specific-achievement-id"}]'
-CREATE INDEX IF NOT EXISTS badge_class_related_id_idx ON badge_classes USING GIN ((related -> 'id'));
+-- Index for finding achievements with related content
+-- Supports queries like: WHERE related IS NOT NULL AND jsonb_array_length(related) > 0
+CREATE INDEX IF NOT EXISTS badge_class_related_content_idx ON badge_classes USING GIN (related) WHERE related IS NOT NULL;
 
--- Index for finding achievements endorsed by a specific issuer
--- Supports queries like: WHERE endorsement @> '[{"issuer": {"id": "specific-issuer-id"}}]'
-CREATE INDEX IF NOT EXISTS badge_class_endorsement_issuer_idx ON badge_classes USING GIN ((endorsement -> 'issuer' -> 'id'));
+-- Index for finding achievements with endorsements
+-- Supports queries like: WHERE endorsement IS NOT NULL AND jsonb_array_length(endorsement) > 0
+CREATE INDEX IF NOT EXISTS badge_class_endorsement_content_idx ON badge_classes USING GIN (endorsement) WHERE endorsement IS NOT NULL;
 
 -- Comments for documentation
 -- version: Optional string field for achievement version (e.g., "1.0", "2.1", "v3.0-beta")

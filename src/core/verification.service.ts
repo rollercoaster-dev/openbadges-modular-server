@@ -85,7 +85,9 @@ export class VerificationService {
         ],
         type: ['VerifiableCredential', 'OpenBadgeCredential'],
         id: assertion.id,
-        issuer: assertion.issuer || 'https://example.com/issuer', // Fallback issuer
+        issuer:
+          assertion.issuer ||
+          `${process.env['BASE_URL'] || 'http://localhost:3000'}/issuer`, // Fallback issuer
         issuanceDate: assertion.issuedOn,
         credentialSubject: {
           id: assertion.recipient,
@@ -107,11 +109,13 @@ export class VerificationService {
         algorithm: actualAlgorithm,
         keyId,
         verificationMethod: `${
-          process.env.BASE_URL || 'https://example.com'
+          process.env.BASE_URL || 'http://localhost:3000'
         }/public-keys/${keyId}` as Shared.IRI,
         issuer:
           (assertion.issuer as Shared.IRI) ||
-          ('https://example.com/issuer' as Shared.IRI),
+          (`${
+            process.env.BASE_URL || 'http://localhost:3000'
+          }/issuer` as Shared.IRI),
         proofPurpose: 'assertionMethod',
       };
 
@@ -198,10 +202,9 @@ export class VerificationService {
         verification: proof as unknown as OB3.Proof,
       });
     } catch (error) {
-      logger.logError(
-        'Failed to create verification for assertion',
-        error as Error
-      );
+      logger.error('Failed to create verification for assertion', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -288,6 +291,31 @@ export class VerificationService {
   }
 
   /**
+   * Extracts keyId from verificationMethod IRI
+   * @param verificationMethod The verification method IRI
+   * @returns The extracted keyId or 'default' if extraction fails
+   */
+  private static extractKeyIdFromVerificationMethod(
+    verificationMethod: string
+  ): string {
+    try {
+      // Attempt to extract keyId from the verificationMethod IRI
+      // Example: https://example.com/public-keys/someKeyId#fragment
+      // Example: /public-keys/someKeyId
+      const match = verificationMethod.match(/\/public-keys\/([^#\/]+)/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    } catch (e: unknown) {
+      logger.warn(
+        `Error parsing verificationMethod URL: ${verificationMethod}`,
+        { message: (e as Error).message }
+      );
+    }
+    return 'default';
+  }
+
+  /**
    * Verifies an assertion's signature (supports both DataIntegrityProof and JWT proofs)
    * @param assertion The assertion to verify
    * @returns A verification status object with detailed information
@@ -311,23 +339,16 @@ export class VerificationService {
       // Check if this is a JWT proof
       if (isJWTProof(proofInput)) {
         // Extract keyId from verification method if possible
-        let keyId = 'default';
-        if (proofInput.verificationMethod) {
-          try {
-            const VMethodStr = proofInput.verificationMethod as string;
-            const match = VMethodStr.match(/\/public-keys\/([^#\/]+)/);
-            if (match && match[1]) {
-              keyId = match[1];
-            }
-          } catch (e: unknown) {
-            logger.warn(
-              `Error parsing verificationMethod URL: ${proofInput.verificationMethod}`,
-              { message: (e as Error).message }
-            );
-          }
-        }
+        const keyId = proofInput.verificationMethod
+          ? VerificationService.extractKeyIdFromVerificationMethod(
+              proofInput.verificationMethod as string
+            )
+          : 'default';
 
-        return await this.verifyJWTProofForAssertion(proofInput, keyId);
+        return await VerificationService.verifyJWTProofForAssertion(
+          proofInput,
+          keyId
+        );
       }
 
       // Construct the data that was originally signed.
@@ -339,25 +360,11 @@ export class VerificationService {
         assertionDataToCanonicalize
       );
 
-      let keyId = 'default'; // Default key ID
-      if (proofInput.verificationMethod) {
-        try {
-          // Attempt to extract keyId from the verificationMethod IRI
-          // Example: https://example.com/public-keys/someKeyId#fragment
-          // Example: /public-keys/someKeyId
-          const VMethodStr = proofInput.verificationMethod as string;
-          const match = VMethodStr.match(/\/public-keys\/([^#\/]+)/);
-          if (match && match[1]) {
-            keyId = match[1];
-          }
-        } catch (e: unknown) {
-          logger.warn(
-            `Error parsing verificationMethod URL: ${proofInput.verificationMethod}`,
-            { message: (e as Error).message }
-          );
-          // keyId remains 'default' if parsing fails
-        }
-      }
+      const keyId = proofInput.verificationMethod
+        ? VerificationService.extractKeyIdFromVerificationMethod(
+            proofInput.verificationMethod as string
+          )
+        : 'default';
 
       // If a specific keyId was derived from verificationMethod and that key doesn't exist, fail verification.
       if (keyId !== 'default' && !(await KeyService.keyExists(keyId))) {
@@ -467,7 +474,9 @@ export class VerificationService {
         cryptosuite,
       });
     } catch (error) {
-      logger.logError('Error verifying assertion signature', error as Error);
+      logger.error('Error verifying assertion signature', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return createVerificationError(
         VerificationErrorCode.INTERNAL_ERROR,
         `Internal error: ${(error as Error).message}`
@@ -532,7 +541,9 @@ export class VerificationService {
         cryptosuite: signatureStatus.cryptosuite,
       });
     } catch (error) {
-      logger.logError('Failed to verify assertion', error as Error);
+      logger.error('Failed to verify assertion', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return createVerificationError(
         VerificationErrorCode.INTERNAL_ERROR,
         `Error during verification process: ${(error as Error).message}`
@@ -566,10 +577,9 @@ export class VerificationService {
       // Verify the assertion
       return await this.verifyAssertion(assertion);
     } catch (error) {
-      logger.logError(
-        `Failed to verify assertion with ID ${assertionId}`,
-        error as Error
-      );
+      logger.error(`Failed to verify assertion with ID ${assertionId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return createVerificationError(
         VerificationErrorCode.INTERNAL_ERROR,
         `Error during verification process: ${(error as Error).message}`

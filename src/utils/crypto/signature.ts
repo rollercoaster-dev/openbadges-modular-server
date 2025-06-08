@@ -153,7 +153,9 @@ export function detectKeyType(key: string): KeyType {
   } catch (error) {
     // If there's an error in detection, default to RSA
     logger.warn('Error detecting key type, defaulting to RSA');
-    logger.logError('Key type detection error', error as Error);
+    logger.error('Key type detection error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return KeyType.RSA;
   }
 }
@@ -198,7 +200,9 @@ export function signData(
         );
         return signature.toString('base64');
       } catch (error) {
-        logger.logError('Error signing data with Ed25519', error as Error);
+        logger.error('Error signing data with Ed25519', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         throw error;
       }
 
@@ -243,7 +247,9 @@ export function verifySignature(
             Buffer.from(signature, 'base64')
           );
         } catch (error) {
-          logger.logError('Error verifying Ed25519 signature', error as Error);
+          logger.error('Error verifying Ed25519 signature', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
           return false;
         }
 
@@ -252,7 +258,9 @@ export function verifySignature(
         return false;
     }
   } catch (error) {
-    logger.logError('Signature verification error', error as Error);
+    logger.error('Signature verification error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }
@@ -321,7 +329,9 @@ export function createVerification(
       proofValue: signature,
     };
   } catch (error) {
-    logger.logError('Failed to create verification proof', error as Error);
+    logger.error('Failed to create verification proof', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     throw error;
   }
 }
@@ -374,7 +384,9 @@ export function verifyAssertion(
     // Verify the signature with the appropriate key type
     return verifySignature(dataToVerify, proof.proofValue, publicKey, keyType);
   } catch (error) {
-    logger.logError('Failed to verify assertion proof', error as Error);
+    logger.error('Failed to verify assertion proof', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return false;
   }
 }

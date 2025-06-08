@@ -203,7 +203,9 @@ export async function setupApp(): Promise<Hono> {
     return app;
   } catch (error) {
     if (error instanceof Error) {
-      logger.logError('Failed to start server', error);
+      logger.error('Failed to start server', {
+        error: error.message,
+      });
     } else {
       logger.error('Failed to start server', { message: String(error) });
     }

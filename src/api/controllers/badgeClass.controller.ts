@@ -130,6 +130,8 @@ export class BadgeClassController {
     permission: UserPermission
   ): boolean {
     // Check if RBAC is disabled for testing
+    // SECURITY WARNING: This bypasses all authorization checks when AUTH_DISABLE_RBAC=true.
+    // This should ONLY be used in testing environments. Ensure this is never enabled in production.
     if (process.env['AUTH_DISABLE_RBAC'] === 'true') {
       return true;
     }

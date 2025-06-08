@@ -300,7 +300,8 @@ export async function setupTestApp(
                   // If columns already exist, that's fine
                   if (
                     error.message &&
-                    error.message.includes('already exists')
+                    (error.message.includes('already exists') ||
+                      error.message.includes('duplicate column'))
                   ) {
                     logger.info(
                       'Achievement versioning columns already exist, skipping migration'
