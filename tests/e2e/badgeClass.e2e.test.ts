@@ -641,4 +641,213 @@ describe('Badge Class API - E2E', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('Achievement Versioning and Relationships (OB 3.0)', () => {
+    describe('Achievement Versioning', () => {
+      it('should create badge class with version field', async () => {
+        // Create a test issuer first
+        const { id: issuerId } = await TestDataHelper.createIssuer();
+
+        // Prepare test data with version field
+        const badgeClassData = {
+          type: 'BadgeClass',
+          name: 'Versioned Achievement v1.0',
+          description: 'First version of this achievement.',
+          issuer: issuerId,
+          criteria: {
+            narrative: 'Complete the versioned requirements',
+          },
+          image: 'https://example.com/versioned-badge.png',
+          version: '1.0',
+        };
+
+        // Execute test
+        const res = await fetch(BADGE_CLASSES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(badgeClassData),
+        });
+
+        expect(res.status).toBe(201);
+        const body = (await res.json()) as BadgeClassResponseDto;
+
+        // Verify version field is included in OB 3.0 output
+        expect(body.version).toBe('1.0');
+        expect(body.type).toEqual(['Achievement']);
+        expect(body.name).toBe(badgeClassData.name);
+      });
+
+      it('should create version chain with previousVersion field', async () => {
+        // Create a test issuer first
+        const { id: issuerId } = await TestDataHelper.createIssuer();
+
+        // Create first version
+        const v1Data = {
+          type: 'BadgeClass',
+          name: 'Achievement v1.0',
+          description: 'First version of this achievement.',
+          issuer: issuerId,
+          criteria: { narrative: 'Complete v1 requirements' },
+          image: 'https://example.com/badge-v1.png',
+          version: '1.0',
+        };
+
+        const v1Res = await fetch(BADGE_CLASSES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(v1Data),
+        });
+
+        expect(v1Res.status).toBe(201);
+        const v1Body = (await v1Res.json()) as BadgeClassResponseDto;
+
+        // Create second version with previousVersion reference
+        const v2Data = {
+          type: 'BadgeClass',
+          name: 'Achievement v2.0',
+          description: 'Second version of this achievement.',
+          issuer: issuerId,
+          criteria: { narrative: 'Complete v2 requirements' },
+          image: 'https://example.com/badge-v2.png',
+          version: '2.0',
+          previousVersion: v1Body.id,
+        };
+
+        const v2Res = await fetch(BADGE_CLASSES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(v2Data),
+        });
+
+        expect(v2Res.status).toBe(201);
+        const v2Body = (await v2Res.json()) as BadgeClassResponseDto;
+
+        // Verify version fields
+        expect(v2Body.version).toBe('2.0');
+        expect(v2Body.type).toEqual(['Achievement']);
+        // Note: previousVersion is for internal tracking, not in JSON-LD output
+        expect(v2Body.previousVersion).toBeUndefined();
+      });
+    });
+
+    describe('Related Achievements', () => {
+      it('should manage related achievements through API endpoints', async () => {
+        // Create a test issuer first
+        const { id: issuerId } = await TestDataHelper.createIssuer();
+
+        // Create two achievements
+        const achievement1Data = {
+          type: 'BadgeClass',
+          name: 'Primary Achievement',
+          description: 'The main achievement.',
+          issuer: issuerId,
+          criteria: { narrative: 'Complete primary requirements' },
+          image: 'https://example.com/primary-badge.png',
+        };
+
+        const achievement2Data = {
+          type: 'BadgeClass',
+          name: 'Related Achievement',
+          description: 'A related achievement.',
+          issuer: issuerId,
+          criteria: { narrative: 'Complete related requirements' },
+          image: 'https://example.com/related-badge.png',
+        };
+
+        // Create both achievements
+        const res1 = await fetch(BADGE_CLASSES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(achievement1Data),
+        });
+
+        const res2 = await fetch(BADGE_CLASSES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY,
+          },
+          body: JSON.stringify(achievement2Data),
+        });
+
+        expect(res1.status).toBe(201);
+        expect(res2.status).toBe(201);
+
+        const achievement1 = (await res1.json()) as BadgeClassResponseDto;
+        const achievement2 = (await res2.json()) as BadgeClassResponseDto;
+
+        // Add relationship using the new API endpoint
+        const relatedData = {
+          id: achievement2.id,
+          type: ['Related'],
+          inLanguage: 'en-US',
+          version: '1.0',
+        };
+
+        const addRelatedRes = await fetch(
+          `${BADGE_CLASSES_ENDPOINT}/${achievement1.id}/related`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': API_KEY,
+            },
+            body: JSON.stringify(relatedData),
+          }
+        );
+
+        expect(addRelatedRes.status).toBe(200);
+        const updatedAchievement =
+          (await addRelatedRes.json()) as BadgeClassResponseDto;
+
+        // Verify relationship was added
+        expect(updatedAchievement.related).toHaveLength(1);
+        expect(updatedAchievement.related?.[0].id).toBe(achievement2.id);
+
+        // Get related achievements using the API endpoint
+        const getRelatedRes = await fetch(
+          `${BADGE_CLASSES_ENDPOINT}/${achievement1.id}/related`,
+          {
+            method: 'GET',
+            headers: { 'X-API-Key': API_KEY },
+          }
+        );
+
+        expect(getRelatedRes.status).toBe(200);
+        const relatedAchievements =
+          (await getRelatedRes.json()) as BadgeClassResponseDto[];
+
+        expect(relatedAchievements).toHaveLength(1);
+        expect(relatedAchievements[0].id).toBe(achievement2.id);
+
+        // Remove relationship using the API endpoint
+        const removeRelatedRes = await fetch(
+          `${BADGE_CLASSES_ENDPOINT}/${achievement1.id}/related/${achievement2.id}`,
+          {
+            method: 'DELETE',
+            headers: { 'X-API-Key': API_KEY },
+          }
+        );
+
+        expect(removeRelatedRes.status).toBe(200);
+        const finalAchievement =
+          (await removeRelatedRes.json()) as BadgeClassResponseDto;
+
+        // Verify relationship was removed
+        expect(finalAchievement.related).toHaveLength(0);
+      });
+    });
+  });
 });

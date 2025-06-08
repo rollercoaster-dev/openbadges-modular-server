@@ -654,10 +654,12 @@ export function createVersionedRouter(
         );
       }
 
+      const user = c.get('user');
       const result = await badgeClassController.addRelatedAchievement(
         id,
         body,
-        version
+        version,
+        user
       );
       if (!result) {
         return sendNotFoundError(c, 'Achievement', {
@@ -682,10 +684,12 @@ export function createVersionedRouter(
       try {
         const id = c.req.param('id');
         const relatedId = c.req.param('relatedId');
+        const user = c.get('user');
         const result = await badgeClassController.removeRelatedAchievement(
           id,
           relatedId,
-          version
+          version,
+          user
         );
         if (!result) {
           return sendNotFoundError(c, 'Achievement', {
@@ -740,7 +744,8 @@ export function createVersionedRouter(
         );
       }
 
-      const result = await badgeClassController.addEndorsement(id, body);
+      const user = c.get('user');
+      const result = await badgeClassController.addEndorsement(id, body, user);
       if (!result) {
         return sendNotFoundError(c, 'Achievement', {
           endpoint: 'POST /achievements/:id/endorsements',

@@ -204,13 +204,14 @@ export class SqliteBadgeClassRepository
       id as Shared.IRI
     );
 
-    return this.executeDelete(context, async (db) => {
+    return this.executeDelete(context, async (db): Promise<unknown[]> => {
       // Convert URN to UUID for SQLite query
       const dbId = convertUuid(id, 'sqlite', 'to');
-      return db
+      const result = await db
         .delete(badgeClasses)
         .where(eq(badgeClasses.id, dbId))
         .returning();
+      return result || [];
     });
   }
 }
