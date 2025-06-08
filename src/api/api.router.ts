@@ -786,6 +786,110 @@ export function createVersionedRouter(
     }
   );
 
+  // Badge class relationship endpoints (legacy - for backward compatibility)
+  router.get(
+    '/badge-classes/:id/related',
+    addDeprecationWarning('/achievements/:id/related'),
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const result = await badgeClassController.getRelatedAchievements(
+          id,
+          version
+        );
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /badge-classes/:id/related',
+          id: c.req.param('id'),
+        });
+      }
+    }
+  );
+
+  router.post(
+    '/badge-classes/:id/related',
+    addDeprecationWarning('/achievements/:id/related'),
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = await c.req.json();
+
+        // Validate the related achievement data
+        if (
+          !body.id ||
+          !body.type ||
+          !Array.isArray(body.type) ||
+          body.type[0] !== 'Related'
+        ) {
+          return c.json(
+            {
+              error:
+                'Invalid related achievement data. Must include id and type: ["Related"]',
+            },
+            400
+          );
+        }
+
+        const user = c.get('user');
+        const result = await badgeClassController.addRelatedAchievement(
+          id,
+          body,
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Badge class', {
+            endpoint: 'POST /badge-classes/:id/related',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /badge-classes/:id/related',
+          id: c.req.param('id'),
+          body: await c.req.json().catch(() => ({})),
+        });
+      }
+    }
+  );
+
+  router.delete(
+    '/badge-classes/:id/related/:relatedId',
+    addDeprecationWarning('/achievements/:id/related/:relatedId'),
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const relatedId = c.req.param('relatedId');
+        const user = c.get('user');
+        const result = await badgeClassController.removeRelatedAchievement(
+          id,
+          relatedId,
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Badge class', {
+            endpoint: 'DELETE /badge-classes/:id/related/:relatedId',
+            id,
+            relatedId,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'DELETE /badge-classes/:id/related/:relatedId',
+          id: c.req.param('id'),
+          relatedId: c.req.param('relatedId'),
+        });
+      }
+    }
+  );
+
   router.put(
     '/credentials/:id',
     requireAuth(),

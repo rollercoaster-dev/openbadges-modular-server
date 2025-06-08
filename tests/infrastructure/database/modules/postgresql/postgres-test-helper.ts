@@ -225,9 +225,9 @@ export function createPostgresClient(connectionString?: string): postgres.Sql {
   try {
     // Create the client with optimized settings for tests
     client = postgres(connString, {
-      max: 10, // Use a smaller connection pool for tests
-      idle_timeout: 10, // Close idle connections faster in tests
-      connect_timeout: 10, // Increased timeout for better reliability
+      max: 5, // Use a smaller connection pool for tests
+      idle_timeout: 5, // Close idle connections faster in tests
+      connect_timeout: 3, // Reduced timeout for faster test failures
       transform: {
         undefined: null, // Transform undefined to null for PostgreSQL compatibility
       },
@@ -409,6 +409,10 @@ export async function createTestTables(client: postgres.Sql): Promise<void> {
         criteria JSONB,
         alignment JSONB,
         tags JSONB,
+        version TEXT,
+        previous_version UUID REFERENCES badge_classes(id),
+        related JSONB,
+        endorsement JSONB,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         additional_fields JSONB
@@ -688,11 +692,11 @@ export async function insertTestData(
 }
 
 /**
- * Checks if the PostgreSQL database is available
+ * Internal implementation of database availability check
  * @param connectionString Optional connection string
  * @returns True if the database is available, false otherwise
  */
-export async function isDatabaseAvailable(
+async function isDatabaseAvailableInternal(
   connectionString?: string
 ): Promise<boolean> {
   let client: postgres.Sql | null = null;
@@ -822,4 +826,30 @@ export async function isDatabaseAvailable(
       await client.end();
     }
   }
+}
+
+/**
+ * Checks if the PostgreSQL database is available with timeout
+ * @param connectionString Optional connection string
+ * @returns True if the database is available, false otherwise
+ */
+export async function isDatabaseAvailable(
+  connectionString?: string
+): Promise<boolean> {
+  // Wrap the entire check in a timeout to prevent hanging tests
+  return Promise.race([
+    isDatabaseAvailableInternal(connectionString),
+    new Promise<boolean>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error('Database availability check timed out after 5 seconds')
+        );
+      }, 5000);
+    }),
+  ]).catch((error) => {
+    logger.warn('PostgreSQL database availability check failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  });
 }

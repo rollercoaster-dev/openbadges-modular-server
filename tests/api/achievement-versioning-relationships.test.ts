@@ -9,7 +9,11 @@ import { describe, expect, it, mock, beforeEach } from 'bun:test';
 import { BadgeClassController } from '@/api/controllers/badgeClass.controller';
 import { BadgeClassRepository } from '@/domains/badgeClass/badgeClass.repository';
 import { IssuerRepository } from '@/domains/issuer/issuer.repository';
-import { BadgeClass, Related, EndorsementCredential } from '@/domains/badgeClass/badgeClass.entity';
+import {
+  BadgeClass,
+  Related,
+  EndorsementCredential,
+} from '@/domains/badgeClass/badgeClass.entity';
 import { Shared } from 'openbadges-types';
 import { BadgeVersion } from '@/utils/version/badge-version';
 import { UserPermission } from '@/domains/user/user.entity';
@@ -122,9 +126,9 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should return empty array when no related achievements exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(
-          testAchievement
-        );
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(testAchievement);
 
         const result = await controller.getRelatedAchievements(
           testAchievement.id
@@ -134,7 +138,9 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should return empty array when achievement does not exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(null);
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(null);
 
         const result = await controller.getRelatedAchievements(
           'urn:uuid:non-existent' as Shared.IRI
@@ -163,9 +169,9 @@ describe('Achievement Versioning and Relationships API', () => {
           related: [relatedData],
         });
 
-        (mockBadgeClassRepository.update as ReturnType<typeof mock>).mockResolvedValueOnce(
-          updatedAchievement
-        );
+        (
+          mockBadgeClassRepository.update as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(updatedAchievement);
 
         const result = await controller.addRelatedAchievement(
           testAchievement.id,
@@ -180,21 +186,34 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should reject request without proper permissions', async () => {
-        const unauthorizedUser = {
-          claims: {
-            sub: 'test-user-id',
-            permissions: [], // No UPDATE_BADGE_CLASS permission
-          },
-        };
+        // Ensure RBAC is not disabled for this test
+        const originalRbacSetting = process.env['AUTH_DISABLE_RBAC'];
+        delete process.env['AUTH_DISABLE_RBAC'];
 
-        await expect(
-          controller.addRelatedAchievement(
-            testAchievement.id,
-            relatedData,
-            BadgeVersion.V3,
-            unauthorizedUser
-          )
-        ).rejects.toThrow('Insufficient permissions');
+        try {
+          const unauthorizedUser = {
+            claims: {
+              sub: 'test-user-id',
+              permissions: [], // No UPDATE_BADGE_CLASS permission
+            },
+          };
+
+          await expect(
+            controller.addRelatedAchievement(
+              testAchievement.id,
+              relatedData,
+              BadgeVersion.V3,
+              unauthorizedUser
+            )
+          ).rejects.toThrow(
+            'Insufficient permissions to modify badge class relationships'
+          );
+        } finally {
+          // Restore original setting
+          if (originalRbacSetting !== undefined) {
+            process.env['AUTH_DISABLE_RBAC'] = originalRbacSetting;
+          }
+        }
       });
 
       it('should return null when achievement does not exist', async () => {
@@ -237,12 +256,12 @@ describe('Achievement Versioning and Relationships API', () => {
           related: [],
         });
 
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(
-          achievementWithRelated
-        );
-        (mockBadgeClassRepository.update as ReturnType<typeof mock>).mockResolvedValueOnce(
-          updatedAchievement
-        );
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(achievementWithRelated);
+        (
+          mockBadgeClassRepository.update as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(updatedAchievement);
 
         const result = await controller.removeRelatedAchievement(
           testAchievement.id,
@@ -256,25 +275,40 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should reject request without proper permissions', async () => {
-        const unauthorizedUser = {
-          claims: {
-            sub: 'test-user-id',
-            permissions: [], // No UPDATE_BADGE_CLASS permission
-          },
-        };
+        // Ensure RBAC is not disabled for this test
+        const originalRbacSetting = process.env['AUTH_DISABLE_RBAC'];
+        delete process.env['AUTH_DISABLE_RBAC'];
 
-        await expect(
-          controller.removeRelatedAchievement(
-            testAchievement.id,
-            relatedAchievement.id,
-            BadgeVersion.V3,
-            unauthorizedUser
-          )
-        ).rejects.toThrow('Insufficient permissions');
+        try {
+          const unauthorizedUser = {
+            claims: {
+              sub: 'test-user-id',
+              permissions: [], // No UPDATE_BADGE_CLASS permission
+            },
+          };
+
+          await expect(
+            controller.removeRelatedAchievement(
+              testAchievement.id,
+              relatedAchievement.id,
+              BadgeVersion.V3,
+              unauthorizedUser
+            )
+          ).rejects.toThrow(
+            'Insufficient permissions to modify badge class relationships'
+          );
+        } finally {
+          // Restore original setting
+          if (originalRbacSetting !== undefined) {
+            process.env['AUTH_DISABLE_RBAC'] = originalRbacSetting;
+          }
+        }
       });
 
       it('should return null when achievement does not exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(null);
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(null);
 
         const result = await controller.removeRelatedAchievement(
           testAchievement.id,
@@ -301,9 +335,9 @@ describe('Achievement Versioning and Relationships API', () => {
           endorsement: [endorsementCredential],
         });
 
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(
-          achievementWithEndorsement
-        );
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(achievementWithEndorsement);
 
         const result = await controller.getEndorsements(testAchievement.id);
 
@@ -312,9 +346,9 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should return empty array when no endorsements exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(
-          testAchievement
-        );
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(testAchievement);
 
         const result = await controller.getEndorsements(testAchievement.id);
 
@@ -322,7 +356,9 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should return empty array when achievement does not exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(null);
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(null);
 
         const result = await controller.getEndorsements(
           'urn:uuid:non-existent'
@@ -344,12 +380,12 @@ describe('Achievement Versioning and Relationships API', () => {
           endorsement: [endorsementCredential],
         });
 
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(
-          testAchievement
-        );
-        (mockBadgeClassRepository.update as ReturnType<typeof mock>).mockResolvedValueOnce(
-          updatedAchievement
-        );
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(testAchievement);
+        (
+          mockBadgeClassRepository.update as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(updatedAchievement);
 
         const result = await controller.addEndorsement(
           testAchievement.id,
@@ -363,24 +399,39 @@ describe('Achievement Versioning and Relationships API', () => {
       });
 
       it('should reject request without proper permissions', async () => {
-        const unauthorizedUser = {
-          claims: {
-            sub: 'test-user-id',
-            permissions: [], // No UPDATE_BADGE_CLASS permission
-          },
-        };
+        // Ensure RBAC is not disabled for this test
+        const originalRbacSetting = process.env['AUTH_DISABLE_RBAC'];
+        delete process.env['AUTH_DISABLE_RBAC'];
 
-        await expect(
-          controller.addEndorsement(
-            testAchievement.id,
-            endorsementCredential,
-            unauthorizedUser
-          )
-        ).rejects.toThrow('Insufficient permissions');
+        try {
+          const unauthorizedUser = {
+            claims: {
+              sub: 'test-user-id',
+              permissions: [], // No UPDATE_BADGE_CLASS permission
+            },
+          };
+
+          await expect(
+            controller.addEndorsement(
+              testAchievement.id,
+              endorsementCredential,
+              unauthorizedUser
+            )
+          ).rejects.toThrow(
+            'Insufficient permissions to modify badge class endorsements'
+          );
+        } finally {
+          // Restore original setting
+          if (originalRbacSetting !== undefined) {
+            process.env['AUTH_DISABLE_RBAC'] = originalRbacSetting;
+          }
+        }
       });
 
       it('should return null when achievement does not exist', async () => {
-        (mockBadgeClassRepository.findById as ReturnType<typeof mock>).mockResolvedValueOnce(null);
+        (
+          mockBadgeClassRepository.findById as ReturnType<typeof mock>
+        ).mockResolvedValueOnce(null);
 
         const result = await controller.addEndorsement(
           testAchievement.id,

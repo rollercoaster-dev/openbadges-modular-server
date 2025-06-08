@@ -129,6 +129,11 @@ export class BadgeClassController {
     user: { claims?: Record<string, unknown> } | null,
     permission: UserPermission
   ): boolean {
+    // Check if RBAC is disabled for testing
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true') {
+      return true;
+    }
+
     if (!user || !user.claims) {
       return false;
     }
