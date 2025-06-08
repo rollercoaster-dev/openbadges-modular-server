@@ -35,6 +35,14 @@ export class PostgresBadgeClassMapper {
       {}
     ); // Provide default
 
+    // Extract versioning fields (OB 3.0)
+    const version = record['version'] as string | undefined;
+    const previousVersion = record['previousVersion'] as string | undefined;
+
+    // Extract relationship fields (OB 3.0)
+    const related = safeParseJson(record['related'], null);
+    const endorsement = safeParseJson(record['endorsement'], null);
+
     // Create and return the domain entity
     return BadgeClass.create({
       id: convertUuid(id, 'postgresql', 'from') as Shared.IRI, // Convert UUID to URN
@@ -48,6 +56,14 @@ export class PostgresBadgeClassMapper {
       criteria,
       alignment,
       tags,
+      // Versioning fields (OB 3.0)
+      version,
+      previousVersion: previousVersion
+        ? (convertUuid(previousVersion, 'postgresql', 'from') as Shared.IRI)
+        : undefined,
+      // Relationship fields (OB 3.0)
+      related,
+      endorsement,
       ...(additionalFieldsRecord as Record<string, unknown>),
     });
   }
@@ -81,6 +97,12 @@ export class PostgresBadgeClassMapper {
       'alignment',
       'tags',
       'type',
+      // Versioning fields
+      'version',
+      'previousVersion',
+      // Relationship fields
+      'related',
+      'endorsement',
     ];
     // Use direct property assignment for better performance (O(n) vs O(n²))
     const additionalFields: Record<string, unknown> = {};
@@ -106,6 +128,12 @@ export class PostgresBadgeClassMapper {
       alignment: string | null;
       tags: string | null;
       additionalFields: string | null;
+      // Versioning fields (OB 3.0)
+      version: string | null;
+      previousVersion: string | null;
+      // Relationship fields (OB 3.0)
+      related: string | null;
+      endorsement: string | null;
     } = {
       ...(entity.id && {
         id: convertUuid(entity.id as string, 'postgresql', 'to'),
@@ -132,6 +160,16 @@ export class PostgresBadgeClassMapper {
       alignment: alignmentJson, // Stringified or null
       tags: tagsJson, // Stringified or null
       additionalFields: additionalFieldsJson, // Stringified or null
+      // Versioning fields (OB 3.0)
+      version: entity.version || null,
+      previousVersion: entity.previousVersion
+        ? convertUuid(entity.previousVersion as string, 'postgresql', 'to')
+        : null,
+      // Relationship fields (OB 3.0)
+      related: entity.related ? JSON.stringify(entity.related) : null,
+      endorsement: entity.endorsement
+        ? JSON.stringify(entity.endorsement)
+        : null,
     };
     return record; // Return explicitly typed record
   }

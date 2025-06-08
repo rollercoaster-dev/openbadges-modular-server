@@ -247,6 +247,23 @@ export class BadgeClass
         delete achievement.alignment;
       }
 
+      // Add versioning fields for OB 3.0
+      if (this.version) {
+        achievement.version = this.version;
+      }
+
+      // Add relationship fields for OB 3.0
+      if (this.related) {
+        achievement.related = this.related;
+      }
+
+      if (this.endorsement) {
+        achievement.endorsement = this.endorsement;
+      }
+
+      // Note: previousVersion is for internal tracking only, not included in OB 3.0 JSON-LD output
+      // as it's not part of the official OB 3.0 Achievement specification
+
       return achievement as OB3.Achievement;
     }
   }

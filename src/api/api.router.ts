@@ -616,6 +616,150 @@ export function createVersionedRouter(
     }
   });
 
+  // Achievement relationship endpoints (OB 3.0)
+  router.get('/achievements/:id/related', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getRelatedAchievements(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id/related',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.post('/achievements/:id/related', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const body = await c.req.json();
+
+      // Validate the related achievement data
+      if (
+        !body.id ||
+        !body.type ||
+        !Array.isArray(body.type) ||
+        body.type[0] !== 'Related'
+      ) {
+        return c.json(
+          {
+            error:
+              'Invalid related achievement data. Must include id and type: ["Related"]',
+          },
+          400
+        );
+      }
+
+      const result = await badgeClassController.addRelatedAchievement(
+        id,
+        body,
+        version
+      );
+      if (!result) {
+        return sendNotFoundError(c, 'Achievement', {
+          endpoint: 'POST /achievements/:id/related',
+          id,
+        });
+      }
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'POST /achievements/:id/related',
+        id: c.req.param('id'),
+        body: await c.req.json().catch(() => ({})),
+      });
+    }
+  });
+
+  router.delete(
+    '/achievements/:id/related/:relatedId',
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const relatedId = c.req.param('relatedId');
+        const result = await badgeClassController.removeRelatedAchievement(
+          id,
+          relatedId,
+          version
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'DELETE /achievements/:id/related/:relatedId',
+            id,
+            relatedId,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'DELETE /achievements/:id/related/:relatedId',
+          id: c.req.param('id'),
+          relatedId: c.req.param('relatedId'),
+        });
+      }
+    }
+  );
+
+  router.get('/achievements/:id/endorsements', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getEndorsements(id);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id/endorsements',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.post('/achievements/:id/endorsements', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const body = await c.req.json();
+
+      // Basic validation for endorsement credential
+      if (
+        !body['@context'] ||
+        !body.id ||
+        !body.type ||
+        !body.issuer ||
+        !body.credentialSubject
+      ) {
+        return c.json(
+          {
+            error:
+              'Invalid endorsement credential. Must be a valid VerifiableCredential.',
+          },
+          400
+        );
+      }
+
+      const result = await badgeClassController.addEndorsement(id, body);
+      if (!result) {
+        return sendNotFoundError(c, 'Achievement', {
+          endpoint: 'POST /achievements/:id/endorsements',
+          id,
+        });
+      }
+      return c.json({
+        message: 'Endorsement added successfully',
+        achievement: result.toJsonLd(version),
+      });
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'POST /achievements/:id/endorsements',
+        id: c.req.param('id'),
+        body: await c.req.json().catch(() => ({})),
+      });
+    }
+  });
+
   router.get(
     '/badge-classes/:id/assertions',
     addDeprecationWarning('/achievements/:id/credentials'),
