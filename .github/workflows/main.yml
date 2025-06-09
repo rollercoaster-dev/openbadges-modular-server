@@ -1,5 +1,9 @@
 name: CI/CD Pipeline
 
+# Default permissions for all jobs (principle of least privilege)
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main ]
@@ -17,10 +21,6 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-# Default permissions for all jobs (principle of least privilege)
-permissions:
-  contents: read
 
 env:
   NODE_VERSION: '20'
@@ -218,7 +218,10 @@ jobs:
 
       - name: Setup database (SQLite)
         if: matrix.database == 'sqlite'
-        run: bun run test:e2e:sqlite
+        run: |
+          mkdir -p ./tests/e2e
+          bun run db:test:sqlite:migrate
+          bun run test:e2e:sqlite:run
 
       - name: Setup database (PostgreSQL)
         if: matrix.database == 'postgresql'
