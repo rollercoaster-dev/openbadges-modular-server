@@ -30,6 +30,7 @@
     "db:studio:pg": "DB_TYPE=postgresql drizzle-kit studio",
     "db:studio:sqlite": "DB_TYPE=sqlite drizzle-kit studio",
     "release:check": "bun run scripts/release-helper.js",
+    "version:manage": "bun run scripts/version-management.js",
     "release:manual": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
     "release:local": "semantic-release --no-ci",
@@ -62,6 +63,7 @@
     ]
   },
   "devDependencies": {
+    "@inquirer/prompts": "^7.5.3",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.2",
