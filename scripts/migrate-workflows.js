@@ -233,15 +233,17 @@ const command = process.argv[2] || 'help';
 
 switch (command) {
   case 'migrate':
-    log('🚀 Starting full workflow migration...', colors.magenta);
-    const backupPath = createBackup();
-    disableOldWorkflows();
-    if (enableNewWorkflow()) {
-      log('\n✅ Migration completed successfully!', colors.green);
-      log(`💾 Backup available at: ${backupPath}`, colors.blue);
-      showMigrationStatus();
-    } else {
-      log('\n❌ Migration failed during new workflow setup', colors.red);
+    {
+      log('🚀 Starting full workflow migration...', colors.magenta);
+      const backupPath = createBackup();
+      disableOldWorkflows();
+      if (enableNewWorkflow()) {
+        log('\n✅ Migration completed successfully!', colors.green);
+        log(`💾 Backup available at: ${backupPath}`, colors.blue);
+        showMigrationStatus();
+      } else {
+        log('\n❌ Migration failed during new workflow setup', colors.red);
+      }
     }
     break;
     
