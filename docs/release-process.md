@@ -2,24 +2,45 @@
 
 This project uses [semantic-release](https://github.com/semantic-release/semantic-release) for automated versioning and release management. This document explains how releases are created and how to use the available release scripts.
 
+## Quick Start
+
+Before creating a release, check if one is needed:
+
+```bash
+bun run release:check
+```
+
+This will analyze your current state and provide recommendations.
+
 ## Automatic Releases
 
-Releases are automatically created when code is merged to the `main` branch. The release process is handled by GitHub Actions and semantic-release.
+Releases are automatically created when code is merged to the `main` branch. The release process is handled by GitHub Actions and semantic-release with improved error handling and conflict resolution.
 
 ### How It Works
 
 1. When code is merged to `main`, the GitHub Actions workflow in `.github/workflows/release.yml` is triggered.
-2. semantic-release analyzes the commit messages since the last release.
-3. Based on the commit messages, semantic-release determines the next version number:
+2. The workflow first checks if a release is actually needed (no duplicate releases).
+3. It runs tests and builds the application to ensure quality.
+4. semantic-release analyzes the commit messages since the last release.
+5. Based on the commit messages, semantic-release determines the next version number:
    - `fix:` commits trigger a patch release (1.0.0 → 1.0.1)
    - `feat:` commits trigger a minor release (1.0.0 → 1.1.0)
    - `feat!:`, `fix!:`, or commits with `BREAKING CHANGE:` in the body trigger a major release (1.0.0 → 2.0.0)
-4. semantic-release then:
-   - Updates the version in `package.json` (the initial "1.0.0" value is just a placeholder that will be automatically updated)
+6. semantic-release then:
+   - Updates the version in `package.json`
    - Updates the `CHANGELOG.md` file
    - Creates a git tag for the release
    - Creates a GitHub release with release notes
    - Triggers the Docker image build and push workflow (via the tag creation)
+
+### Improved Reliability
+
+The release workflow now includes:
+- **Conflict Resolution**: Automatically handles concurrent commits by pulling latest changes
+- **Retry Logic**: Attempts release up to 3 times if conflicts occur
+- **Validation**: Checks for existing releases to prevent duplicates
+- **Quality Gates**: Runs tests and builds before releasing
+- **Verification**: Confirms the release was created successfully
 
 > **Note**: The version field in `package.json` is managed automatically by semantic-release. You should never manually modify this value as it will be overwritten during the release process.
 
@@ -60,6 +81,20 @@ You can also manually trigger a Docker build for any tag or branch using the Git
 
 While the automatic release process is recommended, there are several scripts available for manual releases:
 
+### Check Release Status
+
+Before creating a manual release, check if one is needed:
+
+```bash
+bun run release:check
+```
+
+This script will:
+- Verify you're on the main branch
+- Check for uncommitted changes
+- Show commits since the last release
+- Provide release recommendations
+
 ### Dry Run
 
 To see what would happen during a release without actually making changes:
@@ -69,6 +104,16 @@ bun run release:dry-run
 ```
 
 This will show you the next version number and the changes that would be included in the release.
+
+### Manual Release
+
+To create a release manually (useful for testing or when automatic release fails):
+
+```bash
+bun run release:manual
+```
+
+This will create a release using semantic-release in manual mode.
 
 ### Local Release
 
@@ -141,24 +186,59 @@ bun test
 
 ### Release Not Created
 
-If a release is not created when you expect it to be, check:
+If a release is not created when you expect it to be:
 
-1. Are your commit messages following the Conventional Commits format?
-2. Are you on the `main` branch?
-3. Has there been any change since the last release?
-4. Check the GitHub Actions logs for errors.
+1. **Check release status first**:
+   ```bash
+   bun run release:check
+   ```
+
+2. **Common issues**:
+   - Commit messages not following Conventional Commits format
+   - Not on the `main` branch
+   - No changes since the last release
+   - Duplicate release already exists
+
+3. **Check GitHub Actions logs** for detailed error information
+
+### Release Workflow Failures
+
+The improved release workflow handles most common failures automatically, but if issues persist:
+
+1. **Concurrent commits**: The workflow now automatically resolves conflicts by pulling latest changes
+2. **Temporary GitHub issues**: The workflow retries up to 3 times
+3. **Permission issues**: Ensure the workflow has proper permissions (contents: write)
+
+### Manual Recovery
+
+If the automatic release fails completely:
+
+1. **Check what went wrong**:
+   ```bash
+   bun run release:check
+   ```
+
+2. **Try a manual release**:
+   ```bash
+   bun run release:manual
+   ```
+
+3. **If that fails, try a dry run first**:
+   ```bash
+   bun run release:dry-run
+   ```
 
 ### NPM-Related Errors
 
-If you see errors related to NPM publishing, check:
+NPM publishing is disabled, but if you see NPM-related errors:
 
-1. The `.releaserc.json` file should have the `@semantic-release/npm` plugin configured with `npmPublish: false`.
-2. The release workflow should have a dummy NPM token set in the environment variables.
-3. A `.npmrc` file should be created in the workflow with a dummy token.
+1. The `.releaserc.json` file has `npmPublish: false` configured
+2. The workflow creates a dummy `.npmrc` file
+3. A dummy NPM token is set in environment variables
 
 ### Git Authentication Errors
 
-If you see errors related to Git authentication, check:
+If you see errors related to Git authentication:
 
 1. The Git configuration in the workflow should be properly set up with user name and email.
 2. The workflow should have the correct permissions set (`contents: write`, `issues: write`, `pull-requests: write`).
