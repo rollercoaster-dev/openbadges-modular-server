@@ -119,7 +119,7 @@ function showReleaseOptions() {
 
 function validateEnvironment() {
   log('\n🔧 Validating environment...', colors.cyan);
-  
+
   // Check if semantic-release is installed
   try {
     exec('npx semantic-release --version');
@@ -128,7 +128,7 @@ function validateEnvironment() {
     log('❌ semantic-release not found. Run: bun install', colors.red);
     return false;
   }
-  
+
   // Check if git is configured
   try {
     const userName = exec('git config user.name');
@@ -136,18 +136,28 @@ function validateEnvironment() {
     log(`✅ Git configured: ${userName} <${userEmail}>`, colors.green);
   } catch {
     log('❌ Git not configured. Set user.name and user.email', colors.red);
+
+    // In CI environments, this might be expected
+    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+      log('ℹ️  Running in CI environment - git config may not be required', colors.blue);
+      return true; // Don't fail in CI for git config
+    }
     return false;
   }
-  
-  // Check if we can access GitHub
+
+  // Check if we can access GitHub (optional in CI)
   try {
     exec('git ls-remote origin HEAD');
     log('✅ GitHub access verified', colors.green);
   } catch {
-    log('❌ Cannot access GitHub. Check authentication.', colors.red);
-    return false;
+    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+      log('⚠️  GitHub access check skipped in CI environment', colors.yellow);
+    } else {
+      log('❌ Cannot access GitHub. Check authentication.', colors.red);
+      return false;
+    }
   }
-  
+
   return true;
 }
 

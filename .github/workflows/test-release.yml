@@ -32,6 +32,12 @@ jobs:
       - name: Test release helper script
         run: |
           echo "Testing release helper script..."
+
+          # Configure git for CI environment
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Test the release helper script
           bun run scripts/release-helper.js
           echo "Release helper script test completed"
 
