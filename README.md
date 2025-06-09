@@ -255,6 +255,16 @@ Build the project:
 bun run build
 ```
 
+### Git Hooks and Code Quality
+
+The project uses [Husky](https://typicode.github.io/husky/) to enforce code quality through git hooks:
+
+- **Pre-commit**: Runs lint-staged to automatically fix linting issues and perform type checking on staged files
+- **Pre-push**: Runs full linting, type checking, and test suite before allowing pushes
+- **Commit-msg**: Validates commit messages against the [Conventional Commits](https://www.conventionalcommits.org/) specification
+
+These hooks ensure that all code meets quality standards and that commit messages are properly formatted for automated releases.
+
 ## GitHub Copilot Configuration
 
 This repository includes comprehensive GitHub Copilot custom instructions and prompt files to help developers write code that follows the project's architectural patterns and best practices.
@@ -312,12 +322,17 @@ For detailed information about the CI pipeline structure and troubleshooting, se
 
 ### Creating Releases
 
-To create a new release:
+Releases are automatically created using [semantic-release](https://github.com/semantic-release/semantic-release) when code is merged to the `main` branch. The release process analyzes commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+**Important**: Do not create or push tags manually. This can interfere with the automated release process.
+
+To create a release:
+
+1. Ensure your commits follow the Conventional Commits format (automatically validated by commit hooks)
+2. Merge your changes to the `main` branch
+3. The GitHub Actions workflow will automatically create the release
+
+For more details, see the [Release Process Guide](./docs/release-process.md) and [Commit Convention Guide](./docs/commit-convention.md).
 
 ## Docker Support
 

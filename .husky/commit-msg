@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+echo "🔍 Validating commit message..."
+npx commitlint --edit $1
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit message validation failed!"
+  echo ""
+  echo "📝 Your commit message must follow the Conventional Commits format:"
+  echo "   <type>(<scope>): <subject>"
+  echo ""
+  echo "Examples:"
+  echo "   feat: add user authentication"
+  echo "   fix(api): resolve validation error"
+  echo "   docs: update installation guide"
+  echo ""
+  echo "For more details, see: docs/commit-convention.md"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Commit message is valid!"
