@@ -31,6 +31,7 @@ import {
   EndorsementCredential,
 } from '../domains/badgeClass/badgeClass.entity';
 import { toIRI } from '../utils/types/iri-utils';
+import { OB3, Shared } from 'openbadges-types';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
@@ -98,13 +99,34 @@ function convertToEndorsementCredential(
   if (typeof dto.issuer === 'string') {
     issuer = toIRI(dto.issuer);
   } else if (dto.issuer && typeof dto.issuer === 'object') {
-    // Ensure the issuer object has the required 'url' property
-    issuer = {
+    // For issuer objects, we need to handle the case where we don't have a valid URL
+    // Since OB3.Issuer requires a url property, we need to provide one
+    let issuerUrl: Shared.IRI;
+
+    if (dto.issuer.id && toIRI(dto.issuer.id)) {
+      try {
+        // Check if the id is a valid URL (not just a UUID)
+        new URL(dto.issuer.id);
+        issuerUrl = toIRI(dto.issuer.id)!;
+      } catch {
+        // If id is not a valid URL (e.g., it's a UUID), use a placeholder URL
+        // This ensures we have a valid OB3.Issuer object
+        issuerUrl = toIRI(`https://example.org/issuers/${dto.issuer.id}`)!;
+      }
+    } else {
+      // If no id is provided, use a generic placeholder
+      issuerUrl = toIRI('https://example.org/issuers/unknown')!;
+    }
+
+    // Convert the issuer object to OB3.Issuer format
+    const issuerObj: OB3.Issuer = {
       id: dto.issuer.id ? toIRI(dto.issuer.id) : undefined,
       name: dto.issuer.name,
       type: dto.issuer.type,
-      url: dto.issuer.id ? toIRI(dto.issuer.id) : toIRI(''), // Use id as url since DTO doesn't have url field
+      url: issuerUrl,
     };
+
+    issuer = issuerObj;
   } else {
     throw new Error('Invalid issuer format in endorsement credential');
   }
