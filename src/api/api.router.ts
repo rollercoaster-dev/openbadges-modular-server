@@ -120,6 +120,7 @@ function convertToEndorsementCredential(
 
     // Convert the issuer object to OB3.Issuer format
     const issuerObj: OB3.Issuer = {
+      ...dto.issuer, // Preserve additional fields via spread operator
       id: dto.issuer.id ? toIRI(dto.issuer.id) : undefined,
       name: dto.issuer.name,
       type: dto.issuer.type,
