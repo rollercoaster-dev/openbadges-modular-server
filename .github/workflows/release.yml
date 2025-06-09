@@ -46,30 +46,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Check for existing release
-        id: check-release
-        run: |
-          # Get the latest commit that's not a release commit
-          LATEST_NON_RELEASE_COMMIT=$(git log --oneline --grep="chore(release):" --invert-grep -n 1 --format="%H")
-          echo "Latest non-release commit: $LATEST_NON_RELEASE_COMMIT"
-
-          # Check if there's already a release for this commit
-          if git tag --points-at $LATEST_NON_RELEASE_COMMIT | grep -q "^v"; then
-            echo "Release already exists for this commit"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          else
-            echo "No release exists for this commit"
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Setup semantic-release
-        if: steps.check-release.outputs.should_release == 'true'
         run: |
           # Create .npmrc to prevent npm publishing issues
           echo "//registry.npmjs.org/:_authToken=dummy" > .npmrc
 
       - name: Release
-        if: steps.check-release.outputs.should_release == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: dummy
