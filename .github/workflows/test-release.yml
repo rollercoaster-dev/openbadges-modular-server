@@ -32,13 +32,13 @@ jobs:
       - name: Test release helper script
         run: |
           echo "Testing release helper script..."
-          bun run scripts/release-helper.js || true
+          bun run scripts/release-helper.js
           echo "Release helper script test completed"
 
       - name: Validate semantic-release config
         run: |
           echo "Validating semantic-release configuration..."
-          npx semantic-release --dry-run --no-ci || true
+          npx semantic-release --dry-run --no-ci
           echo "Semantic-release config validation completed"
 
       - name: Test release scripts
@@ -47,11 +47,11 @@ jobs:
           
           # Test dry run
           echo "Testing dry run..."
-          bun run release:dry-run || true
+          bun run release:dry-run
           
           # Test release check
           echo "Testing release check..."
-          bun run release:check || true
+          bun run release:check
           
           echo "Release scripts test completed"
 
