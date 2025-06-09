@@ -8,73 +8,51 @@ on:
     branches: [ main, beta ]
 
 jobs:
-  test-sqlite:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # Or your preferred LTS version
-
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache # Standard cache path for Bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Run linter
+        run: bun run lint
 
-      - name: Run migrations (SQLite)
-        env:
-          NODE_ENV: test
-          DB_TYPE: sqlite
-          SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite # Using a dedicated test DB
-        run: |
-          # Create the SQLite database directory if it doesn't exist
-          mkdir -p ./tests/e2e
-          # Try to run migrations, but continue even if it fails
-          bun run db:migrate:sqlite || echo "Migration failed but continuing"
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run type checker
+        run: bun run typecheck
 
-      - name: Run tests (SQLite)
-        env:
-          NODE_ENV: test
-          DB_TYPE: sqlite
-          SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite
-          # Add any other necessary environment variables for tests
-        run: |
-          # Run tests - this will fail the CI if tests fail
-          bun test --coverage
-          # Only create success XML if tests pass
-          echo '<testsuites><testsuite name="SQLite Tests" tests="1" errors="0" failures="0"></testsuite></testsuites>' > ./test-results-sqlite.xml
-
-      - name: Upload SQLite Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-sqlite
-          path: ./test-results-sqlite.xml
-
-      - name: Upload SQLite Coverage Report
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-sqlite
-          path: ./coverage
+  test-sqlite:
+    name: Test (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run SQLite tests
+        run: bun run test:sqlite
 
   test-postgres:
+    name: Test (PostgreSQL)
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15 # Or your preferred PostgreSQL version
+        image: postgres:15
         env:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
@@ -89,67 +67,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache # Standard cache path for Bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Wait for PostgreSQL to be healthy
+      - name: Wait for PostgreSQL
         run: |
-          until pg_isready -h localhost -p 5433 -U testuser -d openbadges_test; do
+          until pg_isready -h localhost -p 5433 -U testuser; do
             echo "Waiting for PostgreSQL..."
             sleep 2
           done
-          echo "PostgreSQL is ready."
-        timeout-minutes: 1
-
-
-      - name: Run migrations (PostgreSQL)
+      - name: Run PostgreSQL Migrations
         env:
-          NODE_ENV: test
           DB_TYPE: postgresql
           DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
-          # Drizzle Kit might also need individual DB credential env vars
-          # Or ensure your drizzle-config-helper.ts can parse DATABASE_URL for Drizzle Kit
         run: bun run db:migrate:pg
-
-      - name: Run tests (PostgreSQL)
+      - name: Run PostgreSQL tests
         env:
-          NODE_ENV: test
           DB_TYPE: postgresql
           DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
-          # Add any other necessary environment variables for tests
-        run: |
-          # Run tests - this will fail the CI if tests fail
-          bun test --coverage
-          # Only create success XML if tests pass
-          echo '<testsuites><testsuite name="PostgreSQL Tests" tests="1" errors="0" failures="0"></testsuite></testsuites>' > ./test-results-postgres.xml
+        run: bun run test:pg
 
-      - name: Upload PostgreSQL Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-postgres
-          path: ./test-results-postgres.xml
-
-      - name: Upload PostgreSQL Coverage Report
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-postgres
-          path: ./coverage
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test-sqlite, test-postgres]
+    if: success()
+    steps:
+      - name: Mark as successful
+        run: echo "All CI checks passed successfully!"
