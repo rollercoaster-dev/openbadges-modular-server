@@ -37,8 +37,12 @@ function exec(command, options = {}) {
 }
 
 function getCurrentVersion() {
-  const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
-  return packageJson.version;
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+    return packageJson.version;
+  } catch (error) {
+    throw new Error(`Failed to read package.json: ${error.message}`);
+  }
 }
 
 function getLatestTag() {
