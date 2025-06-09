@@ -10,7 +10,7 @@
   "github.copilot.enable": {
     "*": false
   },
-  
+
   // Enhanced accessibility support
   // "editor.accessibilitySupport": "on"
 }
