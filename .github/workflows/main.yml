@@ -1,0 +1,397 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force a release even if no changes detected'
+        required: false
+        default: false
+        type: boolean
+
+# Ensure only one workflow runs at a time for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: 'latest'
+
+jobs:
+  # Stage 1: Code Quality & Fast Tests
+  lint-and-typecheck:
+    name: 🔍 Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run ESLint
+        run: bun run lint
+
+      - name: Run TypeScript check
+        run: bun run typecheck
+
+  # Stage 2: SQLite Tests (Fastest)
+  test-sqlite:
+    name: 🗄️ SQLite Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup SQLite database
+        env:
+          NODE_ENV: test
+          DB_TYPE: sqlite
+          SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite
+        run: |
+          mkdir -p ./tests/e2e
+          bun run db:migrate:sqlite || echo "Migration failed but continuing"
+
+      - name: Run SQLite tests
+        env:
+          NODE_ENV: test
+          DB_TYPE: sqlite
+          SQLITE_DB_PATH: ./tests/e2e/test_database.sqlite
+        run: bun test --coverage
+
+      - name: Upload SQLite coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-sqlite
+          path: ./coverage
+
+  # Stage 3: PostgreSQL Tests
+  test-postgresql:
+    name: 🐘 PostgreSQL Tests
+    runs-on: ubuntu-latest
+    needs: test-sqlite
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: openbadges_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5433 -U testuser -d openbadges_test; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready."
+        timeout-minutes: 1
+
+      - name: Run PostgreSQL migrations
+        env:
+          NODE_ENV: test
+          DB_TYPE: postgresql
+          DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
+        run: bun run db:migrate:pg
+
+      - name: Run PostgreSQL tests
+        env:
+          NODE_ENV: test
+          DB_TYPE: postgresql
+          DATABASE_URL: postgres://testuser:testpassword@localhost:5433/openbadges_test
+        run: bun test --coverage
+
+      - name: Upload PostgreSQL coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-postgresql
+          path: ./coverage
+
+  # Stage 4: End-to-End Tests
+  test-e2e:
+    name: 🧪 E2E Tests
+    runs-on: ubuntu-latest
+    needs: test-postgresql
+    strategy:
+      matrix:
+        database: [sqlite, postgresql]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: openbadges_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup database (SQLite)
+        if: matrix.database == 'sqlite'
+        run: bun run test:e2e:sqlite
+
+      - name: Setup database (PostgreSQL)
+        if: matrix.database == 'postgresql'
+        run: |
+          until pg_isready -h localhost -p 5433 -U testuser -d openbadges_test; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          bun run test:e2e:pg
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.database }}
+          path: ./test-results-*.xml
+
+  # Stage 5: Build Application
+  build:
+    name: 🏗️ Build Application
+    runs-on: ubuntu-latest
+    needs: test-e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build application
+        run: bun run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            package.json
+
+  # Stage 6: Release (Main branch only)
+  release:
+    name: 🚀 Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+      id-token: write
+    outputs:
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Release
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: dummy
+        run: |
+          # Create .npmrc to prevent npm publishing issues
+          echo "//registry.npmjs.org/:_authToken=dummy" > .npmrc
+          
+          # Run semantic-release
+          npx semantic-release
+
+  # Stage 7: Docker Build & Push (After successful release)
+  docker:
+    name: 🐳 Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.new_release_published == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: 'arm64,amd64'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release.outputs.new_release_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.new_release_version }}
+            type=semver,pattern={{major}},value=${{ needs.release.outputs.new_release_version }}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify multi-architecture build
+        run: |
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "Verifying architectures for: $FIRST_TAG"
+          
+          # Wait for manifest to be available
+          for i in {1..5}; do
+            if docker manifest inspect $FIRST_TAG > /dev/null 2>&1; then
+              break
+            fi
+            echo "Waiting for manifest... ($i/5)"
+            sleep 10
+          done
+          
+          # Verify architectures
+          MANIFEST=$(docker manifest inspect $FIRST_TAG)
+          echo "$MANIFEST"
+          
+          if echo "$MANIFEST" | grep -q "amd64" && echo "$MANIFEST" | grep -q "arm64"; then
+            echo "✅ Multi-architecture build verified"
+          else
+            echo "❌ Multi-architecture build failed"
+            exit 1
+          fi
