@@ -322,7 +322,7 @@ For detailed information about the CI pipeline structure and troubleshooting, se
 
 ### Creating Releases
 
-Releases are automatically created using [semantic-release](https://github.com/semantic-release/semantic-release) when code is merged to the `main` branch. The release process analyzes commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+Releases are automatically created using [semantic-release](https://github.com/semantic-release/semantic-release) when code is merged to the `main` or `beta` branches. The release process analyzes commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
 **Important**: Do not create or push tags manually. This can interfere with the automated release process.
 
