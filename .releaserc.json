@@ -23,19 +23,13 @@
     ["@semantic-release/changelog", {
       "changelogFile": "CHANGELOG.md"
     }],
-    ["@semantic-release/npm", {
-      "npmPublish": false,
-      "tarballDir": "dist"
-    }],
+
     ["@semantic-release/git", {
       "assets": ["package.json", "CHANGELOG.md"],
       "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/github", {
-      "assets": [
-        {"path": "dist/*.tgz", "label": "Distribution package"}
-      ],
-      "successComment": "🎉 This ${issue.pull_request ? 'PR is included' : 'issue has been resolved'} in version ${nextRelease.version} :tada:",
+      "successComment": "🎉 This ${issue.pull_request ? 'PR is included' : 'issue has been resolved'} in version ${nextRelease.version} :tada:\n\n📦 Docker images are available at:\n- `ghcr.io/rollercoaster-dev/openbadges-modular-server:${nextRelease.version}`\n- `ghcr.io/rollercoaster-dev/openbadges-modular-server:latest`",
       "failTitle": "🚨 The automated release is failing",
       "failComment": "This release from branch `${branch.name}` had failed due to the following errors:\n- ${errors.map(err => err.message).join('\\n- ')}"
     }]
