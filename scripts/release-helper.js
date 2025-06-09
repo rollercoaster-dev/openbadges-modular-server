@@ -154,17 +154,25 @@ function validateEnvironment() {
 function main() {
   log('🎯 Release Helper', colors.magenta);
   log('================', colors.magenta);
-  
+
+  // Validate we're in the project root
+  try {
+    readFileSync('package.json', 'utf8');
+  } catch {
+    log('❌ Must be run from project root (package.json not found)', colors.red);
+    process.exit(1);
+  }
+
   if (!validateEnvironment()) {
     process.exit(1);
   }
-  
+
   const releaseNeeded = checkReleaseNeeded();
-  
+
   if (releaseNeeded) {
     showReleaseOptions();
   }
-  
+
   log('\n📚 For more information, see: docs/release-process.md', colors.cyan);
 }
 
