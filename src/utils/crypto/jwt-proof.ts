@@ -67,14 +67,16 @@ async function importPrivateKey(
  * Imports a public key for JWT verification
  *
  * @param key Public key in PEM format or JWK object
+ * @param algorithm Algorithm to use for SPKI key import (defaults to RS256)
  * @returns Promise resolving to the imported key
  */
 async function importPublicKey(
-  key: string | Record<string, unknown>
+  key: string | Record<string, unknown>,
+  algorithm: string = 'RS256'
 ): Promise<CryptoKey> {
   if (typeof key === 'string') {
     // PEM format - try SPKI first
-    return await importSPKI(key, 'RS256'); // Algorithm will be determined from JWT header
+    return await importSPKI(key, algorithm);
   } else {
     // JWK format
     const importedKey = await importJWK(key);
@@ -297,8 +299,20 @@ export function extractCredentialFromJWT(
   jwtProof: JWTProof
 ): VerifiableCredentialClaims | null {
   try {
+    // Validate JWT structure first
+    const parts = jwtProof.jws.split('.');
+    if (parts.length !== 3) {
+      logger.error('Invalid JWT structure: must have exactly 3 parts');
+      return null;
+    }
+
+    const [, payloadBase64] = parts;
+    if (!payloadBase64) {
+      logger.error('Invalid JWT: missing payload');
+      return null;
+    }
+
     // Decode JWT payload without verification (for extraction only)
-    const [, payloadBase64] = jwtProof.jws.split('.');
     const payloadJson = Buffer.from(payloadBase64, 'base64url').toString(
       'utf-8'
     );

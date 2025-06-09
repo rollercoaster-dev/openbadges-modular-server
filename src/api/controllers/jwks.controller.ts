@@ -16,7 +16,10 @@ export class JwksController {
    * Gets the JSON Web Key Set (JWKS) containing all active public keys
    * @returns The JWKS response
    */
-  async getJwks(): Promise<{ status: number; body: JsonWebKeySet | { error: string } }> {
+  async getJwks(): Promise<{
+    status: number;
+    body: JsonWebKeySet | { error: string };
+  }> {
     try {
       logger.debug('Retrieving JWKS');
 
@@ -26,21 +29,23 @@ export class JwksController {
       // Log the number of keys returned (without exposing key details)
       logger.info('JWKS retrieved successfully', {
         keyCount: jwks.keys.length,
-        keyIds: jwks.keys.map(key => key.kid).filter(Boolean)
+        keyIds: jwks.keys.map((key) => key.kid).filter(Boolean),
       });
 
       return {
         status: 200,
-        body: jwks
+        body: jwks,
       };
     } catch (error) {
-      logger.logError('Failed to retrieve JWKS', error as Error);
-      
+      logger.error('Failed to retrieve JWKS', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
       return {
         status: 500,
         body: {
-          error: 'Internal server error while retrieving JWKS'
-        }
+          error: 'Internal server error while retrieving JWKS',
+        },
       };
     }
   }
@@ -49,7 +54,10 @@ export class JwksController {
    * Gets information about key status (for administrative purposes)
    * @returns Key status information
    */
-  async getKeyStatus(): Promise<{ status: number; body: Record<string, unknown> }> {
+  async getKeyStatus(): Promise<{
+    status: number;
+    body: Record<string, unknown>;
+  }> {
     try {
       logger.debug('Retrieving key status information');
 
@@ -62,29 +70,31 @@ export class JwksController {
           created: info.metadata?.created,
           rotatedAt: info.metadata?.rotatedAt,
           keyType: info.metadata?.keyType,
-          cryptosuite: info.metadata?.cryptosuite
+          cryptosuite: info.metadata?.cryptosuite,
         };
       }
 
       logger.info('Key status retrieved successfully', {
-        keyCount: statusInfo.size
+        keyCount: statusInfo.size,
       });
 
       return {
         status: 200,
         body: {
           keys: statusData,
-          totalKeys: statusInfo.size
-        }
+          totalKeys: statusInfo.size,
+        },
       };
     } catch (error) {
-      logger.logError('Failed to retrieve key status', error as Error);
-      
+      logger.error('Failed to retrieve key status', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
       return {
         status: 500,
         body: {
-          error: 'Internal server error while retrieving key status'
-        }
+          error: 'Internal server error while retrieving key status',
+        },
       };
     }
   }

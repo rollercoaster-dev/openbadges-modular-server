@@ -307,7 +307,9 @@ export class AssertionController {
 
       return convertAssertionToJsonLd(createdAssertion, version);
     } catch (error) {
-      logger.logError('Failed to create assertion', error as Error);
+      logger.error('Failed to create assertion', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -579,10 +581,9 @@ export class AssertionController {
       // Use the verification service to verify the assertion
       return await VerificationService.verifyAssertion(assertion);
     } catch (error) {
-      logger.logError(
-        `Failed to verify assertion with ID ${id}`,
-        error as Error
-      );
+      logger.error(`Failed to verify assertion with ID ${id}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return createVerificationError(
         VerificationErrorCode.INTERNAL_ERROR,
         `Error during verification process: ${(error as Error).message}`
@@ -664,7 +665,9 @@ export class AssertionController {
         return signedAssertion.toJsonLd(version);
       }
     } catch (error) {
-      logger.logError(`Failed to sign assertion with ID ${id}`, error as Error);
+      logger.error(`Failed to sign assertion with ID ${id}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }
@@ -691,7 +694,9 @@ export class AssertionController {
 
       return publicKeys;
     } catch (error) {
-      logger.logError('Failed to get public keys', error as Error);
+      logger.error('Failed to get public keys', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }
@@ -716,10 +721,9 @@ export class AssertionController {
         publicKey,
       };
     } catch (error) {
-      logger.logError(
-        `Failed to get public key with ID ${keyId}`,
-        error as Error
-      );
+      logger.error(`Failed to get public key with ID ${keyId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }
@@ -976,7 +980,9 @@ export class AssertionController {
         },
       };
     } catch (error) {
-      logger.logError('Failed to create assertions batch', error as Error);
+      logger.error('Failed to create assertions batch', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -1072,7 +1078,9 @@ export class AssertionController {
         },
       };
     } catch (error) {
-      logger.logError('Failed to retrieve assertions batch', error as Error);
+      logger.error('Failed to retrieve assertions batch', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -1171,10 +1179,9 @@ export class AssertionController {
         },
       };
     } catch (error) {
-      logger.logError(
-        'Failed to update assertion status batch',
-        error as Error
-      );
+      logger.error('Failed to update assertion status batch', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }

@@ -146,6 +146,12 @@ export const badgeClasses = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     // Store additional JSON-LD fields
     additionalFields: jsonb('additional_fields'),
+    // Achievement versioning fields (OB 3.0)
+    version: text('version'),
+    previousVersion: uuid('previous_version').references(() => badgeClasses.id),
+    // Achievement relationship fields (OB 3.0)
+    related: jsonb('related'),
+    endorsement: jsonb('endorsement'),
   },
   (table) => {
     return {
@@ -155,6 +161,20 @@ export const badgeClasses = pgTable(
       nameIdx: index('badge_class_name_idx').on(table.name),
       // Add index on creation date for sorting
       createdAtIdx: index('badge_class_created_at_idx').on(table.createdAt),
+      // Versioning indexes
+      versionIdx: index('badge_class_version_idx').on(table.version),
+      previousVersionIdx: index('badge_class_previous_version_idx').on(
+        table.previousVersion
+      ),
+      issuerVersionIdx: index('badge_class_issuer_version_idx').on(
+        table.issuerId,
+        table.version
+      ),
+      // Relationship indexes (GIN for JSONB)
+      relatedGinIdx: index('badge_class_related_gin_idx').on(table.related),
+      endorsementGinIdx: index('badge_class_endorsement_gin_idx').on(
+        table.endorsement
+      ),
     };
   }
 );

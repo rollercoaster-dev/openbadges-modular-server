@@ -5,7 +5,14 @@
  * for digital signatures in the Open Badges API.
  */
 
-import { generateKeyPair, signData, verifySignature, KeyType, detectKeyType, Cryptosuite } from '../utils/crypto/signature';
+import {
+  generateKeyPair,
+  signData,
+  verifySignature,
+  KeyType,
+  detectKeyType,
+  Cryptosuite,
+} from '../utils/crypto/signature';
 import { logger } from '../utils/logging/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -47,7 +54,7 @@ export interface JsonWebKeySet {
 export enum KeyStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
-  REVOKED = 'revoked'
+  REVOKED = 'revoked',
 }
 
 /**
@@ -87,7 +94,10 @@ export class KeyService {
    * @returns True if the file exists, false otherwise
    */
   private static async fileExists(filePath: string): Promise<boolean> {
-    return fs.promises.access(filePath).then(() => true).catch(() => false);
+    return fs.promises
+      .access(filePath)
+      .then(() => true)
+      .catch(() => false);
   }
 
   /**
@@ -117,14 +127,14 @@ export class KeyService {
           created: new Date().toISOString(),
           keyType: KeyType.RSA,
           cryptosuite: Cryptosuite.RsaSha256,
-          status: KeyStatus.ACTIVE
+          status: KeyStatus.ACTIVE,
         };
         const defaultKeyPair: KeyPair = {
           ...keyPairData,
           keyType: KeyType.RSA,
           cryptosuite: Cryptosuite.RsaSha256,
           metadata,
-          status: KeyStatus.ACTIVE
+          status: KeyStatus.ACTIVE,
         };
         keyPairs.set('default', defaultKeyPair);
 
@@ -136,7 +146,9 @@ export class KeyService {
         logger.info('Loaded existing default key pair');
       }
     } catch (error) {
-      logger.logError('Failed to initialize key service', error as Error);
+      logger.error('Failed to initialize key service', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -161,7 +173,10 @@ export class KeyService {
         // Load default key pair
         const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
         const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
-        const metadataPath = path.join(KeyService.KEYS_DIR, 'default.meta.json');
+        const metadataPath = path.join(
+          KeyService.KEYS_DIR,
+          'default.meta.json'
+        );
 
         let keyType: KeyType;
         let cryptosuite: Cryptosuite;
@@ -170,17 +185,27 @@ export class KeyService {
         const metadataExists = await KeyService.fileExists(metadataPath);
         if (metadataExists) {
           try {
-            const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+            const metadataContent = await fs.promises.readFile(
+              metadataPath,
+              'utf8'
+            );
             const metadata = JSON.parse(metadataContent);
             keyType = metadata.keyType;
             cryptosuite = metadata.cryptosuite;
             logger.info('Loaded key metadata from file');
           } catch (error) {
             // If metadata file exists but can't be parsed, fall back to detection
-            logger.warn('Failed to parse key metadata, falling back to detection');
-            logger.logError('Metadata parsing error', error as Error);
+            logger.warn(
+              'Failed to parse key metadata, falling back to detection'
+            );
+            logger.error('Metadata parsing error', {
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
             keyType = detectKeyType(publicKey);
-            cryptosuite = keyType === KeyType.RSA ? Cryptosuite.RsaSha256 : Cryptosuite.Ed25519;
+            cryptosuite =
+              keyType === KeyType.RSA
+                ? Cryptosuite.RsaSha256
+                : Cryptosuite.Ed25519;
           }
         } else {
           // If no metadata file, detect key type from the loaded key
@@ -203,13 +228,19 @@ export class KeyService {
             const metadata = {
               keyType,
               cryptosuite,
-              created: new Date().toISOString()
+              created: new Date().toISOString(),
             };
-            await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+            await fs.promises.writeFile(
+              metadataPath,
+              JSON.stringify(metadata, null, 2),
+              { mode: 0o644 }
+            );
             logger.info('Created metadata file for existing key');
           } catch (error) {
             logger.warn('Failed to create metadata file for existing key');
-            logger.logError('Metadata creation error', error as Error);
+            logger.error('Metadata creation error', {
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
           }
         }
 
@@ -217,7 +248,10 @@ export class KeyService {
         let metadata: KeyMetadata;
         if (metadataExists) {
           try {
-            const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+            const metadataContent = await fs.promises.readFile(
+              metadataPath,
+              'utf8'
+            );
             metadata = JSON.parse(metadataContent);
           } catch (_error) {
             // Fallback metadata
@@ -225,7 +259,7 @@ export class KeyService {
               created: new Date().toISOString(),
               keyType,
               cryptosuite,
-              status: KeyStatus.ACTIVE
+              status: KeyStatus.ACTIVE,
             };
           }
         } else {
@@ -233,7 +267,7 @@ export class KeyService {
             created: new Date().toISOString(),
             keyType,
             cryptosuite,
-            status: KeyStatus.ACTIVE
+            status: KeyStatus.ACTIVE,
           };
         }
 
@@ -243,7 +277,7 @@ export class KeyService {
           keyType,
           cryptosuite,
           metadata,
-          status: metadata.status || KeyStatus.ACTIVE
+          status: metadata.status || KeyStatus.ACTIVE,
         });
       }
 
@@ -269,7 +303,10 @@ export class KeyService {
         if (publicKeyExists && privateKeyExists) {
           const publicKey = await fs.promises.readFile(publicKeyPath, 'utf8');
           const privateKey = await fs.promises.readFile(privateKeyPath, 'utf8');
-          const metadataPath = path.join(KeyService.KEYS_DIR, `${keyId}.meta.json`);
+          const metadataPath = path.join(
+            KeyService.KEYS_DIR,
+            `${keyId}.meta.json`
+          );
 
           let keyType: KeyType;
           let cryptosuite: Cryptosuite;
@@ -278,7 +315,10 @@ export class KeyService {
           const metadataExists = await KeyService.fileExists(metadataPath);
           if (metadataExists) {
             try {
-              const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+              const metadataContent = await fs.promises.readFile(
+                metadataPath,
+                'utf8'
+              );
               const metadata = JSON.parse(metadataContent);
               keyType = metadata.keyType;
               cryptosuite = metadata.cryptosuite;
@@ -286,9 +326,14 @@ export class KeyService {
             } catch (error) {
               // If metadata file exists but can't be parsed, fall back to detection
               logger.warn(`Failed to parse metadata for key: ${keyId}`);
-              logger.logError('Metadata parsing error', error as Error);
+              logger.error('Metadata parsing error', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
               keyType = detectKeyType(publicKey);
-              cryptosuite = keyType === KeyType.RSA ? Cryptosuite.RsaSha256 : Cryptosuite.Ed25519;
+              cryptosuite =
+                keyType === KeyType.RSA
+                  ? Cryptosuite.RsaSha256
+                  : Cryptosuite.Ed25519;
             }
           } else {
             // If no metadata file, detect key type from the loaded key
@@ -311,13 +356,19 @@ export class KeyService {
               const metadata = {
                 keyType,
                 cryptosuite,
-                created: new Date().toISOString()
+                created: new Date().toISOString(),
               };
-              await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+              await fs.promises.writeFile(
+                metadataPath,
+                JSON.stringify(metadata, null, 2),
+                { mode: 0o644 }
+              );
               logger.info(`Created metadata file for existing key: ${keyId}`);
             } catch (error) {
               logger.warn(`Failed to create metadata file for key: ${keyId}`);
-              logger.logError('Metadata creation error', error as Error);
+              logger.error('Metadata creation error', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
             }
           }
 
@@ -325,7 +376,10 @@ export class KeyService {
           let metadata: KeyMetadata;
           if (metadataExists) {
             try {
-              const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
+              const metadataContent = await fs.promises.readFile(
+                metadataPath,
+                'utf8'
+              );
               metadata = JSON.parse(metadataContent);
             } catch (_error) {
               // Fallback metadata
@@ -333,7 +387,7 @@ export class KeyService {
                 created: new Date().toISOString(),
                 keyType,
                 cryptosuite,
-                status: KeyStatus.ACTIVE
+                status: KeyStatus.ACTIVE,
               };
             }
           } else {
@@ -341,7 +395,7 @@ export class KeyService {
               created: new Date().toISOString(),
               keyType,
               cryptosuite,
-              status: KeyStatus.ACTIVE
+              status: KeyStatus.ACTIVE,
             };
           }
 
@@ -351,12 +405,14 @@ export class KeyService {
             keyType,
             cryptosuite,
             metadata,
-            status: metadata.status || KeyStatus.ACTIVE
+            status: metadata.status || KeyStatus.ACTIVE,
           });
         }
       }
     } catch (error) {
-      logger.logError('Failed to load keys', error as Error);
+      logger.error('Failed to load keys', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -366,7 +422,10 @@ export class KeyService {
    * @param id The ID of the key pair
    * @param keyPair The key pair to save
    */
-  private static async saveKeyPair(id: string, keyPair: KeyPair): Promise<void> {
+  private static async saveKeyPair(
+    id: string,
+    keyPair: KeyPair
+  ): Promise<void> {
     try {
       // Ensure KEYS_DIR is defined before proceeding
       if (!KeyService.KEYS_DIR) {
@@ -378,10 +437,14 @@ export class KeyService {
       const metadataPath = path.join(KeyService.KEYS_DIR, `${id}.meta.json`);
 
       // Save public key
-      await fs.promises.writeFile(publicKeyPath, keyPair.publicKey, { mode: 0o644 }); // Read by all, write by owner
+      await fs.promises.writeFile(publicKeyPath, keyPair.publicKey, {
+        mode: 0o644,
+      }); // Read by all, write by owner
 
       // Save private key with restricted permissions
-      await fs.promises.writeFile(privateKeyPath, keyPair.privateKey, { mode: 0o600 }); // Read/write by owner only
+      await fs.promises.writeFile(privateKeyPath, keyPair.privateKey, {
+        mode: 0o600,
+      }); // Read/write by owner only
 
       // Save metadata (key type, cryptosuite, and status)
       const metadata: KeyMetadata = {
@@ -390,13 +453,19 @@ export class KeyService {
         created: keyPair.metadata?.created || new Date().toISOString(),
         status: keyPair.status || KeyStatus.ACTIVE,
         rotatedAt: keyPair.metadata?.rotatedAt,
-        expiresAt: keyPair.metadata?.expiresAt
+        expiresAt: keyPair.metadata?.expiresAt,
       };
-      await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2), { mode: 0o644 });
+      await fs.promises.writeFile(
+        metadataPath,
+        JSON.stringify(metadata, null, 2),
+        { mode: 0o644 }
+      );
 
       logger.info(`Saved key pair with ID: ${id} (${keyPair.keyType})`);
     } catch (error) {
-      logger.logError(`Failed to save key pair with ID: ${id}`, error as Error);
+      logger.error(`Failed to save key pair with ID: ${id}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -444,7 +513,10 @@ export class KeyService {
    * @param signature The signature to verify
    * @returns True if the signature is valid, false otherwise
    */
-  static async verifyWithDefaultKey(data: string, signature: string): Promise<boolean> {
+  static async verifyWithDefaultKey(
+    data: string,
+    signature: string
+  ): Promise<boolean> {
     const keyPair = keyPairs.get('default');
     if (!keyPair) {
       throw new Error('Default key pair not found');
@@ -490,7 +562,10 @@ export class KeyService {
    * @param keyType The type of key to generate (defaults to RSA)
    * @returns The generated key pair
    */
-  static async generateKeyPair(id: string, keyType: KeyType = KeyType.RSA): Promise<KeyPair> {
+  static async generateKeyPair(
+    id: string,
+    keyType: KeyType = KeyType.RSA
+  ): Promise<KeyPair> {
     try {
       // Generate the key pair with the specified type
       const keyPairData = generateKeyPair(keyType);
@@ -513,7 +588,7 @@ export class KeyService {
         created: new Date().toISOString(),
         keyType,
         cryptosuite,
-        status: KeyStatus.ACTIVE
+        status: KeyStatus.ACTIVE,
       };
 
       // Create the full key pair object
@@ -522,7 +597,7 @@ export class KeyService {
         keyType,
         cryptosuite,
         metadata,
-        status: KeyStatus.ACTIVE
+        status: KeyStatus.ACTIVE,
       };
 
       // Store in memory
@@ -533,7 +608,9 @@ export class KeyService {
 
       return keyPair;
     } catch (error) {
-      logger.logError(`Failed to generate key pair with ID: ${id}`, error as Error);
+      logger.error(`Failed to generate key pair with ID: ${id}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -638,7 +715,9 @@ export class KeyService {
 
       return removed;
     } catch (error) {
-      logger.logError(`Failed to delete key pair with ID: ${id}`, error as Error);
+      logger.error(`Failed to delete key pair with ID: ${id}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -649,7 +728,10 @@ export class KeyService {
    * @param newKeyType The type of the new key (defaults to same as old key)
    * @returns The new key pair
    */
-  static async rotateKey(keyId: string, newKeyType?: KeyType): Promise<KeyPair> {
+  static async rotateKey(
+    keyId: string,
+    newKeyType?: KeyType
+  ): Promise<KeyPair> {
     try {
       const existingKeyPair = keyPairs.get(keyId);
       if (!existingKeyPair) {
@@ -664,7 +746,7 @@ export class KeyService {
         cryptosuite: existingKeyPair.cryptosuite,
         created: existingKeyPair.metadata?.created || new Date().toISOString(),
         status: KeyStatus.INACTIVE,
-        rotatedAt: new Date().toISOString()
+        rotatedAt: new Date().toISOString(),
       } as KeyMetadata;
 
       // Save the updated metadata for the old key
@@ -673,7 +755,10 @@ export class KeyService {
       // Generate a new key with the same ID (or create a new timestamped ID)
       const rotatedKeyId = `${keyId}-${Date.now()}`;
       const keyType = newKeyType || existingKeyPair.keyType;
-      const newKeyPair = await KeyService.generateKeyPair(rotatedKeyId, keyType);
+      const newKeyPair = await KeyService.generateKeyPair(
+        rotatedKeyId,
+        keyType
+      );
 
       // If this was the default key, update the default to point to the new key
       if (keyId === 'default') {
@@ -684,12 +769,14 @@ export class KeyService {
       logger.info(`Key rotated successfully`, {
         oldKeyId: keyId,
         newKeyId: rotatedKeyId,
-        keyType: keyType
+        keyType: keyType,
       });
 
       return newKeyPair;
     } catch (error) {
-      logger.logError(`Failed to rotate key ${keyId}`, error as Error);
+      logger.error(`Failed to rotate key ${keyId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -713,17 +800,19 @@ export class KeyService {
         cryptosuite: keyPair.cryptosuite,
         created: keyPair.metadata?.created || new Date().toISOString(),
         status: status,
-        rotatedAt: keyPair.metadata?.rotatedAt
+        rotatedAt: keyPair.metadata?.rotatedAt,
       } as KeyMetadata;
 
       await KeyService.saveKeyPair(keyId, keyPair);
 
       logger.info(`Key status updated`, {
         keyId,
-        status
+        status,
       });
     } catch (error) {
-      logger.logError(`Failed to set key status for ${keyId}`, error as Error);
+      logger.error(`Failed to set key status for ${keyId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -732,13 +821,19 @@ export class KeyService {
    * Gets all keys with their status information
    * @returns Map of key IDs to their status and metadata
    */
-  static getKeyStatusInfo(): Map<string, { status: KeyStatus; metadata?: KeyMetadata }> {
-    const statusInfo = new Map<string, { status: KeyStatus; metadata?: KeyMetadata }>();
+  static getKeyStatusInfo(): Map<
+    string,
+    { status: KeyStatus; metadata?: KeyMetadata }
+  > {
+    const statusInfo = new Map<
+      string,
+      { status: KeyStatus; metadata?: KeyMetadata }
+    >();
 
     for (const [keyId, keyPair] of keyPairs.entries()) {
       statusInfo.set(keyId, {
         status: keyPair.status || KeyStatus.ACTIVE,
-        metadata: keyPair.metadata
+        metadata: keyPair.metadata,
       });
     }
 
@@ -752,13 +847,20 @@ export class KeyService {
    * @param keyId The key identifier
    * @returns The JWK representation of the public key
    */
-  static convertPemToJwk(publicKeyPem: string, keyType: KeyType, keyId: string): JsonWebKey {
+  static convertPemToJwk(
+    publicKeyPem: string,
+    keyType: KeyType,
+    keyId: string
+  ): JsonWebKey {
     try {
       const publicKeyObject = crypto.createPublicKey(publicKeyPem);
 
       switch (keyType) {
         case KeyType.RSA: {
-          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as { n: string; e: string };
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as {
+            n: string;
+            e: string;
+          };
           return {
             kty: 'RSA',
             use: 'sig',
@@ -766,12 +868,14 @@ export class KeyService {
             alg: 'RS256',
             kid: keyId,
             n: keyDetails.n,
-            e: keyDetails.e
+            e: keyDetails.e,
           };
         }
 
         case KeyType.Ed25519: {
-          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as { x: string };
+          const keyDetails = publicKeyObject.export({ format: 'jwk' }) as {
+            x: string;
+          };
           return {
             kty: 'OKP',
             use: 'sig',
@@ -779,15 +883,19 @@ export class KeyService {
             alg: 'EdDSA',
             kid: keyId,
             crv: 'Ed25519',
-            x: keyDetails.x
+            x: keyDetails.x,
           };
         }
 
         default:
-          throw new Error(`Unsupported key type for JWK conversion: ${keyType}`);
+          throw new Error(
+            `Unsupported key type for JWK conversion: ${keyType}`
+          );
       }
     } catch (error) {
-      logger.logError(`Failed to convert PEM to JWK for key ${keyId}`, error as Error);
+      logger.error(`Failed to convert PEM to JWK for key ${keyId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -803,12 +911,16 @@ export class KeyService {
       // Only include active keys (default to active if status not set)
       if (!keyPair.status || keyPair.status === KeyStatus.ACTIVE) {
         try {
-          const jwk = KeyService.convertPemToJwk(keyPair.publicKey, keyPair.keyType, keyId);
+          const jwk = KeyService.convertPemToJwk(
+            keyPair.publicKey,
+            keyPair.keyType,
+            keyId
+          );
           jwks.push(jwk);
         } catch (error) {
           logger.warn(`Failed to convert key ${keyId} to JWK, skipping`, {
             keyId,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }

@@ -134,7 +134,11 @@ export class PreparedStatementManager {
 
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
-      logger.logError(`Failed to prepare statement`, error, { name, query });
+      logger.error(`Failed to prepare statement`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        name,
+        query,
+      });
 
       // Fallback to direct query execution
       return async (...params: unknown[]) => {
@@ -259,7 +263,11 @@ export class PreparedStatementManager {
 
       return preparedFn as PreparedStatementFn<T>;
     } catch (error) {
-      logger.logError(`Failed to prepare statement`, error, { name, query });
+      logger.error(`Failed to prepare statement`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        name,
+        query,
+      });
 
       // Fallback to direct query execution
       return async (...params: unknown[]) => {

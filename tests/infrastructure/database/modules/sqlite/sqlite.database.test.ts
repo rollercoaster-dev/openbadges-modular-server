@@ -52,6 +52,10 @@ describeSqlite('SQLiteDatabase Integration (in-memory)', () => {
         criteria TEXT NOT NULL,
         alignment TEXT,
         tags TEXT,
+        version TEXT,
+        previous_version TEXT REFERENCES badge_classes(id),
+        related TEXT,
+        endorsement TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         additional_fields TEXT

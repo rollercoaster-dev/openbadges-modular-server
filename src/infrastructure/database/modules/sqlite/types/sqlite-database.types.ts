@@ -180,6 +180,12 @@ export interface SqliteBadgeClassRecord {
   createdAt: number;
   updatedAt: number;
   additionalFields: string | null;
+  // Achievement versioning fields (OB 3.0)
+  version: string | null;
+  previousVersion: string | null;
+  // Achievement relationship fields (OB 3.0) - JSON stored as text
+  related: string | null;
+  endorsement: string | null;
 }
 
 export interface SqliteAssertionRecord {

@@ -1,6 +1,6 @@
 /**
  * DTOs for BadgeClass-related API endpoints
- * 
+ *
  * These DTOs define the expected request and response structures for badge class operations.
  * They provide type safety and validation for the API.
  */
@@ -14,16 +14,20 @@ import { OB2, OB3 } from 'openbadges-types';
 export interface BadgeClassBaseDto {
   name: string;
   description: string;
-  image: string | {
-    id?: string;
-    type?: string;
-    url?: string;
-    caption?: string;
-  };
-  criteria?: string | {
-    id?: string;
-    narrative?: string;
-  };
+  image:
+    | string
+    | {
+        id?: string;
+        type?: string;
+        url?: string;
+        caption?: string;
+      };
+  criteria?:
+    | string
+    | {
+        id?: string;
+        narrative?: string;
+      };
   issuer: string; // IRI of the issuer
   tags?: string[];
   alignment?: Array<{
@@ -32,6 +36,35 @@ export interface BadgeClassBaseDto {
     targetDescription?: string;
     targetFramework?: string;
     targetCode?: string;
+  }>;
+  // Achievement versioning fields (OB 3.0)
+  version?: string;
+  previousVersion?: string; // IRI reference to previous version
+  // Achievement relationship fields (OB 3.0)
+  related?: Array<{
+    id: string; // IRI of related achievement
+    type: ['Related'];
+    inLanguage?: string; // BCP47 language code
+    version?: string; // Version of related achievement
+  }>;
+  endorsement?: Array<{
+    '@context': string[];
+    id: string;
+    type: string[];
+    issuer:
+      | string
+      | {
+          id: string;
+          type: string[];
+          name?: string;
+        };
+    validFrom: string;
+    credentialSubject: {
+      id: string;
+      type: string[];
+      endorsementComment?: string;
+    };
+    // Additional VC fields as needed
   }>;
   [key: string]: unknown;
 }
@@ -48,14 +81,16 @@ export interface CreateBadgeClassOB2Dto extends BadgeClassBaseDto {
  */
 export interface CreateBadgeClassOB3Dto extends BadgeClassBaseDto {
   type?: string; // In OB3, type is typically a string
-  id?: string;   // Allow client to suggest an ID (optional)
+  id?: string; // Allow client to suggest an ID (optional)
   achievementType?: string;
 }
 
 /**
  * Union type for create badge class operations
  */
-export type CreateBadgeClassDto = CreateBadgeClassOB2Dto | CreateBadgeClassOB3Dto;
+export type CreateBadgeClassDto =
+  | CreateBadgeClassOB2Dto
+  | CreateBadgeClassOB3Dto;
 
 /**
  * DTO for updating an existing badge class

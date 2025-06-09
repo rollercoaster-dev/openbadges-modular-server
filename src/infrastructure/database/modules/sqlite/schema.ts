@@ -139,6 +139,12 @@ export const badgeClasses = sqliteTable(
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
     additionalFields: text('additional_fields'),
+    // Achievement versioning fields (OB 3.0)
+    version: text('version'),
+    previousVersion: text('previous_version').references(() => badgeClasses.id),
+    // Achievement relationship fields (OB 3.0) - JSON stored as text
+    related: text('related'),
+    endorsement: text('endorsement'),
   },
   (table) => {
     return {
@@ -148,6 +154,20 @@ export const badgeClasses = sqliteTable(
       nameIdx: index('badge_class_name_idx').on(table.name),
       // Add index on creation date for sorting
       createdAtIdx: index('badge_class_created_at_idx').on(table.createdAt),
+      // Versioning indexes
+      versionIdx: index('badge_class_version_idx').on(table.version),
+      previousVersionIdx: index('badge_class_previous_version_idx').on(
+        table.previousVersion
+      ),
+      issuerVersionIdx: index('badge_class_issuer_version_idx').on(
+        table.issuerId,
+        table.version
+      ),
+      // Relationship indexes
+      relatedIdx: index('badge_class_related_idx').on(table.related),
+      endorsementIdx: index('badge_class_endorsement_idx').on(
+        table.endorsement
+      ),
     };
   }
 );

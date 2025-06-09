@@ -12,6 +12,29 @@ import { BadgeClassData } from '../../utils/types/badge-data.types';
 import { VC_V2_CONTEXT_URL } from '@/constants/urls';
 import { createOrGenerateIRI } from '@utils/types/iri-utils';
 
+// Define types for OB 3.0 relationships since they're not in openbadges-types yet
+export interface Related {
+  id: Shared.IRI;
+  type: ['Related'];
+  inLanguage?: string;
+  version?: string;
+}
+
+export interface EndorsementCredential {
+  '@context': string[];
+  id: Shared.IRI;
+  type: ['VerifiableCredential', 'EndorsementCredential'];
+  issuer: Shared.IRI | OB3.Issuer;
+  validFrom: string;
+  credentialSubject: {
+    id: Shared.IRI;
+    type: string[];
+    endorsementComment?: string;
+  };
+  // Additional VC fields as needed
+  [key: string]: unknown;
+}
+
 /**
  * BadgeClass entity representing a type of badge that can be issued
  * Compatible with both Open Badges 2.0 and 3.0
@@ -54,6 +77,36 @@ export class BadgeClass
    * Only used in OBv3 output
    */
   resultDescriptions?: OB3.ResultDescription[];
+
+  // Achievement versioning fields (OB 3.0)
+  /**
+   * Version string for this achievement
+   * Optional field as per Open Badges 3.0 specification
+   * Examples: "1.0", "2.1", "v3.0-beta", "2023.1"
+   */
+  version?: string;
+
+  /**
+   * Reference to the previous version of this achievement
+   * Creates a version chain for tracking achievement evolution
+   * Self-referencing IRI to another BadgeClass
+   */
+  previousVersion?: Shared.IRI;
+
+  // Achievement relationship fields (OB 3.0)
+  /**
+   * Array of related achievements
+   * Links to other achievements (different versions, languages, etc.)
+   * Only used in OBv3 output
+   */
+  related?: Related[];
+
+  /**
+   * Array of endorsement credentials
+   * Third-party endorsements of this achievement's quality/relevance
+   * Only used in OBv3 output
+   */
+  endorsement?: EndorsementCredential[];
 
   [key: string]: unknown;
 
@@ -194,6 +247,23 @@ export class BadgeClass
         delete achievement.alignment;
       }
 
+      // Add versioning fields for OB 3.0
+      if (this.version) {
+        achievement.version = this.version;
+      }
+
+      // Add relationship fields for OB 3.0
+      if (this.related) {
+        achievement.related = this.related;
+      }
+
+      if (this.endorsement) {
+        achievement.endorsement = this.endorsement;
+      }
+
+      // Note: previousVersion is for internal tracking only, not included in OB 3.0 JSON-LD output
+      // as it's not part of the official OB 3.0 Achievement specification
+
       return achievement as OB3.Achievement;
     }
   }
@@ -308,6 +378,23 @@ export class BadgeClass
       if (this.resultDescriptions) {
         dataForSerializer.resultDescriptions = this.resultDescriptions;
       }
+
+      // Add versioning fields for OB 3.0
+      if (this.version) {
+        dataForSerializer.version = this.version;
+      }
+
+      // Add relationship fields for OB 3.0
+      if (this.related) {
+        dataForSerializer.related = this.related;
+      }
+
+      if (this.endorsement) {
+        dataForSerializer.endorsement = this.endorsement;
+      }
+
+      // Note: previousVersion is for internal tracking only, not included in OB 3.0 JSON-LD output
+      // as it's not part of the official OB 3.0 Achievement specification
     }
 
     // Pass the properly typed data to the serializer

@@ -5,7 +5,11 @@
  * It supports both Open Badges 2.0 and 3.0 specifications.
  */
 
-import { BadgeClass } from '../../domains/badgeClass/badgeClass.entity';
+import {
+  BadgeClass,
+  Related,
+  EndorsementCredential,
+} from '../../domains/badgeClass/badgeClass.entity';
 import { BadgeClassRepository } from '../../domains/badgeClass/badgeClass.repository';
 import { IssuerRepository } from '../../domains/issuer/issuer.repository';
 import { BadgeVersion } from '../../utils/version/badge-version';
@@ -23,6 +27,7 @@ import {
 import { logger } from '../../utils/logging/logger.service';
 import { z } from 'zod';
 import { UserPermission } from '../../domains/user/user.entity';
+import { AchievementRelationshipService } from '../../services/achievement-relationship.service';
 import { BadRequestError } from '../../infrastructure/errors/bad-request.error';
 
 // Define types inferred from Zod schemas
@@ -74,6 +79,22 @@ function mapToBadgeClassEntity(
     (mappedData as any).alignment = data.alignment;
   }
 
+  // Handle versioning fields (OB 3.0)
+  if ('version' in data && data.version !== undefined) {
+    mappedData.version = data.version;
+  }
+  if ('previousVersion' in data && data.previousVersion !== undefined) {
+    mappedData.previousVersion = data.previousVersion as Shared.IRI;
+  }
+
+  // Handle relationship fields (OB 3.0)
+  if ('related' in data && data.related !== undefined) {
+    mappedData.related = data.related as Related[];
+  }
+  if ('endorsement' in data && data.endorsement !== undefined) {
+    mappedData.endorsement = data.endorsement as EndorsementCredential[];
+  }
+
   // Return the mapped data
   return mappedData;
 }
@@ -82,6 +103,8 @@ function mapToBadgeClassEntity(
  * Controller for badge class-related operations
  */
 export class BadgeClassController {
+  private relationshipService: AchievementRelationshipService;
+
   /**
    * Constructor
    * @param badgeClassRepository The badge class repository
@@ -90,7 +113,11 @@ export class BadgeClassController {
   constructor(
     private badgeClassRepository: BadgeClassRepository,
     private issuerRepository?: IssuerRepository
-  ) {}
+  ) {
+    this.relationshipService = new AchievementRelationshipService(
+      badgeClassRepository
+    );
+  }
 
   /**
    * Check if the user has the required permission
@@ -102,6 +129,13 @@ export class BadgeClassController {
     user: { claims?: Record<string, unknown> } | null,
     permission: UserPermission
   ): boolean {
+    // Check if RBAC is disabled for testing
+    // SECURITY WARNING: This bypasses all authorization checks when AUTH_DISABLE_RBAC=true.
+    // This should ONLY be used in testing environments. Ensure this is never enabled in production.
+    if (process.env['AUTH_DISABLE_RBAC'] === 'true') {
+      return true;
+    }
+
     if (!user || !user.claims) {
       return false;
     }
@@ -321,5 +355,222 @@ export class BadgeClassController {
     });
 
     return await this.badgeClassRepository.delete(iri);
+  }
+
+  /**
+   * Gets related achievements for a badge class
+   * @param id The badge class ID
+   * @param version The badge version to use for the response
+   * @returns Array of related achievements
+   */
+  async getRelatedAchievements(
+    id: string,
+    version: BadgeVersion = BadgeVersion.V3
+  ): Promise<BadgeClassResponseDto[]> {
+    const badgeClass = await this.badgeClassRepository.findById(
+      toIRI(id) as Shared.IRI
+    );
+    if (!badgeClass || !badgeClass.related) {
+      return [];
+    }
+
+    const relatedAchievements: BadgeClassResponseDto[] = [];
+    for (const related of badgeClass.related) {
+      const relatedAchievement = await this.badgeClassRepository.findById(
+        related.id
+      );
+      if (relatedAchievement) {
+        relatedAchievements.push(
+          relatedAchievement.toJsonLd(version) as BadgeClassResponseDto
+        );
+      }
+    }
+
+    return relatedAchievements;
+  }
+
+  /**
+   * Adds a related achievement to a badge class
+   * @param id The badge class ID
+   * @param relatedData The related achievement data
+   * @param version The badge version to use for the response
+   * @param user The authenticated user
+   * @returns The updated badge class
+   */
+  async addRelatedAchievement(
+    id: string,
+    relatedData: Related,
+    version: BadgeVersion = BadgeVersion.V3,
+    user?: { claims?: Record<string, unknown> } | null
+  ): Promise<BadgeClassResponseDto | null> {
+    // Check permissions
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
+      logger.warn(
+        `User ${
+          user.claims?.['sub'] || 'unknown'
+        } attempted to add relationship to badge class ${id} without permission`
+      );
+      throw new BadRequestError(
+        'Insufficient permissions to modify badge class relationships'
+      );
+    }
+
+    try {
+      const achievementId = toIRI(id) as Shared.IRI;
+      const updatedBadgeClass =
+        await this.relationshipService.addRelatedAchievement(
+          achievementId,
+          relatedData
+        );
+
+      if (!updatedBadgeClass) {
+        return null;
+      }
+
+      logger.info('Added related achievement', {
+        achievementId,
+        relatedId: relatedData.id,
+        user: user?.claims?.['sub'] || 'unknown',
+      });
+
+      return updatedBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error adding related achievement', {
+        error: error instanceof Error ? error.message : String(error),
+        id,
+        relatedData,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Removes a related achievement from a badge class
+   * @param id The badge class ID
+   * @param relatedId The related achievement ID to remove
+   * @param version The badge version to use for the response
+   * @param user The authenticated user
+   * @returns The updated badge class
+   */
+  async removeRelatedAchievement(
+    id: string,
+    relatedId: string,
+    version: BadgeVersion = BadgeVersion.V3,
+    user?: { claims?: Record<string, unknown> } | null
+  ): Promise<BadgeClassResponseDto | null> {
+    // Check permissions
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
+      logger.warn(
+        `User ${
+          user.claims?.['sub'] || 'unknown'
+        } attempted to remove relationship from badge class ${id} without permission`
+      );
+      throw new BadRequestError(
+        'Insufficient permissions to modify badge class relationships'
+      );
+    }
+
+    try {
+      const achievementId = toIRI(id) as Shared.IRI;
+      const relatedIRI = toIRI(relatedId) as Shared.IRI;
+
+      const updatedBadgeClass =
+        await this.relationshipService.removeRelatedAchievement(
+          achievementId,
+          relatedIRI
+        );
+
+      if (!updatedBadgeClass) {
+        return null;
+      }
+
+      logger.info('Removed related achievement', {
+        achievementId,
+        relatedId: relatedIRI,
+        user: user?.claims?.['sub'] || 'unknown',
+      });
+
+      return updatedBadgeClass.toJsonLd(version) as BadgeClassResponseDto;
+    } catch (error) {
+      logger.error('Error removing related achievement', {
+        error: error instanceof Error ? error.message : String(error),
+        id,
+        relatedId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets endorsements for a badge class
+   * @param id The badge class ID
+   * @returns Array of endorsement credentials
+   */
+  async getEndorsements(id: string): Promise<EndorsementCredential[]> {
+    const badgeClass = await this.badgeClassRepository.findById(
+      toIRI(id) as Shared.IRI
+    );
+    return badgeClass?.endorsement || [];
+  }
+
+  /**
+   * Adds an endorsement to a badge class
+   * @param id The badge class ID
+   * @param endorsement The endorsement credential
+   * @param user The authenticated user
+   * @returns The updated badge class
+   */
+  async addEndorsement(
+    id: string,
+    endorsement: EndorsementCredential,
+    user?: { claims?: Record<string, unknown> } | null
+  ): Promise<BadgeClass | null> {
+    // Check permissions
+    if (user && !this.hasPermission(user, UserPermission.UPDATE_BADGE_CLASS)) {
+      logger.warn(
+        `User ${
+          user.claims?.['sub'] || 'unknown'
+        } attempted to add endorsement to badge class ${id} without permission`
+      );
+      throw new BadRequestError(
+        'Insufficient permissions to modify badge class endorsements'
+      );
+    }
+
+    try {
+      const achievementId = toIRI(id) as Shared.IRI;
+      const badgeClass = await this.badgeClassRepository.findById(
+        achievementId
+      );
+
+      if (!badgeClass) {
+        return null;
+      }
+
+      const existingEndorsements = badgeClass.endorsement || [];
+      const updatedEndorsements = [...existingEndorsements, endorsement];
+
+      const updatedBadgeClass = await this.badgeClassRepository.update(
+        achievementId,
+        {
+          endorsement: updatedEndorsements,
+        }
+      );
+
+      logger.info('Added endorsement to badge class', {
+        achievementId,
+        endorsementId: endorsement.id,
+        user: user?.claims?.['sub'] || 'unknown',
+      });
+
+      return updatedBadgeClass;
+    } catch (error) {
+      logger.error('Error adding endorsement', {
+        error: error instanceof Error ? error.message : String(error),
+        id,
+        endorsement,
+      });
+      throw error;
+    }
   }
 }

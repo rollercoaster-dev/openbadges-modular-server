@@ -278,6 +278,44 @@ export async function setupTestApp(
                 );
               }
 
+              // Apply the achievement versioning and relationships migration
+              const versioningMigrationPath = join(
+                process.cwd(),
+                'drizzle/migrations/0005_add_achievement_versioning_relationships.sql'
+              );
+              if (fs.existsSync(versioningMigrationPath)) {
+                logger.info(
+                  'Applying achievement versioning migration for E2E tests'
+                );
+                try {
+                  const versioningSql = fs.readFileSync(
+                    versioningMigrationPath,
+                    'utf8'
+                  );
+                  db.exec(versioningSql);
+                  logger.info(
+                    'Achievement versioning migration applied successfully'
+                  );
+                } catch (error) {
+                  // If columns already exist, that's fine
+                  if (
+                    error.message &&
+                    (error.message.includes('already exists') ||
+                      error.message.includes('duplicate column'))
+                  ) {
+                    logger.info(
+                      'Achievement versioning columns already exist, skipping migration'
+                    );
+                  } else {
+                    throw error;
+                  }
+                }
+              } else {
+                logger.warn(
+                  `Achievement versioning migration file not found: ${versioningMigrationPath}`
+                );
+              }
+
               logger.info(
                 'All SQLite migrations applied successfully (including status lists)'
               );
@@ -502,6 +540,47 @@ export async function setupTestApp(
                 } else {
                   logger.warn(
                     `Status list migration file not found: ${statusListMigrationPath}`
+                  );
+                }
+
+                // Apply achievement versioning and relationships migration for PostgreSQL
+                const versioningMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/pg-migrations/0006_add_achievement_versioning_relationships.sql'
+                );
+                if (fs.existsSync(versioningMigrationPath)) {
+                  logger.info(
+                    'Applying PostgreSQL achievement versioning migration for E2E tests'
+                  );
+                  try {
+                    const versioningSql = fs.readFileSync(
+                      versioningMigrationPath,
+                      'utf8'
+                    );
+                    await client.unsafe(versioningSql);
+                    logger.info(
+                      'PostgreSQL achievement versioning migration applied successfully'
+                    );
+                  } catch (error) {
+                    const errorMessage =
+                      error instanceof Error ? error.message : String(error);
+                    // If columns already exist, that's fine
+                    if (errorMessage.includes('already exists')) {
+                      logger.info(
+                        'Achievement versioning columns already exist, skipping migration'
+                      );
+                    } else {
+                      logger.warn(
+                        'Achievement versioning migration failed (may be expected)',
+                        {
+                          error: errorMessage,
+                        }
+                      );
+                    }
+                  }
+                } else {
+                  logger.warn(
+                    `Achievement versioning migration file not found: ${versioningMigrationPath}`
                   );
                 }
               } catch (error) {

@@ -16,7 +16,11 @@ import { Assertion } from '../../domains/assertion/assertion.entity';
 import { MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { CreateIssuerSchema } from '../../api/validation/issuer.schemas';
-import { CreateBadgeClassSchema } from '../../api/validation/badgeClass.schemas';
+import {
+  CreateBadgeClassSchema,
+  RelatedAchievementSchema,
+  EndorsementCredentialSchema,
+} from '../../api/validation/badgeClass.schemas';
 import {
   CreateAssertionSchema,
   BatchCreateCredentialsSchema,
@@ -473,6 +477,92 @@ export function validateBatchUpdateCredentialStatusMiddleware(): MiddlewareHandl
 
       // First validate with Zod schema
       const result = BatchUpdateCredentialStatusSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', result.data);
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Request body must be valid JSON'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating related achievement data
+ * @returns A Hono middleware handler
+ */
+export function validateRelatedAchievementMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // Validate with Zod schema
+      const result = RelatedAchievementSchema.safeParse(body);
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            error: 'Validation error',
+            details: formatZodErrors(result),
+          },
+          400
+        );
+      }
+
+      // Store the validated body in context for route handlers to use
+      c.set('validatedBody', result.data);
+
+      await next();
+    } catch (_error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          details: { general: ['Request body must be valid JSON'] },
+        },
+        400
+      );
+    }
+  });
+}
+
+/**
+ * Middleware for validating endorsement credential data
+ * @returns A Hono middleware handler
+ */
+export function validateEndorsementCredentialMiddleware(): MiddlewareHandler<{
+  Variables: ValidationVariables;
+}> {
+  return createMiddleware<{
+    Variables: ValidationVariables;
+  }>(async (c, next) => {
+    try {
+      const body = await c.req.json();
+
+      // Validate with Zod schema
+      const result = EndorsementCredentialSchema.safeParse(body);
       if (!result.success) {
         return c.json(
           {

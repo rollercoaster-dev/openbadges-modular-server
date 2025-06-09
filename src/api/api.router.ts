@@ -22,6 +22,16 @@ import {
   UpdateCredentialStatusDto,
   StatusListQueryDto,
 } from './dtos';
+import {
+  RelatedAchievementDto,
+  EndorsementCredentialDto,
+} from './validation/badgeClass.schemas';
+import {
+  Related,
+  EndorsementCredential,
+} from '../domains/badgeClass/badgeClass.entity';
+import { toIRI } from '../utils/types/iri-utils';
+import { OB3, Shared } from 'openbadges-types';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
 import { AssertionController } from './controllers/assertion.controller';
@@ -39,6 +49,8 @@ import {
   validateBatchRetrieveCredentialsMiddleware,
   validateUpdateCredentialStatusMiddleware,
   validateBatchUpdateCredentialStatusMiddleware,
+  validateRelatedAchievementMiddleware,
+  validateEndorsementCredentialMiddleware,
 } from '../utils/validation/validation-middleware';
 import { BackpackController } from '../domains/backpack/backpack.controller';
 import { UserController } from '../domains/user/user.controller';
@@ -62,6 +74,90 @@ function getValidatedBody<T = unknown>(c: {
   get: (key: 'validatedBody') => T;
 }): T {
   return c.get('validatedBody');
+}
+
+/**
+ * Convert RelatedAchievementDto to Related domain type
+ */
+function convertToRelated(dto: RelatedAchievementDto): Related {
+  return {
+    id: toIRI(dto.id),
+    type: ['Related'] as ['Related'],
+    inLanguage: dto.inLanguage,
+    version: dto.version,
+  };
+}
+
+/**
+ * Convert EndorsementCredentialDto to EndorsementCredential domain type
+ */
+function convertToEndorsementCredential(
+  dto: EndorsementCredentialDto
+): EndorsementCredential {
+  // Convert issuer to proper format
+  let issuer: EndorsementCredential['issuer'];
+  if (typeof dto.issuer === 'string') {
+    issuer = toIRI(dto.issuer);
+  } else if (dto.issuer && typeof dto.issuer === 'object') {
+    // For issuer objects, we need to handle the case where we don't have a valid URL
+    // Since OB3.Issuer requires a url property, we need to provide one
+    let issuerUrl: Shared.IRI;
+
+    if (dto.issuer.id && toIRI(dto.issuer.id)) {
+      try {
+        // Check if the id is a valid URL (not just a UUID)
+        new URL(dto.issuer.id);
+        issuerUrl = toIRI(dto.issuer.id)!;
+      } catch {
+        // If id is not a valid URL (e.g., it's a UUID), use a placeholder URL
+        // This ensures we have a valid OB3.Issuer object
+        issuerUrl = toIRI(`https://example.org/issuers/${dto.issuer.id}`)!;
+      }
+    } else {
+      // If no id is provided, use a generic placeholder
+      issuerUrl = toIRI('https://example.org/issuers/unknown')!;
+    }
+
+    // Convert the issuer object to OB3.Issuer format
+    const issuerObj: OB3.Issuer = {
+      ...dto.issuer, // Preserve additional fields via spread operator
+      id: dto.issuer.id ? toIRI(dto.issuer.id) : undefined,
+      name: dto.issuer.name,
+      type: dto.issuer.type,
+      url: issuerUrl,
+    };
+
+    issuer = issuerObj;
+  } else {
+    throw new Error('Invalid issuer format in endorsement credential');
+  }
+
+  return {
+    '@context': dto['@context'],
+    id: toIRI(dto.id),
+    type: dto.type as ['VerifiableCredential', 'EndorsementCredential'],
+    issuer,
+    validFrom: dto.validFrom,
+    credentialSubject: {
+      id: toIRI(dto.credentialSubject.id),
+      type: dto.credentialSubject.type,
+      endorsementComment: dto.credentialSubject.endorsementComment,
+    },
+    // Pass through any additional fields
+    ...Object.fromEntries(
+      Object.entries(dto).filter(
+        ([key]) =>
+          ![
+            '@context',
+            'id',
+            'type',
+            'issuer',
+            'validFrom',
+            'credentialSubject',
+          ].includes(key)
+      )
+    ),
+  };
 }
 
 /**
@@ -616,6 +712,134 @@ export function createVersionedRouter(
     }
   });
 
+  // Achievement relationship endpoints (OB 3.0)
+  router.get('/achievements/:id/related', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getRelatedAchievements(
+        id,
+        version
+      );
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id/related',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.post(
+    '/achievements/:id/related',
+    requireAuth(),
+    validateRelatedAchievementMiddleware(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = getValidatedBody<RelatedAchievementDto>(c);
+        const user = c.get('user');
+        const result = await badgeClassController.addRelatedAchievement(
+          id,
+          convertToRelated(body),
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'POST /achievements/:id/related',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /achievements/:id/related',
+          id: c.req.param('id'),
+          body: getValidatedBody<RelatedAchievementDto>(c),
+        });
+      }
+    }
+  );
+
+  router.delete(
+    '/achievements/:id/related/:relatedId',
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const relatedId = c.req.param('relatedId');
+        const user = c.get('user');
+        const result = await badgeClassController.removeRelatedAchievement(
+          id,
+          relatedId,
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'DELETE /achievements/:id/related/:relatedId',
+            id,
+            relatedId,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'DELETE /achievements/:id/related/:relatedId',
+          id: c.req.param('id'),
+          relatedId: c.req.param('relatedId'),
+        });
+      }
+    }
+  );
+
+  router.get('/achievements/:id/endorsements', requireAuth(), async (c) => {
+    try {
+      const id = c.req.param('id');
+      const result = await badgeClassController.getEndorsements(id);
+      return c.json(result);
+    } catch (error) {
+      return sendApiError(c, error, {
+        endpoint: 'GET /achievements/:id/endorsements',
+        id: c.req.param('id'),
+      });
+    }
+  });
+
+  router.post(
+    '/achievements/:id/endorsements',
+    requireAuth(),
+    validateEndorsementCredentialMiddleware(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = getValidatedBody<EndorsementCredentialDto>(c);
+        const user = c.get('user');
+        const result = await badgeClassController.addEndorsement(
+          id,
+          convertToEndorsementCredential(body),
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Achievement', {
+            endpoint: 'POST /achievements/:id/endorsements',
+            id,
+          });
+        }
+        return c.json({
+          message: 'Endorsement added successfully',
+          achievement: result.toJsonLd(version),
+        });
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /achievements/:id/endorsements',
+          id: c.req.param('id'),
+          body: getValidatedBody<EndorsementCredentialDto>(c),
+        });
+      }
+    }
+  );
+
   router.get(
     '/badge-classes/:id/assertions',
     addDeprecationWarning('/achievements/:id/credentials'),
@@ -632,6 +856,94 @@ export function createVersionedRouter(
         return sendApiError(c, error, {
           endpoint: 'GET /badge-classes/:id/assertions',
           id: c.req.param('id'),
+        });
+      }
+    }
+  );
+
+  // Badge class relationship endpoints (legacy - for backward compatibility)
+  router.get(
+    '/badge-classes/:id/related',
+    addDeprecationWarning('/achievements/:id/related'),
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const result = await badgeClassController.getRelatedAchievements(
+          id,
+          version
+        );
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'GET /badge-classes/:id/related',
+          id: c.req.param('id'),
+        });
+      }
+    }
+  );
+
+  router.post(
+    '/badge-classes/:id/related',
+    addDeprecationWarning('/achievements/:id/related'),
+    requireAuth(),
+    validateRelatedAchievementMiddleware(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = getValidatedBody<RelatedAchievementDto>(c);
+        const user = c.get('user');
+        const result = await badgeClassController.addRelatedAchievement(
+          id,
+          convertToRelated(body),
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Badge class', {
+            endpoint: 'POST /badge-classes/:id/related',
+            id,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'POST /badge-classes/:id/related',
+          id: c.req.param('id'),
+          body: getValidatedBody<RelatedAchievementDto>(c),
+        });
+      }
+    }
+  );
+
+  router.delete(
+    '/badge-classes/:id/related/:relatedId',
+    addDeprecationWarning('/achievements/:id/related/:relatedId'),
+    requireAuth(),
+    async (c) => {
+      try {
+        const id = c.req.param('id');
+        const relatedId = c.req.param('relatedId');
+        const user = c.get('user');
+        const result = await badgeClassController.removeRelatedAchievement(
+          id,
+          relatedId,
+          version,
+          user
+        );
+        if (!result) {
+          return sendNotFoundError(c, 'Badge class', {
+            endpoint: 'DELETE /badge-classes/:id/related/:relatedId',
+            id,
+            relatedId,
+          });
+        }
+        return c.json(result);
+      } catch (error) {
+        return sendApiError(c, error, {
+          endpoint: 'DELETE /badge-classes/:id/related/:relatedId',
+          id: c.req.param('id'),
+          relatedId: c.req.param('relatedId'),
         });
       }
     }

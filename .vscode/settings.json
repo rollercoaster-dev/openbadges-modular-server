@@ -10,25 +10,7 @@
   "github.copilot.enable": {
     "*": false
   },
-  
-  // Editor font configuration
-  "editor.fontFamily": "'Monoid Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-  "editor.fontWeight": "100",
-  "editor.fontSize": 10,
-  "editor.fontLigatures": true,
-   "editor.lineHeight": 2.0,
-  
-  // Terminal font configuration
-  "terminal.integrated.fontFamily": "'Monoid Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-  "terminal.integrated.fontWeight": "200",
-  "terminal.integrated.fontSize": 10,
-  "terminal.integrated.lineHeight": 1.3,
-  
-  // Debug console font
-  "debug.console.fontFamily": "'Monoid Nerd Font Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-  "debug.console.fontWeight": "100",
-  "debug.console.fontSize": 10,
-  
+
   // Enhanced accessibility support
   // "editor.accessibilitySupport": "on"
 }
