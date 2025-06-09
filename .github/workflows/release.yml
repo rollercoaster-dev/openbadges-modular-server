@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - beta
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -66,27 +67,8 @@ jobs:
           # Create .npmrc to prevent npm publishing issues
           echo "//registry.npmjs.org/:_authToken=dummy" > .npmrc
 
-          # Update .releaserc.json to enable CI mode and disable dry run
-          cat > .releaserc.json << 'EOF'
-          {
-            "branches": ["main"],
-            "plugins": [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator",
-              "@semantic-release/changelog",
-              ["@semantic-release/npm", {
-                "npmPublish": false
-              }],
-              ["@semantic-release/git", {
-                "assets": ["package.json", "CHANGELOG.md"],
-                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-              }],
-              "@semantic-release/github"
-            ],
-            "dryRun": false,
-            "ci": true
-          }
-          EOF
+          # The existing .releaserc.json already supports beta branches and has proper CI config
+          echo "Using existing semantic-release configuration with beta branch support"
 
       - name: Release with retry logic
         if: steps.check-release.outputs.should_release == 'true'
@@ -99,9 +81,13 @@ jobs:
             local attempt=$1
             echo "Release attempt $attempt of 3"
 
+            # Get current branch name
+            CURRENT_BRANCH=$(git branch --show-current)
+            echo "Current branch: $CURRENT_BRANCH"
+
             # Pull latest changes to avoid conflicts
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin $CURRENT_BRANCH
+            git reset --hard origin/$CURRENT_BRANCH
 
             # Run semantic-release
             if npx semantic-release; then
