@@ -1,20 +1,19 @@
 name: Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - main
       - beta
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/README.md'
-      - '.augment/**'
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       issues: write
