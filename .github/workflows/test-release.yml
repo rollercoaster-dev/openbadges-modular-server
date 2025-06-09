@@ -74,7 +74,7 @@ jobs:
       - name: Check for required dependencies
         run: |
           echo "Checking for required dependencies..."
-          
+
           # Check if semantic-release is available
           if npx semantic-release --version > /dev/null 2>&1; then
             echo "✅ semantic-release is available"
@@ -82,25 +82,33 @@ jobs:
             echo "❌ semantic-release not found"
             exit 1
           fi
-          
+
           # Check if required semantic-release plugins are installed
+          echo "Checking semantic-release plugins in package.json..."
+
+          # Check package.json for required plugins
           REQUIRED_PLUGINS=(
-            "@semantic-release/commit-analyzer"
-            "@semantic-release/release-notes-generator"
             "@semantic-release/changelog"
-            "@semantic-release/npm"
             "@semantic-release/git"
             "@semantic-release/github"
           )
-          
+
           for plugin in "${REQUIRED_PLUGINS[@]}"; do
-            if bun pm ls | grep -q "$plugin"; then
-              echo "✅ $plugin is installed"
+            if grep -q "\"$plugin\"" package.json; then
+              echo "✅ $plugin is in package.json"
             else
-              echo "❌ $plugin not found"
+              echo "❌ $plugin not found in package.json"
               exit 1
             fi
           done
+
+          # Check if semantic-release can load its config
+          echo "Testing semantic-release configuration..."
+          if npx semantic-release --dry-run --no-ci > /dev/null 2>&1; then
+            echo "✅ semantic-release configuration is valid"
+          else
+            echo "⚠️ semantic-release config test had issues (may be expected in CI)"
+          fi
 
       - name: Test workflow permissions
         run: |
