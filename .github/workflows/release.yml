@@ -43,13 +43,22 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Get next version
         id: get-version
+        env:
+          BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          BRANCH_NAME=${{ github.event.workflow_run.head_branch || github.ref_name }}
+          # Sanitize branch name to prevent code injection
+          BRANCH_NAME=$(echo "$BRANCH_NAME" | grep -E '^[a-zA-Z0-9._/-]+$' || echo "main")
 
           # Increment patch version
           IFS='.' read -r MAJOR MINOR PATCH_PRERELEASE <<< "$CURRENT_VERSION"
@@ -72,9 +81,12 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update version and commit
+        env:
+          BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           NEW_VERSION="${{ steps.get-version.outputs.version }}"
-          BRANCH_NAME=${{ github.event.workflow_run.head_branch || github.ref_name }}
+          # Sanitize branch name to prevent code injection
+          BRANCH_NAME=$(echo "$BRANCH_NAME" | grep -E '^[a-zA-Z0-9._/-]+$' || echo "main")
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

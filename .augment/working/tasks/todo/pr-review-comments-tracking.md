@@ -1,12 +1,40 @@
 # PR Review Comments Tracking
 
-**Created**: 2025-06-14  
-**Status**: Active  
-**Priority**: High  
+**Created**: 2025-06-14
+**Updated**: 2025-06-14 (Security Fixes Applied)
+**Status**: 🔒 SECURITY ISSUES RESOLVED
+**Priority**: CRITICAL
 
 ## Overview
 
 This task tracks all outstanding PR review comments that need to be addressed across the repository. The comments come from automated review tools (CodeRabbit, Copilot, GitHub Advanced Security) and need systematic resolution.
+
+## 🔒 **CRITICAL SECURITY ISSUES FOUND & RESOLVED**
+
+GitHub Advanced Security found critical vulnerabilities that required immediate fixes:
+
+### Critical Issues Fixed:
+
+1. **🚨 Code Injection (Critical)**
+   - **Issue**: Untrusted input from `github.event.workflow_run.head_branch` used directly in shell
+   - **Fix**: Added environment variables and input sanitization with regex validation
+   - **Files**: `.github/workflows/release.yml` lines 51-55, 79-83
+
+2. **🚨 Untrusted Checkout (Critical)**
+   - **Issue**: Composite action could execute untrusted code in privileged context
+   - **Fix**: Removed composite action, reverted to inline steps for security
+   - **Files**: Removed `.github/actions/setup-bun/action.yml`, updated all workflows
+
+3. **⚠️ Missing Permissions (Medium)**
+   - **Issue**: Workflows lacking explicit permission restrictions
+   - **Fix**: Added `permissions: contents: read` to CI and Docker workflows
+   - **Files**: `.github/workflows/ci.yml`, `.github/workflows/docker.yml`
+
+### Security Improvements Applied:
+- ✅ **Input Sanitization**: Branch names validated with regex `^[a-zA-Z0-9._/-]+$`
+- ✅ **Environment Variables**: Untrusted input isolated in env vars
+- ✅ **Least Privilege**: Explicit minimal permissions on all workflows
+- ✅ **Removed Attack Vector**: Eliminated composite action security risk
 
 ## Current Open PR: #61 - Fix/release workflow manual trigger
 
