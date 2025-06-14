@@ -19,6 +19,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      packages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -29,6 +31,7 @@ jobs:
           # A PAT is required here to allow this workflow to trigger the Docker workflow.
           # The default GITHUB_TOKEN does not have sufficient permissions.
           token: ${{ secrets.PAT_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -81,7 +84,7 @@ jobs:
           git push origin HEAD:$BRANCH_NAME
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ steps.get-version.outputs.version }}"
           generate_release_notes: true
