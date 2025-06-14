@@ -113,9 +113,26 @@ Following this convention allows semantic-release to automatically determine the
 * `feat` type → Minor release (1.0.0 → 1.1.0)
 * `BREAKING CHANGE` in body/footer or `!` after type/scope → Major release (1.0.0 → 2.0.0)
 
+## Automated Validation
+
+This project automatically validates commit messages using [commitlint](https://github.com/conventional-changelog/commitlint) via a Husky commit-msg hook. When you commit, your message will be checked against the Conventional Commits specification.
+
+If your commit message doesn't follow the format, you'll see an error like:
+```
+❌ Commit message validation failed!
+
+📝 Your commit message must follow the Conventional Commits format:
+   <type>(<scope>): <subject>
+
+Examples:
+   feat: add user authentication
+   fix(api): resolve validation error
+   docs: update installation guide
+```
+
 ## Tools
 
 To help follow this convention, you can use:
 
 * [commitizen](https://github.com/commitizen/cz-cli) - Interactive CLI tool for creating formatted commit messages
-* [commitlint](https://github.com/conventional-changelog/commitlint) - Lint commit messages against the convention
+* [commitlint](https://github.com/conventional-changelog/commitlint) - Lint commit messages against the convention (automatically configured)

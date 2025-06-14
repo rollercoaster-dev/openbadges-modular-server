@@ -1,19 +1,30 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+      - beta
     paths-ignore:
-      - '**.md'
       - 'docs/**'
-      - '.github/README.md'
+      - '*.md'
       - '.augment/**'
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       contains(fromJson('["main", "beta"]'), github.event.workflow_run.head_branch))
     permissions:
       contents: write
       issues: write
@@ -25,123 +36,61 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # A PAT is required here to allow this workflow to trigger the Docker workflow.
+          # The default GITHUB_TOKEN does not have sufficient permissions.
+          token: ${{ secrets.PAT_TOKEN }}
+          persist-credentials: false
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+      - uses: ./.github/actions/setup-bun
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build application
-        run: bun run build
-
-      - name: Configure Git
+      - name: Get next version
+        id: get-version
         run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          BRANCH_NAME=${{ github.event.workflow_run.head_branch || github.ref_name }}
+
+          # Increment patch version
+          IFS='.' read -r MAJOR MINOR PATCH_PRERELEASE <<< "$CURRENT_VERSION"
+          IFS='-' read -r PATCH PRERELEASE <<< "$PATCH_PRERELEASE"
+
+          if [[ "$BRANCH_NAME" == "main" ]]; then
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          else
+            # For beta, increment the prerelease number or start it
+            if [[ -z "$PRERELEASE" ]]; then
+              PRERELEASE_NUM=1
+            else
+              PRERELEASE_NUM=$(echo $PRERELEASE | sed 's/beta.//')
+              PRERELEASE_NUM=$((PRERELEASE_NUM + 1))
+            fi
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH-$BRANCH_NAME.$PRERELEASE_NUM"
+          fi
+
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version and commit
+        run: |
+          NEW_VERSION="${{ steps.get-version.outputs.version }}"
+          BRANCH_NAME=${{ github.event.workflow_run.head_branch || github.ref_name }}
+
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Check for existing release
-        id: check-release
-        run: |
-          # Get the latest commit that's not a release commit
-          LATEST_NON_RELEASE_COMMIT=$(git log --oneline --grep="chore(release):" --invert-grep -n 1 --format="%H")
-          echo "Latest non-release commit: $LATEST_NON_RELEASE_COMMIT"
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
 
-          # Check if there's already a release for this commit
-          if git tag --points-at $LATEST_NON_RELEASE_COMMIT | grep -q "^v"; then
-            echo "Release already exists for this commit"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          else
-            echo "No release exists for this commit"
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          fi
+          git add package.json
+          git commit -m "chore(release): v$NEW_VERSION"
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+          git push origin HEAD:$BRANCH_NAME
 
-      - name: Setup semantic-release
-        if: steps.check-release.outputs.should_release == 'true'
-        run: |
-          # Create .npmrc to prevent npm publishing issues
-          echo "//registry.npmjs.org/:_authToken=dummy" > .npmrc
-
-          # Update .releaserc.json to enable CI mode and disable dry run
-          cat > .releaserc.json << 'EOF'
-          {
-            "branches": ["main"],
-            "plugins": [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator",
-              "@semantic-release/changelog",
-              ["@semantic-release/npm", {
-                "npmPublish": false
-              }],
-              ["@semantic-release/git", {
-                "assets": ["package.json", "CHANGELOG.md"],
-                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-              }],
-              "@semantic-release/github"
-            ],
-            "dryRun": false,
-            "ci": true
-          }
-          EOF
-
-      - name: Release with retry logic
-        if: steps.check-release.outputs.should_release == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: dummy
-        run: |
-          # Function to attempt release with conflict resolution
-          attempt_release() {
-            local attempt=$1
-            echo "Release attempt $attempt of 3"
-
-            # Pull latest changes to avoid conflicts
-            git fetch origin main
-            git reset --hard origin/main
-
-            # Run semantic-release
-            if npx semantic-release; then
-              echo "Release successful on attempt $attempt"
-              return 0
-            else
-              echo "Release failed on attempt $attempt"
-              return 1
-            fi
-          }
-
-          # Try release up to 3 times
-          for i in {1..3}; do
-            if attempt_release $i; then
-              echo "Release completed successfully"
-              exit 0
-            fi
-
-            if [ $i -lt 3 ]; then
-              echo "Waiting 10 seconds before retry..."
-              sleep 10
-            fi
-          done
-
-          echo "Release failed after 3 attempts"
-          exit 1
-
-      - name: Verify release
-        if: steps.check-release.outputs.should_release == 'true'
-        run: |
-          # Verify that the release was created
-          LATEST_TAG=$(git describe --tags --abbrev=0)
-          echo "Latest tag: $LATEST_TAG"
-
-          # Check if GitHub release exists
-          if gh release view "$LATEST_TAG" > /dev/null 2>&1; then
-            echo "✅ GitHub release verified: $LATEST_TAG"
-          else
-            echo "❌ GitHub release not found: $LATEST_TAG"
-            exit 1
-          fi
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.get-version.outputs.version }}"
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -184,6 +184,21 @@ bun test
 
 ## Troubleshooting
 
+### Silent Release Failures (Manual Tag Issue)
+
+**Issue**: Pushing a git tag manually (e.g., `v1.0.0`) results in a successful workflow run but no GitHub Release is created.
+
+**Root Cause**: This occurs due to a mismatch between manual tagging and the automated release process:
+
+1. **Outdated Workflow Execution**: When a tag is pushed, GitHub Actions runs the workflow file as it existed at the commit the tag points to, which may be an older version lacking correct permissions.
+2. **Wrong Trigger**: The current `release.yml` workflow is triggered by pushes to `main` and `beta` branches, not by tags.
+3. **Release Prevention Logic**: The workflow checks if a release already exists for the latest commit. Manual tags cause this check to succeed, preventing semantic-release from running.
+
+**Solution**:
+- **Never create or push tags manually** for releases
+- Use the automated process by pushing conventional commits to `main` or `beta`
+- If manual tags were created, consider deleting them to avoid confusion with official releases
+
 ### Release Not Created
 
 If a release is not created when you expect it to be:
@@ -198,6 +213,7 @@ If a release is not created when you expect it to be:
    - Not on the `main` branch
    - No changes since the last release
    - Duplicate release already exists
+   - Manual tags interfering with the automated process
 
 3. **Check GitHub Actions logs** for detailed error information
 
