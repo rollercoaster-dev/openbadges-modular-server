@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     name: Build and Push to GHCR

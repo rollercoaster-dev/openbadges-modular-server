@@ -322,7 +322,7 @@ For detailed information about the CI pipeline structure and troubleshooting, se
 
 ### Creating Releases
 
-Releases are automatically created using [semantic-release](https://github.com/semantic-release/semantic-release) when code is merged to the `main` or `beta` branches. The release process analyzes commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+Releases are automatically created through our custom versioning script and the GitHub Actions release workflow when code is merged to the `main` or `beta` branches. The release process analyzes commit messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
 **Important**: Do not create or push tags manually. This can interfere with the automated release process.
 
@@ -330,7 +330,7 @@ To create a release:
 
 1. Ensure your commits follow the Conventional Commits format (automatically validated by commit hooks)
 2. Merge your changes to the `main` branch
-3. The GitHub Actions workflow will automatically create the release
+3. The GitHub Actions workflow will automatically increment the version, tag, and publish the release
 
 For more details, see the [Release Process Guide](./docs/release-process.md) and [Commit Convention Guide](./docs/commit-convention.md).
 
