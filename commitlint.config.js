@@ -32,12 +32,9 @@ export default {
     'subject-empty': [2, 'never'],
     // Ensure the subject doesn't end with a period
     'subject-full-stop': [2, 'never', '.'],
-    // Ensure the subject is lowercase
-    'subject-case': [2, 'always', 'lower-case'],
+
     // Limit subject length
     'subject-max-length': [2, 'always', 72],
-    // Ensure the type is lowercase
-    'type-case': [2, 'always', 'lower-case'],
     // Ensure the type is not empty
     'type-empty': [2, 'never'],
     // Ensure the scope is lowercase if present
