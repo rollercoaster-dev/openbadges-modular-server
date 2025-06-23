@@ -2,29 +2,25 @@ name: Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - beta
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '.augment/**'
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  # Disabled automatic triggers to prevent conflicts with main.yml
+  # push:
+  #   branches:
+  #     - main
+  #     - beta
+  #   paths-ignore:
+  #     - 'docs/**'
+  #     - '*.md'
+  #     - '.augment/**'
+  # workflow_run:
+  #   workflows: ["CI"]
+  #   types:
+  #     - completed
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(fromJson('["main", "beta"]'), github.ref_name)) ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       contains(fromJson('["main", "beta"]'), github.event.workflow_run.head_branch))
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       issues: write
