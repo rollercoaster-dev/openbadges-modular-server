@@ -1,0 +1,30 @@
+name: 'Setup Bun and Dependencies'
+description: 'Installs Bun and project dependencies'
+runs:
+  using: "composite"
+  steps:
+    - name: Install Bun
+      uses: oven-sh/setup-bun@v2.0.2
+
+    - name: Verify Bun installation
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Verifying Bun installation..."
+        bun --version
+        echo "Bun installed successfully"
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Installing dependencies with frozen lockfile..."
+        if ! bun install --frozen-lockfile; then
+          echo "ERROR: Failed to install dependencies"
+          echo "This might be due to:"
+          echo "  - Missing or corrupted bun.lockb file"
+          echo "  - Network connectivity issues"
+          echo "  - Package registry problems"
+          exit 1
+        fi
+        echo "Dependencies installed successfully"
