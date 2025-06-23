@@ -36,29 +36,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Security: Only checkout the default branch SHA for workflow_run events
+          # This prevents execution of untrusted code from pull requests
+          ref: ${{ github.event_name == 'workflow_run' && github.sha || github.sha }}
           fetch-depth: 0
           # A PAT is required here to allow this workflow to trigger the Docker workflow.
           # The default GITHUB_TOKEN does not have sufficient permissions.
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: false
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-bun
 
       - name: Get next version
         id: get-version
         env:
-          BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+          # Security: Use ref_name for direct pushes, validate workflow_run branch safely
+          BRANCH_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          # Sanitize branch name to prevent code injection
-          BRANCH_NAME=$(echo "$BRANCH_NAME" | grep -E '^[a-zA-Z0-9._/-]+$' || echo "main")
+          # Strict validation: only allow main and beta branches
+          case "$BRANCH_NAME" in
+            "main"|"beta")
+              echo "Valid branch: $BRANCH_NAME"
+              ;;
+            *)
+              echo "Invalid branch: $BRANCH_NAME, defaulting to main"
+              BRANCH_NAME="main"
+              ;;
+          esac
 
           # Increment patch version
           IFS='.' read -r MAJOR MINOR PATCH_PRERELEASE <<< "$CURRENT_VERSION"
@@ -82,11 +87,20 @@ jobs:
 
       - name: Update version and commit
         env:
-          BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+          # Security: Use the same safe branch resolution as above
+          BRANCH_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           NEW_VERSION="${{ steps.get-version.outputs.version }}"
-          # Sanitize branch name to prevent code injection
-          BRANCH_NAME=$(echo "$BRANCH_NAME" | grep -E '^[a-zA-Z0-9._/-]+$' || echo "main")
+          # Strict validation: only allow main and beta branches
+          case "$BRANCH_NAME" in
+            "main"|"beta")
+              echo "Pushing to valid branch: $BRANCH_NAME"
+              ;;
+            *)
+              echo "Invalid branch: $BRANCH_NAME, defaulting to main"
+              BRANCH_NAME="main"
+              ;;
+          esac
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

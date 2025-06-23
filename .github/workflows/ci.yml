@@ -17,10 +17,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-bun
       - name: Run linter
         run: bun run lint
 
@@ -30,10 +27,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-bun
       - name: Run type checker
         run: bun run typecheck
 
@@ -43,10 +37,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-bun
       - name: Run SQLite tests
         run: bun run test:sqlite
 
@@ -55,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
+        # TODO: Pin to specific digest for consistency (e.g., postgres:15@sha256:...)
         image: postgres:15
         env:
           POSTGRES_USER: testuser
@@ -70,10 +62,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-bun
       - name: Wait for PostgreSQL
         run: |
           until pg_isready -h localhost -p 5433 -U testuser; do
