@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
+      (github.event_name == 'push' && contains(fromJson('["main", "beta"]'), github.ref_name)) ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        contains(fromJson('["main", "beta"]'), github.event.workflow_run.head_branch))
@@ -34,11 +34,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
-          # Security: Only checkout the default branch SHA for workflow_run events
-          # This prevents execution of untrusted code from pull requests
-          ref: ${{ github.event_name == 'workflow_run' && github.sha || github.sha }}
+          # Security: For workflow_run events, always checkout the default branch HEAD
+          # to prevent execution of untrusted code from pull requests
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
           fetch-depth: 0
           # A PAT is required here to allow this workflow to trigger the Docker workflow.
           # The default GITHUB_TOKEN does not have sufficient permissions.
@@ -47,76 +47,21 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
-      - name: Get next version
-        id: get-version
+      - name: Release with semantic-release
         env:
-          # Security: Use ref_name for direct pushes, validate workflow_run branch safely
-          BRANCH_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          NPM_TOKEN: dummy  # Not publishing to NPM, only creating GitHub releases
         run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          # Strict validation: only allow main and beta branches
-          case "$BRANCH_NAME" in
-            "main"|"beta")
-              echo "Valid branch: $BRANCH_NAME"
-              ;;
-            *)
-              echo "Invalid branch: $BRANCH_NAME, defaulting to main"
-              BRANCH_NAME="main"
-              ;;
-          esac
+          set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-          # Increment patch version
-          IFS='.' read -r MAJOR MINOR PATCH_PRERELEASE <<< "$CURRENT_VERSION"
-          IFS='-' read -r PATCH PRERELEASE <<< "$PATCH_PRERELEASE"
+          echo "Starting semantic-release process..."
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
 
-          if [[ "$BRANCH_NAME" == "main" ]]; then
-            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          else
-            # For beta, increment the prerelease number or start it
-            if [[ -z "$PRERELEASE" ]]; then
-              PRERELEASE_NUM=1
-            else
-              PRERELEASE_NUM=$(echo $PRERELEASE | sed 's/beta.//')
-              PRERELEASE_NUM=$((PRERELEASE_NUM + 1))
-            fi
-            NEW_VERSION="$MAJOR.$MINOR.$PATCH-$BRANCH_NAME.$PRERELEASE_NUM"
+          if ! bun run semantic-release; then
+            echo "ERROR: semantic-release failed"
+            echo "Check the logs above for details"
+            exit 1
           fi
 
-          echo "New version: $NEW_VERSION"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Update version and commit
-        env:
-          # Security: Use the same safe branch resolution as above
-          BRANCH_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
-        run: |
-          NEW_VERSION="${{ steps.get-version.outputs.version }}"
-          # Strict validation: only allow main and beta branches
-          case "$BRANCH_NAME" in
-            "main"|"beta")
-              echo "Pushing to valid branch: $BRANCH_NAME"
-              ;;
-            *)
-              echo "Invalid branch: $BRANCH_NAME, defaulting to main"
-              BRANCH_NAME="main"
-              ;;
-          esac
-
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
-
-          git add package.json
-          git commit -m "chore(release): v$NEW_VERSION"
-          git tag "v$NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-          git push origin HEAD:$BRANCH_NAME
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ steps.get-version.outputs.version }}"
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "Release process completed successfully"
