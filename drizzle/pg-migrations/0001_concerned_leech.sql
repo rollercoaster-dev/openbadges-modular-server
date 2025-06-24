@@ -41,7 +41,17 @@ CREATE INDEX "credential_status_entries_credential_purpose_unique" ON "credentia
 CREATE INDEX "status_lists_issuer_id_idx" ON "status_lists" USING btree ("issuer_id");--> statement-breakpoint
 CREATE INDEX "status_lists_purpose_idx" ON "status_lists" USING btree ("purpose");--> statement-breakpoint
 CREATE INDEX "status_lists_issuer_purpose_idx" ON "status_lists" USING btree ("issuer_id","purpose");--> statement-breakpoint
-ALTER TABLE "assertions" ADD CONSTRAINT "assertions_issuer_id_issuers_id_fk" FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- Add foreign key constraint for assertions.issuer_id only if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'assertions_issuer_id_issuers_id_fk' 
+        AND table_name = 'assertions'
+    ) THEN
+        ALTER TABLE "assertions" ADD CONSTRAINT "assertions_issuer_id_issuers_id_fk" FOREIGN KEY ("issuer_id") REFERENCES "public"."issuers"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+END $$;--> statement-breakpoint
 ALTER TABLE "badge_classes" ADD CONSTRAINT "badge_classes_previous_version_badge_classes_id_fk" FOREIGN KEY ("previous_version") REFERENCES "public"."badge_classes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "assertion_issuer_idx" ON "assertions" USING btree ("issuer_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "badge_class_version_idx" ON "badge_classes" USING btree ("version");--> statement-breakpoint
