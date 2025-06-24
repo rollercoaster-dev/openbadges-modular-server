@@ -1,5 +1,9 @@
 name: Unified CI Pipeline
 
+# Global permissions: minimal for CI operations
+permissions:
+  contents: read  # Required to checkout repository
+
 on:
   pull_request:
     branches: [ main ]
@@ -20,6 +24,8 @@ jobs:
   lint-and-typecheck:
     name: Lint and Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -54,6 +60,8 @@ jobs:
     name: Core Tests
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -87,6 +95,8 @@ jobs:
     name: SQLite Tests
     runs-on: ubuntu-latest
     needs: core-tests
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -153,6 +163,8 @@ jobs:
     name: PostgreSQL Tests
     runs-on: ubuntu-latest
     needs: core-tests
+    permissions:
+      contents: read  # Only needs to read repository contents
     
     # Service container for PostgreSQL
     services:
@@ -239,6 +251,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [sqlite-tests, postgres-tests]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -297,6 +311,8 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
+          # Using GITHUB_TOKEN for container registry authentication
+          # This is the standard approach for GHCR and doesn't require a PAT
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker

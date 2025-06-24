@@ -278,23 +278,48 @@ export async function setupTestApp(
                 );
               }
 
-              // Apply the achievement versioning and relationships migration
-              const versioningMigrationPath = join(
+              // Apply the latest achievement versioning migration that includes the version column
+              const latestVersioningMigrationPath = join(
                 process.cwd(),
-                'drizzle/migrations/0005_add_achievement_versioning_relationships.sql'
+                'drizzle/migrations/0001_cool_martin_li.sql'
               );
-              if (fs.existsSync(versioningMigrationPath)) {
+              if (fs.existsSync(latestVersioningMigrationPath)) {
                 logger.info(
-                  'Applying achievement versioning migration for E2E tests'
+                  'Applying latest versioning migration (0001_cool_martin_li.sql) for E2E tests'
                 );
                 try {
-                  const versioningSql = fs.readFileSync(
-                    versioningMigrationPath,
+                  const latestVersioningSql = fs.readFileSync(
+                    latestVersioningMigrationPath,
                     'utf8'
                   );
-                  db.exec(versioningSql);
+                  // Split statements by statement-breakpoint and execute each one
+                  const statements = latestVersioningSql
+                    .split('--> statement-breakpoint')
+                    .map((stmt: string) => stmt.trim())
+                    .filter((stmt: string) => stmt.length > 0);
+                  
+                  for (const statement of statements) {
+                    try {
+                      db.exec(statement);
+                    } catch (error) {
+                      // If columns already exist, that's fine
+                      if (
+                        error.message &&
+                        (error.message.includes('already exists') ||
+                          error.message.includes('duplicate column') ||
+                          error.message.includes('already exists'))
+                      ) {
+                        logger.info(
+                          `Column already exists, skipping statement: ${statement.substring(0, 50)}...`
+                        );
+                      } else {
+                        throw error;
+                      }
+                    }
+                  }
+                  
                   logger.info(
-                    'Achievement versioning migration applied successfully'
+                    'Latest versioning migration applied successfully'
                   );
                 } catch (error) {
                   // If columns already exist, that's fine
@@ -312,8 +337,46 @@ export async function setupTestApp(
                 }
               } else {
                 logger.warn(
-                  `Achievement versioning migration file not found: ${versioningMigrationPath}`
+                  `Latest versioning migration file not found: ${latestVersioningMigrationPath}`
                 );
+                
+                // Fallback to the old migration file
+                const versioningMigrationPath = join(
+                  process.cwd(),
+                  'drizzle/migrations/0005_add_achievement_versioning_relationships.sql'
+                );
+                if (fs.existsSync(versioningMigrationPath)) {
+                  logger.info(
+                    'Applying fallback achievement versioning migration for E2E tests'
+                  );
+                  try {
+                    const versioningSql = fs.readFileSync(
+                      versioningMigrationPath,
+                      'utf8'
+                    );
+                    db.exec(versioningSql);
+                    logger.info(
+                      'Fallback achievement versioning migration applied successfully'
+                    );
+                  } catch (error) {
+                    // If columns already exist, that's fine
+                    if (
+                      error.message &&
+                      (error.message.includes('already exists') ||
+                        error.message.includes('duplicate column'))
+                    ) {
+                      logger.info(
+                        'Achievement versioning columns already exist, skipping migration'
+                      );
+                    } else {
+                      throw error;
+                    }
+                  }
+                } else {
+                  logger.warn(
+                    `Both versioning migration files not found. Expected: ${latestVersioningMigrationPath} or ${versioningMigrationPath}`
+                  );
+                }
               }
 
               logger.info(
