@@ -40,7 +40,7 @@ jobs:
         database:
           - name: SQLite
             type: sqlite
-            test_command: bun run test:sqlite
+            test_command: bun run test:e2e:sqlite
           - name: PostgreSQL
             type: postgresql
             test_command: bun run test:pg

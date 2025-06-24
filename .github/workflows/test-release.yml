@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
@@ -52,15 +52,15 @@ jobs:
       - name: Test release scripts
         run: |
           echo "Testing release scripts..."
-          
+
           # Test dry run
           echo "Testing dry run..."
           bun run release:dry-run
-          
+
           # Test release check
           echo "Testing release check..."
           bun run release:check
-          
+
           echo "Release scripts test completed"
 
       - name: Validate workflow syntax
@@ -121,10 +121,10 @@ jobs:
       - name: Test workflow permissions
         run: |
           echo "Checking workflow permissions..."
-          
+
           # Extract permissions from workflow file
           PERMISSIONS=$(grep -A 10 "permissions:" .github/workflows/release.yml | grep -E "(contents|issues|pull-requests|packages|id-token):" | wc -l)
-          
+
           if [ "$PERMISSIONS" -ge 5 ]; then
             echo "✅ Workflow has required permissions"
           else

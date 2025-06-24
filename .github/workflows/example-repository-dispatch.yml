@@ -31,23 +31,23 @@ jobs:
     outputs:
       should_dispatch: ${{ steps.check.outputs.should_dispatch }}
       event_type: ${{ steps.check.outputs.event_type }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
-      
+
       - name: Install dependencies
         run: bun install
-      
+
       - name: Run tests
         run: bun test
-      
+
       - name: Build application
         run: bun run build
-      
+
       - name: Determine dispatch strategy
         id: check
         run: |
@@ -69,11 +69,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Trigger repository dispatch
         uses: ./.github/actions/repository-dispatch
         with:
@@ -103,11 +103,11 @@ jobs:
           - { repo: 'backend-service', event: 'deploy' }
           - { repo: 'frontend-app', event: 'deploy' }
           - { repo: 'notification-service', event: 'deploy' }
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Trigger ${{ matrix.target.repo }} deployment
         uses: ./.github/actions/repository-dispatch
         with:
@@ -129,11 +129,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Check for infrastructure changes
         id: check_changes
         run: |
@@ -142,7 +142,7 @@ jobs:
           else
             echo "infrastructure_changed=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Trigger infrastructure deployment
         if: steps.check_changes.outputs.infrastructure_changed == 'true'
         uses: ./.github/actions/repository-dispatch
@@ -162,11 +162,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Trigger using bash script
         env:
           GH_PAT: ${{ secrets.GH_PAT }}

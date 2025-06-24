@@ -5,7 +5,7 @@ A stateless, modular API server for issuing and managing Open Badges, with robus
 [![Unified CI Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci.yml)
 [![CI/CD Pipeline](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/ci-cd.yml)
 [![CodeQL](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/rollercoaster-dev/openbadges-modular-server/actions/workflows/codeql.yml)
-![Token Rotation Reminder](https://img.shields.io/badge/rotate-tokens-yellow)
+[![Token Rotation Reminder](https://img.shields.io/badge/rotate-tokens-yellow)](./docs/pat-token-setup.md)
 
 ## Features
 

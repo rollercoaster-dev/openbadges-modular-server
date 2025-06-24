@@ -37,7 +37,7 @@ jobs:
       contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -70,7 +70,7 @@ jobs:
       contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -208,7 +208,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -230,8 +230,9 @@ jobs:
         if: matrix.database == 'sqlite'
         run: |
           mkdir -p ./tests/e2e
-          bun run db:test:sqlite:migrate
-          bun run test:e2e:sqlite:run
+          # Use the same migration logic as local E2E tests
+          # This ensures the 0001_cool_martin_li.sql migration with custom breakpoints is applied correctly
+          bun run test:e2e:sqlite
 
       - name: Setup database (PostgreSQL)
         if: matrix.database == 'postgresql'
@@ -258,7 +259,7 @@ jobs:
       contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -305,7 +306,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           # PAT is required here to allow semantic-release to push tags and create releases
@@ -399,7 +400,7 @@ jobs:
       packages: write   # Required to publish Docker images to GitHub Container Registry
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -446,7 +447,6 @@ jobs:
         run: |
           FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
           echo "Verifying architectures for: $FIRST_TAG"
-          
           # Wait for manifest to be available
           for i in {1..5}; do
             if docker manifest inspect $FIRST_TAG > /dev/null 2>&1; then
@@ -455,11 +455,10 @@ jobs:
             echo "Waiting for manifest... ($i/5)"
             sleep 10
           done
-          
+
           # Verify architectures
           MANIFEST=$(docker manifest inspect $FIRST_TAG)
           echo "$MANIFEST"
-          
           if echo "$MANIFEST" | grep -q "amd64" && echo "$MANIFEST" | grep -q "arm64"; then
             echo "✅ Multi-architecture build verified"
           else
