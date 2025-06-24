@@ -1,7 +1,8 @@
 name: CI
 
+# Global permissions: minimal for CI operations that only read repository contents
 permissions:
-  contents: read
+  contents: read  # Required to checkout repository
 
 on:
   workflow_dispatch:

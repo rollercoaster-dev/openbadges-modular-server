@@ -1,5 +1,9 @@
 name: Test Release Workflow
 
+# Minimal permissions for testing workflows - only needs to read repository contents
+permissions:
+  contents: read  # Required to checkout repository
+
 on:
   pull_request:
     paths:
