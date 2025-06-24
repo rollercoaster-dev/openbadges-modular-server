@@ -35,7 +35,7 @@ This project uses **organization-level encrypted secrets** for better security a
    - **Secret**: Paste the token you created
    - **Repository access**: Select "Selected repositories" and choose the relevant repositories
      - `openbadges-modular-server`
-     - Any other repositories that need release workflow access
+     - Any other repositories that need to run the release workflow
 
 ### 3. Alternative: Repository-Level Secret (Legacy)
 

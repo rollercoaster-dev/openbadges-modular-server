@@ -16,8 +16,6 @@ jobs:
   test-release-workflow:
     name: Test Release Workflow
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout

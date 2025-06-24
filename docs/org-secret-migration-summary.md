@@ -66,7 +66,7 @@ Since these changes only update the code and documentation, **manual steps are r
 
 ## Files Modified
 
-```
+```text
 .github/workflows/release.yml     # Updated to use ORG_RELEASE_PAT
 .github/workflows/main.yml        # Updated to use ORG_RELEASE_PAT  
 docs/pat-token-setup.md          # Complete rewrite for org-level secrets

@@ -1,0 +1,180 @@
+name: Example Repository Dispatch
+
+# This workflow demonstrates how to use the repository dispatch action
+# to trigger downstream workflows after successful builds
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      event_type:
+        description: 'Event type to dispatch'
+        required: true
+        default: 'docker_build'
+        type: choice
+        options:
+          - docker_build
+          - integration_test
+          - deploy_staging
+          - deploy_production
+      target_repo:
+        description: 'Target repository (optional)'
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      should_dispatch: ${{ steps.check.outputs.should_dispatch }}
+      event_type: ${{ steps.check.outputs.event_type }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Run tests
+        run: bun test
+      
+      - name: Build application
+        run: bun run build
+      
+      - name: Determine dispatch strategy
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_dispatch=true" >> $GITHUB_OUTPUT
+            echo "event_type=${{ inputs.event_type }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should_dispatch=true" >> $GITHUB_OUTPUT
+            echo "event_type=docker_build" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "should_dispatch=true" >> $GITHUB_OUTPUT
+            echo "event_type=integration_test" >> $GITHUB_OUTPUT
+          else
+            echo "should_dispatch=false" >> $GITHUB_OUTPUT
+            echo "event_type=" >> $GITHUB_OUTPUT
+          fi
+
+  dispatch:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.should_dispatch == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Trigger repository dispatch
+        uses: ./.github/actions/repository-dispatch
+        with:
+          github-token: ${{ secrets.GH_PAT }}
+          event-type: ${{ needs.build.outputs.event_type }}
+          target-repo: ${{ inputs.target_repo }}
+          client-payload: |
+            {
+              "source_repository": "${{ github.repository }}",
+              "source_ref": "${{ github.ref }}",
+              "source_sha": "${{ github.sha }}",
+              "actor": "${{ github.actor }}",
+              "workflow_run_id": "${{ github.run_id }}",
+              "workflow_run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "trigger_event": "${{ github.event_name }}",
+              "timestamp": "${{ github.event.head_commit.timestamp }}",
+              "message": "${{ github.event.head_commit.message }}"
+            }
+
+  dispatch-multiple:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.event_type == 'deploy_production'
+    strategy:
+      matrix:
+        target:
+          - { repo: 'backend-service', event: 'deploy' }
+          - { repo: 'frontend-app', event: 'deploy' }
+          - { repo: 'notification-service', event: 'deploy' }
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Trigger ${{ matrix.target.repo }} deployment
+        uses: ./.github/actions/repository-dispatch
+        with:
+          github-token: ${{ secrets.GH_PAT }}
+          event-type: ${{ matrix.target.event }}
+          target-repo: ${{ matrix.target.repo }}
+          client-payload: |
+            {
+              "environment": "production",
+              "source_repository": "${{ github.repository }}",
+              "source_sha": "${{ github.sha }}",
+              "coordinator": "${{ github.repository }}",
+              "deployment_id": "${{ github.run_id }}-${{ matrix.target.repo }}",
+              "triggered_by": "${{ github.actor }}",
+              "service": "${{ matrix.target.repo }}"
+            }
+
+  dispatch-conditional:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.should_dispatch == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for infrastructure changes
+        id: check_changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -E "(docker|infrastructure|deployment)" > /dev/null; then
+            echo "infrastructure_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "infrastructure_changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Trigger infrastructure deployment
+        if: steps.check_changes.outputs.infrastructure_changed == 'true'
+        uses: ./.github/actions/repository-dispatch
+        with:
+          github-token: ${{ secrets.GH_PAT }}
+          event-type: 'infrastructure_update'
+          target-repo: 'infrastructure-repo'
+          client-payload: |
+            {
+              "source_repository": "${{ github.repository }}",
+              "source_sha": "${{ github.sha }}",
+              "changed_files": "${{ toJson(github.event.commits[0].modified) }}",
+              "trigger_reason": "Infrastructure files changed"
+            }
+
+  use-bash-script:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.should_dispatch == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Trigger using bash script
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          ./.github/scripts/repository-dispatch.sh \
+            --event-type "bash_script_test" \
+            --payload '{
+              "method": "bash_script",
+              "source": "${{ github.repository }}",
+              "run_id": "${{ github.run_id }}"
+            }'

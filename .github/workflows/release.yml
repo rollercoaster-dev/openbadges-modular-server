@@ -41,7 +41,6 @@ jobs:
           fetch-depth: 0
           # A PAT is required here to allow this workflow to trigger the Docker workflow.
           # The default GITHUB_TOKEN does not have sufficient permissions.
-          # Using organization-level secret for better security and management.
           token: ${{ secrets.ORG_RELEASE_PAT }}
           persist-credentials: false
 
