@@ -83,11 +83,7 @@ jobs:
       - name: Trigger repository dispatch
         uses: ./.github/actions/repository-dispatch
         with:
-<<<<<<< HEAD
           github-token: ${{ secrets.ORG_RELEASE_PAT }}
-=======
-          github-token: ${{ secrets.GH_PAT }}
->>>>>>> origin/main
           event-type: ${{ needs.build.outputs.event_type }}
           target-repo: ${{ inputs.target_repo }}
           client-payload: |
