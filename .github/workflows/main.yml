@@ -1,8 +1,9 @@
 name: CI/CD Pipeline
 
 # Default permissions for all jobs (principle of least privilege)
+# Most jobs only need to read repository contents
 permissions:
-  contents: read
+  contents: read    # Required to checkout repository
 
 on:
   push:
@@ -25,15 +26,18 @@ concurrency:
 env:
   NODE_VERSION: '20'
   BUN_VERSION: 'latest'
+  GH_PAT: ${{ secrets.ORG_RELEASE_PAT }}
 
 jobs:
   # Stage 1: Code Quality & Fast Tests
   lint-and-typecheck:
     name: 🔍 Lint & Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -62,9 +66,11 @@ jobs:
     name: 🗄️ SQLite Tests
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -109,6 +115,8 @@ jobs:
     name: 🐘 PostgreSQL Tests
     runs-on: ubuntu-latest
     needs: test-sqlite
+    permissions:
+      contents: read  # Only needs to read repository contents
     services:
       postgres:
         image: postgres:15
@@ -126,7 +134,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -178,6 +186,8 @@ jobs:
     name: 🧪 E2E Tests
     runs-on: ubuntu-latest
     needs: test-postgresql
+    permissions:
+      contents: read  # Only needs to read repository contents
     strategy:
       matrix:
         database: [sqlite, postgresql]
@@ -198,7 +208,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -220,8 +230,9 @@ jobs:
         if: matrix.database == 'sqlite'
         run: |
           mkdir -p ./tests/e2e
-          bun run db:test:sqlite:migrate
-          bun run test:e2e:sqlite:run
+          # Use the same migration logic as local E2E tests
+          # This ensures the 0001_cool_martin_li.sql migration with custom breakpoints is applied correctly
+          bun run test:e2e:sqlite
 
       - name: Setup database (PostgreSQL)
         if: matrix.database == 'postgresql'
@@ -244,9 +255,11 @@ jobs:
     name: 🏗️ Build Application
     runs-on: ubuntu-latest
     needs: test-e2e
+    permissions:
+      contents: read  # Only needs to read repository contents
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -282,22 +295,25 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      packages: write
-      id-token: write
+      contents: write         # Required to create releases and push tags
+      issues: write          # Required to comment on issues for release notes
+      pull-requests: write   # Required to comment on PRs for release notes
+      packages: write        # Required if publishing packages
+      id-token: write        # Required for OIDC token for secure operations
     outputs:
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-          persist-credentials: true
+          # PAT is required here to allow semantic-release to push tags and create releases
+          # The default GITHUB_TOKEN has insufficient permissions for these operations
+          # Using organization-level PAT for better security and centralized management
+          token: ${{ secrets.ORG_RELEASE_PAT }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -318,13 +334,16 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global init.defaultBranch main
 
-          # Ensure we can push to the repository
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
+          # Configure git authentication using GitHub CLI
+          # This approach keeps the token secure in the credential helper store
+          gh auth setup-git
 
       - name: Release
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          # PAT is required for semantic-release to create releases, push tags, and update changelogs
+          # The default GITHUB_TOKEN doesn't have sufficient permissions for these operations
+          GITHUB_TOKEN: ${{ secrets.ORG_RELEASE_PAT }}
           NPM_TOKEN: dummy
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
@@ -376,9 +395,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      contents: read    # Required to checkout repository
+      packages: write   # Required to publish Docker images to GitHub Container Registry
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -395,6 +417,8 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
+          # Using GITHUB_TOKEN for container registry authentication
+          # This is the standard approach for GHCR and doesn't require a PAT
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
@@ -423,7 +447,6 @@ jobs:
         run: |
           FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
           echo "Verifying architectures for: $FIRST_TAG"
-          
           # Wait for manifest to be available
           for i in {1..5}; do
             if docker manifest inspect $FIRST_TAG > /dev/null 2>&1; then
@@ -432,11 +455,10 @@ jobs:
             echo "Waiting for manifest... ($i/5)"
             sleep 10
           done
-          
+
           # Verify architectures
           MANIFEST=$(docker manifest inspect $FIRST_TAG)
           echo "$MANIFEST"
-          
           if echo "$MANIFEST" | grep -q "amd64" && echo "$MANIFEST" | grep -q "arm64"; then
             echo "✅ Multi-architecture build verified"
           else

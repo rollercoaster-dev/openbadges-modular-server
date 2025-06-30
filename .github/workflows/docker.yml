@@ -1,8 +1,9 @@
 name: Docker Build and Push
 
+# Minimal permissions for Docker build and push operations
 permissions:
-  contents: read
-  packages: write
+  contents: read    # Required to checkout repository
+  packages: write   # Required to publish Docker images to GitHub Container Registry
 
 on:
   release:
@@ -16,9 +17,6 @@ jobs:
   build-and-push:
     name: Build and Push to GHCR
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -35,6 +33,8 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
+          # Using GITHUB_TOKEN for container registry authentication
+          # This is the standard approach for GHCR and doesn't require a PAT
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
