@@ -122,7 +122,7 @@ steps:
 ### CI/CD Pipeline Triggers
 - Trigger Docker builds after successful tests
 - Start deployments after successful builds
-- Coordinate multi-service deployments
+- Coordinate multiservice deployments
 
 ### Integration Testing
 - Trigger end-to-end tests after component updates

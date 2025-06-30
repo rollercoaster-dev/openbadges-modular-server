@@ -28,6 +28,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       should_dispatch: ${{ steps.check.outputs.should_dispatch }}
       event_type: ${{ steps.check.outputs.event_type }}
@@ -69,6 +71,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -97,6 +101,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.event_type == 'deploy_production'
+    permissions:
+      contents: read
     strategy:
       matrix:
         target:
@@ -129,6 +135,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -137,7 +145,7 @@ jobs:
       - name: Check for infrastructure changes
         id: check_changes
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -E "(docker|infrastructure|deployment)" > /dev/null; then
+          if git diff --name-only $(git rev-parse --verify HEAD~1 2>/dev/null || echo HEAD) HEAD | grep -E "(docker|infrastructure|deployment)" > /dev/null; then
             echo "infrastructure_changed=true" >> $GITHUB_OUTPUT
           else
             echo "infrastructure_changed=false" >> $GITHUB_OUTPUT
@@ -162,6 +170,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.should_dispatch == 'true'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code

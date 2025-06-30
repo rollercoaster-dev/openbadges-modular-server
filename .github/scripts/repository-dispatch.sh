@@ -157,7 +157,7 @@ PAYLOAD=$(jq -n \
 echo "Sending repository dispatch..."
 
 # Make the API call
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+RESPONSE=$(curl -s -w "\n%{http_code}" --fail-with-body -X POST \
     -H "Authorization: Bearer $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -193,6 +193,9 @@ else
             ;;
         422)
             echo "Error: Invalid request. Check the event type and payload format."
+            ;;
+        *)
+            echo "Error: Unexpected status code $STATUS_CODE"
             ;;
     esac
     
