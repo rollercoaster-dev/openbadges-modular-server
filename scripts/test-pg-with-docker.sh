@@ -5,6 +5,12 @@
 
 set -euo pipefail
 
+cleanup() {
+  echo "Tearing down PostgreSQL test database..."
+  bun run db:test:pg:stop
+}
+trap cleanup EXIT
+
 echo "Starting PostgreSQL test setup..."
 bun run db:test:pg:start
 
@@ -17,7 +23,5 @@ bun run db:test:pg:migrate
 echo "Running PostgreSQL tests..."
 bun run test:pg
 
-echo "Tearing down PostgreSQL test database..."
-bun run db:test:pg:stop
-
+# `cleanup` will run automatically; only log success here
 echo "PostgreSQL tests completed successfully."

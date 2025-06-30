@@ -145,7 +145,8 @@ jobs:
       - name: Check for infrastructure changes
         id: check_changes
         run: |
-          if git diff --name-only $(git rev-parse --verify HEAD~1 2>/dev/null || echo HEAD) HEAD | grep -E "(docker|infrastructure|deployment)" > /dev/null; then
+          BASE=$(git rev-parse --verify HEAD~1 2>/dev/null || echo 4b825dc642cb6eb9a060e54bf8d69288fbee4904) # empty tree
+          if git diff --name-only "$BASE" HEAD | grep -E '(docker|infrastructure|deployment)' >/dev/null; then
             echo "infrastructure_changed=true" >> $GITHUB_OUTPUT
           else
             echo "infrastructure_changed=false" >> $GITHUB_OUTPUT

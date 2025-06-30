@@ -60,14 +60,13 @@ runs:
         echo "Triggering repository dispatch for $TARGET_OWNER/$TARGET_REPO"
         echo "Event type: ${{ inputs.event-type }}"
         echo "Client payload: ${{ inputs.client-payload }}"
-        # Prepare the payload
-        PAYLOAD=$(cat <<EOF
-        {
-          "event_type": "${{ inputs.event-type }}",
-          "client_payload": ${{ inputs.client-payload }}
-        }
-        EOF
-        )
+        # Validate & compact payload to guarantee valid JSON
+        set -eo pipefail
+        PAYLOAD=$(jq -c --exit-status \
+          --arg et "${{ inputs.event-type }}" \
+          --argjson cp '${{ inputs.client-payload }}' \
+          '{event_type: $et, client_payload: $cp}') \
+          || { echo "❌ client-payload is not valid JSON"; exit 1; }
         # Make the API call
         RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
           -H "Authorization: Bearer ${{ inputs.github-token }}" \
@@ -82,7 +81,7 @@ runs:
         echo "status=$STATUS_CODE" >> $GITHUB_OUTPUT
         echo "Response status: $STATUS_CODE"
         # Check if the request was successful
-        if [ "$STATUS_CODE" -eq 204 ]; then
+        if [[ "$STATUS_CODE" =~ ^2[0-9]{2}$ ]]; then
           echo "✅ Repository dispatch triggered successfully"
         else
           echo "❌ Failed to trigger repository dispatch"
