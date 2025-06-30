@@ -5,7 +5,6 @@ name: Example Repository Dispatch
 
 # Deny all by default – jobs opt-in below
 permissions: {}
-
 on:
   push:
     branches: [main, develop]
@@ -58,7 +57,7 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "should_dispatch=true" >> $GITHUB_OUTPUT
-            echo "event_type=${{ github.event.inputs.event_type }}" >> $GITHUB_OUTPUT
+            echo "event_type=${{ inputs.event_type }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "should_dispatch=true" >> $GITHUB_OUTPUT
             echo "event_type=docker_build" >> $GITHUB_OUTPUT
@@ -84,7 +83,11 @@ jobs:
       - name: Trigger repository dispatch
         uses: ./.github/actions/repository-dispatch
         with:
+<<<<<<< HEAD
           github-token: ${{ secrets.ORG_RELEASE_PAT }}
+=======
+          github-token: ${{ secrets.GH_PAT }}
+>>>>>>> origin/main
           event-type: ${{ needs.build.outputs.event_type }}
           target-repo: ${{ inputs.target_repo }}
           client-payload: |
@@ -120,7 +123,11 @@ jobs:
       - name: Trigger ${{ matrix.target.repo }} deployment
         uses: ./.github/actions/repository-dispatch
         with:
+<<<<<<< HEAD
           github-token: ${{ secrets.ORG_RELEASE_PAT }}
+=======
+          github-token: ${{ secrets.GH_PAT }}
+>>>>>>> origin/main
           event-type: ${{ matrix.target.event }}
           target-repo: ${{ matrix.target.repo }}
           client-payload: |
@@ -159,7 +166,11 @@ jobs:
         if: steps.check_changes.outputs.infrastructure_changed == 'true'
         uses: ./.github/actions/repository-dispatch
         with:
+<<<<<<< HEAD
           github-token: ${{ secrets.ORG_RELEASE_PAT }}
+=======
+          github-token: ${{ secrets.GH_PAT }}
+>>>>>>> origin/main
           event-type: 'infrastructure_update'
           target-repo: 'infrastructure-repo'
           client-payload: |
@@ -183,7 +194,11 @@ jobs:
 
       - name: Trigger using bash script
         env:
+<<<<<<< HEAD
           GH_PAT: ${{ secrets.ORG_RELEASE_PAT }}
+=======
+          GH_PAT: ${{ secrets.GH_PAT }}
+>>>>>>> origin/main
         run: |
           ./.github/scripts/repository-dispatch.sh \
             --event-type "bash_script_test" \
