@@ -44,6 +44,8 @@ export default {
     // Ensure body has leading blank line
     'body-leading-blank': [2, 'always'],
     // Ensure footer has leading blank line
-    'footer-leading-blank': [2, 'always']
+    'footer-leading-blank': [2, 'always'],
+    // Disable footer line length for semantic-release compatibility
+    'footer-max-line-length': [0, 'always', 100]
   }
 };
