@@ -312,7 +312,7 @@ jobs:
           # PAT is required here to allow semantic-release to push tags and create releases
           # The default GITHUB_TOKEN has insufficient permissions for these operations
           token: ${{ secrets.PAT_TOKEN }}
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
