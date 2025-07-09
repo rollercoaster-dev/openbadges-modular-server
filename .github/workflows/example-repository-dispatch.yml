@@ -83,11 +83,7 @@ jobs:
       - name: Trigger repository dispatch
         uses: ./.github/actions/repository-dispatch
         with:
-<<<<<<< HEAD
-          github-token: ${{ secrets.ORG_RELEASE_PAT }}
-=======
-          github-token: ${{ secrets.GH_PAT }}
->>>>>>> origin/main
+          github-token: ${{ secrets.PAT_TOKEN }}
           event-type: ${{ needs.build.outputs.event_type }}
           target-repo: ${{ inputs.target_repo }}
           client-payload: |
@@ -123,11 +119,7 @@ jobs:
       - name: Trigger ${{ matrix.target.repo }} deployment
         uses: ./.github/actions/repository-dispatch
         with:
-<<<<<<< HEAD
-          github-token: ${{ secrets.ORG_RELEASE_PAT }}
-=======
-          github-token: ${{ secrets.GH_PAT }}
->>>>>>> origin/main
+          github-token: ${{ secrets.PAT_TOKEN }}
           event-type: ${{ matrix.target.event }}
           target-repo: ${{ matrix.target.repo }}
           client-payload: |
@@ -166,11 +158,7 @@ jobs:
         if: steps.check_changes.outputs.infrastructure_changed == 'true'
         uses: ./.github/actions/repository-dispatch
         with:
-<<<<<<< HEAD
-          github-token: ${{ secrets.ORG_RELEASE_PAT }}
-=======
-          github-token: ${{ secrets.GH_PAT }}
->>>>>>> origin/main
+          github-token: ${{ secrets.PAT_TOKEN }}
           event-type: 'infrastructure_update'
           target-repo: 'infrastructure-repo'
           client-payload: |
@@ -194,11 +182,7 @@ jobs:
 
       - name: Trigger using bash script
         env:
-<<<<<<< HEAD
-          GH_PAT: ${{ secrets.ORG_RELEASE_PAT }}
-=======
-          GH_PAT: ${{ secrets.GH_PAT }}
->>>>>>> origin/main
+          GH_PAT: ${{ secrets.PAT_TOKEN }}
         run: |
           ./.github/scripts/repository-dispatch.sh \
             --event-type "bash_script_test" \
