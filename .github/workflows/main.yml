@@ -330,11 +330,8 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global init.defaultBranch main
-
-          # Configure git authentication using GitHub CLI
-          # This approach keeps the token secure in the credential helper store
-          gh auth setup-git
+          # Use the automatically-provided token for all HTTPS Git operations.
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Release
         id: semantic

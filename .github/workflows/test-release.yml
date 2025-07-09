@@ -7,7 +7,7 @@ permissions:
 on:
   pull_request:
     paths:
-      - '.github/workflows/release.yml'
+      - '.github/workflows/main.yml'
       - '.releaserc.json'
       - 'scripts/release-helper.js'
       - 'package.json'
@@ -71,11 +71,11 @@ jobs:
           import yaml
           import sys
           try:
-              with open('.github/workflows/release.yml', 'r') as f:
+              with open('.github/workflows/main.yml', 'r') as f:
                   yaml.safe_load(f)
-              print('✅ Release workflow YAML is valid')
+              print('✅ Main workflow YAML is valid')
           except yaml.YAMLError as e:
-              print(f'❌ Release workflow YAML is invalid: {e}')
+              print(f'❌ Main workflow YAML is invalid: {e}')
               sys.exit(1)
           "
 
@@ -123,7 +123,7 @@ jobs:
           echo "Checking workflow permissions..."
 
           # Extract permissions from workflow file
-          PERMISSIONS=$(grep -A 10 "permissions:" .github/workflows/release.yml | grep -E "(contents|issues|pull-requests|packages|id-token):" | wc -l)
+          PERMISSIONS=$(grep -A 10 "permissions:" .github/workflows/main.yml | grep -E "(contents|issues|pull-requests|packages|id-token):" | wc -l)
 
           if [ "$PERMISSIONS" -ge 5 ]; then
             echo "✅ Workflow has required permissions"

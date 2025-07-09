@@ -1,0 +1,187 @@
+{
+  "failing_cases": [
+    {
+      "id": "case_1",
+      "description": "Multiline commit message causing command not found error",
+      "run_id": "16177609854",
+      "timestamp": "2025-07-09T18:46:11Z",
+      "job_name": "dispatch",
+      "step_name": "Trigger repository dispatch",
+      "client_payload": "{\n  \"source_repository\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"source_ref\": \"refs/heads/main\",\n  \"source_sha\": \"533183055706750878ab5dfb8a22e5ae4e406c89\",\n  \"actor\": \"joeczar\",\n  \"workflow_run_id\": \"16177609854\",\n  \"workflow_run_url\": \"https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177609854\",\n  \"trigger_event\": \"push\",\n  \"timestamp\": \"2025-07-09T20:44:53+02:00\",\n  \"message\": \"fix: handle multiline strings properly in repository dispatch action\n\n- Validate JSON input before processing\n- Use proper variable quoting to prevent command injection\n- Switch back to --argjson with proper variable handling\"\n}",
+      "commit_message": "fix: handle multiline strings properly in repository dispatch action\n\n- Validate JSON input before processing\n- Use proper variable quoting to prevent command injection\n- Switch back to --argjson with proper variable handling",
+      "commit_sha": "533183055706750878ab5dfb8a22e5ae4e406c89",
+      "error_stack_trace": [
+        "Triggering repository dispatch for rollercoaster-dev/openbadges-modular-server",
+        "/home/runner/work/_temp/831a2438-bc28-4a46-af75-15a1f4a8ad42.sh: line 14: -: command not found",
+        "Event type: docker_build",
+        "Client payload: {",
+        "  source_repository: rollercoaster-dev/openbadges-modular-server,",
+        "  source_ref: refs/heads/main,",
+        "  source_sha: 533183055706750878ab5dfb8a22e5ae4e406c89,",
+        "  actor: joeczar,",
+        "  workflow_run_id: 16177609854,",
+        "  workflow_run_url: https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177609854,",
+        "  trigger_event: push,",
+        "  timestamp: 2025-07-09T20:44:53+02:00,",
+        "  message: fix: handle multiline strings properly in repository dispatch action",
+        "##[error]Process completed with exit code 127."
+      ]
+    },
+    {
+      "id": "case_2",
+      "description": "Multiline commit message causing command not found error (earlier attempt)",
+      "run_id": "16177542001",
+      "timestamp": "2025-07-09T18:42:42Z",
+      "job_name": "dispatch",
+      "step_name": "Trigger repository dispatch",
+      "client_payload": "{\n  \"source_repository\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"source_ref\": \"refs/heads/main\",\n  \"source_sha\": \"9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf\",\n  \"actor\": \"joeczar\",\n  \"workflow_run_id\": \"16177542001\",\n  \"workflow_run_url\": \"https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177542001\",\n  \"trigger_event\": \"push\",\n  \"timestamp\": \"2025-07-09T20:40:41+02:00\",\n  \"message\": \"fix: properly parse JSON payload in repository dispatch action\n\n- Change from --argjson to --arg with fromjson to handle multiline YAML strings\n- This fixes the 'client-payload is not valid JSON' error in dispatch workflows\"\n}",
+      "commit_message": "fix: properly parse JSON payload in repository dispatch action\n\n- Change from --argjson to --arg with fromjson to handle multiline YAML strings\n- This fixes the 'client-payload is not valid JSON' error in dispatch workflows",
+      "commit_sha": "9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf",
+      "error_stack_trace": [
+        "Triggering repository dispatch for rollercoaster-dev/openbadges-modular-server",
+        "Event type: docker_build",
+        "Client payload: {",
+        "  source_repository: rollercoaster-dev/openbadges-modular-server,",
+        "  source_ref: refs/heads/main,",
+        "  source_sha: 9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf,",
+        "  actor: joeczar,",
+        "  workflow_run_id: 16177542001,",
+        "  workflow_run_url: https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177542001,",
+        "  trigger_event: push,",
+        "  timestamp: 2025-07-09T20:40:41+02:00,",
+        "  message: fix: properly parse JSON payload in repository dispatch action",
+        "/home/runner/work/_temp/5ef37a42-c65e-47ee-94d9-eede58ba9cc0.sh: line 14: -: command not found",
+        "##[error]Process completed with exit code 127."
+      ]
+    },
+    {
+      "id": "case_3",
+      "description": "Invalid JSON client-payload with --argjson",
+      "run_id": "16177098017",
+      "timestamp": "2025-07-09T18:19:54Z",
+      "job_name": "dispatch",
+      "step_name": "Trigger repository dispatch",
+      "client_payload": "{\n  \"source_repository\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"source_ref\": \"refs/heads/main\",\n  \"source_sha\": \"680ac262446804beaec9de8a571a9d7aa76d1ad3\",\n  \"actor\": \"joeczar\",\n  \"workflow_run_id\": \"16177098017\",\n  \"workflow_run_url\": \"https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177098017\",\n  \"trigger_event\": \"push\",\n  \"timestamp\": \"2025-07-09T20:18:36+02:00\",\n  \"message\": \"fix: use GITHUB_TOKEN instead of PAT_TOKEN for semantic-release\"\n}",
+      "commit_message": "fix: use GITHUB_TOKEN instead of PAT_TOKEN for semantic-release",
+      "commit_sha": "680ac262446804beaec9de8a571a9d7aa76d1ad3",
+      "error_stack_trace": [
+        "Triggering repository dispatch for rollercoaster-dev/openbadges-modular-server",
+        "Event type: docker_build",
+        "Client payload: {",
+        "  source_repository: rollercoaster-dev/openbadges-modular-server,",
+        "  source_ref: refs/heads/main,",
+        "  source_sha: 680ac262446804beaec9de8a571a9d7aa76d1ad3,",
+        "  actor: joeczar,",
+        "  workflow_run_id: 16177098017,",
+        "  workflow_run_url: https://github.com/rollercoaster-dev/openbadges-modular-server/actions/runs/16177098017,",
+        "  trigger_event: push,",
+        "  timestamp: 2025-07-09T20:18:36+02:00,",
+        "  message: fix: use GITHUB_TOKEN instead of PAT_TOKEN for semantic-release",
+        "}",
+        "❌ client-payload is not valid JSON",
+        "##[error]Process completed with exit code 1."
+      ]
+    },
+    {
+      "id": "case_4",
+      "description": "Failed to create payload in dispatch-conditional job",
+      "run_id": "16177609854",
+      "timestamp": "2025-07-09T18:46:09Z",
+      "job_name": "dispatch-conditional",
+      "step_name": "Trigger infrastructure deployment",
+      "client_payload": "{\n  \"source_repository\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"source_sha\": \"533183055706750878ab5dfb8a22e5ae4e406c89\",\n  \"changed_files\": \"null\",\n  \"trigger_reason\": \"Infrastructure files changed\"\n}",
+      "commit_message": "fix: handle multiline strings properly in repository dispatch action\n\n- Validate JSON input before processing\n- Use proper variable quoting to prevent command injection\n- Switch back to --argjson with proper variable handling",
+      "commit_sha": "533183055706750878ab5dfb8a22e5ae4e406c89",
+      "error_stack_trace": [
+        "Triggering repository dispatch for rollercoaster-dev/infrastructure-repo",
+        "Event type: infrastructure_update",
+        "Client payload: {",
+        "  source_repository: rollercoaster-dev/openbadges-modular-server,",
+        "  source_sha: 533183055706750878ab5dfb8a22e5ae4e406c89,",
+        "  changed_files: null,",
+        "  trigger_reason: Infrastructure files changed",
+        "}",
+        "❌ Failed to create payload",
+        "##[error]Process completed with exit code 1."
+      ]
+    },
+    {
+      "id": "case_5",
+      "description": "Bash script failing with curl exit code 22",
+      "run_id": "16177609854",
+      "timestamp": "2025-07-09T18:46:10Z",
+      "job_name": "use-bash-script",
+      "step_name": "Trigger using bash script",
+      "client_payload": "{\n  \"method\": \"bash_script\",\n  \"source\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"run_id\": \"16177609854\"\n}",
+      "commit_message": "fix: handle multiline strings properly in repository dispatch action\n\n- Validate JSON input before processing\n- Use proper variable quoting to prevent command injection\n- Switch back to --argjson with proper variable handling",
+      "commit_sha": "533183055706750878ab5dfb8a22e5ae4e406c89",
+      "error_stack_trace": [
+        "Repository Dispatch Configuration:",
+        "  Target Repository: rollercoaster-dev/openbadges-modular-server",
+        "  Event Type: bash_script_test",
+        "  Client Payload: {",
+        "    \"method\": \"bash_script\",",
+        "    \"source\": \"rollercoaster-dev/openbadges-modular-server\",",
+        "    \"run_id\": \"16177609854\"",
+        "  }",
+        "  Dispatch URL: https://api.github.com/repos/rollercoaster-dev/openbadges-modular-server/dispatches",
+        "Sending repository dispatch...",
+        "##[error]Process completed with exit code 22."
+      ]
+    },
+    {
+      "id": "case_6",
+      "description": "Invalid JSON client-payload with --arg fromjson approach",
+      "run_id": "16177542001",
+      "timestamp": "2025-07-09T18:42:42Z",
+      "job_name": "dispatch-conditional",
+      "step_name": "Trigger infrastructure deployment",
+      "client_payload": "{\n  \"source_repository\": \"rollercoaster-dev/openbadges-modular-server\",\n  \"source_sha\": \"9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf\",\n  \"changed_files\": \"null\",\n  \"trigger_reason\": \"Infrastructure files changed\"\n}",
+      "commit_message": "fix: properly parse JSON payload in repository dispatch action\n\n- Change from --argjson to --arg with fromjson to handle multiline YAML strings\n- This fixes the 'client-payload is not valid JSON' error in dispatch workflows",
+      "commit_sha": "9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf",
+      "error_stack_trace": [
+        "Triggering repository dispatch for rollercoaster-dev/infrastructure-repo",
+        "Event type: infrastructure_update",
+        "Client payload: {",
+        "  source_repository: rollercoaster-dev/openbadges-modular-server,",
+        "  source_sha: 9f70dc0ffad73ac4d6e71c213cec69e1dfbeefbf,",
+        "  changed_files: null,",
+        "  trigger_reason: Infrastructure files changed",
+        "}",
+        "❌ client-payload is not valid JSON",
+        "##[error]Process completed with exit code 1."
+      ]
+    }
+  ],
+  "summary": {
+    "total_cases": 6,
+    "common_issues": [
+      "Multiline commit messages causing bash script parsing errors",
+      "Invalid JSON payload validation failures",
+      "Command not found errors due to improper escaping",
+      "Failed payload creation in jq processing",
+      "HTTP errors from GitHub API calls"
+    ],
+    "problematic_commit_patterns": [
+      "Multiline commit messages with bullet points",
+      "Special characters in commit messages",
+      "Long commit messages with descriptions",
+      "Commits with null values in JSON"
+    ],
+    "error_codes": {
+      "127": "Command not found - typically caused by malformed bash scripts",
+      "1": "General error - often from jq processing or validation failures",
+      "22": "HTTP error from curl - usually API authentication or request format issues"
+    }
+  },
+  "collection_metadata": {
+    "collected_at": "2025-01-09T14:30:00Z",
+    "collection_method": "GitHub CLI run logs analysis",
+    "workflows_analyzed": ["Example Repository Dispatch"],
+    "runs_examined": [
+      "16177609854",
+      "16177542001", 
+      "16177098017"
+    ]
+  }
+}
