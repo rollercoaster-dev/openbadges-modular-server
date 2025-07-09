@@ -26,7 +26,7 @@ concurrency:
 env:
   NODE_VERSION: '20'
   BUN_VERSION: 'latest'
-  GH_PAT: ${{ secrets.ORG_RELEASE_PAT }}
+  GH_PAT: ${{ secrets.PAT_TOKEN }}
 
 jobs:
   # Stage 1: Code Quality & Fast Tests
@@ -311,8 +311,7 @@ jobs:
           fetch-depth: 0
           # PAT is required here to allow semantic-release to push tags and create releases
           # The default GITHUB_TOKEN has insufficient permissions for these operations
-          # Using organization-level PAT for better security and centralized management
-          token: ${{ secrets.ORG_RELEASE_PAT }}
+          token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: false
 
       - name: Setup Bun
@@ -343,7 +342,7 @@ jobs:
         env:
           # PAT is required for semantic-release to create releases, push tags, and update changelogs
           # The default GITHUB_TOKEN doesn't have sufficient permissions for these operations
-          GITHUB_TOKEN: ${{ secrets.ORG_RELEASE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           NPM_TOKEN: dummy
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
