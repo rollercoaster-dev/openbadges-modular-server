@@ -373,12 +373,29 @@ jobs:
           # Create .npmrc to prevent npm publishing issues
           echo "//registry.npmjs.org/:_authToken=dummy" > .npmrc
 
-          # Run semantic-release using bun for consistency
+          # Run semantic-release and capture output
           echo "Running semantic-release..."
+          
+          # Store the git tag before semantic-release
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
           if ! bun run semantic-release; then
             echo "ERROR: semantic-release failed"
             echo "Check the logs above for details"
             exit 1
+          fi
+          
+          # Check if a new tag was created
+          AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ "$BEFORE_TAG" != "$AFTER_TAG" ] && [ -n "$AFTER_TAG" ]; then
+            echo "New release published: $AFTER_TAG"
+            echo "new_release_published=true" >> $GITHUB_OUTPUT
+            echo "new_release_version=$AFTER_TAG" >> $GITHUB_OUTPUT
+          else
+            echo "No new release published"
+            echo "new_release_published=false" >> $GITHUB_OUTPUT
+            echo "new_release_version=" >> $GITHUB_OUTPUT
           fi
 
           echo "Release process completed successfully"
