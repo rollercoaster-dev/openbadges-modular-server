@@ -62,11 +62,20 @@ runs:
         echo "Client payload: ${{ inputs.client-payload }}"
         # Validate & compact payload to guarantee valid JSON
         set -eo pipefail
+        
+        # First, validate the input is valid JSON
+        CLIENT_PAYLOAD='${{ inputs.client-payload }}'
+        if ! echo "$CLIENT_PAYLOAD" | jq . > /dev/null 2>&1; then
+          echo "❌ client-payload is not valid JSON"
+          exit 1
+        fi
+        
+        # Create the final payload
         PAYLOAD=$(jq -c --exit-status \
           --arg et "${{ inputs.event-type }}" \
-          --arg cp '${{ inputs.client-payload }}' \
-          '{event_type: $et, client_payload: ($cp | fromjson)}') \
-          || { echo "❌ client-payload is not valid JSON"; exit 1; }
+          --argjson cp "$CLIENT_PAYLOAD" \
+          '{event_type: $et, client_payload: $cp}') \
+          || { echo "❌ Failed to create payload"; exit 1; }
         # Make the API call
         RESPONSE=$(curl --fail-with-body -s -w "\n%{http_code}" -X POST \
           -H "Authorization: Bearer ${{ inputs.github-token }}" \
