@@ -17,7 +17,7 @@ on:
   #     - completed
 
 env:
-  GH_PAT: ${{ secrets.ORG_RELEASE_PAT }}
+  GH_PAT: ${{ secrets.PAT_TOKEN }}
 
 jobs:
   release:
@@ -41,14 +41,14 @@ jobs:
           fetch-depth: 0
           # A PAT is required here to allow this workflow to trigger the Docker workflow.
           # The default GITHUB_TOKEN does not have sufficient permissions.
-          token: ${{ secrets.ORG_RELEASE_PAT }}
+          token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-bun
 
       - name: Release with semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.ORG_RELEASE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           NPM_TOKEN: dummy  # Not publishing to NPM, only creating GitHub releases
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
