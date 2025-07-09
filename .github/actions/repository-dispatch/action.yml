@@ -64,8 +64,8 @@ runs:
         set -eo pipefail
         PAYLOAD=$(jq -c --exit-status \
           --arg et "${{ inputs.event-type }}" \
-          --argjson cp '${{ inputs.client-payload }}' \
-          '{event_type: $et, client_payload: $cp}') \
+          --arg cp '${{ inputs.client-payload }}' \
+          '{event_type: $et, client_payload: ($cp | fromjson)}') \
           || { echo "❌ client-payload is not valid JSON"; exit 1; }
         # Make the API call
         RESPONSE=$(curl --fail-with-body -s -w "\n%{http_code}" -X POST \
