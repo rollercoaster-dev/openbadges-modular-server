@@ -658,6 +658,24 @@ export function createVersionedRouter(
       const id = c.req.param('id');
       const result = await assertionController.getAssertionById(id, version);
       if (!result) {
+        // Check if the credential exists but is revoked
+        const revocationStatus =
+          await assertionController.checkAssertionRevocationStatus(id);
+        if (revocationStatus.exists && revocationStatus.revoked) {
+          // Return 410 Gone for revoked credentials (Open Badges compliance)
+          return c.json(
+            {
+              error: 'Credential has been revoked',
+              code: 'CREDENTIAL_REVOKED',
+              details: {
+                id,
+                revocationReason:
+                  revocationStatus.revocationReason || 'No reason provided',
+              },
+            },
+            410
+          );
+        }
         return sendNotFoundError(c, 'Credential', {
           endpoint: 'GET /credentials/:id',
           id,
@@ -681,6 +699,24 @@ export function createVersionedRouter(
         const id = c.req.param('id');
         const result = await assertionController.getAssertionById(id, version);
         if (!result) {
+          // Check if the assertion exists but is revoked
+          const revocationStatus =
+            await assertionController.checkAssertionRevocationStatus(id);
+          if (revocationStatus.exists && revocationStatus.revoked) {
+            // Return 410 Gone for revoked assertions (Open Badges compliance)
+            return c.json(
+              {
+                error: 'Assertion has been revoked',
+                code: 'ASSERTION_REVOKED',
+                details: {
+                  id,
+                  revocationReason:
+                    revocationStatus.revocationReason || 'No reason provided',
+                },
+              },
+              410
+            );
+          }
           return sendNotFoundError(c, 'Assertion', {
             endpoint: 'GET /assertions/:id',
             id,
