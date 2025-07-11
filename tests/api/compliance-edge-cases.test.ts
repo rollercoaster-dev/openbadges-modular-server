@@ -201,7 +201,7 @@ describe('Open Badges Compliance Edge Cases', () => {
           name: 'Valid Test Badge',
           description: 'A valid test badge for assertion tests',
           image: 'https://example.com/badge.png',
-          criteria: 'https://example.com/criteria',
+          criteria: { id: 'https://example.com/criteria' },
           issuer: createdResources.issuerId,
         }),
       });
