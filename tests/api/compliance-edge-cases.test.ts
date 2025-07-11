@@ -210,7 +210,7 @@ describe('Open Badges Compliance Edge Cases', () => {
       createdResources.badgeClassId = badgeClass.id;
     });
 
-    it('should return 404 when creating assertion with invalid badgeClassId', async () => {
+    it('should return 400 when creating assertion with invalid badgeClassId', async () => {
       const invalidBadgeClassId =
         'urn:uuid:00000000-0000-4000-a000-000000000999';
       const response = await fetch(`${API_URL}/v3/credentials`, {
@@ -390,8 +390,9 @@ describe('Open Badges Compliance Edge Cases', () => {
         }
       );
 
-      // For now, we'll accept that foreign key constraints may not be enforced
-      // This is a known limitation that doesn't affect Open Badges compliance
+      // The response depends on database configuration:
+      // - 400: Foreign key constraints are enforced (preferred)
+      // - 204: Constraints not enforced (acceptable for current implementation)
       expect([204, 400]).toContain(deleteResponse.status);
 
       if (deleteResponse.status === 400) {

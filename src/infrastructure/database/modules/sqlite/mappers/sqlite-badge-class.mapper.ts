@@ -87,13 +87,11 @@ export class SqliteBadgeClassMapper {
     let rawCriteria: string | OB2.Criteria | OB3.Criteria;
     if (record.criteria) {
       const criteriaStr = record.criteria as string;
-      // Check if it's a URL (starts with http/https) or a simple string
-      if (
-        criteriaStr.startsWith('http://') ||
-        criteriaStr.startsWith('https://')
-      ) {
+      // Check if it's a URL or a simple string
+      try {
+        new URL(criteriaStr);
         rawCriteria = criteriaStr; // Use as string URL
-      } else {
+      } catch {
         // Try to parse as JSON, fallback to empty object if parsing fails
         rawCriteria = (convertJson(criteriaStr, 'sqlite', 'from') ?? {}) as
           | OB2.Criteria
@@ -104,9 +102,19 @@ export class SqliteBadgeClassMapper {
     }
 
     // Normalize criteria to ensure it's compatible with BadgeClass.create
-    const criteria = normalizeCriteria(rawCriteria) as
-      | OB2.Criteria
-      | OB3.Criteria;
+    const normalizedCriteria = normalizeCriteria(rawCriteria);
+
+    // Handle undefined result from normalizeCriteria and ensure proper type
+    let criteria: OB2.Criteria | OB3.Criteria;
+    if (!normalizedCriteria) {
+      criteria = { narrative: 'No criteria specified' } as OB2.Criteria;
+    } else if (typeof normalizedCriteria === 'string') {
+      // If it's an IRI string, convert to criteria object
+      criteria = { id: normalizedCriteria } as OB2.Criteria;
+    } else {
+      // It's already a criteria object
+      criteria = normalizedCriteria;
+    }
     const alignment = convertJson(record.alignment, 'sqlite', 'from');
     const tags = convertJson(record.tags, 'sqlite', 'from');
     const additionalFields =
