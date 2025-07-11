@@ -10,12 +10,13 @@ import {
   Related,
   EndorsementCredential,
 } from '@domains/badgeClass/badgeClass.entity';
-import { Shared, OB2 } from 'openbadges-types';
+import { Shared, OB2, OB3 } from 'openbadges-types';
 import {
   convertJson,
   convertTimestamp,
   convertUuid,
 } from '@infrastructure/database/utils/type-conversion';
+import { normalizeCriteria } from '@utils/types/type-guards';
 
 /**
  * Standard properties of a BadgeClass entity that should be excluded from additionalFields
@@ -81,8 +82,31 @@ export class SqliteBadgeClassMapper {
     const name = (record.name as string) ?? '';
     const description = (record.description as string) ?? '';
     const image = record.image; // Let BadgeClass.create handle IRI | OB3ImageObject
-    // Convert JSON text, providing defaults for notNull (criteria)
-    const criteria = convertJson(record.criteria, 'sqlite', 'from') ?? {};
+
+    // Handle criteria - can be either a string URL or a JSON object
+    let rawCriteria: string | OB2.Criteria | OB3.Criteria;
+    if (record.criteria) {
+      const criteriaStr = record.criteria as string;
+      // Check if it's a URL (starts with http/https) or a simple string
+      if (
+        criteriaStr.startsWith('http://') ||
+        criteriaStr.startsWith('https://')
+      ) {
+        rawCriteria = criteriaStr; // Use as string URL
+      } else {
+        // Try to parse as JSON, fallback to empty object if parsing fails
+        rawCriteria = (convertJson(criteriaStr, 'sqlite', 'from') ?? {}) as
+          | OB2.Criteria
+          | OB3.Criteria;
+      }
+    } else {
+      rawCriteria = {} as OB2.Criteria;
+    }
+
+    // Normalize criteria to ensure it's compatible with BadgeClass.create
+    const criteria = normalizeCriteria(rawCriteria) as
+      | OB2.Criteria
+      | OB3.Criteria;
     const alignment = convertJson(record.alignment, 'sqlite', 'from');
     const tags = convertJson(record.tags, 'sqlite', 'from');
     const additionalFields =
@@ -182,8 +206,18 @@ export class SqliteBadgeClassMapper {
             'id' in entity.image
           ? entity.image.id
           : '', // Default empty string for notNull image field
-      criteria: (convertJson(entity.criteria ?? {}, 'sqlite', 'to') ??
-        '{}') as string,
+      criteria: (() => {
+        // Handle criteria - can be either a string URL or an object
+        if (!entity.criteria) {
+          return '{}';
+        }
+        if (typeof entity.criteria === 'string') {
+          // If it's a string URL, store it directly
+          return entity.criteria;
+        }
+        // If it's an object, convert to JSON
+        return (convertJson(entity.criteria, 'sqlite', 'to') ?? '{}') as string;
+      })(),
       alignment: convertJson(entity.alignment, 'sqlite', 'to') as string | null,
       tags: convertJson(entity.tags, 'sqlite', 'to') as string | null,
       additionalFields:

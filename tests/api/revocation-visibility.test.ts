@@ -11,6 +11,7 @@ import {
   getAvailablePort,
   releasePort,
 } from '../e2e/helpers/port-manager.helper';
+import { resetDatabase } from '../e2e/helpers/database-reset.helper';
 import { logger } from '@/utils/logging/logger.service';
 
 describe('Revocation Visibility Compliance', () => {
@@ -27,16 +28,16 @@ describe('Revocation Visibility Compliance', () => {
   } = {};
 
   beforeAll(async () => {
+    // Reset database to ensure clean state
+    await resetDatabase();
+
     // Get available port
     TEST_PORT = await getAvailablePort();
     API_URL = `http://127.0.0.1:${TEST_PORT}`;
 
     // Setup test app
-    const { app } = await setupTestApp();
-    server = Bun.serve({
-      port: TEST_PORT,
-      fetch: app.fetch,
-    });
+    const { app: _app, server: testServer } = await setupTestApp(TEST_PORT);
+    server = testServer;
 
     logger.info('Test server started', { port: TEST_PORT, url: API_URL });
 
