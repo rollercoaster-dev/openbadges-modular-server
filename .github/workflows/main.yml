@@ -340,8 +340,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Configure git to use GitHub App token for authentication
-          # This ensures semantic-release git plugin uses the correct token
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          # Use direct remote URL setting instead of insteadOf for more reliable push operations
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
 
       - name: Release
         id: semantic
@@ -358,9 +358,13 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           echo "Actor: ${{ github.actor }}"
 
-          # Debug git configuration (excluding remote URL to avoid exposing PAT)
+          # Debug git configuration
           echo "Git configuration:"
           git config --list | grep -E "user\." || true
+          echo "Git remote configuration:"
+          git remote -v | sed 's/x-access-token:[^@]*@/x-access-token:***@/g' || true
+          echo "Testing git authentication:"
+          git ls-remote origin HEAD || echo "Git authentication test failed"
 
           # Check if we have commits to release
           echo "Recent commits:"
