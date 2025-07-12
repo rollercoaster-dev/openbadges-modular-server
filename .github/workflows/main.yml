@@ -332,16 +332,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Mask GitHub App token
+        run: echo "::add-mask::${{ steps.app-token.outputs.token }}"
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Use GitHub App token for git push - bypasses branch protection for release commits
-          # Keep the remote URL token-free to avoid accidental leakage in debug output
-          git remote set-url origin https://github.com/${{ github.repository }}.git
-          export GIT_ASKPASS=$(mktemp)
-          echo "echo '${{ steps.app-token.outputs.token }}'" > $GIT_ASKPASS
-          chmod +x $GIT_ASKPASS
+          # Configure git to use GitHub App token for authentication
+          # This ensures semantic-release git plugin uses the correct token
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Release
         id: semantic
