@@ -61,3 +61,4 @@ test-keys-jwk/
 
 # Cursor editor cache
 .cursor/working/agent/memory/
+failed_release_logs.txt
