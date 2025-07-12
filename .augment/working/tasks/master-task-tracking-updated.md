@@ -80,7 +80,7 @@ The following tasks form the critical path for MVP completion:
 
 ## Task Dependencies Visualization
 
-```text
+```
 ✅ 01 API Router Integration ─┐
                               │
 ✅ 02 Assertion Signing ──────┼─┐

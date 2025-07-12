@@ -19,24 +19,24 @@ This tool provides options for:
 ## Current Situation
 
 ### Version Status
-- **Current Production Version**: `1.0.9` (released June 7, 2025)
-- **Latest Tag**: `v1.0.9`
-- **Failed Release**: `v1.0.10` (attempted but failed during git push)
-- **Next Expected**: `1.0.10` or `1.1.0-beta.1`
+- **Clean Slate Reset**: All previous releases and tags have been wiped
+- **Current Version**: `1.0.0-beta.1` (fresh beta release cycle)
+- **Latest Tag**: None (clean start)
+- **Next Expected**: `1.0.0-beta.1` (first beta release)
 
 ### What Happened
-The release workflow failed when trying to create `v1.0.10` due to git push conflicts. The improved release workflow now handles this automatically, but we need to decide on version strategy going forward.
+The CI/CD pipeline was failing because semantic-release wasn't updating package.json versions due to a missing @semantic-release/npm plugin. A clean slate approach was implemented to resolve all version conflicts and establish a proper beta release workflow.
 
 ## Version Management Strategies
 
-### Option 1: Continue with Patch Releases
-**Best for**: Bug fixes and minor improvements
+### Option 1: Continue with Beta Releases
+**Best for**: Feature development and testing
 
 ```bash
-# Current: 1.0.9
-# Next: 1.0.10, 1.0.11, etc.
+# Current: 1.0.0-beta.1
+# Next: 1.0.0-beta.2, 1.0.0-beta.3, etc.
 bun run version:manage
-# Select "Prepare for next release" → "Patch"
+# Select "Prepare for next release" → "Prerelease"
 ```
 
 ### Option 2: Move to Beta Development
@@ -82,9 +82,8 @@ If you need to manually clean up:
 git tag -l | tail -5
 git log --oneline -5
 
-# Delete failed tag (if it exists)
-git tag -d v1.0.10
-git push origin :refs/tags/v1.0.10
+# Clean slate has been implemented - no tags to delete
+# All previous releases and tags have been wiped
 
 # Reset version in package.json
 # Edit package.json manually or use version:manage tool
@@ -144,11 +143,11 @@ git push origin :refs/tags/v1.0.10
 
 ### Examples
 ```
-1.0.9          # Current production
-1.0.10         # Next patch (bug fixes)
+1.0.0-beta.1   # Current beta (clean slate start)
+1.0.0-beta.2   # Next beta iteration
+1.0.0          # First production release (promote from beta)
+1.0.1          # Next patch (bug fixes)
 1.1.0-beta.1   # Next minor beta (new features)
-1.1.0-beta.2   # Beta iteration
-1.1.0          # Minor release (promote from beta)
 2.0.0-alpha.1  # Major version alpha (breaking changes)
 ```
 
@@ -217,9 +216,9 @@ git show v1.0.9
 bun run version:manage
 # Select "Delete a tag"
 
-# Or manually
-git tag -d v1.0.10              # Delete local
-git push origin :refs/tags/v1.0.10  # Delete remote
+# Or manually (example for future reference)
+git tag -d v1.0.0-beta.1              # Delete local
+git push origin :refs/tags/v1.0.0-beta.1  # Delete remote
 ```
 
 ## Best Practices
