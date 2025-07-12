@@ -332,6 +332,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Mask GitHub App token
+        run: echo "::add-mask::${{ steps.app-token.outputs.token }}"
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
