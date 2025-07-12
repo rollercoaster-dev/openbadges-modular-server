@@ -348,9 +348,9 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           echo "Actor: ${{ github.actor }}"
 
-          # Debug git configuration
+          # Debug git configuration (excluding remote URL to avoid exposing PAT)
           echo "Git configuration:"
-          git config --list | grep -E "(user\.|remote\.)" || true
+          git config --list | grep -E "user\." || true
 
           # Check if we have commits to release
           echo "Recent commits:"
