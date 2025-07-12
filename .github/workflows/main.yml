@@ -337,7 +337,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Use GitHub App token for git push - bypasses branch protection for release commits
-          git remote set-url origin https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git
+          # Keep the remote URL token-free to avoid accidental leakage in debug output
+          git remote set-url origin https://github.com/${{ github.repository }}.git
+          export GIT_ASKPASS=$(mktemp)
+          echo "echo '${{ steps.app-token.outputs.token }}'" > $GIT_ASKPASS
+          chmod +x $GIT_ASKPASS
 
       - name: Release
         id: semantic
@@ -412,7 +416,7 @@ jobs:
           echo "Re-enabling admin enforcement for branch protection"
           curl -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github.v3+json" \
+            -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/branches/main/protection/enforce_admins" \
             -d '{"enabled": true}' || echo "Failed to re-enable admin enforcement (may already be enabled)"
 
