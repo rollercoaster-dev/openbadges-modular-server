@@ -309,9 +309,9 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-          # Use GITHUB_TOKEN - has contents: write permission for this job
-          token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true
+          # Use PAT_TOKEN for checkout to prevent lingering GITHUB_TOKEN headers
+          token: ${{ secrets.PAT_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -336,8 +336,8 @@ jobs:
       - name: Release
         id: semantic
         env:
-          # Use GITHUB_TOKEN - has contents: write permission for git operations
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT_TOKEN for semantic-release - bypasses branch protection for release commits
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           NPM_TOKEN: dummy
         run: |
           set -euo pipefail  # Exit on error, undefined vars, pipe failures
