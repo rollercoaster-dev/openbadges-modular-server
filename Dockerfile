@@ -59,6 +59,7 @@ EXPOSE 3000
 
 # Create a script to run migrations and start the app
 RUN echo '#!/bin/sh\n\
+set -e\n\
 echo "Running migrations..."\n\
 bun run dist/migrations/run.js\n\
 echo "Starting application..."\n\
