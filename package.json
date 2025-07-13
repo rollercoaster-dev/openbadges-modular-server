@@ -43,6 +43,7 @@
     "release:patch": "semantic-release --no-ci --extends ./release-branch-patch.json",
     "release:patch:manual": "bun run scripts/manual-patch-release.js",
     "build": "bun build src/index.ts --target bun --outdir dist",
+    "build:migrations": "bun build src/infrastructure/database/migrations/run.ts --target bun --outdir dist/migrations --bundle",
     "build:npm": "echo 'Building for npm...' && mkdir -p dist && cp package.json dist/",
     "prepare": "husky",
     "db:test:pg:start": "docker compose -f docker-compose.test.yml up -d --wait",
