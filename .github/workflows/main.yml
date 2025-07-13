@@ -339,19 +339,19 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Configure git to use GitHub App token for authentication
-          # Use direct remote URL setting instead of insteadOf for more reliable push operations
-          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
-          # Disable ALL git hooks during release to avoid running tests again
-          # Tests have already passed in previous CI stages
-          git config --global core.hooksPath /dev/null
-          # Also disable hooks at the local repository level for extra safety
-          git config --local core.hooksPath /dev/null
-          # Remove the .husky directory temporarily to prevent any hook execution
-          if [ -d ".husky" ]; then
-            mv .husky .husky.backup
-            echo "Temporarily moved .husky to .husky.backup"
-          fi
+          # Configure git to use GitHub App token for authentication via HTTP header (more secure)
+          git remote set-url origin "https://github.com/${{ github.repository }}.git"
+          git config --global http.https://github.com/.extraheader "Authorization: Bearer ${{ steps.app-token.outputs.token }}"
+
+      - name: Relax branch protection for release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "Disabling strict status checks to allow release commits"
+          # NOTE: Status check names must match the job names in this workflow
+          # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
+          gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
+            --field required_status_checks='{"strict":false,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}'
 
       - name: Release
         id: semantic
@@ -424,27 +424,16 @@ jobs:
 
           echo "Release process completed successfully"
 
-      - name: Restore Git Hooks
-        if: always()
-        run: |
-          # Restore .husky directory if it was backed up
-          if [ -d ".husky.backup" ]; then
-            mv .husky.backup .husky
-            echo "Restored .husky from backup"
-          fi
-          # Reset git hook configuration
-          git config --global --unset core.hooksPath || true
-          git config --local --unset core.hooksPath || true
-
-      - name: Re-enable admin enforcement
+      - name: Restore branch protection
         if: always()  # Run even if previous steps failed
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          echo "Re-enabling admin enforcement for branch protection"
-          curl -X POST \
-            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/branches/main/protection/enforce_admins" \
-            -d '{"enabled": true}' || echo "Failed to re-enable admin enforcement (may already be enabled)"
+          echo "Restoring strict status checks for branch protection"
+          # NOTE: Status check names must match the job names in this workflow  
+          # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
+          gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
+            --field required_status_checks='{"strict":true,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' || echo "Failed to restore branch protection - manual intervention may be required"
 
   # Stage 7: Docker Build & Push (After successful release)
   docker:
