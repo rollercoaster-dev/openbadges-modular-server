@@ -26,8 +26,9 @@ RUN bun install
 # Copy source code
 COPY . .
 
-# Build the application
-RUN bun run build
+# Build the application and migrations
+RUN bun run build && \
+    bun run build:migrations
 
 # Production image
 FROM oven/bun:1-slim
@@ -45,9 +46,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
-# Copy only necessary source files for runtime (migrations and config)
-COPY --from=builder /app/src/config ./src/config
-COPY --from=builder /app/src/infrastructure/database/migrations ./src/infrastructure/database/migrations
 
 # Copy scripts
 COPY docker/scripts/health-check.sh /app/health-check.sh
@@ -61,8 +59,9 @@ EXPOSE 3000
 
 # Create a script to run migrations and start the app
 RUN echo '#!/bin/sh\n\
+set -e\n\
 echo "Running migrations..."\n\
-bun run db:migrate\n\
+bun run dist/migrations/run.js\n\
 echo "Starting application..."\n\
 exec bun run dist/index.js' > /app/start.sh && chmod +x /app/start.sh
 
