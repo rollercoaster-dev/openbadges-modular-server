@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/rollercoaster-dev/openbadges-modular-server/compare/v1.0.0...v1.0.1) (2025-07-13)
+
+
+### Bug Fixes
+
+* **docker:** resolve TypeScript path mapping issues in migrations ([#89](https://github.com/rollercoaster-dev/openbadges-modular-server/issues/89)) ([7e28e21](https://github.com/rollercoaster-dev/openbadges-modular-server/commit/7e28e2111e59b0536b0b4f173d8608bcf422276f))
+
 # 1.0.0 (2025-07-13)
 
 
