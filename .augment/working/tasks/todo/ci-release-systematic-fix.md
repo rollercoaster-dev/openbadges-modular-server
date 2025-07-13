@@ -480,7 +480,7 @@ git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${REPO}.gi
 
 ### **Definitive Root Cause Identified**
 **Error Signature** (consistent across both runs):
-```
+```bash
 remote: error: GH006: Protected branch update failed for refs/heads/main.
 remote: - 4 of 4 required status checks are expected.
  ! [remote rejected] HEAD -> main (protected branch hook declined)

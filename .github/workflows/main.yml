@@ -339,15 +339,17 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Configure git to use GitHub App token for authentication
-          # Use direct remote URL setting instead of insteadOf for more reliable push operations
-          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
+          # Configure git to use GitHub App token for authentication via HTTP header (more secure)
+          git remote set-url origin "https://github.com/${{ github.repository }}.git"
+          git config --global http.https://github.com/.extraheader "Authorization: Bearer ${{ steps.app-token.outputs.token }}"
 
       - name: Relax branch protection for release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           echo "Disabling strict status checks to allow release commits"
+          # NOTE: Status check names must match the job names in this workflow
+          # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
           gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
             --field required_status_checks='{"strict":false,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}'
 
@@ -428,6 +430,8 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           echo "Restoring strict status checks for branch protection"
+          # NOTE: Status check names must match the job names in this workflow  
+          # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
           gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
             --field required_status_checks='{"strict":true,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' || echo "Failed to restore branch protection - manual intervention may be required"
 
