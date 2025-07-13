@@ -351,7 +351,10 @@ jobs:
           # NOTE: Status check names must match the job names in this workflow
           # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
           gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
-            --field required_status_checks='{"strict":false,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}'
+            --field required_status_checks='{"strict":false,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' \
+            --field enforce_admins=false \
+            --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true,"require_code_owner_reviews":false}' \
+            --field restrictions=null
 
       - name: Release
         id: semantic
@@ -433,7 +436,10 @@ jobs:
           # NOTE: Status check names must match the job names in this workflow  
           # Keep in sync with job labels: "🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"
           gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
-            --field required_status_checks='{"strict":true,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' || echo "Failed to restore branch protection - manual intervention may be required"
+            --field required_status_checks='{"strict":true,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' \
+            --field enforce_admins=false \
+            --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true,"require_code_owner_reviews":false}' \
+            --field restrictions=null || echo "Failed to restore branch protection - manual intervention may be required"
 
   # Stage 7: Docker Build & Push (After successful release)
   docker:
