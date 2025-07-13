@@ -342,6 +342,16 @@ jobs:
           # Configure git to use GitHub App token for authentication
           # Use direct remote URL setting instead of insteadOf for more reliable push operations
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
+          # Disable ALL git hooks during release to avoid running tests again
+          # Tests have already passed in previous CI stages
+          git config --global core.hooksPath /dev/null
+          # Also disable hooks at the local repository level for extra safety
+          git config --local core.hooksPath /dev/null
+          # Remove the .husky directory temporarily to prevent any hook execution
+          if [ -d ".husky" ]; then
+            mv .husky .husky.backup
+            echo "Temporarily moved .husky to .husky.backup"
+          fi
 
       - name: Release
         id: semantic
@@ -413,6 +423,18 @@ jobs:
           fi
 
           echo "Release process completed successfully"
+
+      - name: Restore Git Hooks
+        if: always()
+        run: |
+          # Restore .husky directory if it was backed up
+          if [ -d ".husky.backup" ]; then
+            mv .husky.backup .husky
+            echo "Restored .husky from backup"
+          fi
+          # Reset git hook configuration
+          git config --global --unset core.hooksPath || true
+          git config --local --unset core.hooksPath || true
 
       - name: Re-enable admin enforcement
         if: always()  # Run even if previous steps failed
