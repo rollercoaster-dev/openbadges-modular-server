@@ -339,6 +339,8 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Ensure no stale header-based auth remains
+          git config --global --unset-all http."https://github.com/".extraheader || true
           # Configure git to use GitHub App token directly in URL for semantic-release compatibility
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
 
@@ -356,7 +358,8 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
-
+            "required_pull_request_reviews": null,
+            "restrictions": null
           }
           EOF
           gh api --method PUT repos/${{ github.repository }}/branches/main/protection --input branch_protection.json
@@ -448,6 +451,7 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
+            "required_pull_request_reviews": null,
             "restrictions": null
           }
           EOF
