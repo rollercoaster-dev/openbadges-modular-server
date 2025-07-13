@@ -356,11 +356,7 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
-            "required_pull_request_reviews": {
-              "required_approving_review_count": 1,
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": false
-            },
+            "required_pull_request_reviews": null,
             "restrictions": null
           }
           EOF
@@ -453,11 +449,7 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
-            "required_pull_request_reviews": {
-              "required_approving_review_count": 1,
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": false
-            },
+            "required_pull_request_reviews": null,
             "restrictions": null
           }
           EOF
