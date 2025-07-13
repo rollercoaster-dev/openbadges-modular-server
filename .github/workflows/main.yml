@@ -339,9 +339,10 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Configure git to use GitHub App token for authentication via HTTP header (more secure)
-          git remote set-url origin "https://github.com/${{ github.repository }}.git"
-          git config --global http.https://github.com/.extraheader "Authorization: Bearer ${{ steps.app-token.outputs.token }}"
+          # Ensure no stale header-based auth remains
+          git config --global --unset-all http."https://github.com/".extraheader || true
+          # Configure git to use GitHub App token directly in URL for semantic-release compatibility
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
 
       - name: Relax branch protection for release
         env:
@@ -357,11 +358,7 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
-            "required_pull_request_reviews": {
-              "required_approving_review_count": 1,
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": false
-            },
+            "required_pull_request_reviews": null,
             "restrictions": null
           }
           EOF
@@ -454,11 +451,7 @@ jobs:
               "contexts": ["🔍 Lint & Type Check", "🗄️ SQLite Tests", "🐘 PostgreSQL Tests", "🏗️ Build Application"]
             },
             "enforce_admins": false,
-            "required_pull_request_reviews": {
-              "required_approving_review_count": 1,
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": false
-            },
+            "required_pull_request_reviews": null,
             "restrictions": null
           }
           EOF
