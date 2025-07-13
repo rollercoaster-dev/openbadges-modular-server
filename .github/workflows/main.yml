@@ -343,6 +343,14 @@ jobs:
           # Use direct remote URL setting instead of insteadOf for more reliable push operations
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
 
+      - name: Relax branch protection for release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "Disabling strict status checks to allow release commits"
+          gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
+            --field required_status_checks='{"strict":false,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}'
+
       - name: Release
         id: semantic
         env:
@@ -414,15 +422,14 @@ jobs:
 
           echo "Release process completed successfully"
 
-      - name: Re-enable admin enforcement
+      - name: Restore branch protection
         if: always()  # Run even if previous steps failed
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          echo "Re-enabling admin enforcement for branch protection"
-          curl -X POST \
-            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/branches/main/protection/enforce_admins" \
-            -d '{"enabled": true}' || echo "Failed to re-enable admin enforcement (may already be enabled)"
+          echo "Restoring strict status checks for branch protection"
+          gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
+            --field required_status_checks='{"strict":true,"contexts":["🔍 Lint & Type Check","🗄️ SQLite Tests","🐘 PostgreSQL Tests","🏗️ Build Application"]}' || echo "Failed to restore branch protection - manual intervention may be required"
 
   # Stage 7: Docker Build & Push (After successful release)
   docker:
