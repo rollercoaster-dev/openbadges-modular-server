@@ -154,8 +154,8 @@ export const config = {
       'http://localhost:3000',
     // Public paths (no authentication required)
     publicPaths: (
-      process.env['AUTH_PUBLIC_PATHS'] || '/docs,/swagger,/health,/public'
-    ).split(','),
+      process.env['AUTH_PUBLIC_PATHS'] || '/docs,/swagger,/swagger-ui*,/health,/public'
+    ).split(',').map(path => path.trim()),
     // Admin user configuration
     adminUser: {
       enabled: process.env['AUTH_ADMIN_USER_ENABLED'] === 'true',

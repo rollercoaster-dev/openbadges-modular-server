@@ -31,6 +31,7 @@ import {
   EndorsementCredential,
 } from '../domains/badgeClass/badgeClass.entity';
 import { toIRI } from '../utils/types/iri-utils';
+import { logger } from '../utils/logging/logger.service';
 import { OB3, Shared } from 'openbadges-types';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
@@ -1469,6 +1470,49 @@ export async function createApiRouter(
   const staticAssetsRouter = createStaticAssetsRouter();
   router.route('/assets', staticAssetsRouter);
 
+  // Serve Swagger UI static assets
+  router.get('/swagger-ui/*', async (c) => {
+    const path = c.req.path.replace('/swagger-ui/', '');
+    const filePath = `./node_modules/swagger-ui-dist/${path}`;
+    
+    try {
+      const file = Bun.file(filePath);
+      
+      if (await file.exists()) {
+        // Set appropriate content type based on file extension
+        const ext = path.split('.').pop()?.toLowerCase();
+        let contentType = 'text/plain';
+        
+        switch (ext) {
+          case 'js':
+            contentType = 'text/javascript';
+            break;
+          case 'css':
+            contentType = 'text/css';
+            break;
+          case 'map':
+            contentType = 'application/json';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'html':
+            contentType = 'text/html';
+            break;
+        }
+        
+        c.header('Content-Type', contentType);
+        c.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+        
+        return c.body(await file.arrayBuffer());
+      }
+    } catch (error) {
+      logger.error('Error serving swagger-ui asset', { path, error });
+    }
+    
+    return c.notFound();
+  });
+
   // Add OpenAPI documentation
   router.get('/swagger', (c) => c.json(openApiConfig));
 
@@ -1478,11 +1522,7 @@ export async function createApiRouter(
     c.header('Content-Type', 'text/html');
     c.header(
       'Content-Security-Policy',
-      "default-src 'self'; \
-  script-src 'self' https://unpkg.com; \
-  style-src  'self' https://unpkg.com 'unsafe-inline'; \
-  img-src    'self' data: https://unpkg.com; \
-  connect-src 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:3000; font-src 'self'; object-src 'none'; frame-src 'none'; form-action 'self'"
     );
 
     // Return the Swagger UI HTML
@@ -1494,27 +1534,75 @@ export async function createApiRouter(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Open Badges API Documentation" />
   <title>Open Badges API - Swagger UI</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+  <link rel="stylesheet" href="/swagger-ui/swagger-ui.css" />
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
-  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js" crossorigin></script>
+  <script src="/swagger-ui/swagger-ui-bundle.js" onload="console.log('swagger-ui-bundle.js loaded'); checkSwaggerUI();" onerror="console.error('Failed to load swagger-ui-bundle.js');"></script>
+  <script src="/swagger-ui/swagger-ui-standalone-preset.js" onload="console.log('swagger-ui-standalone-preset.js loaded'); checkSwaggerUI();" onerror="console.error('Failed to load swagger-ui-standalone-preset.js');"></script>
   <script>
-    window.onload = () => {
-      window.ui = SwaggerUIBundle({
-        url: '/swagger',
-        dom_id: '#swagger-ui',
-        presets: [
-          SwaggerUIBundle.presets.apis,
-          SwaggerUIStandalonePreset
-        ],
-        layout: "StandaloneLayout",
-        deepLinking: true,
-        showExtensions: true,
-        showCommonExtensions: true
-      });
-    };
+    let bundleLoaded = false;
+    let presetLoaded = false;
+    
+    function checkSwaggerUI() {
+      console.log('checkSwaggerUI called');
+      console.log('SwaggerUIBundle:', typeof SwaggerUIBundle);
+      console.log('SwaggerUIStandalonePreset:', typeof SwaggerUIStandalonePreset);
+      
+      if (typeof SwaggerUIBundle !== 'undefined' && typeof SwaggerUIStandalonePreset !== 'undefined') {
+        console.log('Both Swagger UI libraries are available, initializing...');
+        initializeSwaggerUI();
+      } else {
+        console.log('Still waiting for libraries...');
+      }
+    }
+    
+    window.addEventListener('load', function() {
+      console.log('Page loaded event fired');
+      // Give scripts a moment to execute if they haven't already
+      setTimeout(checkSwaggerUI, 100);
+    });
+
+    function initializeSwaggerUI() {
+      try {
+        console.log('Initializing Swagger UI...');
+        window.ui = SwaggerUIBundle({
+          url: '/swagger',
+          dom_id: '#swagger-ui',
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIStandalonePreset
+          ],
+          layout: "StandaloneLayout",
+          deepLinking: true,
+          showExtensions: true,
+          showCommonExtensions: true,
+          onComplete: () => {
+            console.log('Swagger UI loaded successfully');
+          },
+          onFailure: (error) => {
+            console.error('Swagger UI failed to load:', error);
+            document.getElementById('swagger-ui').innerHTML = 
+              '<div style="padding: 20px; color: red; font-family: Arial, sans-serif;">' +
+              '<h2>Error loading Swagger UI</h2>' +
+              '<p>The Swagger UI failed to initialize properly.</p>' +
+              '<p>Error: ' + (error?.message || error || 'Unknown error') + '</p>' +
+              '<p>Check the browser console for more details.</p>' +
+              '</div>';
+          }
+        });
+        console.log('Swagger UI initialization completed');
+      } catch (error) {
+        console.error('Error initializing Swagger UI:', error);
+        document.getElementById('swagger-ui').innerHTML = 
+          '<div style="padding: 20px; color: red; font-family: Arial, sans-serif;">' +
+          '<h2>Error initializing Swagger UI</h2>' +
+          '<p>An error occurred while setting up the documentation interface.</p>' +
+          '<p>Error: ' + error.message + '</p>' +
+          '<p>Check the browser console for more details.</p>' +
+          '</div>';
+      }
+    }
   </script>
 </body>
 </html>
