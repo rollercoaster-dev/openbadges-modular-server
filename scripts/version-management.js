@@ -153,7 +153,7 @@ async function setBetaVersion() {
     default: suggestedBeta,
     validate: (input) => {
       if (!/^\d+\.\d+\.\d+-(alpha|beta|rc)\.\d+$/.test(input)) {
-        return 'Version must follow semver prerelease format (e.g., 1.0.10-beta.1)';
+        return 'Version must follow semver prerelease format (e.g., 1.0.0-beta.1)';
       }
       return true;
     }

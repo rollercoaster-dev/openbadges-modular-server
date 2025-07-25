@@ -354,16 +354,26 @@ export class AssertionController {
    * Gets an assertion by ID
    * @param id The assertion ID
    * @param version The badge version to use for the response
-   * @returns The assertion with the specified ID
+   * @param includeRevoked Whether to include revoked assertions in response (default: false for compliance)
+   * @returns The assertion with the specified ID, or null if not found or revoked
    */
   async getAssertionById(
     id: string,
-    version: BadgeVersion = BadgeVersion.V3
+    version: BadgeVersion = BadgeVersion.V3,
+    includeRevoked: boolean = false
   ): Promise<OB2.Assertion | OB3.VerifiableCredential | null> {
     const assertion = await this.assertionRepository.findById(
       toIRI(id) as Shared.IRI
     );
     if (!assertion) {
+      return null;
+    }
+
+    // Check if assertion is revoked and handle according to Open Badges compliance
+    if (assertion.revoked && !includeRevoked) {
+      // For Open Badges compliance, revoked assertions should not be accessible
+      // via the standard GET endpoint. Third-party verifiers should use the
+      // verification endpoint to check status.
       return null;
     }
 
@@ -393,6 +403,29 @@ export class AssertionController {
     }
 
     return convertAssertionToJsonLd(assertion, version);
+  }
+
+  /**
+   * Checks if an assertion exists and is revoked
+   * @param id The assertion ID
+   * @returns Object with existence and revocation status
+   */
+  async checkAssertionRevocationStatus(
+    id: string
+  ): Promise<{ exists: boolean; revoked: boolean; revocationReason?: string }> {
+    const assertion = await this.assertionRepository.findById(
+      toIRI(id) as Shared.IRI
+    );
+
+    if (!assertion) {
+      return { exists: false, revoked: false };
+    }
+
+    return {
+      exists: true,
+      revoked: !!assertion.revoked,
+      revocationReason: assertion.revocationReason,
+    };
   }
 
   /**

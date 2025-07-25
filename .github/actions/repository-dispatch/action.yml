@@ -1,0 +1,108 @@
+name: 'Repository Dispatch'
+description: 'Trigger downstream workflows via repository_dispatch using GitHub PAT'
+inputs:
+  github-token:
+    description: 'GitHub Personal Access Token with repo scope'
+    required: true
+  owner:
+    description: 'Repository owner (defaults to current repository owner)'
+    required: false
+    default: ${{ github.repository_owner }}
+  repo:
+    description: 'Repository name (defaults to current repository name)'
+    required: false
+    default: ${{ github.event.repository.name }}
+  event-type:
+    description: 'Event type for the repository dispatch'
+    required: true
+  client-payload:
+    description: 'Optional JSON payload to send with the dispatch (as string)'
+    required: false
+    default: '{}'
+  target-owner:
+    description: 'Target repository owner (if different from source)'
+    required: false
+  target-repo:
+    description: 'Target repository name (if different from source)'
+    required: false
+
+outputs:
+  dispatch-url:
+    description: 'The URL that was called for the dispatch'
+    value: ${{ steps.dispatch.outputs.dispatch-url }}
+  response-status:
+    description: 'HTTP response status code'
+    value: ${{ steps.dispatch.outputs.status }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set target repository
+      shell: bash
+      run: |
+        TARGET_OWNER="${{ inputs.target-owner }}"
+        TARGET_REPO="${{ inputs.target-repo }}"
+        # Use current repo if target not specified
+        if [ -z "$TARGET_OWNER" ]; then
+          TARGET_OWNER="${{ inputs.owner }}"
+        fi
+        if [ -z "$TARGET_REPO" ]; then
+          TARGET_REPO="${{ inputs.repo }}"
+        fi
+        echo "TARGET_OWNER=$TARGET_OWNER" >> $GITHUB_ENV
+        echo "TARGET_REPO=$TARGET_REPO" >> $GITHUB_ENV
+        echo "DISPATCH_URL=https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/dispatches" >> $GITHUB_ENV
+
+    - name: Trigger repository dispatch
+      id: dispatch
+      shell: bash
+      run: |
+        echo "Triggering repository dispatch for $TARGET_OWNER/$TARGET_REPO"
+        echo "Event type: ${{ inputs.event-type }}"
+        echo "Client payload: ${{ inputs.client-payload }}"
+        # Validate & compact payload to guarantee valid JSON
+        set -eo pipefail
+        
+        # First, validate the input is valid JSON
+        CLIENT_PAYLOAD='${{ inputs.client-payload }}'
+        if ! echo "$CLIENT_PAYLOAD" | jq . > /dev/null 2>&1; then
+          echo "❌ client-payload is not valid JSON"
+          exit 1
+        fi
+        
+        # Create the final payload
+        PAYLOAD=$(jq -c --exit-status \
+          --arg et "${{ inputs.event-type }}" \
+          --argjson cp "$CLIENT_PAYLOAD" \
+          '{event_type: $et, client_payload: $cp}') \
+          || { echo "❌ Failed to create payload"; exit 1; }
+        # Make the API call
+        RESPONSE=$(curl --fail-with-body -s -w "\n%{http_code}" -X POST \
+          -H "Authorization: Bearer ${{ inputs.github-token }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "$DISPATCH_URL" \
+          -d "$PAYLOAD")
+        # Extract status code and response body
+        STATUS_CODE=$(echo "$RESPONSE" | tail -n1)
+        RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+        echo "dispatch-url=$DISPATCH_URL" >> $GITHUB_OUTPUT
+        echo "status=$STATUS_CODE" >> $GITHUB_OUTPUT
+        echo "Response status: $STATUS_CODE"
+        # Check if the request was successful
+        if [[ "$STATUS_CODE" =~ ^2[0-9]{2}$ ]]; then
+          echo "✅ Repository dispatch triggered successfully"
+        else
+          echo "❌ Failed to trigger repository dispatch"
+          echo "Response body: $RESPONSE_BODY"
+          exit 1
+        fi
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "## Repository Dispatch Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Target Repository**: $TARGET_OWNER/$TARGET_REPO" >> $GITHUB_STEP_SUMMARY
+        echo "- **Event Type**: ${{ inputs.event-type }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ steps.dispatch.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Dispatch URL**: ${{ steps.dispatch.outputs.dispatch-url }}" >> $GITHUB_STEP_SUMMARY
