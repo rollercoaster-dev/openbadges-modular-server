@@ -41,6 +41,12 @@ const determinePostgresConnectionString = () => {
 };
 
 export const config = {
+  // Environment configuration
+  env: {
+    isProduction: process.env.NODE_ENV === 'production',
+    isDevelopment: process.env.NODE_ENV !== 'production',
+  },
+  
   // Server configuration
   server: {
     port: process.env['PORT'] || 3000,

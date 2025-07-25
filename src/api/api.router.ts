@@ -1523,7 +1523,12 @@ export async function createApiRouter(
         c.header('Content-Type', contentType);
         c.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
         
-        return c.body(await file.arrayBuffer());
+        return new Response(file.stream(), {
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=3600'
+          }
+        });
       }
     } catch (error) {
       logger.error('Error serving swagger-ui asset', { path, error });
@@ -1539,10 +1544,9 @@ export async function createApiRouter(
   router.get('/docs', (c) => {
     // Set custom headers for Swagger UI to work properly
     c.header('Content-Type', 'text/html');
-    c.header(
-      'Content-Security-Policy',
-      `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ${config.openBadges.baseUrl}; font-src 'self'; object-src 'none'; frame-src 'none'; form-action 'self'`
-    );
+    const cspBase = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ${config.openBadges.baseUrl}; font-src 'self'; object-src 'none'; frame-src 'none'; form-action 'self'`;
+    const csp = config.env.isProduction ? `${cspBase}; upgrade-insecure-requests` : cspBase;
+    c.header('Content-Security-Policy', csp);
 
     // Return the Swagger UI HTML
     return c.html(`
