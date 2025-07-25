@@ -29,7 +29,18 @@ The API provides versioned endpoints for both Open Badges 2.0 and 3.0 specificat
 3. **Version Detection**: Automatic detection of badge version from JSON-LD context
 4. **Format Conversion**: Utilities for converting between 2.0 and 3.0 formats
 
-Note: While `/v3/...` endpoints are available, they are currently in development and may not fully implement all Open Badges 3.0 features. See the roadmap for implementation details.
+**Current OB 3.0 Implementation Status (as of version 1.0.1)**:
+- ✅ **Core v3 Endpoints**: All basic CRUD operations for issuers, achievements, and credentials
+- ✅ **v3.0 Compliant Naming**: `/achievements` and `/credentials` endpoints (with legacy `/badge-classes` and `/assertions` deprecated)
+- ✅ **JSON-LD Context**: Updated to use official OB 3.0 context URLs
+- ✅ **Achievement Versioning & Relationships**: Support for versioning and relationship fields
+- ✅ **Multiple Proof Types**: Support for JWT and DataIntegrityProof
+- ✅ **Status Lists**: Bitstring Status List v1.0 implementation for credential status
+- ✅ **Batch Operations**: Batch creation and retrieval of credentials
+- ⚠️ **Partial Implementation**: Some advanced OB 3.0 features are still in development
+- ⚠️ **Testing**: External validation against 1EdTech conformance suite pending
+
+See the [OB3 Roadmap](./ob3-roadmap.md) for detailed implementation progress.
 
 ## API Endpoints
 

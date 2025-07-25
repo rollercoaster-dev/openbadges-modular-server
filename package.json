@@ -1,5 +1,5 @@
 {
-  "name": "open-badges-api",
+  "name": "openbadges-modular-server",
   "version": "1.0.1",
   "module": "index.ts",
   "type": "module",
