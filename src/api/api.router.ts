@@ -32,6 +32,7 @@ import {
 } from '../domains/badgeClass/badgeClass.entity';
 import { toIRI } from '../utils/types/iri-utils';
 import { logger } from '../utils/logging/logger.service';
+import { config } from '../config/config';
 import { OB3, Shared } from 'openbadges-types';
 import { IssuerController } from './controllers/issuer.controller';
 import { BadgeClassController } from './controllers/badgeClass.controller';
@@ -1540,7 +1541,7 @@ export async function createApiRouter(
     c.header('Content-Type', 'text/html');
     c.header(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:3000; font-src 'self'; object-src 'none'; frame-src 'none'; form-action 'self'"
+      `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ${config.openBadges.baseUrl}; font-src 'self'; object-src 'none'; frame-src 'none'; form-action 'self'`
     );
 
     // Return the Swagger UI HTML
