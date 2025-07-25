@@ -26,8 +26,12 @@ export const openApiConfig: OpenAPIObject = {
   },
   servers: [
     {
-      url: `http://localhost:${config.server.port}${config.api.basePath}/${config.api.version}`,
+      url: `http://localhost:${config.server.port}`,
       description: 'Development server'
+    },
+    {
+      url: `http://localhost:${config.server.port}${config.api.basePath}/${config.api.version}`,
+      description: 'Development server (API endpoints)'
     }
   ],
   tags: [

@@ -10,7 +10,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { config } from '@/config/config';
 
 // Get environment-specific configurations
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const isDevelopment = config.env.isDevelopment;
 const baseUrl = config.openBadges.baseUrl;
 
 /**
@@ -25,20 +25,26 @@ const baseUrl = config.openBadges.baseUrl;
  * - X-XSS-Protection: Additional XSS protection (mostly for older browsers)
  */
 export function createSecurityHeadersMiddleware(): MiddlewareHandler {
+  const cspConfig: Record<string, string[] | boolean | undefined> = {
+    defaultSrc: ["'self'"],
+    scriptSrc: isDevelopment ? ["'self'", "'unsafe-inline'"] : ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
+    imgSrc: ["'self'", 'data:'], // Allow images from self and data URIs
+    connectSrc: ["'self'", baseUrl],
+    fontSrc: ["'self'"],
+    objectSrc: ["'none'"],
+    frameSrc: ["'none'"],
+    formAction: ["'self'"],
+  };
+  
+  // Only add upgradeInsecureRequests in production
+  if (!isDevelopment) {
+    cspConfig.upgradeInsecureRequests = [];
+  }
+
   return secureHeaders({
     // Content Security Policy
-    contentSecurityPolicy: {
-      defaultSrc: ["'self'"],
-      scriptSrc: isDevelopment ? ["'self'", "'unsafe-inline'"] : ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
-      imgSrc: ["'self'", 'data:'], // Allow images from self and data URIs
-      connectSrc: ["'self'", baseUrl],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameSrc: ["'none'"],
-      formAction: ["'self'"],
-      upgradeInsecureRequests: !isDevelopment ? [] : undefined, // Force HTTPS in production
-    },
+    contentSecurityPolicy: cspConfig,
     // Strict Transport Security (only in production)
     strictTransportSecurity: !isDevelopment
       ? 'max-age=63072000; includeSubDomains; preload' // 2 years

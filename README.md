@@ -1,4 +1,4 @@
-# BadgeForge - Open Badges API
+# OpenBadges Modular Server
 
 A stateless, modular API server for issuing and managing Open Badges, with robust Open Badges 2.0 support and a planned roadmap for full Open Badges 3.0 implementation. Built with modern TypeScript, it supports multiple database backends.
 

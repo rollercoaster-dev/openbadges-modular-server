@@ -42,7 +42,7 @@ function isPublicPath(path: string): boolean {
   const publicPaths = config.auth?.publicPaths || [];
 
   // Check if path matches any public path
-  return publicPaths.some(publicPath => {
+  return publicPaths.some((publicPath) => {
     // Exact match
     if (path === publicPath) {
       return true;
@@ -63,13 +63,21 @@ function isPublicPath(path: string): boolean {
  */
 export function registerAuthAdapter(adapter: AuthAdapter): void {
   authAdapters.push(adapter);
-  logger.info(`Registered authentication adapter: ${adapter.getProviderName()}`);
+  logger.info(
+    `Registered authentication adapter: ${adapter.getProviderName()}`
+  );
 }
 
 /**
  * Authentication handler for middleware
  */
-async function authenticateRequest(request: Request): Promise<{ isAuthenticated: boolean; user: AuthenticatedUserContext | null; token?: string }> {
+async function authenticateRequest(
+  request: Request
+): Promise<{
+  isAuthenticated: boolean;
+  user: AuthenticatedUserContext | null;
+  token?: string;
+}> {
   try {
     // Extract request information for logging
     const url = new URL(request.url);
@@ -85,14 +93,17 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
       path,
       method,
       clientIp,
-      userAgent: userAgent.substring(0, 100) // Truncate long user agents
+      userAgent: userAgent.substring(0, 100), // Truncate long user agents
     };
 
     logger.debug('Processing authentication request', logContext);
 
     // Skip authentication for certain paths (e.g., public endpoints)
     if (isPublicPath(path)) {
-      logger.debug(`Skipping authentication for public path: ${path}`, logContext);
+      logger.debug(
+        `Skipping authentication for public path: ${path}`,
+        logContext
+      );
       return { isAuthenticated: false, user: null };
     }
 
@@ -116,7 +127,8 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       // Only log a truncated token for debugging
-      const truncatedToken = token.length > 20 ? `${token.substring(0, 20)}...` : token;
+      const truncatedToken =
+        token.length > 20 ? `${token.substring(0, 20)}...` : token;
       logger.debug(`Found Bearer token: ${truncatedToken}`, logContext);
 
       try {
@@ -128,7 +140,7 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
           ...logContext,
           userId: payload.sub,
           provider: payload.provider,
-          roles: payload.claims?.roles || []
+          roles: payload.claims?.roles || [],
         };
 
         logger.info('JWT authentication successful', authLogContext);
@@ -138,16 +150,17 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
           user: {
             id: payload.sub,
             provider: payload.provider || 'jwt',
-            claims: payload.claims || {}
-          }
+            claims: payload.claims || {},
+          },
         };
       } catch (error) {
         // Log failed JWT authentication with detailed error
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         logger.warn('JWT authentication failed', {
           ...logContext,
           error: errorMessage,
-          errorType: error instanceof Error ? error.name : 'Unknown'
+          errorType: error instanceof Error ? error.name : 'Unknown',
         });
       }
     }
@@ -165,7 +178,7 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
           ...logContext,
           userId: payload.sub,
           provider: payload.provider,
-          authMethod: 'legacy-jwt'
+          authMethod: 'legacy-jwt',
         };
 
         logger.info('Legacy JWT authentication successful', authLogContext);
@@ -175,15 +188,18 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
           user: {
             id: payload.sub,
             provider: payload.provider || 'jwt',
-            claims: payload.claims || {}
-          }
+            claims: payload.claims || {},
+          },
         };
       } catch (error) {
         // Log failed legacy JWT authentication
-        logger.debug('Legacy JWT token invalid, trying adapter authentication', {
-          ...logContext,
-          error: error instanceof Error ? error.message : String(error)
-        });
+        logger.debug(
+          'Legacy JWT token invalid, trying adapter authentication',
+          {
+            ...logContext,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
       }
     }
 
@@ -193,7 +209,10 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
       const adapterLogContext = { ...logContext, authAdapter: adapterName };
 
       if (adapter.canHandle(request)) {
-        logger.debug(`Attempting authentication with ${adapterName} adapter`, adapterLogContext);
+        logger.debug(
+          `Attempting authentication with ${adapterName} adapter`,
+          adapterLogContext
+        );
 
         const result = await adapter.authenticate(request);
 
@@ -202,14 +221,14 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
           const token = await JwtService.generateToken({
             sub: result.userId,
             provider: result.provider,
-            claims: result.claims
+            claims: result.claims,
           });
 
           // Log successful adapter authentication
           logger.info(`Authentication successful with ${adapterName} adapter`, {
             ...adapterLogContext,
             userId: result.userId,
-            provider: result.provider
+            provider: result.provider,
           });
 
           return {
@@ -217,22 +236,25 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
             user: {
               id: result.userId,
               provider: result.provider,
-              claims: result.claims || {}
+              claims: result.claims || {},
             },
-            token
+            token,
           };
         } else {
           // Log failed adapter authentication
           logger.debug(`Authentication failed with ${adapterName} adapter`, {
             ...adapterLogContext,
-            error: result.error || 'Unknown error'
+            error: result.error || 'Unknown error',
           });
         }
       }
     }
 
     // No adapter could authenticate the request
-    logger.warn('Authentication failed - no adapter could handle the request', logContext);
+    logger.warn(
+      'Authentication failed - no adapter could handle the request',
+      logContext
+    );
     return { isAuthenticated: false, user: null };
   } catch (error) {
     // Log unexpected authentication errors
@@ -241,7 +263,7 @@ async function authenticateRequest(request: Request): Promise<{ isAuthenticated:
       path: new URL(request.url).pathname,
       method: request.method,
       error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     return { isAuthenticated: false, user: null };
   }
@@ -284,9 +306,12 @@ export function createAuthDebugMiddleware(): MiddlewareHandler<{
     const isAuthenticated = c.get('isAuthenticated');
     const user = c.get('user');
     const authHeader = c.req.header('authorization');
-    logger.debug(`Auth status: ${isAuthenticated ? 'authenticated' : 'not authenticated'}, User: ${user ? user.id : 'none'}, Auth header: ${authHeader || 'none'}`);
+    logger.debug(
+      `Auth status: ${
+        isAuthenticated ? 'authenticated' : 'not authenticated'
+      }, User: ${user ? user.id : 'none'}, Auth header: ${authHeader || 'none'}`
+    );
 
     await next();
   });
 }
-

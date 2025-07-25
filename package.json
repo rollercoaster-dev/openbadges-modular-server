@@ -1,5 +1,5 @@
 {
-  "name": "open-badges-api",
+  "name": "openbadges-modular-server",
   "version": "1.0.1",
   "module": "index.ts",
   "type": "module",
@@ -115,6 +115,7 @@
     "openapi3-ts": "^4.4.0",
     "openbadges-types": "^3.2.3",
     "postgres": "^3.4.5",
+    "swagger-ui-dist": "^5.26.2",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"
   }
