@@ -3,13 +3,11 @@
 # This script checks the health of the API service
 # Simplified for better container compatibility
 
-set -e
-
 # API endpoint to check
 HEALTH_ENDPOINT="http://localhost:${PORT:-3000}/health"
 
 # Perform health check with timeout
-response=$(curl -f -s -m 5 --connect-timeout 3 "$HEALTH_ENDPOINT")
+response=$(curl -f -s -m 5 --connect-timeout 3 "$HEALTH_ENDPOINT" 2>/dev/null)
 exit_code=$?
 
 if [ $exit_code -eq 0 ]; then

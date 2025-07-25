@@ -54,7 +54,7 @@
 ### Package Name Inconsistency
 ![Status](https://img.shields.io/badge/Status-Not%20Started-red)
 
-**Issue**: Package.json shows name as "open-badges-api" but README refers to "BadgeForge"
+**Issue**: Package.json shows name as "openbadges-modular-server" but README refers to "BadgeForge"
 
 **Tasks**:
 - [ ] **Update package.json** to use consistent naming with README (line 2 in package.json:2)

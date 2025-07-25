@@ -5,7 +5,7 @@ This file outlines specific areas where the project documentation needs updates,
 ## Critical Updates Required
 
 ### 1. Package Name Inconsistency
-**Issue**: Package.json shows name as "open-badges-api" but README refers to "BadgeForge"
+**Issue**: Package.json shows name as "openbadges-modular-server" but README refers to "BadgeForge"
 - [ ] **Update package.json** to use consistent naming with README (line 2 in package.json:2)
 - [ ] **Alternative**: Update README to match package.json naming
 - [ ] **Decision needed**: Choose primary branding (BadgeForge vs Open Badges API)

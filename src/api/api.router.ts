@@ -1473,6 +1473,19 @@ export async function createApiRouter(
   // Serve Swagger UI static assets
   router.get('/swagger-ui/*', async (c) => {
     const path = c.req.path.replace('/swagger-ui/', '');
+    
+    // Prevent directory traversal attacks
+    if (path.includes('..') || path.includes('/') || path.startsWith('.') || path.includes('\\')) {
+      return c.notFound();
+    }
+    
+    // Only allow specific file extensions for security
+    const allowedExtensions = ['js', 'css', 'map', 'png', 'html', 'ico', 'svg'];
+    const ext = path.split('.').pop()?.toLowerCase();
+    if (!ext || !allowedExtensions.includes(ext)) {
+      return c.notFound();
+    }
+    
     const filePath = `./node_modules/swagger-ui-dist/${path}`;
     
     try {
@@ -1480,7 +1493,6 @@ export async function createApiRouter(
       
       if (await file.exists()) {
         // Set appropriate content type based on file extension
-        const ext = path.split('.').pop()?.toLowerCase();
         let contentType = 'text/plain';
         
         switch (ext) {
@@ -1498,6 +1510,12 @@ export async function createApiRouter(
             break;
           case 'html':
             contentType = 'text/html';
+            break;
+          case 'ico':
+            contentType = 'image/x-icon';
+            break;
+          case 'svg':
+            contentType = 'image/svg+xml';
             break;
         }
         
