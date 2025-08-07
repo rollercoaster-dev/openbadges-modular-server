@@ -11,10 +11,10 @@
 
 This roadmap converts the gap analysis into a sequenced implementation plan addressing **CRITICAL TEST COVERAGE GAPS** and remaining compliance blockers. The project requires immediate attention to testing infrastructure before proceeding with feature development.
 
-**🚨 CRITICAL ISSUE: NO COMPREHENSIVE TEST COVERAGE**
-- Current test coverage is insufficient for production deployment
-- Missing compliance test suite integration
-- No 1EdTech conformance harness implementation
+**Update: Test Coverage Status**
+- 150+ tests across unit/integration/E2E are present; coverage is generated (LCOV) and tracked.
+- CI runs both SQLite and PostgreSQL profiles; see coverage section in the test coverage report.
+- Remaining work: integrate 1EdTech conformance suite and VC-HTTP-API harness to complement internal tests.
 
 ---
 

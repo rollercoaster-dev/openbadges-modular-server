@@ -12,7 +12,7 @@ This gap analysis identifies remaining implementation gaps for **baseline v3 com
 **Key Findings**:
 - **Blocking gaps**: 4 critical features preventing baseline compliance
 - **Nice-to-have gaps**: 6 features for interoperability excellence  
-- **Total estimated effort**: 6-8 weeks for baseline + 4-6 weeks for excellence
+- **Total estimated effort**: 6–8 weeks for baseline + 4–6 weeks for excellence
 - **Primary risks**: OAuth security implementation and schema validation complexity
 
 ---
@@ -41,7 +41,7 @@ These gaps **MUST** be addressed to achieve minimal OB 3.0 specification complia
 - Error handling for schema validation failures
 - Schema caching for performance
 
-**Effort Estimate**: **L (Large)** - 2-3 weeks  
+**Effort Estimate**: **L (Large)** - 2–3 weeks  
 **Risk Level**: **Medium** - Schema validation can be complex, multiple edge cases
 
 **Acceptance Criteria**:
@@ -73,7 +73,7 @@ These gaps **MUST** be addressed to achieve minimal OB 3.0 specification complia
 - Updated credential issuance workflow
 - Security controls for refresh operations
 
-**Effort Estimate**: **M (Medium)** - 1-2 weeks  
+**Effort Estimate**: **M (Medium)** - 1–2 weeks  
 **Risk Level**: **Low** - Well-defined specification, straightforward implementation
 
 **Acceptance Criteria**:

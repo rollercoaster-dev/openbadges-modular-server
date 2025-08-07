@@ -71,28 +71,28 @@ The OpenBadges Modular Server has achieved **75% completion** toward full Open B
 - **Current Status**: 30% Complete (foundation only)
 - **Impact**: Production deployment blocker
 - **Requirements**: Authorization Code Grant, Client Credentials, scope enforcement
-- **Estimated Effort**: 2-3 weeks
+- **Estimated Effort**: 2–3 weeks
 
 #### 2. **JSON Schema Validation**
 - **Risk Level**: MEDIUM 🟡  
 - **Current Status**: Not Started
 - **Impact**: Full OB 3.0 compliance blocker
 - **Requirements**: credentialSchema property support, validation engine
-- **Estimated Effort**: 2-3 weeks
+- **Estimated Effort**: 2–3 weeks
 
 #### 3. **Service Discovery Document**
 - **Risk Level**: LOW 🟢
 - **Current Status**: 40% Complete (JWKS exists)
 - **Impact**: API discoverability and integration
 - **Requirements**: Complete `/.well-known/openbadges` endpoint
-- **Estimated Effort**: 3-5 days
+- **Estimated Effort**: 3–5 days
 
 #### 4. **Credential Refresh Service**
 - **Risk Level**: LOW 🟢
 - **Current Status**: Not Started
 - **Impact**: Enhanced credential lifecycle management
 - **Requirements**: refreshService property, refresh endpoints
-- **Estimated Effort**: 1-2 weeks
+- **Estimated Effort**: 1–2 weeks
 
 ### 🔧 **Nice-to-Have Enhancements** (For interoperability excellence)
 - **Baked Image Support** (PNG/SVG credential embedding)
@@ -183,9 +183,9 @@ The OpenBadges Modular Server has achieved **75% completion** toward full Open B
 
 ## Investment Summary
 
-**Total Timeline**: 14-18 weeks (3.5-4.5 months)
-- **Phase 1 (Critical)**: 6-8 weeks
-- **Phase 2 (Enhancement)**: 4-6 weeks  
+**Total Timeline**: 14–18 weeks (3.5–4.5 months)
+- **Phase 1 (Critical)**: 6–8 weeks
+- **Phase 2 (Enhancement)**: 4–6 weeks  
 - **Phase 3 (Production)**: 4 weeks
 
 **Resource Requirements**:

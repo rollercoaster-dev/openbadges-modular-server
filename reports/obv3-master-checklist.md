@@ -57,7 +57,7 @@ A comprehensive checklist for implementing Open Badges 3.0 specification complia
 | **Refresh Support** | SHOULD | SHOULD support credential refresh if refreshService present | OB 3.0 Spec |
 | **Status Checking** | MUST | MUST check revocation status if credentialStatus present | OB 3.0 Spec |
 | **Date Validation** | MUST | MUST check validFrom and validUntil dates | OB 3.0 Spec |
-| **Recipient Verification** | RECOMMENDED | SHOULD verify recipient identity when credential exchanged as document | OB 3.0 Spec |
+| **Recipient Verification** | SHOULD | SHOULD verify recipient identity when credential is exchanged as a document | OB 3.0 Spec |
 | **Endorsement Verification** | MUST | MUST verify any embedded EndorsementCredentials | OB 3.0 Spec |
 
 ## API Requirements
@@ -130,4 +130,4 @@ A comprehensive checklist for implementing Open Badges 3.0 specification complia
 - **SHOULD** = Recommended for best practices
 - **MAY** = Optional feature
 
-**Note:** This checklist is derived from the Open Badges 3.0 specification and related W3C standards. Implementation should verify against the latest specification versions and conformance test suites.
+**Note:** This checklist is derived from the Open Badges 3.0 specification and related W3C standards. Implementers SHOULD verify their work against the latest specification versions and conformance test suites.
