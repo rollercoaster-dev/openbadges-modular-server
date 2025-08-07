@@ -249,6 +249,7 @@ bun run release:dry-run
 
 ### 4. Document Changes
 - Semantic-release generates CHANGELOG.md automatically
+- Do not edit `CHANGELOG.md` manually; it is regenerated on each release.
 - Use clear commit messages
 - Tag releases with meaningful descriptions
 

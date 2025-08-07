@@ -79,6 +79,16 @@ function mapToAssertionEntity(
 }
 ```
 
+## Middleware Ordering & Security
+
+Security middleware is applied in the following order (see `src/utils/security/security.middleware.ts`):
+
+1. CORS
+2. Rate limiting
+3. Security headers
+
+This ensures cross-origin negotiation occurs before rate limiting and headers are applied.
+
 ## Best Practices
 
 1. **Strict Schemas**: Use `strict()` on schemas to reject unknown fields, preventing potential security issues.

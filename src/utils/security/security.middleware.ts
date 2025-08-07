@@ -20,6 +20,7 @@ function compose(middlewares: MiddlewareHandler[]): MiddlewareHandler {
 }
 import { createRateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createSecurityHeadersMiddleware } from './middleware/security-headers.middleware';
+import { createCorsMiddleware } from './middleware/cors.middleware';
 
 /**
  * Configures and exports security middleware for the Open Badges API
@@ -29,9 +30,10 @@ import { createSecurityHeadersMiddleware } from './middleware/security-headers.m
  */
 export function createSecurityMiddleware(): MiddlewareHandler {
   // Create individual middleware functions
+  const corsMiddleware = createCorsMiddleware();
   const rateLimitMiddleware = createRateLimitMiddleware();
   const securityHeadersMiddleware = createSecurityHeadersMiddleware();
 
   // Compose middleware functions into a single middleware
-  return compose([rateLimitMiddleware, securityHeadersMiddleware]);
+  return compose([corsMiddleware, rateLimitMiddleware, securityHeadersMiddleware]);
 }

@@ -255,3 +255,21 @@ The logging system is implemented in `src/utils/logging/logger.service.ts` and u
 - **error-handler.middleware.ts**: Global error handling and logging
 
 The system is designed to be extensible and can be enhanced with additional features like log aggregation or external logging services in the future.
+
+## Operational Startup Metadata
+
+The root route (`/`) returns basic metadata including the running version resolved by `getAppVersion()`, and links to the OpenAPI specs and Swagger UI.
+
+Example response:
+
+```json
+{
+  "name": "Open Badges API",
+  "version": "1.x.y",
+  "specification": "Open Badges 3.0",
+  "documentation": {
+    "swagger": "/swagger",
+    "swaggerUI": "/docs"
+  }
+}
+```

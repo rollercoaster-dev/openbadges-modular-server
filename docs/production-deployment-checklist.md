@@ -48,6 +48,8 @@ Before deploying to production, ensure you have:
 - [ ] Enable RBAC for proper access control
 - [ ] Disable unused authentication methods
 - [ ] Implement proper CORS configuration
+  - Set `CORS_ORIGINS` to a comma-separated list of allowed origins
+  - Verify that cross-origin requests are only allowed from expected domains
 - [ ] Ensure all authentication endpoints are protected against brute force attacks
 
 ### Database Security

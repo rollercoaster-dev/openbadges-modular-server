@@ -239,6 +239,8 @@ Store database credentials securely using environment variables or Docker secret
 - Use a reverse proxy (like Nginx) in front of the API
 - Enable HTTPS with proper certificates
 - Configure appropriate CORS settings
+  - Set `CORS_ORIGINS` with allowed domains (comma-separated)
+  - Confirm non-listed origins are blocked in production
 
 ### Data Protection
 

@@ -461,6 +461,8 @@ The API uses JWT for authentication and implements best practices for security, 
 - HTTPS support
 - Rate limiting
 - CORS configuration
+  - Uses `createCorsMiddleware()`; dev allows all origins, prod restricts to `CORS_ORIGINS`.
+  - See `src/utils/security/middleware/cors.middleware.ts` and `docs/environment-variables-reference.md`.
 - Secure key management
 
 ## Deployment

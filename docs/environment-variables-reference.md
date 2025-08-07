@@ -23,6 +23,7 @@ These variables control the basic server settings.
 | `HOST` | Host the server binds to | `0.0.0.0` | No |
 | `NODE_ENV` | Environment mode (`development`, `production`, `test`) | `development` | No |
 | `BASE_URL` | Public URL of the server | `http://localhost:3000` | No |
+| `CORS_ORIGINS` | Comma-separated list of allowed origins for CORS in production. If unset in production, only same-origin requests are allowed. In development, all origins are allowed by default. | — | No |
 
 ## Database Configuration
 

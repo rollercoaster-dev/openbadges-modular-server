@@ -111,7 +111,7 @@ bun run test:coverage
 
 1. Ensure your code follows the project's architectural patterns
 2. Add or update documentation as needed
-3. Update the CHANGELOG.md if your changes are user-facing
+3. Do NOT edit `CHANGELOG.md`. It is generated automatically by semantic-release.
 4. Ensure all tests pass and maintain good coverage
 5. Verify your changes work with both SQLite and PostgreSQL (if applicable)
 

@@ -70,12 +70,14 @@ export class VerificationService {
       // Ensure the key service is initialized
       await KeyService.initialize();
 
-      // Get the key pair from the KeyService
-      const keyPair = await KeyService.generateKeyPair(keyId);
+      // Get key material from the KeyService (do not generate new keys during normal signing)
+      const privateKey = await KeyService.getPrivateKey(keyId);
+      const publicKeyForAlgDetect = await KeyService.getPublicKey(keyId);
 
       // Determine algorithm if not provided
+      const detectedForAlg = detectKeyType(publicKeyForAlgDetect);
       const actualAlgorithm =
-        algorithm || getRecommendedAlgorithm(keyPair.keyType);
+        algorithm || getRecommendedAlgorithm(detectedForAlg);
 
       // Create credential data for JWT payload
       const credentialData: VerifiableCredentialClaims = {
@@ -105,7 +107,7 @@ export class VerificationService {
 
       // Create JWT proof generation options
       const options: JWTProofGenerationOptions = {
-        privateKey: keyPair.privateKey,
+        privateKey,
         algorithm: actualAlgorithm,
         keyId,
         verificationMethod: `${
@@ -149,12 +151,14 @@ export class VerificationService {
       // This ensures that the signature is based on the essential data
       const canonicalData = this.createCanonicalDataForSigning(assertion);
 
-      // Get the key pair from the KeyService
-      const keyPair = await KeyService.generateKeyPair(keyId);
+      // Get the signing key material from the KeyService
+      const privateKey = await KeyService.getPrivateKey(keyId);
+      const publicKey = await KeyService.getPublicKey(keyId);
 
-      // Determine the appropriate cryptosuite based on key type
+      // Determine the appropriate cryptosuite based on key type (detect from public key)
+      const detectedKeyType = detectKeyType(publicKey);
       let cryptosuite: Cryptosuite;
-      switch (keyPair.keyType) {
+      switch (detectedKeyType) {
         case KeyType.RSA:
           cryptosuite = Cryptosuite.RsaSha256;
           break;
@@ -168,8 +172,8 @@ export class VerificationService {
       // Create verification object (now DataIntegrityProof)
       const proof = createVerification(
         canonicalData,
-        keyPair.privateKey,
-        keyPair.keyType,
+        privateKey,
+        detectedKeyType,
         cryptosuite
       );
 

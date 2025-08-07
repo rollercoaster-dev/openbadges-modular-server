@@ -27,6 +27,7 @@ import {
   handleNotFound,
 } from './utils/errors/error-handler.middleware';
 import { logger } from './utils/logging/logger.service';
+import { getAppVersion } from './utils/version/app-version';
 
 import { createRequestContextMiddleware } from './utils/logging/request-context.middleware';
 import { initializeAuthentication } from './auth/auth.initializer';
@@ -49,7 +50,7 @@ app.use(createAuthDebugMiddleware());
 app.get('/', (c) =>
   c.json({
     name: 'Open Badges API',
-    version: '1.0.0',
+    version: getAppVersion().version,
     specification: 'Open Badges 3.0',
     documentation: {
       swagger: '/swagger',
